@@ -1,0 +1,89 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Lumen</title>
+<link rel="stylesheet" href="ui.css">
+</head>
+<body>
+  <div id="app">
+    <aside id="sidebar">
+      <div class="topbar drag">
+        <div class="wincontrols no-drag" id="wincontrols"></div>
+        <div class="spacer"></div>
+        <button class="ib no-drag" id="btn-sidebar" title="Hide sidebar (Shift+Cmd+S)"></button>
+        <button class="ib no-drag" id="btn-back" title="Back"></button>
+        <button class="ib no-drag" id="btn-forward" title="Forward"></button>
+        <button class="ib no-drag" id="btn-reload" title="Reload"></button>
+      </div>
+
+      <div class="urlbar no-drag" id="urlbar">
+        <button class="site" id="btn-site" title="Site settings"></button>
+        <div class="urltext" id="urltext"><span class="host"></span><span class="path"></span></div>
+        <div class="urlactions">
+          <span class="shield" id="shield" title="Trackers and ads blocked on this page"></span>
+          <button class="ib sm" id="btn-star" title="Bookmark (Cmd+D)"></button>
+        </div>
+      </div>
+
+      <div class="extbar no-drag" id="extbar">
+        <browser-action-list id="actions" partition="persist:lumen" alignment="bottom right"></browser-action-list>
+      </div>
+
+      <div class="pins no-drag" id="pins"></div>
+
+      <button class="newtab no-drag" id="btn-newtab"><span class="plus"></span><span>New Tab</span><kbd id="kbd-newtab"></kbd></button>
+
+      <div class="tablist no-drag" id="tablist">
+        <div class="pill" id="pill"></div>
+        <div class="tabs" id="tabs"></div>
+      </div>
+
+      <div class="prompts no-drag" id="prompts"></div>
+
+      <div class="bottombar no-drag">
+        <div class="hoverurl" id="hoverurl"></div>
+        <div class="bottomrow">
+          <button class="ib" id="btn-settings" title="Settings"></button>
+          <button class="ib" id="btn-downloads" title="Downloads"><svg class="ring" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10.5"/></svg></button>
+          <button class="ib" id="btn-split" title="Split view (Shift+Cmd+\)"></button>
+          <div class="spacer"></div>
+          <button class="update" id="btn-update">Restart to update</button>
+          <button class="ib" id="btn-menu" title="More"></button>
+        </div>
+      </div>
+    </aside>
+
+    <div id="peekzone"></div>
+    <div id="resizer" class="no-drag"></div>
+    <div id="content-shadow"></div>
+    <div id="findbar" class="no-drag">
+      <input id="find-input" placeholder="Find in page" spellcheck="false">
+      <span id="find-count"></span>
+      <button class="ib sm" id="find-prev" title="Previous"></button>
+      <button class="ib sm" id="find-next" title="Next"></button>
+      <button class="ib sm" id="find-close" title="Close"></button>
+    </div>
+    <div id="dragstrip" class="drag"></div>
+  </div>
+
+  <div id="overlay">
+    <div class="scrim" id="scrim"></div>
+    <div class="cmdbar" id="cmdbar">
+      <div class="cmdinput">
+        <span class="cmdicon" id="cmdicon"></span>
+        <input id="cmd-input" spellcheck="false" autocomplete="off" placeholder="Search or enter address">
+        <kbd>esc</kbd>
+      </div>
+      <div class="cmdresults" id="cmd-results"></div>
+    </div>
+    <div class="popover" id="popover"></div>
+  </div>
+
+  <div id="toast"></div>
+
+  <script src="spring.js"></script>
+  <script src="icons.js"></script>
+  <script src="ui.js"></script>
+</body>
+</html>

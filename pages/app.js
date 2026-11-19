@@ -17,7 +17,10 @@ const sub = location.pathname.replace(/^\/+|\/+$/g, '')
 function applyLook(s) {
   document.documentElement.style.setProperty('--accent', s.accent || '#5b8cff')
   document.body.dataset.motion = s.motion
+  Jelly.setMode(s.motion === 'lively' ? 'jelly' : s.motion)
 }
+Jelly.init({ buttons: '.btn, .ib, .seg button, .swatches button, .nav a, .ntp .foot a', cards: '.tile, .err .ico, .key', press: '.list .row' })
+Jelly.smoothScroll(window)
 
 // ======================================================================= new tab
 function greeting() { const h = new Date().getHours(); return h < 5 ? 'Good night' : h < 12 ? 'Good morning' : h < 18 ? 'Good afternoon' : 'Good evening' }
@@ -33,10 +36,12 @@ async function newTab() {
   </div>`
   const tick = () => {
     const d = new Date()
-    $('#clock').textContent = d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }).replace(/\s?[AP]M/i, '')
+    const tt = d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }).replace(/\s?[AP]M/i, '')
+    if ($('#clock').dataset.t !== tt) { $('#clock').dataset.t = tt; $('#clock').textContent = tt; Jelly.letters($('#clock')) }
     $('#date').textContent = greeting() + '  ·  ' + d.toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric' })
   }
   tick(); setInterval(tick, 5000)
+  Jelly.trail({ size: 26, style: 'border:1.5px solid color-mix(in srgb, var(--accent) 70%, transparent);background:color-mix(in srgb, var(--accent) 10%, transparent)' })
   $('#sf').onsubmit = e => { e.preventDefault(); const v = $('#q').value.trim(); if (v) L.invoke('navigate', v) }
   setTimeout(() => $('#q').focus(), 50)
 }
@@ -93,7 +98,7 @@ function appearance(m) {
   <div class="card">
     ${row('Theme', '', seg('theme', [['system', 'System'], ['light', 'Light'], ['dark', 'Dark']], S.theme))}
     ${row('Accent color', '', `<div class="swatches">${colors.map(c => `<button data-c="${c}" style="background:${c};color:${c}" class="${c === S.accent ? 'on' : ''}"></button>`).join('')}</div>`)}
-    ${row('Motion', 'Calm is the default: springy, but soft. Lively adds more bounce. Off removes animation.', seg('motion', [['calm', 'Calm'], ['lively', 'Lively'], ['off', 'Off']], S.motion))}
+    ${row('Motion', 'Jelly is the default: things overshoot a little and wobble two or three times before settling. Calm barely overshoots. Off removes animation. Scrolling always glides straight to a stop.', seg('motion', [['jelly', 'Jelly'], ['calm', 'Calm'], ['off', 'Off']], S.motion === 'lively' ? 'jelly' : S.motion))}
   </div>
   <p class="note">Tip: hide the sidebar with Shift + ${PLATFORM === 'darwin' ? 'Cmd' : 'Ctrl'} + S. Move your mouse to the left edge to peek at it.</p>`
   bindSettings(m)

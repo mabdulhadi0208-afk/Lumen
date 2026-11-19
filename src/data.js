@@ -4,7 +4,7 @@ const { Store, uid } = require('./store')
 
 const settings = new Store('settings', {
   searchEngine: 'google',
-  motion: 'calm',            // calm | lively | off
+  motion: 'jelly',           // jelly | calm | off
   theme: 'system',           // system | light | dark
   accent: '#5b8cff',
   adblock: true,

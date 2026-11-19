@@ -15,6 +15,7 @@ const ROOT = path.join(__dirname, '..')
 const ICON = path.join(ROOT, 'build', 'icon.png')
 
 app.setName('Lumen')
+app.commandLine.appendSwitch('enable-smooth-scrolling')
 protocol.registerSchemesAsPrivileged([
   { scheme: 'lumen', privileges: { standard: true, secure: true, supportFetchAPI: true, corsEnabled: true, stream: true } },
 ])
@@ -139,6 +140,7 @@ const PAGES = ['newtab', 'settings', 'history', 'downloads', 'bookmarks', 'passw
 async function serveInternal(req) {
   const u = new URL(req.url)
   let file
+  if (u.host === 'assets' && u.pathname === '/jelly.js') return new Response(await fs.promises.readFile(path.join(ROOT, 'ui', 'jelly.js')), { headers: { 'content-type': 'text/javascript; charset=utf-8' } })
   if (u.host === 'assets' && u.pathname === '/icons.js') return new Response(await fs.promises.readFile(path.join(ROOT, 'ui', 'icons.js')), { headers: { 'content-type': 'text/javascript; charset=utf-8' } })
   if (u.host === 'assets') file = path.join(ROOT, 'pages', path.normalize(u.pathname).replace(/^(\.\.[/\\])+/, ''))
   else if (PAGES.includes(u.host)) file = path.join(ROOT, 'pages', 'app.html')
@@ -330,7 +332,7 @@ class BrowserWin {
 
   makeView(t) {
     const view = new WebContentsView({
-      webPreferences: { session: this.ses, sandbox: true, contextIsolation: true, plugins: true, spellcheck: true, scrollBounce: true, autoplayPolicy: 'document-user-activation-required' },
+      webPreferences: { session: this.ses, sandbox: true, contextIsolation: true, plugins: true, spellcheck: true, scrollBounce: false, autoplayPolicy: 'document-user-activation-required' },
     })
     view.setBorderRadius(this.fullscreenTab ? 0 : 10)
     view.setBackgroundColor(nativeTheme.shouldUseDarkColors ? '#1e1f23' : '#ffffff')

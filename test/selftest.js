@@ -94,6 +94,12 @@ app.whenReady().then(async () => {
   // drag reorder through the UI path
   await w.ui.webContents.executeJavaScript(`window.lumenUI.do('move', ${w.order[w.order.length - 1]}, 0)`)
   await wait(500)
+  // JELLY: hover a sidebar button and drop-bounce a tab
+  const jr = await w.ui.webContents.executeJavaScript(`(()=>{const b=document.getElementById('btn-settings').getBoundingClientRect();return [b.left+b.width/2+4,b.top+b.height/2]})()`)
+  for (let i = 0; i < 5; i++) { w.ui.webContents.sendInputEvent({ type: 'mouseMove', x: Math.round(jr[0] - 10 + i * 3), y: Math.round(jr[1]) }); await wait(16) }
+  await wait(80)
+  console.log('JELLY hover:', await w.ui.webContents.executeJavaScript(`document.getElementById('btn-settings').style.transform`) || 'none')
+  console.log('JELLY motion:', await w.ui.webContents.executeJavaScript(`Jelly.getMode()+' / '+getMotion()`))
   await winShot('10-final')
   console.log('passwords saved:', L.D.listPasswords().length)
   console.log('history entries:', L.D.listHistory('', 99).length)

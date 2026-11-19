@@ -46,7 +46,7 @@ body.incognito {
 body.nonmac { --bg: var(--bg-solid); }
 
 * { box-sizing: border-box; }
-html, body { margin: 0; height: 100%; overflow: hidden; background: transparent; font: 13px/1.35 var(--font); color: var(--fg); -webkit-font-smoothing: antialiased; user-select: none; cursor: default; }
+html, body { overscroll-behavior: none; margin: 0; height: 100%; overflow: hidden; background: transparent; font: 13px/1.35 var(--font); color: var(--fg); -webkit-font-smoothing: antialiased; user-select: none; cursor: default; }
 button { font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: default; }
 kbd { font: 11px var(--font); color: var(--fg3); }
 .drag { -webkit-app-region: drag; }
@@ -73,7 +73,7 @@ body.nonmac .wincontrols { display: flex; }
 .wincontrols button:hover { background: var(--hover); }
 .wincontrols button.x:hover { background: #e5484d; color: #fff; }
 
-.ib { width: 28px; height: 28px; border-radius: 8px; display: grid; place-items: center; color: var(--fg2); position: relative; flex: none; transition: background .15s, color .15s; }
+.ib { width: 28px; height: 28px; border-radius: 8px; display: grid; place-items: center; color: var(--fg2); position: relative; flex: none; transition: background .15s, color .15s; transform-origin: 50% 50%; }
 .ib:hover { background: var(--hover); color: var(--fg); }
 .ib:active { background: var(--press); }
 .ib:disabled { opacity: .35; background: none; }
@@ -125,7 +125,7 @@ browser-action-list::part(badge) { font: 600 9px var(--font); border-radius: 4px
 .newtab kbd { margin-left: auto; opacity: 0; transition: opacity .15s; }
 .newtab:hover kbd { opacity: 1; }
 
-.tablist { flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden; position: relative; margin: 0 -4px; padding: 0 4px; }
+.tablist { overscroll-behavior: none; flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden; position: relative; margin: 0 -4px; padding: 0 4px; }
 .tablist::-webkit-scrollbar { width: 0; }
 .tabs { position: relative; }
 .pill { position: absolute; left: 0; right: 0; height: 34px; border-radius: 9px; background: var(--pill); box-shadow: var(--shadow); opacity: 0; pointer-events: none; will-change: transform; }
@@ -164,7 +164,6 @@ browser-action-list::part(badge) { font: 600 9px var(--font); border-radius: 4px
 .prompt label { display: flex; align-items: center; gap: 6px; font-size: 11.5px; color: var(--fg2); margin-bottom: 9px; }
 .btn { height: 28px; padding: 0 12px; border-radius: 8px; background: var(--hover); font-weight: 500; transition: background .15s, transform .15s; }
 .btn:hover { background: var(--press); }
-.btn:active { transform: scale(.97); }
 .btn.primary { background: var(--accent); color: #fff; }
 .btn.primary:hover { filter: brightness(1.06); }
 

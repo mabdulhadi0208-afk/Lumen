@@ -14,6 +14,11 @@ let downloads = []
 let updateState = {}
 
 const ROW = 36
+Jelly.init({
+  buttons: '.ib, .btn, .pin, .site, .update, .wincontrols button, .tab .x, .tab .audio, .popover .seg button',
+  cards: '.prompt, .newtab',
+  press: '.popover .item',
+})
 const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]))
 
 // ---------------------------------------------------------------- icons on static buttons
@@ -186,8 +191,9 @@ function renderChrome() {
 
 // ---------------------------------------------------------------- tabs list (springs)
 const tabsEl = $('#tabs'), pinsEl = $('#pins'), pill = $('#pill')
+Jelly.smoothScroll($('#tablist'))
 const tabViews = new Map() // id -> { el, g: SpringGroup }
-const pillG = new SpringGroup({ y: 0, o: 0, s: 1 }, 'calm', v => { pill.style.transform = `translateY(${v.y}px) scale(${v.s})`; pill.style.opacity = v.o })
+const pillG = new SpringGroup({ y: 0, o: 0, s: 1 }, 'calm', v => { pill.style.transform = `translateY(${v.y}px) scale(${v.s})`; pill.style.opacity = Math.max(0, Math.min(1, v.o)) })
 let drag = null
 
 function tabInner(t) {
@@ -230,7 +236,10 @@ function renderTabs() {
       el.dataset.id = t.id
       el.innerHTML = tabInner(t)
       tabsEl.appendChild(el)
-      v = { el, sig: tabSig(t), g: new SpringGroup({ y, o: 0, s: 0.94, x: -10 }, 'calm', st => { el.style.transform = `translate(${st.x}px, ${st.y}px) scale(${st.s})`; el.style.opacity = st.o }) }
+      v = { el, sig: tabSig(t) }
+      const paint = st => { const q = v.q ? Math.max(-0.15, Math.min(0.15, v.q.value)) : 0; el.style.transform = `translate(${st.x}px, ${st.y}px) scale(${st.s * (1 + q)}, ${st.s * (1 - q)})`; el.style.opacity = Math.max(0, Math.min(1, st.o)) }
+      v.g = new SpringGroup({ y, o: 0, s: 0.9, x: -14 }, 'calm', paint)
+      v.q = new Spring(0, 'bounce', () => paint(v.g.state))
       v.g.to({ o: 1, s: 1, x: 0 })
       tabViews.set(t.id, v)
       bindTab(v, t.id)
@@ -274,13 +283,13 @@ function bindTab(v, id) {
     const startTop = v.index * ROW
     drag = { id, active: false, startY, startTop, index: v.index }
     el.setPointerCapture(e.pointerId)
-    // a soft press
-    v.g.to({ s: 0.985 })
+    // press squashes the row a little
+    v.g.to({ s: 0.96 })
   })
   el.addEventListener('pointermove', e => {
     if (!drag || drag.id !== id) return
     const dy = e.clientY - drag.startY
-    if (!drag.active && Math.abs(dy) > 4) { drag.active = true; el.classList.add('dragging'); v.g.to({ s: 1.02 }) }
+    if (!drag.active && Math.abs(dy) > 4) { drag.active = true; el.classList.add('dragging'); v.g.to({ s: 1.04 }) }
     if (!drag.active) return
     const count = S.tabs.filter(t => !t.pinned).length
     const y = Math.max(-6, Math.min((count - 1) * ROW + 6, drag.startTop + dy))
@@ -298,8 +307,10 @@ function bindTab(v, id) {
     if (!drag || drag.id !== id) return
     const d = drag; drag = null
     el.classList.remove('dragging')
-    v.g.to({ s: 1 })
+    v.g.to({ s: 1 }, { velocity: d.active ? 0 : 1.4 })
     if (d.active) {
+      // dropped: squash flat, then bounce once or twice
+      v.q.to(0, { velocity: 5 })
       const pinnedCount = S.tabs.filter(t => t.pinned).length
       v.g.to({ y: d.index * ROW })
       // reorder locally right away so nothing jumps, then tell the browser
@@ -331,7 +342,7 @@ $('#tablist').addEventListener('dblclick', e => { if (e.target === $('#tablist')
 // ---------------------------------------------------------------- overlay management
 let overlayOpen = null // 'cmd' | 'pop' | null
 const overlay = $('#overlay'), scrim = $('#scrim')
-const scrimS = new Spring(0, 'calm', v => { scrim.style.opacity = v })
+const scrimS = new Spring(0, 'calm', v => { scrim.style.opacity = Math.max(0, Math.min(1, v)) })
 function showOverlay(kind) {
   overlayOpen = kind
   overlay.classList.add('show')
@@ -347,7 +358,7 @@ scrim.addEventListener('mousedown', () => { if (overlayOpen === 'cmd') closeCmd(
 
 // ---------------------------------------------------------------- command bar
 const cmd = $('#cmdbar'), cmdInput = $('#cmd-input'), cmdResults = $('#cmd-results')
-const cmdG = new SpringGroup({ s: 0.97, o: 0, y: -8 }, 'calm', v => { cmd.style.transform = `translateY(${v.y}px) scale(${v.s})`; cmd.style.opacity = v.o })
+const cmdG = new SpringGroup({ s: 0.9, o: 0, y: -14 }, 'calm', v => { cmd.style.transform = `translateY(${v.y}px) scale(${v.s})`; cmd.style.opacity = Math.max(0, Math.min(1, v.o)) })
 $('#cmdicon').innerHTML = ICONS.search
 let cmdMode = 'newtab', results = [], sel = 0, suggestSeq = 0, lastTyped = ''
 
@@ -384,7 +395,7 @@ async function openCmd(mode, prefill) {
   cmdInput.placeholder = mode === 'location' ? 'Search or enter address' : 'Search, enter address, or type a command'
   showOverlay('cmd')
   cmd.classList.add('show')
-  cmdG.set({ s: 0.97, o: 0, y: -8 }).to({ s: 1, o: 1, y: 0 })
+  cmdG.set({ s: 0.9, o: 0, y: -14 }).to({ s: 1, o: 1, y: 0 })
   scrimS.to(1)
   api.do('focusUI')
   requestAnimationFrame(() => { cmdInput.focus(); cmdInput.select() })
@@ -494,7 +505,7 @@ function go(text) {
 
 // ---------------------------------------------------------------- popovers (site info, downloads)
 const pop = $('#popover')
-const popG = new SpringGroup({ s: 0.96, o: 0, y: -6 }, 'calm', v => { pop.style.transform = `translateY(${v.y}px) scale(${v.s})`; pop.style.opacity = v.o })
+const popG = new SpringGroup({ s: 0.96, o: 0, y: -6 }, 'calm', v => { pop.style.transform = `translateY(${v.y}px) scale(${v.s})`; pop.style.opacity = Math.max(0, Math.min(1, v.o)) })
 function openPopover(html, anchor, { above = false } = {}) {
   if (overlayOpen === 'cmd') closeCmd(true)
   pop.innerHTML = html
@@ -506,7 +517,7 @@ function openPopover(html, anchor, { above = false } = {}) {
   pop.style.transformOrigin = above ? '20px 100%' : '20px 0'
   showOverlay('pop')
   scrimS.to(0.35)
-  popG.set({ s: 0.96, o: 0, y: above ? 6 : -6 }).to({ s: 1, o: 1, y: 0 })
+  popG.set({ s: 0.88, o: 0, y: above ? 12 : -12 }).to({ s: 1, o: 1, y: 0 })
   api.do('focusUI')
 }
 function closePopover(instant) {
@@ -631,8 +642,11 @@ function addPrompt(p) {
       <div class="row"><button class="btn primary" data-a="save">Save</button><button class="btn" data-a="later">Not now</button><div class="spacer"></div><button class="btn" data-a="never">Never</button></div>`
   }
   promptsEl.appendChild(el)
-  const g = new SpringGroup({ y: 24, o: 0, s: 0.96 }, 'calm', v => { el.style.transform = `translateY(${v.y}px) scale(${v.s})`; el.style.opacity = v.o })
+  // pops in on a spring, then hands the card to Jelly for hover tilt
+  el.setAttribute('data-nojelly', '')
+  const g = new SpringGroup({ y: 28, o: 0, s: 0.88 }, 'calm', v => { el.style.transform = `translateY(${v.y}px) scale(${v.s})`; el.style.opacity = Math.max(0, Math.min(1, v.o)) })
   g.to({ y: 0, o: 1, s: 1 })
+  g.onRest(() => { if (el.isConnected) { el.removeAttribute('data-nojelly'); el.style.transform = '' } })
   const entry = { p, el, g }
   prompts.push(entry)
   el.addEventListener('click', e => {
@@ -642,7 +656,8 @@ function addPrompt(p) {
     if (p.kind === 'permission') api.do('prompt', p.id, { allow: a === 'allow', remember })
     else api.do('prompt', p.id, { allow: a === 'save', never: a === 'never' })
     prompts.splice(prompts.indexOf(entry), 1)
-    g.to({ y: 12, o: 0, s: 0.96 })
+    el.setAttribute('data-nojelly', '')
+    g.to({ y: 12, o: 0, s: 0.9 })
     g.onRest(() => { el.remove(); if (peeking && !prompts.length) closePeek() })
   })
   if (collapsed) openPeek()
@@ -652,7 +667,7 @@ function addPrompt(p) {
 
 // ---------------------------------------------------------------- toast
 const toastEl = $('#toast')
-const toastG = new SpringGroup({ y: 10, o: 0 }, 'calm', v => { toastEl.style.transform = `translateY(${v.y}px)`; toastEl.style.opacity = v.o })
+const toastG = new SpringGroup({ y: 10, o: 0 }, 'calm', v => { toastEl.style.transform = `translateY(${v.y}px)`; toastEl.style.opacity = Math.max(0, Math.min(1, v.o)) })
 let toastT
 function toast(msg) {
   toastEl.textContent = msg
@@ -670,7 +685,7 @@ api.on('state', s => {
 })
 api.on('settings', s => applySettings(s))
 api.on('downloads', d => { downloads = d; renderDownloadsButton() })
-api.on('download-started', () => { const b = $('#btn-downloads'); b.classList.add('show', 'done'); const g = new SpringGroup({ s: 1.25 }, 'lively', v => { b.style.transform = `scale(${v.s})` }); g.to({ s: 1 }) })
+api.on('download-started', () => { const b = $('#btn-downloads'); b.classList.add('show', 'done'); requestAnimationFrame(() => Jelly.kick(b, 1.2, 1)) })
 api.on('prompt', p => addPrompt(p))
 api.on('toast', m => toast(m))
 api.on('hover-url', u => { const h = $('#hoverurl'); if (u) h.textContent = u; h.classList.toggle('show', !!u) })
@@ -691,7 +706,7 @@ api.on('command', c => {
 function applySettings(s) {
   const prevMotion = settings.motion
   settings = { ...settings, ...s }
-  setMotion(settings.motion)
+  setMotion(settings.motion); Jelly.setMode(settings.motion === 'lively' ? 'jelly' : settings.motion)
   document.documentElement.style.setProperty('--accent', settings.accent || '#5b8cff')
   if (settings.sidebarWidth && settings.sidebarWidth !== sidebarW && !collapsed) { sidebarW = settings.sidebarWidth; sideX.to(sidebarW - 8) }
   if (prevMotion !== settings.motion) document.body.dataset.motion = settings.motion

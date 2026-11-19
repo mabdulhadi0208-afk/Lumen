@@ -1,12 +1,14 @@
-// Spring physics, tuned down: critically-leaning damping so things settle with a soft, small overshoot.
-// calm   ~ damping ratio 0.82 (default)    lively ~ 0.62    off = instant
+// Spring physics. jelly (default) ~ damping ratio 0.50, overshoots ~15% and wobbles 2-3 times.
+// calm ~ 0.82 (barely overshoots)    off = instant
 const SPRING_PRESETS = {
+  jelly: { stiffness: 300, damping: 17.3, mass: 1 },   // zeta 0.50: ~16% overshoot, 2-3 wobbles
+  bounce: { stiffness: 380, damping: 15.6, mass: 1 },  // zeta 0.40: squash impulses
   calm: { stiffness: 240, damping: 25.5, mass: 1 },
   lively: { stiffness: 320, damping: 22, mass: 1 },
   snappy: { stiffness: 420, damping: 36, mass: 1 },
   gentle: { stiffness: 150, damping: 22, mass: 1 },
 }
-let MOTION = 'calm'
+let MOTION = 'jelly'
 const active = new Set()
 let raf = 0, last = 0
 
@@ -25,7 +27,8 @@ class Spring {
   }
   cfg() {
     const base = SPRING_PRESETS[this.preset] || SPRING_PRESETS.calm
-    if (MOTION === 'lively' && this.preset === 'calm') return SPRING_PRESETS.lively
+    if (this.preset === 'bounce') return MOTION === 'calm' ? SPRING_PRESETS.calm : SPRING_PRESETS.bounce
+    if (this.preset === 'calm') return MOTION === 'calm' ? SPRING_PRESETS.calm : SPRING_PRESETS.jelly
     return base
   }
   to(target, { velocity } = {}) {
@@ -81,6 +84,6 @@ class SpringGroup {
   }
 }
 
-function setMotion(m) { MOTION = m || 'calm' }
+function setMotion(m) { MOTION = m === 'lively' ? 'jelly' : (m || 'jelly') }
 window.Spring = Spring; window.SpringGroup = SpringGroup; window.setMotion = setMotion
 window.getMotion = () => MOTION

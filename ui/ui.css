@@ -250,3 +250,40 @@ body.fullscreen-tab #content-shadow { display: none; }
 
 #resizer { position: absolute; top: 0; bottom: 0; width: 8px; cursor: col-resize; z-index: 30; }
 body.collapsed #resizer { display: none; }
+
+.navbtns { display: flex; gap: 2px; }
+
+/* ----------------------------------------------------------- tabs on top */
+body.toplayout #sidebar {
+  right: 0; bottom: auto; width: auto !important; transform: none !important;
+  display: grid; grid-template-columns: auto auto minmax(0, 1fr) auto auto; grid-template-rows: 44px 40px auto;
+  grid-template-areas: "lights pins tabs tabs newtab" "nav url url ext bottom" "prompts prompts prompts prompts prompts";
+  column-gap: 8px; align-items: center; padding: 0 8px 4px 10px; -webkit-app-region: drag;
+}
+body.toplayout .topbar { display: contents; }
+body.toplayout .topbar .spacer { grid-area: lights; width: 70px; height: 100%; }
+body.toplayout.nonmac .topbar .spacer { display: none; }
+body.toplayout .wincontrols { grid-area: lights; }
+body.toplayout #btn-sidebar, body.toplayout #resizer, body.toplayout #peekzone, body.toplayout .hoverurl { display: none !important; }
+body.toplayout .navbtns { grid-area: nav; }
+body.toplayout .urlbar { grid-area: url; margin: 0; height: 34px; }
+body.toplayout .extbar { grid-area: ext; padding: 0; }
+body.toplayout .pins { grid-area: pins; display: flex; gap: 4px; margin: 0; }
+body.toplayout .pins:empty { display: none; }
+body.toplayout .pin { width: 36px; height: 32px; border-radius: 9px; }
+body.toplayout .newtab { grid-area: newtab; width: 32px; height: 32px; padding: 0; justify-content: center; margin: 0; }
+body.toplayout .newtab span:not(.plus), body.toplayout .newtab kbd { display: none; }
+body.toplayout .tablist { grid-area: tabs; height: 38px; margin: 0; padding: 3px 2px; overflow-x: auto; overflow-y: hidden; -webkit-app-region: drag; }
+body.toplayout .tablist::-webkit-scrollbar { height: 0; }
+body.toplayout .tabs { height: 32px; }
+body.toplayout .tab { top: 0; right: auto; height: 32px; padding: 0 4px 0 10px; -webkit-app-region: no-drag; }
+body.toplayout .pill { top: 0; right: auto; height: 32px; }
+body.toplayout .prompts { grid-area: prompts; }
+body.toplayout .prompt { display: flex; align-items: center; gap: 14px; padding: 8px 10px 8px 14px; margin-top: 4px; }
+body.toplayout .prompt .ph { margin: 0; }
+body.toplayout .prompt .pt { margin: 0; flex: 1; }
+body.toplayout .prompt label { margin: 0; }
+body.toplayout .bottombar { grid-area: bottom; padding: 0; }
+body.toplayout #toast { left: auto; right: 70px; bottom: auto; top: 8px; }
+body.toplayout .tab:not(.active):not(:hover) .x { display: none; }
+body.toplayout .tab .title { mask-image: linear-gradient(90deg, #000 80%, transparent); }

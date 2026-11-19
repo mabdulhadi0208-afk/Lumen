@@ -68,6 +68,8 @@ let collapsed = false
 let peeking = false
 const sideX = new Spring(0, 'calm', () => queueLayout())      // content left edge offset (sidebar visible amount)
 const findH = new Spring(0, 'calm', () => queueLayout())
+const barH = new Spring(88, 'calm', () => queueLayout())   // height of the top bar in the tabs-on-top layout
+new ResizeObserver(() => { if (TOP) barH.to(sidebar.offsetHeight) }).observe(sidebar)
 const peekX = new Spring(0, 'calm', v => { sidebar.style.transform = `translateX(${v}px)` })
 let layoutQueued = false
 function queueLayout() { if (!layoutQueued) { layoutQueued = true; requestAnimationFrame(doLayout) } }
@@ -75,15 +77,16 @@ let lastRectKey = ''
 function doLayout() {
   layoutQueued = false
   const W = innerWidth, H = innerHeight
-  const left = Math.round(8 + sideX.value)
-  const top = Math.round(8 + findH.value)
+  const left = TOP ? 8 : Math.round(8 + sideX.value)
+  const barTop = TOP ? Math.round(barH.value) : 8
+  const top = Math.round(barTop + findH.value)
   const rect = { x: left, y: top, width: Math.max(80, W - left - 8), height: Math.max(80, H - top - 8) }
   const sh = $('#content-shadow')
   Object.assign(sh.style, { left: rect.x + 'px', top: rect.y + 'px', width: rect.width + 'px', height: rect.height + 'px' })
   const fb = $('#findbar')
   const fbW = Math.min(420, rect.width - 16)
-  Object.assign(fb.style, { left: (rect.x + rect.width - fbW) + 'px', top: '8px', width: fbW + 'px', opacity: Math.min(1, findH.value / 46), transform: `translateY(${(findH.value - 46) * 0.25}px)` })
-  if (!collapsed || peeking) sidebar.style.width = sidebarW + 'px'
+  Object.assign(fb.style, { left: (rect.x + rect.width - fbW) + 'px', top: barTop + 'px', width: fbW + 'px', opacity: Math.min(1, findH.value / 46), transform: `translateY(${(findH.value - 46) * 0.25}px)` })
+  if (!TOP && (!collapsed || peeking)) sidebar.style.width = sidebarW + 'px'
   $('#resizer').style.left = (sidebarW - 4) + 'px'
   const key = JSON.stringify(rect)
   if (key !== lastRectKey) { lastRectKey = key; api.do('layout', rect) }
@@ -91,6 +94,7 @@ function doLayout() {
 addEventListener('resize', queueLayout)
 
 function setCollapsed(c, { save = true, instant = false } = {}) {
+  if (TOP) c = false
   collapsed = c
   document.body.classList.toggle('collapsed', c)
   const target = c ? 0 : sidebarW - 8
@@ -101,7 +105,7 @@ function setCollapsed(c, { save = true, instant = false } = {}) {
     peeking = false; sidebar.classList.remove('peek'); peekX.to(0)
     if (wasPeeking && !overlayOpen) api.do('overlay', false)
   }
-  api.do('trafficLights', !c)
+  api.do('trafficLights', !c, TOP ? { x: 16, y: 15 } : { x: 16, y: 18 })
   if (save) api.do('setSetting', 'sidebarCollapsed', c)
 }
 $('#btn-sidebar').onclick = () => setCollapsed(!collapsed)
@@ -109,7 +113,7 @@ $('#btn-sidebar').onclick = () => setCollapsed(!collapsed)
 // peek the sidebar while collapsed
 let peekCloseTimer
 function openPeek() {
-  if (!collapsed || peeking) return
+  if (TOP || !collapsed || peeking) return
   peeking = true
   api.do('overlay', true)
   api.do('trafficLights', true)
@@ -193,7 +197,20 @@ function renderChrome() {
 const tabsEl = $('#tabs'), pinsEl = $('#pins'), pill = $('#pill')
 Jelly.smoothScroll($('#tablist'))
 const tabViews = new Map() // id -> { el, g: SpringGroup }
-const pillG = new SpringGroup({ y: 0, o: 0, s: 1 }, 'calm', v => { pill.style.transform = `translateY(${v.y}px) scale(${v.s})`; pill.style.opacity = Math.max(0, Math.min(1, v.o)) })
+// Tabs run down the sidebar, or across the top bar when the layout is "top". p = position along that axis.
+let TOP = false
+const GAP = 6
+let tabW = 200
+const stepOf = () => TOP ? tabW + GAP : ROW
+function measureTabW(n) {
+  const avail = $('#tablist').clientWidth || 600
+  tabW = Math.max(84, Math.min(220, Math.floor((avail - Math.max(0, n - 1) * GAP) / Math.max(1, n))))
+}
+const pillG = new SpringGroup({ p: 0, o: 0, s: 1, w: 200 }, 'calm', v => {
+  pill.style.transform = TOP ? `translateX(${v.p}px) scale(${v.s})` : `translateY(${v.p}px) scale(${v.s})`
+  if (TOP) pill.style.width = v.w + 'px'; else pill.style.width = ''
+  pill.style.opacity = Math.max(0, Math.min(1, v.o))
+})
 let drag = null
 
 function tabInner(t) {
@@ -208,8 +225,10 @@ function tabSig(t) { return [t.title, t.url, t.favicon, t.loading, t.muted, t.au
 function renderTabs() {
   const pinned = S.tabs.filter(t => t.pinned)
   const list = S.tabs.filter(t => !t.pinned)
+  if (TOP) measureTabW(list.length)
+  const step = stepOf()
 
-  // pinned grid
+  // pinned tabs
   const pinIds = pinned.map(t => String(t.id)).join(',')
   if (pinsEl.dataset.ids !== pinIds) {
     pinsEl.dataset.ids = pinIds
@@ -229,7 +248,7 @@ function renderTabs() {
   list.forEach((t, i) => {
     seen.add(t.id)
     let v = tabViews.get(t.id)
-    const y = i * ROW
+    const p = i * step
     if (!v) {
       const el = document.createElement('div')
       el.className = 'tab'
@@ -237,10 +256,16 @@ function renderTabs() {
       el.innerHTML = tabInner(t)
       tabsEl.appendChild(el)
       v = { el, sig: tabSig(t) }
-      const paint = st => { const q = v.q ? Math.max(-0.15, Math.min(0.15, v.q.value)) : 0; el.style.transform = `translate(${st.x}px, ${st.y}px) scale(${st.s * (1 + q)}, ${st.s * (1 - q)})`; el.style.opacity = Math.max(0, Math.min(1, st.o)) }
-      v.g = new SpringGroup({ y, o: 0, s: 0.9, x: -14 }, 'calm', paint)
+      const paint = st => {
+        const q = v.q ? Math.max(-0.15, Math.min(0.15, v.q.value)) : 0
+        el.style.transform = (TOP ? `translate(${st.p}px, ${st.e}px)` : `translate(${st.e}px, ${st.p}px)`) + ` scale(${st.s * (1 + q)}, ${st.s * (1 - q)})`
+        el.style.opacity = Math.max(0, Math.min(1, st.o))
+        if (TOP) el.style.width = tabW + 'px'; else el.style.width = ''
+      }
+      v.paint = paint
+      v.g = new SpringGroup({ p, o: 0, s: 0.9, e: TOP ? 10 : -14 }, 'calm', paint)
       v.q = new Spring(0, 'bounce', () => paint(v.g.state))
-      v.g.to({ o: 1, s: 1, x: 0 })
+      v.g.to({ o: 1, s: 1, e: 0 })
       tabViews.set(t.id, v)
       bindTab(v, t.id)
     } else if (v.sig !== tabSig(t)) {
@@ -248,7 +273,8 @@ function renderTabs() {
       v.el.innerHTML = tabInner(t)
     }
     v.index = i
-    if (!(drag && drag.id === t.id && drag.active)) v.g.to({ y })
+    if (!(drag && drag.id === t.id && drag.active)) v.g.to({ p })
+    v.paint(v.g.state)
     v.el.classList.toggle('active', t.id === S.activeId)
     v.el.classList.toggle('asleep', t.asleep)
     v.el.classList.toggle('audible', t.audible)
@@ -260,48 +286,62 @@ function renderTabs() {
     if (seen.has(id) || v.leaving) continue
     v.leaving = true
     v.el.style.pointerEvents = 'none'
-    v.g.to({ o: 0, s: 0.94, x: -8 })
+    v.g.to({ o: 0, s: 0.9, e: TOP ? 8 : -8 })
     v.g.onRest(() => { v.el.remove(); tabViews.delete(id) })
   }
-  tabsEl.style.height = list.length * ROW + 'px'
+  if (TOP) { tabsEl.style.height = ''; tabsEl.style.width = Math.max(0, list.length * step - GAP) + 'px' }
+  else { tabsEl.style.width = ''; tabsEl.style.height = list.length * ROW + 'px' }
 
   const act = tabViews.get(S.activeId)
   if (act && !act.leaving) {
-    const y = act.index * ROW
-    if (pillG.state.o < 0.05) pillG.set({ y })
-    pillG.to({ y, o: 1 })
-    if (!drag) act.el.scrollIntoView({ block: 'nearest' })
+    const p = act.index * step
+    if (pillG.state.o < 0.05) pillG.set({ p, w: tabW })
+    pillG.to({ p, o: 1, w: tabW })
+    if (!drag) act.el.scrollIntoView({ block: 'nearest', inline: 'nearest' })
   } else pillG.to({ o: 0 })
 }
 
+function setTabLayout(top) {
+  TOP = top
+  document.body.classList.toggle('toplayout', top)
+  // re-seat every tab and the pill on the new axis without animating across the screen
+  const list = S.tabs.filter(t => !t.pinned)
+  if (TOP) measureTabW(list.length)
+  for (const [, v] of tabViews) { v.g.set({ p: (v.index || 0) * stepOf(), e: 0 }) }
+  const act = tabViews.get(S.activeId)
+  pillG.set({ p: act ? act.index * stepOf() : 0, w: tabW })
+  renderTabs()
+}
+addEventListener('resize', () => { if (TOP) renderTabs() })
+
 function bindTab(v, id) {
   const el = v.el
+  const coord = e => TOP ? e.clientX : e.clientY
   el.addEventListener('pointerdown', e => {
     if (e.button === 1) { e.preventDefault(); return }
     if (e.button !== 0 || e.target.closest('.x, .audio')) return
-    const startY = e.clientY
-    const startTop = v.index * ROW
-    drag = { id, active: false, startY, startTop, index: v.index }
+    drag = { id, active: false, start: coord(e), startPos: v.index * stepOf(), index: v.index }
     el.setPointerCapture(e.pointerId)
-    // press squashes the row a little
-    v.g.to({ s: 0.96 })
+    // press squashes the tab a little
+    v.g.to({ s: 0.94 })
   })
   el.addEventListener('pointermove', e => {
     if (!drag || drag.id !== id) return
-    const dy = e.clientY - drag.startY
-    if (!drag.active && Math.abs(dy) > 4) { drag.active = true; el.classList.add('dragging'); v.g.to({ s: 1.04 }) }
+    const d = coord(e) - drag.start
+    if (!drag.active && Math.abs(d) > 4) { drag.active = true; el.classList.add('dragging'); v.g.to({ s: 1.04 }) }
     if (!drag.active) return
+    const step = stepOf()
     const count = S.tabs.filter(t => !t.pinned).length
-    const y = Math.max(-6, Math.min((count - 1) * ROW + 6, drag.startTop + dy))
-    v.g.set({ y })
-    const to = Math.max(0, Math.min(count - 1, Math.round(y / ROW)))
+    const p = Math.max(-6, Math.min((count - 1) * step + 6, drag.startPos + d))
+    v.g.set({ p })
+    const to = Math.max(0, Math.min(count - 1, Math.round(p / step)))
     drag.index = to
     // shift the others into their new slots
     const ids = S.tabs.filter(t => !t.pinned).map(t => t.id).filter(x => x !== id)
     ids.splice(to, 0, id)
-    ids.forEach((tid, i) => { if (tid !== id) { const o = tabViews.get(tid); if (o) o.g.to({ y: i * ROW }) } })
-    if (S.activeId !== id) { const ai = ids.indexOf(S.activeId); if (ai >= 0 && tabViews.get(S.activeId)) pillG.to({ y: ai * ROW }) }
-    else pillG.set({ y })
+    ids.forEach((tid, i) => { if (tid !== id) { const o = tabViews.get(tid); if (o) o.g.to({ p: i * step }) } })
+    if (S.activeId !== id) { const ai = ids.indexOf(S.activeId); if (ai >= 0 && tabViews.get(S.activeId)) pillG.to({ p: ai * step }) }
+    else pillG.set({ p })
   })
   const end = e => {
     if (!drag || drag.id !== id) return
@@ -312,7 +352,7 @@ function bindTab(v, id) {
       // dropped: squash flat, then bounce once or twice
       v.q.to(0, { velocity: 5 })
       const pinnedCount = S.tabs.filter(t => t.pinned).length
-      v.g.to({ y: d.index * ROW })
+      v.g.to({ p: d.index * stepOf() })
       // reorder locally right away so nothing jumps, then tell the browser
       const moved = S.tabs.find(t => t.id === id)
       const rest = S.tabs.filter(t => t.id !== id)
@@ -377,7 +417,9 @@ const COMMANDS = [
   { t: 'Picture in Picture', k: ['pip', 'picture', 'video'], i: 'pip', run: () => api.do('pip') },
   { t: 'Take Screenshot', k: ['screenshot', 'capture'], i: 'camera', run: () => api.do('screenshot') },
   { t: 'Reopen Closed Tab', k: ['reopen', 'undo close', 'restore'], i: 'reload', run: () => api.do('reopen') },
-  { t: 'Toggle Sidebar', k: ['sidebar', 'hide sidebar', 'focus'], i: 'sidebar', run: () => setCollapsed(!collapsed) },
+  { t: 'Toggle Sidebar', k: ['sidebar', 'hide sidebar', 'focus'], i: 'sidebar', run: () => { if (!TOP) setCollapsed(!collapsed) } },
+  { t: 'Tabs on Top', k: ['top', 'tabs on top', 'horizontal', 'layout', 'sidebar up'], i: 'tabs', run: () => api.do('setSetting', 'tabLayout', 'top') },
+  { t: 'Tabs in Sidebar', k: ['side', 'tabs in sidebar', 'vertical', 'layout', 'sidebar left'], i: 'sidebar', run: () => api.do('setSetting', 'tabLayout', 'side') },
   { t: 'Developer Tools', k: ['devtools', 'inspect', 'console'], i: 'bolt', run: () => api.do('devtools') },
   { t: 'Clear Browsing Data', k: ['clear', 'delete history', 'cookies'], i: 'close', run: () => api.do('openPage', 'settings/privacy') },
   { t: 'Check for Updates', k: ['update', 'version'], i: 'download', run: () => api.do('openPage', 'settings/about') },
@@ -698,7 +740,8 @@ api.on('command', c => {
   else if (c === 'find') openFind()
   else if (c === 'findNext') { if (!findOpen) openFind(); else if (findInput.value) api.do('find', findInput.value, true, true) }
   else if (c === 'findPrev') { if (findInput.value) api.do('find', findInput.value, false, true) }
-  else if (c === 'sidebar') setCollapsed(!collapsed)
+  else if (c === 'sidebar') { if (!TOP) setCollapsed(!collapsed) }
+  else if (c === 'tabsTop') api.do('setSetting', 'tabLayout', TOP ? 'side' : 'top')
   else if (c === 'split') toggleSplit()
   else if (c === 'pip') api.do('pip').then(ok => { if (ok === false) toast('No video on this page') })
 })
@@ -710,6 +753,14 @@ function applySettings(s) {
   document.documentElement.style.setProperty('--accent', settings.accent || '#5b8cff')
   if (settings.sidebarWidth && settings.sidebarWidth !== sidebarW && !collapsed) { sidebarW = settings.sidebarWidth; sideX.to(sidebarW - 8) }
   if (prevMotion !== settings.motion) document.body.dataset.motion = settings.motion
+  const wantTop = settings.tabLayout === 'top'
+  if (wantTop !== TOP) {
+    setTabLayout(wantTop)
+    if (wantTop) { collapsed = false; document.body.classList.remove('collapsed'); peeking = false; sidebar.classList.remove('peek'); peekX.set(0); barH.set(sidebar.offsetHeight) }
+    else { sideX.set(sidebarW - 8); if (settings.sidebarCollapsed) setCollapsed(true, { save: false, instant: true }) }
+    api.do('trafficLights', !collapsed, wantTop ? { x: 16, y: 15 } : { x: 16, y: 18 })
+    queueLayout()
+  }
 }
 
 // watch for extension actions appearing
@@ -734,7 +785,7 @@ addEventListener('keydown', e => {
   $('#btn-update').classList.toggle('show', updateState.status === 'ready')
   applySettings(init.settings)
   sidebarW = init.settings.sidebarWidth || 248
-  setCollapsed(!!init.settings.sidebarCollapsed, { save: false, instant: true })
+  setCollapsed(!!init.settings.sidebarCollapsed && init.settings.tabLayout !== 'top', { save: false, instant: true })
   renderDownloadsButton()
   queueLayout()
 })()

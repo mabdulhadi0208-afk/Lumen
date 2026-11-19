@@ -5,6 +5,7 @@ A fast, private desktop browser for Mac and Windows. Chromium engine, so every s
 ## What is built in
 
 - Jelly spring physics everywhere (about 15% overshoot, 2-3 wobbles), critically damped scrolling, vertical tabs with drag to reorder, pinned tabs, tab sleeping
+- Tabs in a sidebar or across the top (Option+Cmd+S to switch)
 - Command bar (Cmd+T / Cmd+K / Cmd+L): search, open tabs, history, bookmarks, actions, inline autocomplete
 - Ad and tracker blocking (Ghostery engine), Global Privacy Control, HTTPS upgrade option
 - Chrome extensions and the Chrome Web Store

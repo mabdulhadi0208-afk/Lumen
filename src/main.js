@@ -751,7 +751,7 @@ ipcMain.handle('ui', async (e, action, ...a) => {
       case 'siteInfo': return siteInfo(w)
       case 'resetSite': { if (!t) return; try { const o = new URL(t.url).origin; const all = D.permissions.get(); delete all[o]; D.permissions.set(all) } catch {} return }
       case 'update': if (a[0] === 'check') return Updater.check(); if (a[0] === 'install') { if (Updater.isReady()) { relaunchForUpdate = true; app.quit() } } return
-      case 'trafficLights': if (isMac) w.win.setWindowButtonVisibility(!!a[0]); return
+      case 'trafficLights': if (isMac) { w.win.setWindowButtonVisibility(!!a[0]); if (a[1] && w.win.setWindowButtonPosition) { try { w.win.setWindowButtonPosition(a[1]) } catch {} } } return
       case 'focusUI': w.ui.webContents.focus(); return
       case 'focusTab': if (wc && !w.overlay) wc.focus(); return
       case 'devtools': return wc && wc.toggleDevTools()
@@ -837,14 +837,16 @@ function downloadAction(id, what) {
   broadcast('downloads', listDownloads())
 }
 
-const PUBLIC_SETTINGS = ['searchEngine', 'motion', 'theme', 'accent', 'adblock', 'blockTrackers', 'httpsOnly', 'sleepTabsAfterMin', 'restoreSession', 'sidebarCollapsed', 'sidebarWidth', 'autoUpdate', 'askWhereToSave', 'doNotTrack', 'showSuggestions', 'homeTiles']
+const PUBLIC_SETTINGS = ['searchEngine', 'motion', 'theme', 'accent', 'adblock', 'blockTrackers', 'httpsOnly', 'sleepTabsAfterMin', 'restoreSession', 'sidebarCollapsed', 'sidebarWidth', 'tabLayout', 'autoUpdate', 'askWhereToSave', 'doNotTrack', 'showSuggestions', 'homeTiles']
 function publicSettings() { const s = D.settings.get(); return Object.fromEntries(PUBLIC_SETTINGS.map(k => [k, s[k]])) }
 function setSetting(k, v) {
   if (!PUBLIC_SETTINGS.includes(k)) return
+  if (k === 'tabLayout' && !['side', 'top'].includes(v)) return
   D.settings.set({ [k]: v, ...(k !== 'sidebarCollapsed' && k !== 'sidebarWidth' ? { settingsAt: Date.now() } : {}) })
   if (k === 'adblock') setAdblock(!!v)
   if (k === 'theme') nativeTheme.themeSource = v
   if (k === 'autoUpdate') Updater.start(!!v)
+  if (k === 'tabLayout') buildMenu()
   broadcast('settings', publicSettings())
   for (const w of windows) for (const t of w.tabs.values()) if (t.view && (t.url || '').startsWith('lumen://')) t.view.webContents.send('lumen:settings', publicSettings())
 }
@@ -1019,6 +1021,7 @@ function buildMenu() {
       { label: 'Hard Reload', accelerator: 'CmdOrCtrl+Shift+R', click: focused((w, t) => activeWc(w, t) && activeWc(w, t).reloadIgnoringCache()) },
       { type: 'separator' },
       { label: 'Toggle Sidebar', accelerator: 'CmdOrCtrl+Shift+S', click: focused(w => w.send('command', 'sidebar')) },
+      { label: 'Tabs on Top', type: 'checkbox', checked: D.settings.get('tabLayout') === 'top', accelerator: 'CmdOrCtrl+Alt+S', click: item => setSetting('tabLayout', item.checked ? 'top' : 'side') },
       { label: 'Split View', accelerator: 'CmdOrCtrl+Shift+\\', click: focused(w => w.send('command', 'split')) },
       { label: 'Reader Mode', accelerator: 'CmdOrCtrl+Shift+E', click: focused((w, t) => activeWc(w, t) && readerMode(activeWc(w, t))) },
       { label: 'Picture in Picture', accelerator: 'CmdOrCtrl+Shift+P', click: focused(w => w.send('command', 'pip')) },

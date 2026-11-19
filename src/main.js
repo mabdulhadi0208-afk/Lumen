@@ -23,6 +23,9 @@ protocol.registerSchemesAsPrivileged([
 // Clean, plain-Chrome user agent so sites (and Google sign-in) treat Lumen like Chrome.
 function chromeUA(ua) { return ua.replace(/\sElectron\/\S+/, '').replace(/\s(Lumen|lumen)\/\S+/, '') }
 
+// boot / error log (Logs folder), used by the release gate and for support
+function log(...a) { try { fs.mkdirSync(app.getPath('logs'), { recursive: true }); fs.appendFileSync(path.join(app.getPath('logs'), 'lumen.log'), `[${new Date().toISOString()}] ${a.join(' ')}\n`) } catch {} }
+
 if (!app.requestSingleInstanceLock()) { app.quit(); process.exit(0) }
 
 const SEARCH = {
@@ -750,7 +753,7 @@ ipcMain.handle('ui', async (e, action, ...a) => {
       case 'setSetting': return setSetting(a[0], a[1])
       case 'siteInfo': return siteInfo(w)
       case 'resetSite': { if (!t) return; try { const o = new URL(t.url).origin; const all = D.permissions.get(); delete all[o]; D.permissions.set(all) } catch {} return }
-      case 'update': if (a[0] === 'check') return Updater.check(); if (a[0] === 'install') { if (Updater.isReady()) { relaunchForUpdate = true; app.quit() } } return
+      case 'update': if (a[0] === 'check') return Updater.check(true); if (a[0] === 'install') return Updater.install(true); return Updater.getState()
       case 'trafficLights': if (isMac) { w.win.setWindowButtonVisibility(!!a[0]); if (a[1] && w.win.setWindowButtonPosition) { try { w.win.setWindowButtonPosition(a[1]) } catch {} } } return
       case 'focusUI': w.ui.webContents.focus(); return
       case 'focusTab': if (wc && !w.overlay) wc.focus(); return
@@ -845,7 +848,7 @@ function setSetting(k, v) {
   D.settings.set({ [k]: v, ...(!['sidebarCollapsed', 'sidebarWidth', 'introSeen'].includes(k) ? { settingsAt: Date.now() } : {}) })
   if (k === 'adblock') setAdblock(!!v)
   if (k === 'theme') nativeTheme.themeSource = v
-  if (k === 'autoUpdate') Updater.start(!!v)
+  if (k === 'autoUpdate') Updater.setEnabled(!!v)
   if (k === 'tabLayout') buildMenu()
   broadcast('settings', publicSettings())
   for (const w of windows) for (const t of w.tabs.values()) if (t.view && (t.url || '').startsWith('lumen://')) t.view.webContents.send('lumen:settings', publicSettings())
@@ -960,7 +963,7 @@ ipcMain.handle('lumen', async (e, action, ...a) => {
         if (a[0] === 'pickFolder') { const r = await dialog.showOpenDialog({ properties: ['openDirectory', 'createDirectory'] }); return r.canceled ? null : r.filePaths[0] }
         return null
       }
-      case 'update': if (a[0] === 'check') return Updater.check(); if (a[0] === 'install' && Updater.isReady()) { relaunchForUpdate = true; app.quit() } return Updater.getState()
+      case 'update': if (a[0] === 'check') return Updater.check(true); if (a[0] === 'install') return Updater.install(true); return Updater.getState()
       case 'defaultBrowser': {
         if (a[0] === 'set') { app.setAsDefaultProtocolClient('http'); app.setAsDefaultProtocolClient('https') }
         return app.isDefaultProtocolClient('https')
@@ -985,7 +988,7 @@ function buildMenu() {
   const tpl = [
     ...(isMac ? [{ label: 'Lumen', submenu: [
       { label: 'About Lumen', click: focused(w => w.createTab('lumen://settings/about')) },
-      { label: 'Check for Updates...', click: () => { Updater.check(); const w = lastFocused(); if (w) openSettings(w, 'about') } },
+      { label: 'Check for Updates...', click: () => { Updater.check(true) } },
       { type: 'separator' },
       { label: 'Settings...', accelerator: 'Cmd+,', click: focused(w => openSettings(w)) },
       { label: 'Set as Default Browser', click: () => { app.setAsDefaultProtocolClient('http'); app.setAsDefaultProtocolClient('https') } },
@@ -1088,18 +1091,33 @@ app.on('second-instance', (e, argv) => {
 })
 
 // ---------------------------------------------------------------- lifecycle
-let quitting = false, relaunchForUpdate = false
-app.on('before-quit', () => {
-  quitting = true
+let quitting = false
+function flushAll() {
   saveSessionNow()
   for (const s of [D.settings, D.bookmarks, D.passwords, D.permissions, D.session]) s.flush()
   D.historyStore.replace([...D.historyMap.values()].sort((a, b) => b.t - a.t)); D.historyStore.flush()
-  if (Updater.isReady()) Updater.apply(relaunchForUpdate)
+}
+app.on('before-quit', () => {
+  quitting = true
+  flushAll()
+  // a downloaded update is applied when you quit, so the next launch is already new
+  if (Updater.isReady()) Updater.install(false, { fromQuit: true })
+})
+ipcMain.handle('update:action', (e, name) => {
+  switch (name) {
+    case 'state': return Updater.getState()
+    case 'check': return Updater.check(true)
+    case 'download': return Updater.download()
+    case 'install': return Updater.install(true)
+    case 'later': return Updater.later()
+    case 'skip': return Updater.skip()
+    case 'cancel': return Updater.cancel()
+  }
 })
 app.on('window-all-closed', () => { if (!isMac) app.quit() })
 app.on('activate', () => { if (!windows.length && app.isReady() && mainSession) createWindow({}) })
-process.on('uncaughtException', err => console.error('uncaught', err))
-process.on('unhandledRejection', err => console.error('unhandled', err))
+process.on('uncaughtException', err => { console.error('uncaught', err); log('UNCAUGHT', err && err.stack || err) })
+process.on('unhandledRejection', err => { console.error('unhandled', err); log('UNHANDLED', err && err.stack || err) })
 
 app.whenReady().then(async () => {
   nativeTheme.themeSource = D.settings.get('theme') || 'system'
@@ -1120,7 +1138,17 @@ app.whenReady().then(async () => {
   } else createWindow({})
   for (const u of [...argUrls, ...pendingOpen.splice(0)]) openExternalURL(u)
   Updater.onState(s => broadcast('update', s))
-  Updater.start(D.settings.get('autoUpdate'))
+  Updater.start({
+    autoUpdate: () => D.settings.get('autoUpdate'),
+    autoDownload: () => D.settings.get('autoUpdate'),
+    cardEnabled: () => true,
+    skipped: () => D.settings.get('skippedVersion'),
+    setSkipped: v => D.settings.set('skippedVersion', v),
+    flush: () => { quitting = true; flushAll() },
+    toast: msg => broadcast('toast', msg),
+    notify: (title, body) => { try { const { Notification } = require('electron'); if (Notification.isSupported()) new Notification({ title, body, silent: true }).show() } catch {} },
+  })
+  log('boot ' + app.getVersion())
   Sync.start()
   nativeTheme.on('updated', () => broadcast('theme', nativeTheme.shouldUseDarkColors))
   powerMonitor.on('resume', () => Sync.syncNow().catch(() => {}))

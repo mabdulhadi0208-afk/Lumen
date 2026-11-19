@@ -1,7 +1,7 @@
 {
   "name": "lumen",
   "productName": "Lumen",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "Lumen - a fast, private browser",
   "main": "src/main.js",
   "author": "Nauman Munir",
@@ -129,7 +129,7 @@
           ]
         }
       ],
-      "artifactName": "Lumen-Setup-${version}.${ext}"
+      "artifactName": "Lumen-win-x64.${ext}"
     },
     "nsis": {
       "oneClick": true,

@@ -296,7 +296,7 @@ async function downloadsPage(m) {
 
 async function about(m) {
   const st = await L.invoke('update', 'state')
-  const desc = s => !s ? '' : s.status === 'checking' ? 'Checking for updates...' : s.status === 'downloading' ? `Downloading update... ${Math.round((s.progress || 0) * 100)}%` : s.status === 'ready' ? `Version ${esc(s.latest)} is ready. Restart to finish updating.` : s.status === 'available' ? (s.reason || `Version ${esc(s.latest)} is available.`) : s.status === 'current' ? 'Lumen is up to date.' : s.status === 'error' ? 'Could not check for updates. ' + esc(s.error || '') : ''
+  const desc = s => !s ? '' : s.status === 'checking' ? 'Checking for updates...' : s.status === 'downloading' ? `Downloading update... ${Math.round((s.progress || 0) * 100)}%` : s.status === 'ready' ? `Version ${esc(s.latest)} is ready. Restart to finish updating.` : s.status === 'available' ? (s.reason || `Version ${esc(s.latest)} is available.`) : s.status === 'uptodate' ? 'Lumen is up to date.' : s.status === 'unpacking' ? 'Unpacking the update...' : s.status === 'installing' ? 'Restarting...' : s.status === 'error' ? 'Could not check for updates. ' + esc(s.error || '') : ''
   m.innerHTML = `<h2>About Lumen</h2><p class="lead">A fast, private browser with Chrome's engine and a calmer feel.</p>
   <div class="card">
     ${row('Version ' + esc(VERSION), `<span id="ud">${desc(st)}</span>`, `<button class="btn" id="chk">Check for updates</button><button class="btn primary ${st && st.status === 'ready' ? '' : 'hidden'}" id="rst">Restart</button>`)}

@@ -15,7 +15,8 @@ const srv = http.createServer((req, res) => {
 }).listen(48123)
 
 app.whenReady().then(async () => {
-  await wait(3500)
+  await wait(6000)
+  { const ww = L.windows[0]; await ww.ui.webContents.capturePage().then(i => fs.writeFileSync('/tmp/lumen-shots/00-intro.png', i.toPNG())); await ww.ui.webContents.executeJavaScript(`document.querySelector('#intro .skip') && document.querySelector('#intro .skip').click()`); await wait(2500); await ww.ui.webContents.executeJavaScript(`document.querySelector('#intro .go') && document.querySelector('#intro .go').click()`); await wait(1500); console.log('INTRO gone:', await ww.ui.webContents.executeJavaScript(`!document.getElementById('intro')`)) }
   const w = L.windows[0]
   if (!w) { console.log('FAIL no window'); app.exit(1) }
   w.ui.webContents.on('console-message', (e) => { if (e.level === 'error' || e.level === 3) errors.push('UI: ' + e.message) })

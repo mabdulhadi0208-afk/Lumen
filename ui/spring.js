@@ -1,8 +1,8 @@
 // Spring physics. jelly (default) ~ damping ratio 0.50, overshoots ~15% and wobbles 2-3 times.
 // calm ~ 0.82 (barely overshoots)    off = instant
 const SPRING_PRESETS = {
-  jelly: { stiffness: 300, damping: 17.3, mass: 1 },   // zeta 0.50: ~16% overshoot, 2-3 wobbles
-  bounce: { stiffness: 380, damping: 15.6, mass: 1 },  // zeta 0.40: squash impulses
+  jelly: { stiffness: 300, damping: 22, mass: 1 },     // zeta 0.64: ~7.5% overshoot
+  bounce: { stiffness: 380, damping: 21.4, mass: 1 },  // zeta 0.55: squash impulses
   calm: { stiffness: 240, damping: 25.5, mass: 1 },
   lively: { stiffness: 320, damping: 22, mass: 1 },
   snappy: { stiffness: 420, damping: 36, mass: 1 },

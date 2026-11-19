@@ -13,8 +13,9 @@ const settings = new Store('settings', {
   sleepTabsAfterMin: 30,
   restoreSession: true,
   sidebarCollapsed: false,
-  tabLayout: 'side',         // side | top
+  tabLayout: 'top',          // top | side
   sidebarWidth: 248,
+  introSeen: false,
   sync: { enabled: false, folder: '', lastSync: 0 },
   autoUpdate: true,
   askWhereToSave: false,

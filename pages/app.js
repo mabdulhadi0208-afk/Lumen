@@ -96,10 +96,10 @@ function appearance(m) {
   const colors = ['#5b8cff', '#7c5cff', '#e5487d', '#f0763b', '#e8b22c', '#2fb67c', '#16a3b8', '#7a7d87']
   m.innerHTML = `<h2>Appearance</h2><p class="lead">Make it yours.</p>
   <div class="card">
-    ${row('Tabs', 'Down the side in a sidebar, or across the top like Chrome.', seg('tabLayout', [['side', 'Sidebar'], ['top', 'Top']], S.tabLayout || 'side'))}
+    ${row('Tabs', 'Down the side in a sidebar, or across the top like Chrome.', seg('tabLayout', [['side', 'Sidebar'], ['top', 'Top']], S.tabLayout || 'top'))}
     ${row('Theme', '', seg('theme', [['system', 'System'], ['light', 'Light'], ['dark', 'Dark']], S.theme))}
     ${row('Accent color', '', `<div class="swatches">${colors.map(c => `<button data-c="${c}" style="background:${c};color:${c}" class="${c === S.accent ? 'on' : ''}"></button>`).join('')}</div>`)}
-    ${row('Motion', 'Jelly is the default: things overshoot a little and wobble two or three times before settling. Calm barely overshoots. Off removes animation. Scrolling always glides straight to a stop.', seg('motion', [['jelly', 'Jelly'], ['calm', 'Calm'], ['off', 'Off']], S.motion === 'lively' ? 'jelly' : S.motion))}
+    ${row('Motion', 'Jelly is the default: things overshoot a little and settle with a soft wobble. Calm barely overshoots. Off removes animation. Scrolling always glides straight to a stop.', seg('motion', [['jelly', 'Jelly'], ['calm', 'Calm'], ['off', 'Off']], S.motion === 'lively' ? 'jelly' : S.motion))}
   </div>
   <p class="note">Tip: hide the sidebar with Shift + ${PLATFORM === 'darwin' ? 'Cmd' : 'Ctrl'} + S and move your mouse to the left edge to peek at it. Switch between sidebar and top tabs with Option + ${PLATFORM === 'darwin' ? 'Cmd' : 'Ctrl'} + S.</p>`
   bindSettings(m)

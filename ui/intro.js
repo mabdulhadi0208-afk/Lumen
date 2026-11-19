@@ -1,0 +1,249 @@
+/* First-run cinematic intro and tutorial. Letterboxed, film grain, light sweeps, springy reveals. No emoji. */
+;(function () {
+  const css = `
+  #intro{position:fixed;inset:0;z-index:1000;background:#05060d;color:#eef0fb;overflow:hidden;font-family:var(--font);-webkit-app-region:no-drag;user-select:none}
+  #intro canvas{position:absolute;inset:0;width:100%;height:100%}
+  #intro .bar{position:absolute;left:0;right:0;height:9vh;background:#000;z-index:5;transition:transform 1.4s cubic-bezier(.3,1.2,.5,1)}
+  #intro .bar.t{top:0;transform:translateY(-100%)} #intro .bar.b{bottom:0;transform:translateY(100%)}
+  #intro.on .bar{transform:none}
+  #intro .vig{position:absolute;inset:0;z-index:4;pointer-events:none;background:radial-gradient(120% 90% at 50% 50%,transparent 45%,rgba(0,0,0,.75))}
+  #intro .stage{position:absolute;inset:0;display:grid;place-items:center;z-index:3}
+  #intro .scene{position:absolute;inset:0;display:grid;place-items:center;opacity:0;pointer-events:none}
+  #intro .scene.show{pointer-events:auto}
+  #intro .cap{position:absolute;left:0;right:0;bottom:15vh;text-align:center;z-index:6}
+  #intro .cap h2{font:700 clamp(28px,4.2vw,54px)/1.05 "SF Pro Display",-apple-system,system-ui,sans-serif;letter-spacing:-.03em;margin:0 0 12px}
+  #intro .cap p{margin:0 auto;max-width:560px;color:#a9b0d6;font-size:16px;line-height:1.5}
+  #intro .w{display:inline-block;opacity:0;filter:blur(10px);transform:translateY(18px)}
+  #intro .skip{position:absolute;right:28px;top:calc(9vh + 18px);z-index:7;background:rgba(255,255,255,.08);border:0;color:#cfd4f3;font:500 12.5px var(--font);padding:8px 14px;border-radius:999px;cursor:default}
+  #intro .skip:hover{background:rgba(255,255,255,.16)}
+  #intro .dots{position:absolute;left:50%;transform:translateX(-50%);bottom:calc(9vh + 22px);display:flex;gap:6px;z-index:7}
+  #intro .dots i{width:6px;height:6px;border-radius:3px;background:rgba(255,255,255,.2);transition:width .5s cubic-bezier(.3,1.4,.5,1),background .4s}
+  #intro .dots i.on{width:22px;background:#8ea4ff}
+  #intro .logo{font:800 clamp(64px,11vw,150px)/1 "SF Pro Display",-apple-system,system-ui,sans-serif;letter-spacing:-.05em;background:linear-gradient(100deg,#fff 20%,#9fb3ff 55%,#c2a6ff);-webkit-background-clip:text;background-clip:text;color:transparent}
+  #intro .tag{color:#9aa2c7;font-size:19px;margin-top:10px;text-align:center}
+  .mock{width:min(760px,78vw);border-radius:16px;background:#e9ecf3;box-shadow:0 50px 140px rgba(0,0,0,.6),0 0 0 1px rgba(255,255,255,.08);overflow:hidden;color:#1c1d21;font:13px -apple-system,system-ui,sans-serif}
+  .mock .tb{height:42px;display:flex;align-items:center;gap:6px;padding:0 12px}
+  .mock .lt{display:flex;gap:6px;margin-right:14px}.mock .lt i{width:11px;height:11px;border-radius:50%;background:#ff5f57}.mock .lt i:nth-child(2){background:#febc2e}.mock .lt i:nth-child(3){background:#28c840}
+  .mock .mt{height:30px;border-radius:8px;padding:0 12px;display:flex;align-items:center;gap:8px;color:#555;width:150px;white-space:nowrap;overflow:hidden}
+  .mock .mt.on{background:#fff;color:#111;font-weight:500;box-shadow:0 2px 10px rgba(0,0,0,.08)}
+  .mock .mt b{width:13px;height:13px;border-radius:4px;flex:none}
+  .mock .ub{margin:0 12px 10px;height:34px;border-radius:10px;background:#fff;display:flex;align-items:center;padding:0 12px;color:#888;box-shadow:0 2px 10px rgba(0,0,0,.06)}
+  .mock .pg{height:300px;margin:0 8px 8px;border-radius:10px;background:#fff;padding:26px;position:relative;overflow:hidden}
+  .mock .ln{height:10px;border-radius:5px;background:#eceef3;margin:10px 0}
+  .cmd{width:min(620px,74vw);border-radius:18px;background:#fff;color:#1c1d21;box-shadow:0 50px 140px rgba(0,0,0,.6),0 0 80px rgba(111,139,255,.25);overflow:hidden;font:15px -apple-system,system-ui,sans-serif}
+  .cmd .in{height:62px;display:flex;align-items:center;padding:0 22px;font-size:21px;gap:12px}
+  .cmd .in .caret{width:2px;height:24px;background:#5b8cff;animation:blink 1s steps(2) infinite}
+  @keyframes blink{50%{opacity:0}}
+  .cmd .r{height:44px;display:flex;align-items:center;padding:0 22px;gap:12px;color:#444;opacity:0;transform:translateY(8px)}
+  .cmd .r.sel{background:rgba(91,140,255,.12);color:#111}
+  .cmd .r em{font-style:normal;color:#999;font-size:13px;margin-left:auto}
+  .shield{position:relative;width:340px;height:340px;display:grid;place-items:center}
+  .shield .num{font:800 110px/1 "SF Pro Display",-apple-system,system-ui,sans-serif;letter-spacing:-.04em;font-variant-numeric:tabular-nums;background:linear-gradient(180deg,#fff,#8ea4ff);-webkit-background-clip:text;background-clip:text;color:transparent}
+  .shield .sub{color:#9aa2c7;text-align:center;margin-top:6px}
+  .shield .ad{position:absolute;width:64px;height:40px;border-radius:8px;background:linear-gradient(135deg,#ff6b6b,#ffb86b);opacity:.9}
+  .split{display:flex;gap:14px}
+  .split .pane{width:min(330px,36vw);height:360px;border-radius:14px;background:#fff;box-shadow:0 40px 120px rgba(0,0,0,.55);padding:24px}
+  .cards{display:flex;gap:18px}
+  .card3{width:230px;height:150px;border-radius:18px;padding:20px;background:linear-gradient(135deg,rgba(255,255,255,.12),rgba(255,255,255,.03));box-shadow:inset 0 0 0 1px rgba(255,255,255,.12),0 30px 80px rgba(0,0,0,.5);backdrop-filter:blur(10px)}
+  .card3 h4{margin:12px 0 6px;font-size:17px}.card3 p{margin:0;color:#a9b0d6;font-size:13px}
+  .card3 .k{width:36px;height:36px;border-radius:11px;background:rgba(142,164,255,.18);display:grid;place-items:center;color:#9fb3ff}
+  #intro .go{margin-top:34px;height:52px;padding:0 28px;border-radius:16px;border:0;background:#fff;color:#0b0e1c;font:600 16px var(--font);box-shadow:0 0 60px rgba(142,164,255,.55);cursor:default}
+  `
+  let skip = false, root, cv, cx, particles = [], orb = { r: 0, glow: 0, ring: 0, x: 0, y: 0 }, flash = 0, raf
+  const sleep = ms => new Promise(r => { const t0 = performance.now(); const tick = () => { if (skip || performance.now() - t0 >= ms) r(); else requestAnimationFrame(tick) }; tick() })
+  const anim = (el, kf, o) => el.animate(kf, { fill: 'forwards', easing: 'cubic-bezier(.3,1.25,.5,1)', ...o })
+  const words = (el, text, delay = 0, step = 70) => {
+    el.innerHTML = ''
+    text.split(' ').forEach((w, i) => {
+      const s = document.createElement('span'); s.className = 'w'; s.textContent = w; el.appendChild(s); el.appendChild(document.createTextNode(' '))
+      anim(s, [{ opacity: 0, filter: 'blur(10px)', transform: 'translateY(18px)' }, { opacity: 1, filter: 'blur(0)', transform: 'none' }], { duration: 900, delay: delay + i * step })
+    })
+  }
+
+  function draw(t) {
+    const W = cv.width = innerWidth * devicePixelRatio, H = cv.height = innerHeight * devicePixelRatio
+    cx.setTransform(devicePixelRatio, 0, 0, devicePixelRatio, 0, 0)
+    const w = innerWidth, h = innerHeight
+    cx.fillStyle = '#05060d'; cx.fillRect(0, 0, w, h)
+    // drifting nebula
+    for (const [x, y, r, c] of [[.3, .35, .55, '79,103,255'], [.72, .62, .5, '166,120,255'], [.5, .5, .35, '80,200,255']]) {
+      const gx = w * (x + Math.sin(t / 4000 + x * 9) * .03), gy = h * (y + Math.cos(t / 5000 + y * 7) * .03)
+      const g = cx.createRadialGradient(gx, gy, 0, gx, gy, Math.max(w, h) * r)
+      g.addColorStop(0, `rgba(${c},.16)`); g.addColorStop(1, `rgba(${c},0)`)
+      cx.fillStyle = g; cx.fillRect(0, 0, w, h)
+    }
+    // particles
+    for (const p of particles) {
+      p.x += (p.tx - p.x) * p.k; p.y += (p.ty - p.y) * p.k; p.a += (p.ta - p.a) * .05
+      cx.globalAlpha = p.a; cx.fillStyle = p.c; cx.beginPath(); cx.arc(p.x, p.y, p.r, 0, 6.283); cx.fill()
+    }
+    cx.globalAlpha = 1
+    // orb
+    if (orb.glow > 0.01) {
+      const ox = w / 2 + orb.x, oy = h / 2 + orb.y
+      const g = cx.createRadialGradient(ox, oy, 0, ox, oy, orb.r * 4)
+      g.addColorStop(0, `rgba(220,228,255,${.9 * orb.glow})`); g.addColorStop(.25, `rgba(142,164,255,${.45 * orb.glow})`); g.addColorStop(1, 'rgba(120,140,255,0)')
+      cx.fillStyle = g; cx.beginPath(); cx.arc(ox, oy, orb.r * 4, 0, 6.283); cx.fill()
+      cx.fillStyle = `rgba(255,255,255,${orb.glow})`; cx.beginPath(); cx.arc(ox, oy, orb.r, 0, 6.283); cx.fill()
+      if (orb.ring > 0.01) {
+        cx.save(); cx.translate(ox, oy); cx.rotate(-0.42)
+        cx.strokeStyle = `rgba(255,255,255,${.85 * orb.ring})`; cx.lineWidth = 3
+        cx.beginPath(); cx.ellipse(0, 0, orb.r * 2.6, orb.r * .95, 0, Math.PI * (1 - orb.ring), Math.PI * (1 + orb.ring)); cx.stroke()
+        cx.restore()
+      }
+    }
+    // light sweep and flash
+    const sx = ((t / 3200) % 1.6 - .3) * w
+    const sg = cx.createLinearGradient(sx - 220, 0, sx + 220, h)
+    sg.addColorStop(0, 'rgba(255,255,255,0)'); sg.addColorStop(.5, 'rgba(200,210,255,.035)'); sg.addColorStop(1, 'rgba(255,255,255,0)')
+    cx.fillStyle = sg; cx.fillRect(0, 0, w, h)
+    if (flash > 0.01) { cx.fillStyle = `rgba(230,236,255,${flash})`; cx.fillRect(0, 0, w, h); flash *= .9 }
+    // grain
+    for (let i = 0; i < 160; i++) { cx.fillStyle = `rgba(255,255,255,${Math.random() * .05})`; cx.fillRect(Math.random() * w, Math.random() * h, 1.2, 1.2) }
+    raf = requestAnimationFrame(draw)
+  }
+  const tween = (obj, key, to, ms) => new Promise(r => { const from = obj[key], t0 = performance.now(); const f = () => { const k = Math.min(1, (performance.now() - t0) / ms); const e = 1 - Math.pow(1 - k, 3); obj[key] = from + (to - from) * e; if (k < 1 && !skip) requestAnimationFrame(f); else { obj[key] = to; r() } }; f() })
+
+  function scene(html) {
+    const s = document.createElement('div'); s.className = 'scene'; s.innerHTML = html
+    root.querySelector('.stage').appendChild(s)
+    return s
+  }
+  async function enter(s) {
+    s.classList.add('show')
+    anim(s, [{ opacity: 0, transform: 'scale(1.08) translateY(20px)', filter: 'blur(14px)' }, { opacity: 1, transform: 'scale(1)', filter: 'blur(0)' }], { duration: 1100 })
+    // slow push-in, like a camera dolly
+    s.firstElementChild && s.firstElementChild.animate([{ transform: 'scale(1)' }, { transform: 'scale(1.04)' }], { duration: 6000, easing: 'linear', fill: 'forwards' })
+  }
+  async function leave(s) {
+    const a = anim(s, [{ opacity: 1, transform: 'scale(1)', filter: 'blur(0)' }, { opacity: 0, transform: 'scale(.94)', filter: 'blur(12px)' }], { duration: 650, easing: 'cubic-bezier(.4,0,.6,1)' })
+    await sleep(600); s.remove()
+  }
+  function caption(title, text) {
+    const c = root.querySelector('.cap')
+    words(c.querySelector('h2'), title, 150); words(c.querySelector('p'), text, 450, 40)
+  }
+  function setDot(i) { root.querySelectorAll('.dots i').forEach((d, j) => d.classList.toggle('on', j === i)) }
+
+  async function play({ onDone } = {}) {
+    if (document.getElementById('intro')) return
+    skip = false
+    if (!document.getElementById('intro-css')) { const st = document.createElement('style'); st.id = 'intro-css'; st.textContent = css; document.head.appendChild(st) }
+    root = document.createElement('div'); root.id = 'intro'
+    root.innerHTML = `<canvas></canvas><div class="vig"></div><div class="bar t"></div><div class="bar b"></div><div class="stage"></div>
+      <div class="cap"><h2></h2><p></p></div><button class="skip">Skip intro</button><div class="dots">${'<i></i>'.repeat(7)}</div>`
+    document.body.appendChild(root)
+    cv = root.querySelector('canvas'); cx = cv.getContext('2d')
+    const w = innerWidth, h = innerHeight
+    particles = Array.from({ length: 420 }, () => {
+      const a = Math.random() * 6.283, d = Math.max(w, h) * (0.6 + Math.random() * 0.6)
+      return { x: w / 2 + Math.cos(a) * d, y: h / 2 + Math.sin(a) * d, tx: w / 2 + Math.cos(a) * d, ty: h / 2 + Math.sin(a) * d, r: Math.random() * 1.6 + .3, a: 0, ta: Math.random() * .8 + .2, k: .02 + Math.random() * .03, c: Math.random() < .3 ? '#c2a6ff' : '#dfe6ff' }
+    })
+    raf = requestAnimationFrame(draw)
+    const finish = () => { skip = true }
+    root.querySelector('.skip').onclick = finish
+    const onKey = e => { if (e.key === 'Escape') finish() }
+    addEventListener('keydown', onKey)
+    requestAnimationFrame(() => root.classList.add('on'))
+
+    // ---- 0. ignition
+    setDot(0)
+    await sleep(500)
+    particles.forEach(p => { const a = Math.random() * 6.283, d = Math.random() * 60; p.tx = w / 2 + Math.cos(a) * d; p.ty = h / 2 + Math.sin(a) * d })
+    tween(orb, 'glow', 1, 2200); tween(orb, 'r', 26, 2400)
+    await sleep(2300)
+    flash = .55; tween(orb, 'ring', 1, 1400)
+    particles.forEach(p => { const a = Math.random() * 6.283, d = 120 + Math.random() * Math.max(w, h) * .7; p.tx = w / 2 + Math.cos(a) * d; p.ty = h / 2 + Math.sin(a) * d; p.k = .01 + Math.random() * .02; p.ta = Math.random() * .5 })
+    tween(orb, 'y', -h * 0.16, 1600)
+    let s = scene(`<div style="text-align:center;margin-top:12vh"><div class="logo">Lumen</div><div class="tag"></div></div>`)
+    s.classList.add('show'); s.style.opacity = 1
+    const logo = s.querySelector('.logo')
+    anim(logo, [{ opacity: 0, transform: 'scale(1.3)', filter: 'blur(24px)', letterSpacing: '.2em' }, { opacity: 1, transform: 'scale(1)', filter: 'blur(0)', letterSpacing: '-.05em' }], { duration: 1800, easing: 'cubic-bezier(.2,1,.3,1)' })
+    words(s.querySelector('.tag'), "Chrome's engine. A lighter feel.", 900)
+    await sleep(3600)
+    tween(orb, 'glow', 0, 900); tween(orb, 'ring', 0, 700)
+    await leave(s)
+
+    // ---- 1. tabs on top
+    setDot(1)
+    s = scene(`<div class="mock"><div class="tb"><div class="lt"><i></i><i></i><i></i></div></div><div class="ub">Search or enter address</div><div class="pg"><div class="ln" style="width:60%"></div><div class="ln" style="width:42%"></div><div class="ln" style="width:75%;margin-top:30px"></div><div class="ln" style="width:66%"></div></div></div>`)
+    caption('Your tabs, up top.', 'Drag them around and they spring into place. Prefer a sidebar? Option Cmd S moves them.')
+    enter(s)
+    const tb = s.querySelector('.tb'); const cols = ['#24292f', '#4285f4', '#ff8000', '#7c5cff']
+    ;['GitHub', 'Flights', 'Markets', 'Release notes'].forEach((t, i) => setTimeout(() => {
+      const m = document.createElement('div'); m.className = 'mt' + (i === 0 ? ' on' : ''); m.innerHTML = `<b style="background:${cols[i]}"></b>${t}`; tb.appendChild(m)
+      anim(m, [{ opacity: 0, transform: 'translateY(-14px) scale(.8)' }, { opacity: 1, transform: 'none' }], { duration: 800 })
+    }, 500 + i * 260))
+    setTimeout(() => { const ms = tb.querySelectorAll('.mt'); if (ms[2]) { ms.forEach(m => m.classList.remove('on')); ms[2].classList.add('on'); anim(ms[2], [{ transform: 'scale(.95)' }, { transform: 'scale(1)' }], { duration: 500 }) } }, 2800)
+    await sleep(4600); await leave(s)
+
+    // ---- 2. command bar
+    setDot(2)
+    s = scene(`<div class="cmd"><div class="in"><span class="q"></span><span class="caret"></span></div><div class="r sel">Search for <b class="qq" style="margin-left:4px"></b><em>Search</em></div><div class="r">Switch to Flights<em>Open tab</em></div><div class="r">google.com/travel/flights<em>History</em></div><div class="r">Split View<em>Action</em></div></div>`)
+    caption('One bar for everything.', 'Cmd T to search, jump to an open tab, find something you saw last week, or run any action.')
+    enter(s)
+    const q = 'flights to lisbon'; const qEl = s.querySelector('.q')
+    for (let i = 1; i <= q.length && !skip; i++) { qEl.textContent = q.slice(0, i); s.querySelector('.qq').textContent = q.slice(0, i); await sleep(65) }
+    s.querySelectorAll('.r').forEach((r, i) => anim(r, [{ opacity: 0, transform: 'translateY(8px)' }, { opacity: 1, transform: 'none' }], { duration: 600, delay: i * 90 }))
+    await sleep(2600); await leave(s)
+
+    // ---- 3. shield
+    setDot(3)
+    s = scene(`<div class="shield"><div><div class="num">0</div><div class="sub">ads and trackers blocked</div></div></div>`)
+    caption('Ads and trackers, gone.', 'Blocked before they load, on every site. Faster pages, less data, nobody following you around.')
+    enter(s)
+    const sh = s.querySelector('.shield'), num = s.querySelector('.num')
+    for (let i = 0; i < 14; i++) setTimeout(() => {
+      const a = document.createElement('div'); a.className = 'ad'
+      const ang = Math.random() * 6.283, d = 150 + Math.random() * 60
+      a.style.left = 170 + Math.cos(ang) * d - 32 + 'px'; a.style.top = 170 + Math.sin(ang) * d - 20 + 'px'
+      sh.appendChild(a)
+      anim(a, [{ opacity: 0, transform: 'scale(.4)' }, { opacity: .9, transform: 'scale(1)', offset: .35 }, { opacity: 0, transform: 'scale(0) rotate(40deg)' }], { duration: 1100 })
+    }, 200 + i * 180)
+    const t0 = performance.now()
+    while (!skip && performance.now() - t0 < 2600) { num.textContent = Math.round(124 * Math.min(1, (performance.now() - t0) / 2400)); await sleep(30) }
+    num.textContent = '124'
+    await sleep(1600); await leave(s)
+
+    // ---- 4. passwords + sync + extensions
+    setDot(4)
+    s = scene(`<div class="cards">
+      <div class="card3"><div class="k">${ICONS.key}</div><h4>Passwords</h4><p>Saved, filled in, locked with Touch ID.</p></div>
+      <div class="card3"><div class="k">${ICONS.reload}</div><h4>Encrypted sync</h4><p>Through your own iCloud, Dropbox or Drive.</p></div>
+      <div class="card3"><div class="k">${ICONS.puzzle}</div><h4>Chrome extensions</h4><p>Straight from the Chrome Web Store.</p></div></div>`)
+    caption('Everything Chrome has.', 'Bring your bookmarks, passwords and extensions over from Chrome in one click, from Settings.')
+    enter(s)
+    s.querySelectorAll('.card3').forEach((c, i) => anim(c, [{ opacity: 0, transform: 'translateY(40px) rotateX(25deg) scale(.9)' }, { opacity: 1, transform: 'none' }], { duration: 1100, delay: 250 + i * 180 }))
+    await sleep(4400); await leave(s)
+
+    // ---- 5. split view
+    setDot(5)
+    s = scene(`<div class="split"><div class="pane"><div class="ln" style="width:70%;background:#eef1ff;height:14px"></div><div class="ln"></div><div class="ln" style="width:80%"></div></div><div class="pane"><div class="ln" style="width:55%;background:#fff1e5;height:14px"></div><div class="ln"></div><div class="ln" style="width:65%"></div></div></div>`)
+    caption('Two tabs, side by side.', 'Shift Cmd Backslash for split view. Shift Cmd E for reader mode. Shift Cmd P to pop a video out.')
+    enter(s)
+    const ps = s.querySelectorAll('.pane')
+    anim(ps[0], [{ transform: 'translateX(172px)' }, { transform: 'none' }], { duration: 1300, delay: 300 })
+    anim(ps[1], [{ transform: 'translateX(-172px)', opacity: 0 }, { transform: 'none', opacity: 1 }], { duration: 1300, delay: 300 })
+    await sleep(4200); await leave(s)
+
+    // ---- 6. finale
+    setDot(6)
+    root.querySelector('.cap h2').textContent = ''; root.querySelector('.cap p').textContent = ''
+    orb.y = 0; orb.r = 0; tween(orb, 'glow', 1, 900); tween(orb, 'r', 22, 1100); tween(orb, 'ring', 1, 1500)
+    particles.forEach(p => { p.ta = Math.random() * .7 + .1 })
+    s = scene(`<div style="text-align:center;margin-top:26vh"><div class="logo" style="font-size:clamp(40px,6vw,76px)">You are all set.</div><button class="go">Start browsing</button></div>`)
+    s.classList.add('show'); s.style.opacity = 1
+    anim(s.querySelector('.logo'), [{ opacity: 0, transform: 'translateY(20px)', filter: 'blur(16px)' }, { opacity: 1, transform: 'none', filter: 'blur(0)' }], { duration: 1200 })
+    const go = s.querySelector('.go')
+    anim(go, [{ opacity: 0, transform: 'scale(.8)' }, { opacity: 1, transform: 'scale(1)' }], { duration: 900, delay: 500 })
+    if (!skip) await new Promise(r => { go.onclick = r; root.querySelector('.skip').onclick = r; const k = e => { if (e.key === 'Enter' || e.key === 'Escape') { removeEventListener('keydown', k); r() } }; addEventListener('keydown', k) })
+
+    // out: fade to the browser
+    removeEventListener('keydown', onKey)
+    root.classList.remove('on')
+    await new Promise(r => { root.animate([{ opacity: 1, filter: 'blur(0)' }, { opacity: 0, filter: 'blur(20px)' }], { duration: 800, easing: 'ease-in', fill: 'forwards' }).onfinish = r })
+    cancelAnimationFrame(raf); root.remove()
+    onDone && onDone()
+  }
+  window.Intro = { play }
+})()

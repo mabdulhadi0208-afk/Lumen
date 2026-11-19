@@ -257,7 +257,7 @@ function renderTabs() {
       tabsEl.appendChild(el)
       v = { el, sig: tabSig(t) }
       const paint = st => {
-        const q = v.q ? Math.max(-0.15, Math.min(0.15, v.q.value)) : 0
+        const q = v.q ? Math.max(-0.075, Math.min(0.075, v.q.value)) : 0
         el.style.transform = (TOP ? `translate(${st.p}px, ${st.e}px)` : `translate(${st.e}px, ${st.p}px)`) + ` scale(${st.s * (1 + q)}, ${st.s * (1 - q)})`
         el.style.opacity = Math.max(0, Math.min(1, st.o))
         if (TOP) el.style.width = tabW + 'px'; else el.style.width = ''
@@ -323,12 +323,12 @@ function bindTab(v, id) {
     drag = { id, active: false, start: coord(e), startPos: v.index * stepOf(), index: v.index }
     el.setPointerCapture(e.pointerId)
     // press squashes the tab a little
-    v.g.to({ s: 0.94 })
+    v.g.to({ s: 0.97 })
   })
   el.addEventListener('pointermove', e => {
     if (!drag || drag.id !== id) return
     const d = coord(e) - drag.start
-    if (!drag.active && Math.abs(d) > 4) { drag.active = true; el.classList.add('dragging'); v.g.to({ s: 1.04 }) }
+    if (!drag.active && Math.abs(d) > 4) { drag.active = true; el.classList.add('dragging'); v.g.to({ s: 1.02 }) }
     if (!drag.active) return
     const step = stepOf()
     const count = S.tabs.filter(t => !t.pinned).length
@@ -350,7 +350,7 @@ function bindTab(v, id) {
     v.g.to({ s: 1 }, { velocity: d.active ? 0 : 1.4 })
     if (d.active) {
       // dropped: squash flat, then bounce once or twice
-      v.q.to(0, { velocity: 5 })
+      v.q.to(0, { velocity: 3 })
       const pinnedCount = S.tabs.filter(t => t.pinned).length
       v.g.to({ p: d.index * stepOf() })
       // reorder locally right away so nothing jumps, then tell the browser
@@ -422,6 +422,7 @@ const COMMANDS = [
   { t: 'Tabs in Sidebar', k: ['side', 'tabs in sidebar', 'vertical', 'layout', 'sidebar left'], i: 'sidebar', run: () => api.do('setSetting', 'tabLayout', 'side') },
   { t: 'Developer Tools', k: ['devtools', 'inspect', 'console'], i: 'bolt', run: () => api.do('devtools') },
   { t: 'Clear Browsing Data', k: ['clear', 'delete history', 'cookies'], i: 'close', run: () => api.do('openPage', 'settings/privacy') },
+  { t: 'Replay Intro', k: ['intro', 'tutorial', 'tour', 'welcome'], i: 'bolt', run: () => playIntro() },
   { t: 'Check for Updates', k: ['update', 'version'], i: 'download', run: () => api.do('openPage', 'settings/about') },
 ]
 
@@ -788,4 +789,9 @@ addEventListener('keydown', e => {
   setCollapsed(!!init.settings.sidebarCollapsed && init.settings.tabLayout !== 'top', { save: false, instant: true })
   renderDownloadsButton()
   queueLayout()
+  if (!init.settings.introSeen) playIntro()
 })()
+function playIntro() {
+  api.do('overlay', true)
+  Intro.play({ onDone: () => { api.do('setSetting', 'introSeen', true); if (!overlayOpen && !peeking) api.do('overlay', false) } })
+}

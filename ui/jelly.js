@@ -12,9 +12,9 @@
  */
 ;(function (global) {
   const CFG = {
-    jelly: { k: 300, c: 17.3 },      // zeta 0.50 -> ~16% overshoot, 2-3 wobbles
-    bounce: { k: 380, c: 15.6 },     // zeta 0.40 -> squash impulses bounce once or twice
-    trail: { k: 170, c: 15.6 },      // zeta 0.60 -> follower overshoots ~20px on a quick flick
+    jelly: { k: 300, c: 22 },        // zeta 0.64 -> ~7.5% overshoot, settles in 1-2 wobbles
+    bounce: { k: 380, c: 21.4 },     // zeta 0.55 -> squash impulses, one soft bounce
+    trail: { k: 170, c: 19.8 },      // zeta 0.60 -> follower overshoots ~20px on a quick flick
     critical: { k: 420, c: 41 },     // zeta 1.00 -> wheel scroll, no overshoot
     calm: { k: 240, c: 25.5 },       // zeta 0.82
   }
@@ -60,10 +60,10 @@
       queued = false
       const sv = b.s.v
       // squash and stretch: the faster the scale changes, the more it bulges sideways
-      const fromScale = clamp(b.s.vel * 0.15, -0.12, 0.12)
+      const fromScale = clamp(b.s.vel * 0.075, -0.06, 0.06)
       // stretch along the magnetic movement
-      const mx = clamp(Math.abs(b.x.vel) * 0.0006, 0, 0.12), my = clamp(Math.abs(b.y.vel) * 0.0006, 0, 0.12)
-      const q = clamp(b.q.v + fromScale, -0.15, 0.15)
+      const mx = clamp(Math.abs(b.x.vel) * 0.0003, 0, 0.06), my = clamp(Math.abs(b.y.vel) * 0.0003, 0, 0.06)
+      const q = clamp(b.q.v + fromScale, -0.075, 0.075)
       const sx = sv * (1 + q + mx - my * 0.5), sy = sv * (1 - q + my - mx * 0.5)
       const tilt = b.rx.v || b.ry.v ? ` perspective(700px) rotateX(${b.rx.v.toFixed(2)}deg) rotateY(${b.ry.v.toFixed(2)}deg)` : ''
       el.style.transform = `translate(${b.x.v.toFixed(2)}px, ${(b.y.v + b.hop.v).toFixed(2)}px)${tilt} scale(${sx.toFixed(4)}, ${sy.toFixed(4)})`
@@ -80,8 +80,8 @@
   function kick(el, strength = 1, hop = 0) {
     if (!el || MODE === 'off') return
     const b = body(el)
-    b.q.to(0, 5 * strength)
-    if (hop) b.hop.to(0, -hop * 260)
+    b.q.to(0, 3 * strength)
+    if (hop) b.hop.to(0, -hop * 150)
   }
 
   // ---------------------------------------------------------------- hover / press behaviour
@@ -89,7 +89,7 @@
   let current = null, kind = null, rect = null
   const kindOf = el => (opts.cards && el.matches(opts.cards)) ? 'card' : (opts.buttons && el.matches(opts.buttons)) ? 'button' : 'press'
   const selector = () => [opts.buttons, opts.cards, opts.press].filter(Boolean).join(',')
-  const hoverScale = k => k === 'card' ? 1.04 : k === 'button' ? 1.08 : 1
+  const hoverScale = k => k === 'card' ? 1.02 : k === 'button' ? 1.04 : 1
 
   function enter(el) {
     current = el; kind = kindOf(el)
@@ -116,10 +116,10 @@
     const b = body(current)
     const cx = rect.left + rect.width / 2, cy = rect.top + rect.height / 2
     if (kind === 'button') {
-      b.x.to((e.clientX - cx) * 0.15); b.y.to((e.clientY - cy) * 0.15)
+      b.x.to((e.clientX - cx) * 0.075); b.y.to((e.clientY - cy) * 0.075)
     } else if (kind === 'card') {
       const px = clamp((e.clientX - rect.left) / rect.width, 0, 1), py = clamp((e.clientY - rect.top) / rect.height, 0, 1)
-      b.ry.to((px - 0.5) * 16); b.rx.to(-(py - 0.5) * 16)
+      b.ry.to((px - 0.5) * 8); b.rx.to(-(py - 0.5) * 8)
     }
   }
   function onDown(e) {
@@ -129,7 +129,7 @@
     if (!t || t.disabled) return
     if (t !== current) { if (current) leave(current); enter(t) }
     const b = body(t); b.pressed = true
-    b.s.to(kind === 'card' ? 0.96 : 0.92)
+    b.s.to(kind === 'card' ? 0.98 : 0.96)
   }
   function onUp() {
     if (!current) return
@@ -137,7 +137,7 @@
     if (!b.pressed) return
     b.pressed = false
     const el = current, k = kind
-    b.s.to(1.06, 3.5)
+    b.s.to(1.03, 1.8)
     setTimeout(() => { const bb = bodies.get(el); if (bb && !bb.pressed) bb.s.to(bb.hovered ? hoverScale(k) : 1) }, 140)
   }
 
@@ -180,7 +180,7 @@
     const render = () => {
       queued = false
       const vx = x.vel, vy = y.vel, speed = Math.hypot(vx, vy)
-      const st = 1 + clamp(speed / 2600, 0, 0.2)
+      const st = 1 + clamp(speed / 5200, 0, 0.1)
       const ang = Math.atan2(vy, vx) * 180 / Math.PI
       dot.style.transform = `translate(${x.v}px, ${y.v}px) rotate(${ang}deg) scale(${st}, ${1 / st})`
     }

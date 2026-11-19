@@ -37,8 +37,8 @@ If macOS says the app is damaged, run `xattr -cr /Applications/Lumen.app` once.
 
 ## Releases and auto-update
 
-Push a tag like `v1.0.1` and the GitHub workflow builds Mac (Apple Silicon and Intel) and Windows, then publishes a release.
-Installed copies of Lumen check `mabdulhadi0208-afk/lumen` releases and update themselves. Bump `version` in package.json before tagging.
+Bump `version` in package.json and push to main (or push a tag like `v1.0.1`). The GitHub workflow builds Mac (Apple Silicon and Intel) and Windows, then publishes a release.
+Installed copies of Lumen check `mabdulhadi0208-afk/lumen` releases and update themselves.
 
 ## Shortcuts
 

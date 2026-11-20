@@ -21,6 +21,7 @@ const ICON = path.join(ROOT, 'build', 'icon.png')
 
 app.setName('Lumen')
 app.commandLine.appendSwitch('enable-smooth-scrolling')
+try { if (require('./data').settings.get('forceDark')) app.commandLine.appendSwitch('enable-features', 'WebContentsForceDark') } catch {}
 protocol.registerSchemesAsPrivileged([
   { scheme: 'lumen', privileges: { standard: true, secure: true, supportFetchAPI: true, corsEnabled: true, stream: true } },
 ])
@@ -61,6 +62,26 @@ function toURL(text) {
   return eng.url.replace('%s', encodeURIComponent(t))
 }
 
+// ---------------------------------------------------------------- clean links
+const TRACKING = /^(utm_[a-z_]+|fbclid|gclid|dclid|gbraid|wbraid|msclkid|yclid|twclid|ttclid|li_fat_id|igshid|igsh|mc_cid|mc_eid|_hsenc|_hsmi|mkt_tok|oly_anon_id|oly_enc_id|vero_id|rb_clickid|s_cid|epik|srsltid)$/i
+function cleanURL(u) {
+  try {
+    const url = new URL(u)
+    if (!/^https?:$/.test(url.protocol)) return u
+    let changed = false
+    for (const k of [...url.searchParams.keys()]) {
+      if (TRACKING.test(k) || (k === 'si' && /(^|\.)(youtube\.com|youtu\.be|spotify\.com)$/.test(url.hostname))) { url.searchParams.delete(k); changed = true }
+    }
+    return changed ? url.toString() : u
+  } catch { return u }
+}
+function upgradeURL(u) {
+  if (!u) return u
+  let out = D.settings.get('cleanLinks') ? cleanURL(u) : u
+  if (D.settings.get('httpsOnly') && /^http:\/\//.test(out) && !/^http:\/\/(localhost|127\.|\[::1\]|192\.168\.|10\.)/.test(out)) out = out.replace(/^http:/, 'https:')
+  return out
+}
+
 // ---------------------------------------------------------------- sessions
 let mainSession, extensions = null, blocker = null
 const blockedByWc = new Map()
@@ -98,11 +119,15 @@ function setupSession(ses, { incognito = false } = {}) {
 async function setupAdblock() {
   try {
     const { ElectronBlocker } = require('@ghostery/adblocker-electron')
-    const cache = path.join(app.getPath('userData'), 'adblock-engine.bin')
+    const full = !!D.settings.get('hideCookieBanners')
+    const cache = path.join(app.getPath('userData'), full ? 'adblock-engine-full.bin' : 'adblock-engine.bin')
     const fetchImpl = (url, opts) => net.fetch(url, opts)
     const caching = { path: cache, read: fs.promises.readFile, write: fs.promises.writeFile }
     const timeout = new Promise((_, rej) => setTimeout(() => rej(new Error('adblock list timeout')), 15000))
-    blocker = await Promise.race([ElectronBlocker.fromPrebuiltAdsAndTracking(fetchImpl, caching), timeout])
+    const old = blocker
+    const next = await Promise.race([full ? ElectronBlocker.fromPrebuiltFull(fetchImpl, caching) : ElectronBlocker.fromPrebuiltAdsAndTracking(fetchImpl, caching), timeout])
+    if (old) for (const ses of sessionsReady) { try { if (old.isBlockingEnabled(ses)) old.disableBlockingInSession(ses) } catch {} }
+    blocker = next
     blocker.on('request-blocked', req => {
       const id = req.tabId
       if (id == null) return
@@ -200,6 +225,7 @@ function onPermissionRequest(wc, permission, callback, details) {
   let origin
   try { origin = new URL(details.requestingUrl || wc.getURL()).origin } catch { return callback(false) }
   const key = permission === 'media' ? 'media-' + ((details.mediaTypes || []).sort().join('+') || 'av') : permission
+  if (permission === 'notifications' && D.settings.get('blockNotifications')) return callback(false)
   const saved = (D.permissions.get()[origin] || {})[key]
   const finish = async ok => {
     if (ok && permission === 'media' && isMac) {
@@ -370,14 +396,15 @@ class BrowserWin {
       // web pages may not open Lumen's internal pages (same rule Chrome uses for chrome://)
       if (e.url.startsWith('lumen://') && !(wc.getURL() || '').startsWith('lumen://')) e.preventDefault()
     })
-    wc.on('did-start-navigation', (e) => {
-      if (e.isMainFrame && !e.isSameDocument) {
-        blockedByWc.set(wc.id, 0)
-        if (D.settings.get('httpsOnly') && /^http:\/\//.test(e.url) && !/^http:\/\/(localhost|127\.|\[::1\]|192\.168\.|10\.)/.test(e.url)) {
-          e.preventDefault(); wc.loadURL(e.url.replace(/^http:/, 'https:'))
-        }
-      }
-    })
+    wc.on('did-start-navigation', (e) => { if (e.isMainFrame && !e.isSameDocument) blockedByWc.set(wc.id, 0) })
+    // clean tracking parameters out of links, and upgrade to HTTPS when asked: on clicks and on redirects
+    const fixNav = e => {
+      if (e.isMainFrame === false) return
+      const better = upgradeURL(e.url)
+      if (better !== e.url) { e.preventDefault(); wc.loadURL(better).catch(() => {}) }
+    }
+    wc.on('will-navigate', fixNav)
+    wc.on('will-redirect', fixNav)
     const nav = () => {
       t.url = wc.getURL(); t.canBack = wc.navigationHistory.canGoBack(); t.canForward = wc.navigationHistory.canGoForward()
       if (!this.incognito) D.addHistory(t.url, wc.getTitle())
@@ -415,7 +442,7 @@ class BrowserWin {
       const r = dialog.showMessageBoxSync({ type: 'question', buttons: ['Leave', 'Stay'], message: 'Leave this page?', detail: 'Changes you made may not be saved.', defaultId: 0, cancelId: 1 })
       if (r === 0) e.preventDefault()
     })
-    wc.loadURL(t.url || 'lumen://newtab').catch(() => {})
+    wc.loadURL(upgradeURL(t.url) || 'lumen://newtab').catch(() => {})
     return view
   }
 
@@ -577,6 +604,9 @@ class BrowserWin {
       if (!this.incognito) items.push({ label: 'Open Link in Private Window', click: () => createWindow({ urls: [p.linkURL], incognito: true }) })
       items.push({ label: 'Copy Link', click: () => clipboard.writeText(p.linkURL) })
       sep()
+    }
+    if (p.mediaType === 'image' && /^https?:/.test(p.srcURL)) {
+      items.push({ label: 'Search Image with Google Lens', click: () => this.createTab('https://lens.google.com/uploadbyurl?url=' + encodeURIComponent(p.srcURL), { openerId: t.id }) })
     }
     if (p.mediaType === 'image' && p.srcURL) {
       items.push({ label: 'Open Image in New Tab', click: () => this.createTab(p.srcURL, { active: false, openerId: t.id }) })
@@ -773,7 +803,7 @@ ipcMain.handle('ui', async (e, action, ...a) => {
       case 'ready': return { settings: publicSettings(), engines: Object.fromEntries(Object.entries(SEARCH).map(([k, v]) => [k, v.name])), version: app.getVersion(), platform: process.platform, update: Updater.getState(), downloads: listDownloads() }
       case 'newTab': return w.createTab(a[0] ? toURL(a[0]) : 'lumen://newtab').id
       case 'navigate': {
-        const url = toURL(a[0]); if (!url) return
+        const url = upgradeURL(toURL(a[0])); if (!url) return
         if (a[1] || !t) w.createTab(url)
         else { if (!t.view) w.makeView(t); t.url = url; t.view.webContents.loadURL(url).catch(() => {}); t.view.webContents.focus() }
         return
@@ -803,7 +833,12 @@ ipcMain.handle('ui', async (e, action, ...a) => {
       case 'translate': return t && translateTab(w, t)
       case 'fullscreen': return w.win.setFullScreen(!w.win.isFullScreen())
       case 'savePage': return wc && savePage(wc)
-      case 'menuInfo': return { version: app.getVersion(), update: Updater.getState(), zoom: t ? Math.round(Math.pow(1.2, t.zoom || 0) * 100) : 100, incognito: w.incognito, tabLayout: D.settings.get('tabLayout'), fullscreen: w.win.isFullScreen(), passkeys: Passkeys.list().length, passwords: D.listPasswords().length }
+      case 'reopenAt': { const i = closedTabs.length - 1 - a[0]; const c = closedTabs.splice(i, 1)[0]; if (c) w.createTab(c.url, { pinned: c.pinned }); return }
+      case 'closeDuplicates': { const urlOf = x => x.view ? x.view.webContents.getURL() : x.url; const seen = new Set(t ? [urlOf(t)] : []); let n = 0; for (const id of [...w.order]) { if (id === w.activeId) continue; const x = w.tabs.get(id); const u = urlOf(x); if (seen.has(u) && !x.pinned) { w.closeTab(id); n++ } else seen.add(u) } w.send('toast', n ? `Closed ${n} duplicate tab${n > 1 ? 's' : ''}` : 'No duplicate tabs'); return n }
+      case 'closeOthers': { for (const id of [...w.order]) if (id !== w.activeId && !w.tabs.get(id).pinned) w.closeTab(id); return }
+      case 'muteOthers': { for (const x of w.tabs.values()) if (x.id !== w.activeId && x.view) { x.muted = true; x.view.webContents.setAudioMuted(true) } w.pushState(); return }
+      case 'restart': app.relaunch(); app.quit(); return
+      case 'menuInfo': return { closed: closedTabs.slice(-5).reverse().map(c => ({ title: c.title || c.url, url: c.url })), version: app.getVersion(), update: Updater.getState(), zoom: t ? Math.round(Math.pow(1.2, t.zoom || 0) * 100) : 100, incognito: w.incognito, tabLayout: D.settings.get('tabLayout'), fullscreen: w.win.isFullScreen(), passkeys: Passkeys.list().length, passwords: D.listPasswords().length }
       case 'zoom': return t && w.zoom(t.id, a[0])
       case 'openPage': return w.createTab('lumen://' + a[0])
       case 'reader': return wc && readerMode(wc)
@@ -903,13 +938,14 @@ function downloadAction(id, what) {
   broadcast('downloads', listDownloads())
 }
 
-const PUBLIC_SETTINGS = ['translateTo', 'offerTranslate', 'autoPip', 'ntpShortcuts', 'ntpWallpaper', 'ntpClock', 'searchEngine', 'motion', 'theme', 'accent', 'adblock', 'blockTrackers', 'httpsOnly', 'sleepTabsAfterMin', 'restoreSession', 'sidebarCollapsed', 'sidebarWidth', 'tabLayout', 'introSeen', 'autoUpdate', 'askWhereToSave', 'doNotTrack', 'showSuggestions', 'homeTiles']
+const PUBLIC_SETTINGS = ['cleanLinks', 'swipeNav', 'videoSpeedKeys', 'hideCookieBanners', 'blockNotifications', 'forceDark', 'translateTo', 'offerTranslate', 'autoPip', 'ntpShortcuts', 'ntpWallpaper', 'ntpClock', 'searchEngine', 'motion', 'theme', 'accent', 'adblock', 'blockTrackers', 'httpsOnly', 'sleepTabsAfterMin', 'restoreSession', 'sidebarCollapsed', 'sidebarWidth', 'tabLayout', 'introSeen', 'autoUpdate', 'askWhereToSave', 'doNotTrack', 'showSuggestions', 'homeTiles']
 function publicSettings() { const s = D.settings.get(); return Object.fromEntries(PUBLIC_SETTINGS.map(k => [k, s[k]])) }
 function setSetting(k, v) {
   if (!PUBLIC_SETTINGS.includes(k)) return
   if (k === 'tabLayout' && !['side', 'top'].includes(v)) return
   D.settings.set({ [k]: v, ...(!['sidebarCollapsed', 'sidebarWidth', 'introSeen'].includes(k) ? { settingsAt: Date.now() } : {}) })
   if (k === 'adblock') setAdblock(!!v)
+  if (k === 'hideCookieBanners') setupAdblock().then(() => setAdblock(!!D.settings.get('adblock')))
   if (k === 'theme') nativeTheme.themeSource = v
   if (k === 'autoUpdate') Updater.setEnabled(!!v)
   if (k === 'tabLayout') buildMenu()
@@ -943,6 +979,13 @@ ipcMain.on('pw:submit', (e, { username, password }) => {
   w.send('prompt', { id, kind: 'password', tabId: tab && tab.id, host: new URL(origin).host, text: (updating ? 'Update password for ' : 'Save password for ') + (username || 'this site') + '?' })
 })
 ipcMain.handle('pw:generate', () => genPassword())
+ipcMain.on('nav:swipe', (e, dir) => {
+  if (!D.settings.get('swipeNav')) return
+  const h = e.sender.navigationHistory
+  if (dir === 'back' && h.canGoBack()) h.goBack()
+  if (dir === 'forward' && h.canGoForward()) h.goForward()
+})
+ipcMain.on('lumen:qol', e => { e.returnValue = { swipe: !!D.settings.get('swipeNav'), speed: !!D.settings.get('videoSpeedKeys') } })
 ipcMain.on('lumen:auth-ua', e => { e.returnValue = isGoogleSignIn(e.senderFrame && e.senderFrame.url) ? firefoxUA() : '' })
 
 // ---------------------------------------------------------------- passkeys
@@ -1096,6 +1139,7 @@ ipcMain.handle('lumen', async (e, action, ...a) => {
         if (a[0] === 'set') { app.setAsDefaultProtocolClient('http'); app.setAsDefaultProtocolClient('https') }
         return app.isDefaultProtocolClient('https')
       }
+      case 'restart': app.relaunch(); app.quit(); return
       case 'retry': { const u = a[0]; if (u) e.sender.loadURL(u); return }
     }
   } catch (err) { console.error('lumen action failed', action, err); return { ok: false, error: String(err.message || err) } }
@@ -1145,7 +1189,7 @@ function buildMenu() {
       { label: 'Find Previous', accelerator: 'CmdOrCtrl+Shift+G', click: focused(w => w.send('command', 'findPrev')) },
       { type: 'separator' },
       { label: 'Command Bar', accelerator: 'CmdOrCtrl+K', click: focused(w => w.send('command', 'palette')) },
-      { label: 'Copy URL', accelerator: 'CmdOrCtrl+Shift+C', click: focused((w, t) => { if (t) { clipboard.writeText(t.url); w.send('toast', 'Link copied') } }) },
+      { label: 'Copy Clean Link', accelerator: 'CmdOrCtrl+Shift+C', click: focused((w, t) => { if (t) { clipboard.writeText(cleanURL(t.url)); w.send('toast', 'Clean link copied') } }) },
     ] },
     { label: 'View', submenu: [
       { label: 'Reload', accelerator: 'CmdOrCtrl+R', click: focused((w, t) => activeWc(w, t) && activeWc(w, t).reload()) },

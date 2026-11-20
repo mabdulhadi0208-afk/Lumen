@@ -26,6 +26,65 @@ if (location.protocol === 'lumen:') {
     } catch {}
   }
 
+  // ------------------------------------------------------------ trackpad swipe back / forward, and video speed keys
+  let QOL = { swipe: true, speed: true }
+  try { QOL = ipcRenderer.sendSync('lumen:qol') || QOL } catch {}
+  if (QOL.swipe && window === window.top) {
+    let acc = 0, timer = null, ind = null, sh = null
+    const canScrollX = (el, dir) => {
+      for (let n = el; n && n !== document.documentElement; n = n.parentElement) {
+        if (n.scrollWidth > n.clientWidth + 1) {
+          const ov = getComputedStyle(n).overflowX
+          if (ov === 'auto' || ov === 'scroll') { if (dir < 0 ? n.scrollLeft > 0 : n.scrollLeft + n.clientWidth < n.scrollWidth - 1) return true }
+        }
+      }
+      const se = document.scrollingElement
+      return se && (dir < 0 ? se.scrollLeft > 0 : se.scrollLeft + innerWidth < se.scrollWidth - 1)
+    }
+    const show = p => {
+      if (!ind) {
+        ind = document.createElement('div'); ind.style.cssText = 'position:fixed;top:50%;z-index:2147483647;pointer-events:none'
+        sh = ind.attachShadow({ mode: 'closed' })
+        sh.innerHTML = '<style>.c{width:44px;height:44px;margin-top:-22px;border-radius:50%;background:rgba(30,32,40,.82);display:grid;place-items:center;color:#fff;box-shadow:0 8px 24px rgba(0,0,0,.25);transition:background .15s}.c.go{background:#5b8cff}</style><div class="c"><svg width="18" height="18" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 3.5 5.5 8l4.5 4.5"/></svg></div>'
+        document.documentElement.appendChild(ind)
+      }
+      const back = p < 0, k = Math.min(1, Math.abs(p) / 220)
+      ind.style.left = back ? (k * 60 - 44) + 'px' : ''
+      ind.style.right = back ? '' : (k * 60 - 44) + 'px'
+      const c = sh.querySelector('.c'); c.classList.toggle('go', k >= 1)
+      c.style.transform = `scale(${0.6 + k * 0.4}) rotate(${back ? 0 : 180}deg)`; c.style.opacity = k
+    }
+    const reset = () => { acc = 0; if (ind) { ind.remove(); ind = null } }
+    addEventListener('wheel', e => {
+      if (e.ctrlKey || Math.abs(e.deltaX) < Math.abs(e.deltaY) * 1.5 || Math.abs(e.deltaX) < 1) return
+      const dir = Math.sign(e.deltaX)
+      if (acc === 0 && canScrollX(e.target, dir)) return
+      if (acc !== 0 && Math.sign(acc) !== dir && Math.abs(acc) < 30) { reset(); return }
+      acc += e.deltaX
+      show(acc)
+      clearTimeout(timer)
+      timer = setTimeout(() => { if (Math.abs(acc) >= 220) ipcRenderer.send('nav:swipe', acc < 0 ? 'back' : 'forward'); reset() }, 140)
+    }, { passive: true, capture: true })
+  }
+  if (QOL.speed && !/(^|\.)youtube\.com$/.test(location.hostname)) {
+    addEventListener('keydown', e => {
+      if (!e.shiftKey || e.metaKey || e.ctrlKey || e.altKey || (e.key !== '>' && e.key !== '<')) return
+      const a = document.activeElement
+      if (a && (a.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName))) return
+      const vids = [...document.querySelectorAll('video')].filter(v => v.readyState > 0)
+      const v = vids.find(v => !v.paused) || vids.sort((x, y) => y.clientWidth * y.clientHeight - x.clientWidth * x.clientHeight)[0]
+      if (!v) return
+      e.preventDefault(); e.stopPropagation()
+      v.playbackRate = Math.max(0.25, Math.min(4, Math.round((v.playbackRate + (e.key === '>' ? 0.25 : -0.25)) * 100) / 100))
+      let b = document.getElementById('__lumen_speed')
+      if (!b) { b = document.createElement('div'); b.id = '__lumen_speed'; b.style.cssText = 'position:fixed;z-index:2147483647;padding:8px 14px;border-radius:999px;background:rgba(20,22,30,.85);color:#fff;font:600 15px -apple-system,Segoe UI,sans-serif;pointer-events:none;transition:opacity .4s'; document.documentElement.appendChild(b) }
+      const r = v.getBoundingClientRect()
+      b.style.left = (r.left + r.width / 2 - 30) + 'px'; b.style.top = (r.top + 20) + 'px'
+      b.textContent = v.playbackRate + 'x'; b.style.opacity = '1'
+      clearTimeout(b._t); b._t = setTimeout(() => { b.style.opacity = '0' }, 900)
+    }, true)
+  }
+
   // ------------------------------------------------------------ YouTube: its service worker serves a half-loaded page in
   // Lumen (the navigation preload it relies on gets cancelled), so Shorts never load. YouTube runs fine without one.
   if (/(^|\.)youtube\.com$/.test(location.hostname)) {

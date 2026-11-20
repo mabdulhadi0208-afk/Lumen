@@ -413,6 +413,10 @@ const COMMANDS = [
   { t: 'Extensions', k: ['extensions', 'addons', 'plugins'], i: 'puzzle', run: () => api.do('openPage', 'extensions') },
   { t: 'Chrome Web Store', k: ['web store', 'chrome store', 'extensions store'], i: 'puzzle', run: () => api.do('newTab', 'https://chromewebstore.google.com/') },
   { t: 'Split View', k: ['split', 'side by side'], i: 'split', run: () => toggleSplit() },
+  { t: 'Close Duplicate Tabs', k: ['duplicate', 'dupes', 'clean up tabs'], i: 'tabs', run: () => api.do('closeDuplicates') },
+  { t: 'Close Other Tabs', k: ['close other', 'close all'], i: 'close', run: () => api.do('closeOthers') },
+  { t: 'Mute Other Tabs', k: ['mute', 'silence', 'quiet'], i: 'muted', run: () => api.do('muteOthers') },
+  { t: 'Copy Clean Link', k: ['copy link', 'share', 'clean link'], i: 'arrowRight', run: () => navigator.clipboard.writeText(S.url).then(() => toast('Link copied')) },
   { t: 'Translate Page', k: ['translate', 'translation', 'language'], i: 'globe', run: () => api.do('translate') },
   { t: 'Reader Mode', k: ['reader', 'read'], i: 'book', run: () => api.do('reader') },
   { t: 'Picture in Picture', k: ['pip', 'picture', 'video'], i: 'pip', run: () => api.do('pip') },
@@ -640,6 +644,8 @@ async function openMainMenu() {
     ${item('screenshot', 'camera', 'Take screenshot', `${K.sh} ${K.cmd} 2`)}
     ${item('print', 'arrowRight', 'Print', `${K.cmd} P`)}
     <div class="sep"></div>
+    ${(info.closed || []).length ? `<div class="sep"></div><div class="mm-label">Recently closed</div>` + info.closed.map((c, i) => `<div class="item mm" data-mm="reopen" data-i="${i}"><span class="ri">${favHTML({ url: c.url })}</span><div class="grow" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(c.title)}</div></div>`).join('') : ''}
+    <div class="sep"></div>
     ${item('layout', 'tabs', info.tabLayout === 'top' ? 'Move tabs to the sidebar' : 'Move tabs to the top', `${K.opt} ${K.cmd} S`)}
     ${item('intro', 'bolt', 'Replay intro', '')}`
   openPopover(html, $('#btn-menu'), { above: !TOP, wide: true })
@@ -648,6 +654,7 @@ async function openMainMenu() {
     const a = b.dataset.mm
     if (a === 'zoomin' || a === 'zoomout') { await api.do('zoom', a === 'zoomin' ? 0.5 : -0.5); setTimeout(() => { const z = $('#mm-z'); if (z) z.textContent = S.zoom + '%' }, 60); return }
     closePopover(true)
+    if (a === 'reopen') return api.do('reopenAt', +b.dataset.i)
     const run = {
       settings: () => api.do('openPage', 'settings'), install: () => api.do('update', 'install'),
       newtab: () => api.do('newTab'), newwindow: () => api.do('newWindow', false), private: () => api.do('newWindow', true),

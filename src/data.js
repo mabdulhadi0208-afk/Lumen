@@ -17,6 +17,12 @@ const settings = new Store('settings', {
   sidebarWidth: 248,
   introSeen: false,
   autoPip: true,
+  cleanLinks: true,
+  swipeNav: true,
+  videoSpeedKeys: true,
+  hideCookieBanners: true,
+  blockNotifications: false,
+  forceDark: false,
   translateTo: '',            // '' = system language
   offerTranslate: true,
   neverTranslate: [],

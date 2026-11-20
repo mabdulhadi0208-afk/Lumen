@@ -143,6 +143,14 @@ async function general(m) {
     ${row('Offer to translate', 'Ask when a page is in another language.', sw('offerTranslate', S.offerTranslate !== false))}
     ${row('Picture in picture when you switch tabs', 'A playing video pops out into a floating window when you leave its tab, and back in when you return.', sw('autoPip', S.autoPip !== false))}
   </div>
+  <div class="card"><h3>QUALITY OF LIFE</h3>
+    ${row('Clean links', 'Removes tracking junk like utm_source and fbclid from links before they open.', sw('cleanLinks', S.cleanLinks !== false))}
+    ${row('Swipe to go back and forward', 'Two-finger swipe left or right on the trackpad.', sw('swipeNav', S.swipeNav !== false))}
+    ${row('Video speed keys', 'Shift + &gt; speeds up and Shift + &lt; slows down any video, on any site.', sw('videoSpeedKeys', S.videoSpeedKeys !== false))}
+    ${row('Hide cookie pop-ups', 'Blocks cookie consent banners and other annoyances along with ads.', sw('hideCookieBanners', S.hideCookieBanners !== false))}
+    ${row('Block notification requests', 'Sites never ask to send you notifications.', sw('blockNotifications', !!S.blockNotifications))}
+    ${row('Dark mode for every website', 'Turns light sites dark. Takes effect after Lumen restarts.', sw('forceDark', !!S.forceDark) + '<button class="btn sm" id="restart">Restart</button>')}
+  </div>
   <div class="card"><h3>PERFORMANCE</h3>
     ${row('Sleep inactive tabs', 'Frees memory from tabs you have not looked at in a while. They wake up instantly when you click them.', seg('sleepTabsAfterMin', [[0, 'Never'], [15, '15 min'], [30, '30 min'], [60, '1 hour'], [240, '4 hours']], S.sleepTabsAfterMin))}
   </div>
@@ -150,6 +158,7 @@ async function general(m) {
     ${row('Ask where to save each file', 'Otherwise files go straight to your Downloads folder.', sw('askWhereToSave', S.askWhereToSave))}
   </div>`
   bindSettings(m)
+  $('#restart').onclick = () => L.invoke('restart')
   const b = $('#mkdef'); if (b) b.onclick = async () => { await L.invoke('defaultBrowser', 'set'); setTimeout(() => general(m), 1200) }
 }
 

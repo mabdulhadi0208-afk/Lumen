@@ -10,6 +10,9 @@ const Sync = require('./sync')
 const Importer = require('./importer')
 const Updater = require('./updater')
 const Passkeys = require('./passkeys')
+const { Store: WStore } = require('./store')
+let wallpaperStore
+app.whenReady().then(() => { wallpaperStore = new WStore('wallpaper', { image: '' }) })
 
 const isMac = process.platform === 'darwin'
 const ROOT = path.join(__dirname, '..')
@@ -432,6 +435,11 @@ class BrowserWin {
   activate(id) {
     const t = this.tabs.get(id)
     if (!t) return
+    const prev = this.active()
+    if (prev && prev.id !== id && prev.view && prev.audible && D.settings.get('autoPip') && id !== this.splitId) {
+      prev.view.webContents.executeJavaScript(`(() => { const v = [...document.querySelectorAll('video')].find(v => !v.paused && v.readyState > 2 && !v.disablePictureInPicture); if (v && !document.pictureInPictureElement) return v.requestPictureInPicture().then(() => true, () => false); return false })()`, true).catch(() => {})
+    }
+    if (t.view && !t.asleep) t.view.webContents.executeJavaScript('document.pictureInPictureElement && document.exitPictureInPicture()', true).catch(() => {})
     if (this.splitId) {
       if (id === this.splitId) this.splitId = this.activeId
       else if (id !== this.activeId) this.splitId = null
@@ -758,6 +766,10 @@ ipcMain.handle('ui', async (e, action, ...a) => {
       case 'unsplit': w.splitId = null; w.layout(); w.pushState(); return
       case 'tabMenu': return tabMenu(w, a[0])
       case 'appMenu': return Menu.getApplicationMenu() && appMenuPopup(w)
+      case 'print': return wc && wc.print()
+      case 'fullscreen': return w.win.setFullScreen(!w.win.isFullScreen())
+      case 'savePage': return wc && savePage(wc)
+      case 'menuInfo': return { version: app.getVersion(), update: Updater.getState(), zoom: t ? Math.round(Math.pow(1.2, t.zoom || 0) * 100) : 100, incognito: w.incognito, tabLayout: D.settings.get('tabLayout'), fullscreen: w.win.isFullScreen(), passkeys: Passkeys.list().length, passwords: D.listPasswords().length }
       case 'zoom': return t && w.zoom(t.id, a[0])
       case 'openPage': return w.createTab('lumen://' + a[0])
       case 'reader': return wc && readerMode(wc)
@@ -857,7 +869,7 @@ function downloadAction(id, what) {
   broadcast('downloads', listDownloads())
 }
 
-const PUBLIC_SETTINGS = ['searchEngine', 'motion', 'theme', 'accent', 'adblock', 'blockTrackers', 'httpsOnly', 'sleepTabsAfterMin', 'restoreSession', 'sidebarCollapsed', 'sidebarWidth', 'tabLayout', 'introSeen', 'autoUpdate', 'askWhereToSave', 'doNotTrack', 'showSuggestions', 'homeTiles']
+const PUBLIC_SETTINGS = ['autoPip', 'ntpShortcuts', 'ntpWallpaper', 'ntpClock', 'searchEngine', 'motion', 'theme', 'accent', 'adblock', 'blockTrackers', 'httpsOnly', 'sleepTabsAfterMin', 'restoreSession', 'sidebarCollapsed', 'sidebarWidth', 'tabLayout', 'introSeen', 'autoUpdate', 'askWhereToSave', 'doNotTrack', 'showSuggestions', 'homeTiles']
 function publicSettings() { const s = D.settings.get(); return Object.fromEntries(PUBLIC_SETTINGS.map(k => [k, s[k]])) }
 function setSetting(k, v) {
   if (!PUBLIC_SETTINGS.includes(k)) return
@@ -964,6 +976,13 @@ ipcMain.handle('lumen', async (e, action, ...a) => {
       case 'settings': return { settings: publicSettings(), engines: Object.fromEntries(Object.entries(SEARCH).map(([k, v]) => [k, v.name])), version: app.getVersion(), platform: process.platform }
       case 'setSetting': return setSetting(a[0], a[1])
       case 'topSites': return D.topSites(8)
+      case 'wallpaper': {
+        if (a[0] === undefined) return wallpaperStore.get('image') || ''
+        const img = String(a[0] || '')
+        if (img && !/^data:image\/(jpeg|png|webp);base64,/.test(img)) return false
+        if (img.length > 4 * 1024 * 1024) return false
+        wallpaperStore.set('image', img); return true
+      }
       case 'navigate': { const url = toURL(a[0]); if (url) e.sender.loadURL(url); return }
       case 'open': { const url = toURL(a[0]); if (url && w) w.createTab(url, { active: !a[1] }); return }
       case 'history': return D.listHistory(a[0] || '', 500)
@@ -1199,6 +1218,9 @@ app.whenReady().then(async () => {
   app.userAgentFallback = chromeUA(app.userAgentFallback)
   mainSession = session.fromPartition('persist:lumen')
   setupSession(mainSession)
+  for (const origin of ['https://www.youtube.com', 'https://m.youtube.com', 'https://music.youtube.com', 'https://youtube.com']) {
+    mainSession.clearStorageData({ origin, storages: ['serviceworkers'] }).catch(() => {})
+  }
   buildMenu()
   await Promise.race([setupExtensions(), new Promise(r => setTimeout(r, 4000))])
   setupAdblock() // loads in the background; blocking turns on as soon as lists are ready

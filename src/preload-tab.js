@@ -26,6 +26,22 @@ if (location.protocol === 'lumen:') {
     } catch {}
   }
 
+  // ------------------------------------------------------------ YouTube: its service worker serves a half-loaded page in
+  // Lumen (the navigation preload it relies on gets cancelled), so Shorts never load. YouTube runs fine without one.
+  if (/(^|\.)youtube\.com$/.test(location.hostname)) {
+    try {
+      contextBridge.executeInMainWorld({
+        func: () => {
+          try {
+            const SWC = window.ServiceWorkerContainer
+            if (SWC) SWC.prototype.register = function () { return Promise.reject(new DOMException('Service workers are turned off for this site in Lumen.', 'SecurityError')) }
+            if (navigator.serviceWorker) navigator.serviceWorker.getRegistrations().then(rs => rs.forEach(r => r.unregister())).catch(() => {})
+          } catch {}
+        },
+      })
+    } catch {}
+  }
+
   // ------------------------------------------------------------ passkeys (Lumen's own authenticator)
   try {
     contextBridge.exposeInMainWorld('__lumenPasskeys', {

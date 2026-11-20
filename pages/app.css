@@ -115,3 +115,33 @@ body[data-motion="off"] .ntp::before { animation: none; }
 .err h1 { font-size: 24px; letter-spacing: -.02em; margin: 0 0 8px; }
 .err p { color: var(--fg2); margin: 0 0 4px; max-width: 460px; }
 .err code { font-size: 12px; color: var(--fg3); display: block; margin: 12px 0 22px; }
+
+/* ---------------- new tab: wallpapers, editable shortcuts, customize drawer */
+.ntp-bg { position: absolute; inset: 0; z-index: 0; background-size: cover; background-position: center; }
+.ntp:not(.wp-aurora)::before { display: none; }
+.ntp.wp-custom::after { content: ''; position: absolute; inset: 0; background: linear-gradient(180deg, rgba(0,0,0,.25), rgba(0,0,0,.45)); z-index: 0; }
+.ntp:not(.wp-aurora):not(.wp-plain) { color: #fff; }
+.ntp:not(.wp-aurora):not(.wp-plain) .date, .ntp:not(.wp-aurora):not(.wp-plain) .tile span, .ntp:not(.wp-aurora):not(.wp-plain) .foot a { color: rgba(255,255,255,.8); text-shadow: 0 1px 8px rgba(0,0,0,.35); }
+.ntp:not(.wp-aurora):not(.wp-plain) .clock { text-shadow: 0 2px 24px rgba(0,0,0,.35); }
+.tile { position: relative; }
+.tile .tx { position: absolute; top: 4px; right: 10px; width: 20px; height: 20px; border-radius: 50%; border: 0; background: var(--bg2); color: var(--fg2); display: grid; place-items: center; opacity: 0; transition: opacity .15s; box-shadow: var(--shadow); }
+.tile .tx svg { width: 11px; height: 11px; }
+.tile:hover .tx { opacity: 1; }
+.tile.add .ti { color: var(--fg3); background: color-mix(in srgb, var(--bg2) 60%, transparent); box-shadow: inset 0 0 0 1.5px var(--line); }
+.customize { position: absolute; right: 18px; bottom: 16px; z-index: 2; display: flex; align-items: center; gap: 7px; height: 34px; padding: 0 14px; border-radius: 999px; border: 0; background: color-mix(in srgb, var(--bg2) 80%, transparent); color: var(--fg); font-weight: 500; font-size: 13px; box-shadow: var(--shadow); backdrop-filter: blur(12px); }
+.drawer { position: fixed; top: 10px; right: 10px; bottom: 10px; width: 320px; z-index: 20; background: var(--bg2); border-radius: 18px; box-shadow: 0 30px 80px rgba(0,0,0,.35), 0 0 0 1px var(--line); padding: 18px; transform: translateX(calc(100% + 24px)); transition: transform .6s cubic-bezier(.3,1.25,.5,1); overflow-y: auto; }
+.drawer.open { transform: none; }
+.drawer .dh { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; font-size: 16px; }
+.drawer .dl { font-size: 12px; font-weight: 600; color: var(--fg3); letter-spacing: .02em; margin: 16px 2px 8px; }
+.wps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.wpb { border: 0; background: none; padding: 0; display: flex; flex-direction: column; gap: 6px; font-size: 11.5px; color: var(--fg2); align-items: center; }
+.wpb i { display: grid; place-items: center; width: 100%; aspect-ratio: 16/10; border-radius: 10px; box-shadow: inset 0 0 0 1px var(--line); background: var(--bg); }
+.wpb i.wp-aurora { background: radial-gradient(60% 55% at 30% 35%, color-mix(in srgb, var(--accent) 35%, transparent), transparent 70%), radial-gradient(55% 50% at 75% 65%, #b07cff44, transparent 70%), var(--bg); }
+.wpb.on i { box-shadow: 0 0 0 2px var(--bg2), 0 0 0 4px var(--accent); }
+.wpb.on span { color: var(--fg); font-weight: 600; }
+.wpup { color: var(--fg3); }
+.drow { display: flex; align-items: center; justify-content: space-between; margin-top: 14px; font-size: 13.5px; }
+.ntp-modal { position: fixed; inset: 0; z-index: 30; display: grid; place-items: center; background: rgba(0,0,0,.25); }
+.ntp-card { width: 340px; background: var(--bg2); border-radius: 18px; padding: 20px; box-shadow: 0 30px 80px rgba(0,0,0,.4); display: flex; flex-direction: column; gap: 10px; }
+.ntp-card h3 { margin: 0 0 4px; font-size: 16px; }
+.ntp-card .row2 { display: flex; justify-content: flex-end; gap: 8px; margin-top: 6px; }

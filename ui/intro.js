@@ -27,32 +27,32 @@
   #intro .dots i.on{width:22px;background:#8ea4ff}
   #intro .logo{font:800 clamp(64px,11vw,150px)/1 "SF Pro Display",-apple-system,system-ui,sans-serif;letter-spacing:-.05em;background:linear-gradient(100deg,#fff 20%,#9fb3ff 55%,#c2a6ff);-webkit-background-clip:text;background-clip:text;color:transparent}
   #intro .tag{color:#9aa2c7;font-size:19px;margin-top:10px;text-align:center}
-  .mock{width:min(760px,78vw);border-radius:16px;background:#e9ecf3;box-shadow:0 50px 140px rgba(0,0,0,.6),0 0 0 1px rgba(255,255,255,.08);overflow:hidden;color:#1c1d21;font:13px -apple-system,system-ui,sans-serif}
-  .mock .tb{height:42px;display:flex;align-items:center;gap:6px;padding:0 12px}
-  .mock .lt{display:flex;gap:6px;margin-right:14px}.mock .lt i{width:11px;height:11px;border-radius:50%;background:#ff5f57}.mock .lt i:nth-child(2){background:#febc2e}.mock .lt i:nth-child(3){background:#28c840}
-  .mock .mt{height:30px;border-radius:8px;padding:0 12px;display:flex;align-items:center;gap:8px;color:#555;width:150px;white-space:nowrap;overflow:hidden}
-  .mock .mt.on{background:#fff;color:#111;font-weight:500;box-shadow:0 2px 10px rgba(0,0,0,.08)}
-  .mock .mt b{width:13px;height:13px;border-radius:4px;flex:none}
-  .mock .ub{margin:0 12px 10px;height:34px;border-radius:10px;background:#fff;display:flex;align-items:center;padding:0 12px;color:#888;box-shadow:0 2px 10px rgba(0,0,0,.06)}
-  .mock .pg{height:300px;margin:0 8px 8px;border-radius:10px;background:#fff;padding:26px;position:relative;overflow:hidden}
-  .mock .ln{height:10px;border-radius:5px;background:#eceef3;margin:10px 0}
-  .cmd{width:min(620px,74vw);border-radius:18px;background:#fff;color:#1c1d21;box-shadow:0 50px 140px rgba(0,0,0,.6),0 0 80px rgba(111,139,255,.25);overflow:hidden;font:15px -apple-system,system-ui,sans-serif}
-  .cmd .in{height:62px;display:flex;align-items:center;padding:0 22px;font-size:21px;gap:12px}
-  .cmd .in .caret{width:2px;height:24px;background:#5b8cff;animation:blink 1s steps(2) infinite}
+  #intro .mock{width:min(760px,78vw);border-radius:16px;background:#e9ecf3;box-shadow:0 50px 140px rgba(0,0,0,.6),0 0 0 1px rgba(255,255,255,.08);overflow:hidden;color:#1c1d21;font:13px -apple-system,system-ui,sans-serif}
+  #intro .mock .tb{height:42px;display:flex;align-items:center;gap:6px;padding:0 12px}
+  #intro .mock .lt{display:flex;gap:6px;margin-right:14px}#intro .mock .lt i{width:11px;height:11px;border-radius:50%;background:#ff5f57}#intro .mock .lt i:nth-child(2){background:#febc2e}#intro .mock .lt i:nth-child(3){background:#28c840}
+  #intro .mock .mt{height:30px;border-radius:8px;padding:0 12px;display:flex;align-items:center;gap:8px;color:#555;width:150px;white-space:nowrap;overflow:hidden}
+  #intro .mock .mt.on{background:#fff;color:#111;font-weight:500;box-shadow:0 2px 10px rgba(0,0,0,.08)}
+  #intro .mock .mt b{width:13px;height:13px;border-radius:4px;flex:none}
+  #intro .mock .ub{margin:0 12px 10px;height:34px;border-radius:10px;background:#fff;display:flex;align-items:center;padding:0 12px;color:#888;box-shadow:0 2px 10px rgba(0,0,0,.06)}
+  #intro .mock .pg{height:300px;margin:0 8px 8px;border-radius:10px;background:#fff;padding:26px;position:relative;overflow:hidden}
+  #intro .mock .ln{height:10px;border-radius:5px;background:#eceef3;margin:10px 0}
+  #intro .cmd{width:min(620px,74vw);border-radius:18px;background:#fff;color:#1c1d21;box-shadow:0 50px 140px rgba(0,0,0,.6),0 0 80px rgba(111,139,255,.25);overflow:hidden;font:15px -apple-system,system-ui,sans-serif}
+  #intro .cmd .in{height:62px;display:flex;align-items:center;padding:0 22px;font-size:21px;gap:12px}
+  #intro .cmd .in .caret{width:2px;height:24px;background:#5b8cff;animation:blink 1s steps(2) infinite}
   @keyframes blink{50%{opacity:0}}
-  .cmd .r{height:44px;display:flex;align-items:center;padding:0 22px;gap:12px;color:#444;opacity:0;transform:translateY(8px)}
-  .cmd .r.sel{background:rgba(91,140,255,.12);color:#111}
-  .cmd .r em{font-style:normal;color:#999;font-size:13px;margin-left:auto}
-  .shield{position:relative;width:340px;height:340px;display:grid;place-items:center}
-  .shield .num{font:800 110px/1 "SF Pro Display",-apple-system,system-ui,sans-serif;letter-spacing:-.04em;font-variant-numeric:tabular-nums;background:linear-gradient(180deg,#fff,#8ea4ff);-webkit-background-clip:text;background-clip:text;color:transparent}
-  .shield .sub{color:#9aa2c7;text-align:center;margin-top:6px}
-  .shield .ad{position:absolute;width:64px;height:40px;border-radius:8px;background:linear-gradient(135deg,#ff6b6b,#ffb86b);opacity:.9}
-  .split{display:flex;gap:14px}
-  .split .pane{width:min(330px,36vw);height:360px;border-radius:14px;background:#fff;box-shadow:0 40px 120px rgba(0,0,0,.55);padding:24px}
-  .cards{display:flex;gap:18px}
-  .card3{width:230px;height:150px;border-radius:18px;padding:20px;background:linear-gradient(135deg,rgba(255,255,255,.12),rgba(255,255,255,.03));box-shadow:inset 0 0 0 1px rgba(255,255,255,.12),0 30px 80px rgba(0,0,0,.5);}
-  .card3 h4{margin:12px 0 6px;font-size:17px}.card3 p{margin:0;color:#a9b0d6;font-size:13px}
-  .card3 .k{width:36px;height:36px;border-radius:11px;background:rgba(142,164,255,.18);display:grid;place-items:center;color:#9fb3ff}
+  #intro .cmd .r{height:44px;display:flex;align-items:center;padding:0 22px;gap:12px;color:#444;opacity:0;transform:translateY(8px)}
+  #intro .cmd .r.sel{background:rgba(91,140,255,.12);color:#111}
+  #intro .cmd .r em{font-style:normal;color:#999;font-size:13px;margin-left:auto}
+  #intro .shield{position:relative;width:340px;height:340px;display:grid;place-items:center}
+  #intro .shield .num{font:800 110px/1 "SF Pro Display",-apple-system,system-ui,sans-serif;letter-spacing:-.04em;font-variant-numeric:tabular-nums;background:linear-gradient(180deg,#fff,#8ea4ff);-webkit-background-clip:text;background-clip:text;color:transparent}
+  #intro .shield .sub{color:#9aa2c7;text-align:center;margin-top:6px}
+  #intro .shield .ad{position:absolute;width:64px;height:40px;border-radius:8px;background:linear-gradient(135deg,#ff6b6b,#ffb86b);opacity:.9}
+  #intro .split{display:flex;gap:14px}
+  #intro .split .pane{width:min(330px,36vw);height:360px;border-radius:14px;background:#fff;box-shadow:0 40px 120px rgba(0,0,0,.55);padding:24px}
+  #intro .cards{display:flex;gap:18px}
+  #intro .card3{width:230px;height:150px;border-radius:18px;padding:20px;background:linear-gradient(135deg,rgba(255,255,255,.12),rgba(255,255,255,.03));box-shadow:inset 0 0 0 1px rgba(255,255,255,.12),0 30px 80px rgba(0,0,0,.5);}
+  #intro .card3 h4{margin:12px 0 6px;font-size:17px}#intro .card3 p{margin:0;color:#a9b0d6;font-size:13px}
+  #intro .card3 .k{width:36px;height:36px;border-radius:11px;background:rgba(142,164,255,.18);display:grid;place-items:center;color:#9fb3ff}
   #intro .go{margin-top:34px;height:52px;padding:0 28px;border-radius:16px;border:0;background:#fff;color:#0b0e1c;font:600 16px var(--font);box-shadow:0 0 60px rgba(142,164,255,.55);cursor:default}
   `
   let skip = false, root, cv, cx, particles = [], orb = { r: 0, glow: 0, ring: 0, x: 0, y: 0 }, flash = 0, raf
@@ -274,7 +274,7 @@
     // ---- 2. command bar
     setDot(2)
     s = scene(`<div class="cmd"><div class="in"><span class="q"></span><span class="caret"></span></div><div class="r sel">Search for <b class="qq" style="margin-left:4px"></b><em>Search</em></div><div class="r">Switch to Flights<em>Open tab</em></div><div class="r">google.com/travel/flights<em>History</em></div><div class="r">Split View<em>Action</em></div></div>`)
-    caption('One bar for everything.', 'Cmd T to search, jump to an open tab, find something you saw last week, or run any action.')
+    caption('One bar for everything.', 'Cmd K or Cmd L to search, jump to an open tab, find something you saw last week, or run any action.')
     enter(s)
     const q = 'flights to lisbon'; const qEl = s.querySelector('.q')
     for (let i = 1; i <= q.length && !skip; i++) { qEl.textContent = q.slice(0, i); s.querySelector('.qq').textContent = q.slice(0, i); SFX.key(); await sleep(65) }

@@ -16,6 +16,10 @@ const settings = new Store('settings', {
   tabLayout: 'top',          // top | side
   sidebarWidth: 248,
   introSeen: false,
+  autoPip: true,
+  ntpShortcuts: null,        // null = most visited
+  ntpWallpaper: 'aurora',
+  ntpClock: true,
   sync: { enabled: false, folder: '', lastSync: 0 },
   autoUpdate: true,
   askWhereToSave: false,

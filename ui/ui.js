@@ -15,7 +15,7 @@ let updateState = {}
 
 const ROW = 36
 Jelly.init({
-  buttons: '.ib, .btn, .pin, .site, .update, .wincontrols button, .tab .x, .tab .audio, .popover .seg button',
+  buttons: '.ib, .btn, .pin, .site, .update, .wincontrols button, .tab .x, .tab .audio, .popover .seg button, .mm-tile',
   cards: '.prompt, .newtab',
   press: '.popover .item',
 })
@@ -147,9 +147,9 @@ $('#btn-forward').onclick = () => api.do('forward')
 $('#btn-reload').onclick = e => { const a = activeTab(); if (a && a.loading) api.do('stop'); else api.do('reload', e.shiftKey) }
 $('#btn-star').onclick = () => api.do('bookmark')
 $('#btn-settings').onclick = () => api.do('openPage', 'settings')
-$('#btn-menu').onclick = () => api.do('appMenu')
+$('#btn-menu').onclick = () => openMainMenu()
 $('#btn-split').onclick = () => toggleSplit()
-$('#btn-newtab').onclick = () => openCmd('newtab')
+$('#btn-newtab').onclick = () => api.do('newTab')
 $('#urltext').onclick = () => openCmd('location')
 $('#btn-site').onclick = () => openSiteInfo()
 $('#btn-downloads').onclick = () => openDownloads()
@@ -377,7 +377,7 @@ pinsEl.addEventListener('click', e => { const p = e.target.closest('.pin'); if (
 pinsEl.addEventListener('auxclick', e => { const p = e.target.closest('.pin'); if (p && e.button === 1) api.do('close', +p.dataset.id) })
 pinsEl.addEventListener('contextmenu', e => { const p = e.target.closest('.pin'); if (p) { e.preventDefault(); api.do('tabMenu', +p.dataset.id) } })
 // double click empty tab area -> new tab
-$('#tablist').addEventListener('dblclick', e => { if (e.target === $('#tablist') || e.target === tabsEl) openCmd('newtab') })
+$('#tablist').addEventListener('dblclick', e => { if (e.target === $('#tablist') || e.target === tabsEl) api.do('newTab') })
 
 // ---------------------------------------------------------------- overlay management
 let overlayOpen = null // 'cmd' | 'pop' | null
@@ -549,13 +549,15 @@ function go(text) {
 // ---------------------------------------------------------------- popovers (site info, downloads)
 const pop = $('#popover')
 const popG = new SpringGroup({ s: 0.96, o: 0, y: -6 }, 'calm', v => { pop.style.transform = `translateY(${v.y}px) scale(${v.s})`; pop.style.opacity = Math.max(0, Math.min(1, v.o)) })
-function openPopover(html, anchor, { above = false } = {}) {
+function openPopover(html, anchor, { above = false, wide = false } = {}) {
   if (overlayOpen === 'cmd') closeCmd(true)
   pop.innerHTML = html
+  pop.classList.toggle('wide', wide)
   const r = anchor.getBoundingClientRect()
+  overlay.classList.add('show')   // the overlay must be visible to measure the popover
   pop.classList.add('show')
-  const h = pop.offsetHeight
-  pop.style.left = Math.max(8, Math.min(innerWidth - 308, r.left)) + 'px'
+  const h = pop.offsetHeight, pw = pop.offsetWidth || 300
+  pop.style.left = Math.max(8, Math.min(innerWidth - pw - 8, wide ? r.right - pw : r.left)) + 'px'
   pop.style.top = (above ? Math.max(8, r.top - h - 8) : r.bottom + 8) + 'px'
   pop.style.transformOrigin = above ? '20px 100%' : '20px 0'
   showOverlay('pop')
@@ -601,6 +603,60 @@ async function openSiteInfo() {
     if (act === 'reader') api.do('reader')
     if (act === 'pip') api.do('pip')
     if (act === 'shot') api.do('screenshot')
+  }
+}
+
+
+// ---------------------------------------------------------------- main menu
+const K = IS_MAC ? { cmd: 'Cmd', sh: 'Shift', opt: 'Opt' } : { cmd: 'Ctrl', sh: 'Shift', opt: 'Alt' }
+async function openMainMenu() {
+  const info = await api.do('menuInfo') || {}
+  const up = info.update || {}
+  const updateLine = up.status === 'ready' ? `<div class="mm-update" data-mm="install">${ICONS.download}<span>Lumen ${esc(String(up.latest || '').replace(/^v/, ''))} is ready</span><b>Restart</b></div>`
+    : up.status === 'downloading' ? `<div class="mm-update quiet">${ICONS.download}<span>Downloading update  ${Math.round((up.progress || 0))}%</span></div>` : ''
+  const item = (act, icon, label, keys, extra = '') => `<div class="item mm" data-mm="${act}"><span class="ri">${ICONS[icon]}</span><div class="grow">${label}</div>${extra}${keys ? `<kbd>${keys}</kbd>` : ''}</div>`
+  const html = `
+    <div class="mm-head"><div class="mm-logo"></div><div class="grow"><div class="mm-title">Lumen${info.incognito ? ' <span class="mm-pill">Private</span>' : ''}</div><div class="mm-sub">Version ${esc(info.version || '')}</div></div><button class="ib sm" data-mm="settings" title="Settings">${ICONS.gear}</button></div>
+    ${updateLine}
+    <div class="mm-tiles">
+      <button class="mm-tile" data-mm="newtab">${ICONS.plus}<span>New Tab</span></button>
+      <button class="mm-tile" data-mm="newwindow">${ICONS.tabs}<span>New Window</span></button>
+      <button class="mm-tile" data-mm="private">${ICONS.mask}<span>Private</span></button>
+    </div>
+    <div class="mm-zoom"><span class="ri">${ICONS.search}</span><span class="grow">Zoom</span><button class="ib sm" data-mm="zoomout">${ICONS.minus}</button><span id="mm-z">${info.zoom || 100}%</span><button class="ib sm" data-mm="zoomin">${ICONS.plus}</button><button class="ib sm" data-mm="fullscreen" title="Full screen">${ICONS.split}</button></div>
+    <div class="sep"></div>
+    ${item('history', 'clock', 'History', `${K.cmd} Y`)}
+    ${item('downloads', 'download', 'Downloads', `${K.sh} ${K.cmd} J`)}
+    ${item('bookmarks', 'star', 'Bookmarks', `${K.opt} ${K.cmd} B`)}
+    ${item('passwords', 'key', 'Passwords and passkeys', '', `<span class="mm-count">${(info.passwords || 0) + (info.passkeys || 0) || ''}</span>`)}
+    ${item('extensions', 'puzzle', 'Extensions', '')}
+    <div class="sep"></div>
+    ${item('find', 'search', 'Find in page', `${K.cmd} F`)}
+    ${item('reader', 'book', 'Reader mode', `${K.sh} ${K.cmd} E`)}
+    ${item('pip', 'pip', 'Picture in picture', `${K.sh} ${K.cmd} P`)}
+    ${item('split', 'split', S.splitId ? 'Exit split view' : 'Split view', `${K.sh} ${K.cmd} \\`)}
+    ${item('screenshot', 'camera', 'Take screenshot', `${K.sh} ${K.cmd} 2`)}
+    ${item('print', 'arrowRight', 'Print', `${K.cmd} P`)}
+    <div class="sep"></div>
+    ${item('layout', 'tabs', info.tabLayout === 'top' ? 'Move tabs to the sidebar' : 'Move tabs to the top', `${K.opt} ${K.cmd} S`)}
+    ${item('intro', 'bolt', 'Replay intro', '')}`
+  openPopover(html, $('#btn-menu'), { above: !TOP, wide: true })
+  pop.onclick = async e => {
+    const b = e.target.closest('[data-mm]'); if (!b) return
+    const a = b.dataset.mm
+    if (a === 'zoomin' || a === 'zoomout') { await api.do('zoom', a === 'zoomin' ? 0.5 : -0.5); setTimeout(() => { const z = $('#mm-z'); if (z) z.textContent = S.zoom + '%' }, 60); return }
+    closePopover(true)
+    const run = {
+      settings: () => api.do('openPage', 'settings'), install: () => api.do('update', 'install'),
+      newtab: () => api.do('newTab'), newwindow: () => api.do('newWindow', false), private: () => api.do('newWindow', true),
+      fullscreen: () => api.do('fullscreen'),
+      history: () => api.do('openPage', 'history'), downloads: () => api.do('openPage', 'downloads'), bookmarks: () => api.do('openPage', 'bookmarks'),
+      passwords: () => api.do('openPage', 'passwords'), extensions: () => api.do('openPage', 'extensions'),
+      find: () => openFind(), reader: () => api.do('reader'), pip: () => api.do('pip').then(ok => { if (ok === false) toast('No video on this page') }),
+      split: () => toggleSplit(), screenshot: () => api.do('screenshot'), print: () => api.do('print'),
+      layout: () => api.do('setSetting', 'tabLayout', TOP ? 'side' : 'top'), intro: () => playIntro(),
+    }[a]
+    if (run) run()
   }
 }
 
@@ -736,7 +792,9 @@ api.on('update', u => { updateState = u; $('#btn-update').classList.toggle('show
 api.on('fullscreen', f => { fullscreenWindow = f })
 let fullscreenWindow = false
 api.on('command', c => {
-  if (c === 'newtab' || c === 'palette') openCmd('newtab')
+  if (c === 'newtab') api.do('newTab')
+  else if (c === 'palette') openCmd('newtab')
+  else if (c === 'menu') openMainMenu()
   else if (c === 'location') openCmd('location')
   else if (c === 'find') openFind()
   else if (c === 'findNext') { if (!findOpen) openFind(); else if (findInput.value) api.do('find', findInput.value, true, true) }

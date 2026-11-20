@@ -300,3 +300,24 @@ body.nonmac { --bg: color-mix(in srgb, var(--accent) 8%, var(--bg-solid)); }
 .urlbar:hover { box-shadow: var(--shadow), 0 0 0 1.5px color-mix(in srgb, var(--accent) 35%, transparent); }
 .spinner { border-top-color: var(--accent); }
 .tab.active .title { color: color-mix(in srgb, var(--accent) 35%, var(--fg)); }
+
+/* ----------------------------------------------------------- main menu */
+.popover.wide { width: 340px; padding: 10px; transform-origin: 90% 0; max-height: calc(100vh - 24px); overflow-y: auto; }
+.mm-head { display: flex; align-items: center; gap: 10px; padding: 4px 4px 10px; }
+.mm-logo { width: 34px; height: 34px; border-radius: 10px; background: radial-gradient(circle at 50% 50%, #fff 0 22%, transparent 24%), linear-gradient(135deg, #2a3d9e, #4f6ff0 55%, #8a63f2); box-shadow: 0 4px 14px color-mix(in srgb, var(--accent) 40%, transparent); flex: none; }
+.mm-title { font-weight: 650; font-size: 14px; }
+.mm-sub { font-size: 11.5px; color: var(--fg3); }
+.mm-pill { font-size: 10px; font-weight: 600; padding: 1px 6px; border-radius: 5px; background: rgba(140, 110, 255, .2); color: #b9a6ff; vertical-align: 1px; }
+.mm-update { display: flex; align-items: center; gap: 8px; padding: 9px 10px; margin: 0 0 8px; border-radius: 10px; background: color-mix(in srgb, var(--accent) 14%, transparent); color: var(--accent); font-size: 12.5px; font-weight: 500; }
+.mm-update span { flex: 1; color: var(--fg); } .mm-update b { font-weight: 650; }
+.mm-update.quiet { background: var(--hover); color: var(--fg2); }
+.mm-tiles { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-bottom: 6px; }
+.mm-tile { height: 62px; border-radius: 12px; background: var(--hover); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; font-size: 12px; font-weight: 500; color: var(--fg); transition: background .15s; }
+.mm-tile:hover { background: color-mix(in srgb, var(--accent) 14%, transparent); color: var(--accent); }
+.mm-tile span { color: var(--fg); }
+.mm-zoom { display: flex; align-items: center; gap: 4px; padding: 6px 4px 6px 8px; }
+.mm-zoom .ri { color: var(--fg2); display: grid; place-items: center; width: 18px; margin-right: 6px; }
+.mm-zoom #mm-z { min-width: 44px; text-align: center; font-variant-numeric: tabular-nums; font-size: 12px; }
+.popover .item.mm { min-height: 32px; padding: 5px 8px; }
+.popover .item.mm kbd { font-size: 11px; color: var(--fg3); }
+.mm-count { font-size: 11px; color: var(--fg3); margin-right: 4px; }

@@ -19,31 +19,89 @@ function applyLook(s) {
   document.body.dataset.motion = s.motion
   Jelly.setMode(s.motion === 'lively' ? 'jelly' : s.motion)
 }
-Jelly.init({ buttons: '.btn, .ib, .seg button, .swatches button, .nav a, .ntp .foot a', cards: '.tile, .err .ico, .key', press: '.list .row' })
+Jelly.init({ buttons: '.btn, .ib, .seg button, .swatches button, .nav a, .ntp .foot a, .customize', cards: '.tile, .err .ico, .key, .wpb', press: '.list .row' })
 Jelly.smoothScroll(window)
 
 // ======================================================================= new tab
 function greeting() { const h = new Date().getHours(); return h < 5 ? 'Good night' : h < 12 ? 'Good morning' : h < 18 ? 'Good afternoon' : 'Good evening' }
+const WALLPAPERS = {
+  aurora: { name: 'Aurora', css: '' },
+  sunset: { name: 'Sunset', css: 'radial-gradient(60% 50% at 20% 20%, #ff8a5c55, transparent 70%), radial-gradient(55% 50% at 80% 75%, #c94b9a55, transparent 70%), linear-gradient(160deg, #2a1a3a, #40243f 50%, #1f1530)' },
+  ocean: { name: 'Ocean', css: 'radial-gradient(60% 55% at 25% 30%, #2bb6d955, transparent 70%), radial-gradient(50% 50% at 80% 70%, #3d6dff55, transparent 70%), linear-gradient(170deg, #0c1f33, #0f2f4a 55%, #0a1828)' },
+  forest: { name: 'Forest', css: 'radial-gradient(60% 50% at 20% 25%, #3ccf8e44, transparent 70%), radial-gradient(50% 50% at 80% 75%, #c8e06a33, transparent 70%), linear-gradient(165deg, #0f2219, #163326 55%, #0c1a14)' },
+  dusk: { name: 'Dusk', css: 'radial-gradient(60% 50% at 25% 25%, #8a63f255, transparent 70%), radial-gradient(55% 50% at 80% 70%, #f0763b44, transparent 70%), linear-gradient(160deg, #1a1630, #2a1f3f 55%, #120f22)' },
+  plain: { name: 'Plain', css: 'var(--bg)' },
+}
+function addShortcutDialog(onSave) {
+  const d = document.createElement('div'); d.className = 'ntp-modal'
+  d.innerHTML = `<form class="ntp-card rise"><h3>Add shortcut</h3><input type="text" id="sc-name" placeholder="Name"><input type="text" id="sc-url" placeholder="Website address" required><div class="row2"><button type="button" class="btn" id="sc-cancel">Cancel</button><button class="btn primary">Add</button></div></form>`
+  document.body.appendChild(d)
+  d.querySelector('#sc-url').focus()
+  d.querySelector('#sc-cancel').onclick = () => d.remove()
+  d.onclick = e => { if (e.target === d) d.remove() }
+  d.querySelector('form').onsubmit = e => {
+    e.preventDefault()
+    let url = d.querySelector('#sc-url').value.trim(); if (!url) return
+    if (!/^https?:\/\//i.test(url)) url = 'https://' + url
+    let host; try { host = new URL(url).host } catch { return }
+    onSave({ url, title: d.querySelector('#sc-name').value.trim() || host.replace(/^www\./, '') }); d.remove()
+  }
+}
 async function newTab() {
   document.title = 'New Tab'
-  const sites = S.homeTiles ? await L.invoke('topSites') : []
-  root.innerHTML = `<div class="ntp">
-    <div class="clock rise" id="clock"></div>
-    <div class="date rise" style="animation-delay:.04s" id="date"></div>
+  const custom = Array.isArray(S.ntpShortcuts)
+  const sites = custom ? S.ntpShortcuts : (S.homeTiles ? (await L.invoke('topSites')).map(s => ({ url: s.url, title: s.host.replace(/^www\./, '') })) : [])
+  const wp = S.ntpWallpaper || 'aurora'
+  const img = wp === 'custom' ? await L.invoke('wallpaper') : ''
+  root.innerHTML = `<div class="ntp wp-${esc(wp)}" id="ntp">
+    <div class="ntp-bg" style="${wp === 'custom' && img ? `background-image:url('${img}')` : WALLPAPERS[wp] && WALLPAPERS[wp].css ? `background:${WALLPAPERS[wp].css}` : ''}"></div>
+    ${S.ntpClock !== false ? `<div class="clock rise" id="clock"></div><div class="date rise" style="animation-delay:.04s" id="date"></div>` : '<div style="height:40px"></div>'}
     <form class="searchbox rise" style="animation-delay:.08s" id="sf">${ICONS.search}<input id="q" autofocus placeholder="Search ${esc(ENGINES[S.searchEngine] || 'Google')} or type an address" spellcheck="false" autocomplete="off"></form>
-    <div class="tiles">${sites.map((s, i) => `<a class="tile rise" style="animation-delay:${0.12 + i * 0.03}s" href="${esc(s.url)}" data-url="${esc(s.url)}"><div class="ti">${fav(s.url)}</div><span>${esc(s.host.replace(/^www\./, ''))}</span></a>`).join('')}</div>
+    <div class="tiles" id="tiles">${sites.map((s, i) => `<div class="tile rise" style="animation-delay:${0.12 + i * 0.03}s" data-url="${esc(s.url)}" data-i="${i}"><div class="ti">${fav(s.url)}</div><span>${esc(s.title || hostOf(s.url))}</span><button class="tx" title="Remove">${ICONS.close}</button></div>`).join('')}${sites.length < 12 ? `<div class="tile add rise" style="animation-delay:${0.12 + sites.length * 0.03}s" id="addtile"><div class="ti">${ICONS.plus}</div><span>Add</span></div>` : ''}</div>
     <div class="foot"><a href="lumen://history">History</a><a href="lumen://bookmarks">Bookmarks</a><a href="lumen://passwords">Passwords</a><a href="lumen://settings">Settings</a></div>
-  </div>`
+    <button class="customize" id="cust">${ICONS.tune}<span>Customize</span></button>
+  </div>
+  <aside class="drawer" id="drawer">
+    <div class="dh"><b>Customize</b><button class="ib" id="dclose">${ICONS.close}</button></div>
+    <div class="dl">Wallpaper</div>
+    <div class="wps">${Object.entries(WALLPAPERS).map(([k, v]) => `<button class="wpb ${k === wp ? 'on' : ''}" data-wp="${k}" title="${v.name}"><i class="wp-${k}" style="${v.css && v.css !== 'var(--bg)' ? `background:${v.css}` : ''}"></i><span>${v.name}</span></button>`).join('')}
+      <label class="wpb ${wp === 'custom' ? 'on' : ''}" title="Your own image"><i class="wpup">${ICONS.plus}</i><span>Your image</span><input type="file" id="wpfile" accept="image/*" hidden></label></div>
+    <div class="dl">Shortcuts</div>
+    <div class="seg" id="scmode"><button data-v="auto" class="${custom ? '' : 'on'}">Most visited</button><button data-v="mine" class="${custom ? 'on' : ''}">My shortcuts</button></div>
+    <label class="drow"><span>Show clock</span><span class="switch"><input type="checkbox" id="clk" ${S.ntpClock !== false ? 'checked' : ''}><span></span></span></label>
+  </aside>`
   const tick = () => {
+    const c = $('#clock'); if (!c) return
     const d = new Date()
     const tt = d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }).replace(/\s?[AP]M/i, '')
-    if ($('#clock').dataset.t !== tt) { $('#clock').dataset.t = tt; $('#clock').textContent = tt; Jelly.letters($('#clock')) }
+    if (c.dataset.t !== tt) { c.dataset.t = tt; c.textContent = tt; Jelly.letters(c) }
     $('#date').textContent = greeting() + '  ·  ' + d.toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric' })
   }
-  tick(); setInterval(tick, 5000)
-  Jelly.trail({ size: 26, style: 'border:1.5px solid color-mix(in srgb, var(--accent) 70%, transparent);background:color-mix(in srgb, var(--accent) 10%, transparent)' })
+  tick(); clearInterval(window.__clk); window.__clk = setInterval(tick, 5000)
+  if (!window.__trail) window.__trail = Jelly.trail({ size: 26, style: 'border:1.5px solid color-mix(in srgb, var(--accent) 70%, transparent);background:color-mix(in srgb, var(--accent) 10%, transparent)' })
   $('#sf').onsubmit = e => { e.preventDefault(); const v = $('#q').value.trim(); if (v) L.invoke('navigate', v) }
-  setTimeout(() => $('#q').focus(), 50)
+  setTimeout(() => $('#q').focus(), 30)
+  const save = list => { S.ntpShortcuts = list; L.invoke('setSetting', 'ntpShortcuts', list).then(newTab) }
+  $('#tiles').onclick = e => {
+    if (e.target.closest('#addtile')) return addShortcutDialog(sc => save([...sites, sc]))
+    const t = e.target.closest('.tile'); if (!t) return
+    if (e.target.closest('.tx')) { e.stopPropagation(); return save(sites.filter((_, i) => i !== +t.dataset.i)) }
+    if (e.metaKey || e.ctrlKey) L.invoke('open', t.dataset.url, true); else L.invoke('navigate', t.dataset.url)
+  }
+  const drawer = $('#drawer')
+  $('#cust').onclick = () => drawer.classList.add('open')
+  $('#dclose').onclick = () => drawer.classList.remove('open')
+  drawer.querySelectorAll('[data-wp]').forEach(b => b.onclick = () => { S.ntpWallpaper = b.dataset.wp; L.invoke('setSetting', 'ntpWallpaper', b.dataset.wp).then(() => newTab().then(() => $('#drawer').classList.add('open'))) })
+  $('#wpfile').onchange = async e => {
+    const f = e.target.files[0]; if (!f) return
+    const bmp = await createImageBitmap(f)
+    const scale = Math.min(1, 2400 / Math.max(bmp.width, bmp.height))
+    const c = document.createElement('canvas'); c.width = Math.round(bmp.width * scale); c.height = Math.round(bmp.height * scale)
+    c.getContext('2d').drawImage(bmp, 0, 0, c.width, c.height)
+    if (await L.invoke('wallpaper', c.toDataURL('image/jpeg', 0.86))) { S.ntpWallpaper = 'custom'; await L.invoke('setSetting', 'ntpWallpaper', 'custom'); await newTab(); $('#drawer').classList.add('open') }
+  }
+  $('#scmode').onclick = e => { const b = e.target.closest('button'); if (!b) return; save(b.dataset.v === 'mine' ? sites.slice() : null) }
+  $('#clk').onchange = e => { S.ntpClock = e.target.checked; L.invoke('setSetting', 'ntpClock', e.target.checked).then(() => newTab().then(() => $('#drawer').classList.add('open'))) }
 }
 
 // ======================================================================= settings shell
@@ -81,6 +139,7 @@ async function general(m) {
     ${row('Search suggestions', 'Show suggestions from your search engine as you type.', sw('showSuggestions', S.showSuggestions))}
     ${row('Open where you left off', 'Bring back your tabs when Lumen starts. Pinned tabs always come back.', sw('restoreSession', S.restoreSession))}
     ${row('Show frequently visited on new tab', '', sw('homeTiles', S.homeTiles))}
+    ${row('Picture in picture when you switch tabs', 'A playing video pops out into a floating window when you leave its tab, and back in when you return.', sw('autoPip', S.autoPip !== false))}
   </div>
   <div class="card"><h3>PERFORMANCE</h3>
     ${row('Sleep inactive tabs', 'Frees memory from tabs you have not looked at in a while. They wake up instantly when you click them.', seg('sleepTabsAfterMin', [[0, 'Never'], [15, '15 min'], [30, '30 min'], [60, '1 hour'], [240, '4 hours']], S.sleepTabsAfterMin))}

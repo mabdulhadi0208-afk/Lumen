@@ -26,6 +26,15 @@ if (location.protocol === 'lumen:') {
     } catch {}
   }
 
+  // ------------------------------------------------------------ Peek: Shift + click a link to preview it in a floating window
+  addEventListener('click', e => {
+    if (!e.shiftKey || e.metaKey || e.ctrlKey || e.altKey || e.button !== 0) return
+    const a = e.target.closest && e.target.closest('a[href]')
+    if (!a || !/^https?:/.test(a.href)) return
+    e.preventDefault(); e.stopImmediatePropagation()
+    ipcRenderer.send('peek:open', a.href)
+  }, true)
+
   // ------------------------------------------------------------ trackpad swipe back / forward, and video speed keys
   let QOL = { swipe: true, speed: true }
   try { QOL = ipcRenderer.sendSync('lumen:qol') || QOL } catch {}

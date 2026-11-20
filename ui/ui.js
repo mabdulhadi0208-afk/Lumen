@@ -394,7 +394,7 @@ function hideOverlay() {
   if (!peeking) api.do('overlay', false)
   else api.do('focusTab')
 }
-scrim.addEventListener('mousedown', () => { if (overlayOpen === 'cmd') closeCmd(); else if (overlayOpen === 'pop') closePopover() })
+scrim.addEventListener('mousedown', () => { if (overlayOpen === 'cmd') closeCmd(); else if (overlayOpen === 'pop') closePopover(); else if (overlayOpen === 'peek') api.do('peekClose') })
 
 // ---------------------------------------------------------------- command bar
 const cmd = $('#cmdbar'), cmdInput = $('#cmd-input'), cmdResults = $('#cmd-results')
@@ -413,6 +413,9 @@ const COMMANDS = [
   { t: 'Extensions', k: ['extensions', 'addons', 'plugins'], i: 'puzzle', run: () => api.do('openPage', 'extensions') },
   { t: 'Chrome Web Store', k: ['web store', 'chrome store', 'extensions store'], i: 'puzzle', run: () => api.do('newTab', 'https://chromewebstore.google.com/') },
   { t: 'Split View', k: ['split', 'side by side'], i: 'split', run: () => toggleSplit() },
+  { t: 'Keyboard Shortcuts', k: ['shortcuts', 'keys', 'hotkeys', 'help'], i: 'bolt', run: () => openShortcuts() },
+  { t: 'Save All Tabs as a Session', k: ['save tabs', 'session', 'save all'], i: 'star', run: () => api.do('saveSession') },
+  { t: 'Copy All Tab Links', k: ['copy all', 'links', 'share tabs'], i: 'arrowRight', run: () => api.do('copyAllLinks') },
   { t: 'Close Duplicate Tabs', k: ['duplicate', 'dupes', 'clean up tabs'], i: 'tabs', run: () => api.do('closeDuplicates') },
   { t: 'Close Other Tabs', k: ['close other', 'close all'], i: 'close', run: () => api.do('closeOthers') },
   { t: 'Mute Other Tabs', k: ['mute', 'silence', 'quiet'], i: 'muted', run: () => api.do('muteOthers') },
@@ -557,7 +560,7 @@ const popG = new SpringGroup({ s: 0.96, o: 0, y: -6 }, 'calm', v => { pop.style.
 function openPopover(html, anchor, { above = false, wide = false } = {}) {
   if (overlayOpen === 'cmd') closeCmd(true)
   pop.innerHTML = html
-  pop.classList.toggle('wide', wide)
+  pop.classList.toggle('wide', wide); pop.classList.remove('sheet')
   const r = anchor.getBoundingClientRect()
   overlay.classList.add('show')   // the overlay must be visible to measure the popover
   pop.classList.add('show')
@@ -579,7 +582,7 @@ function closePopover(instant) {
   popG.to({ s: 0.98, o: 0 })
   setTimeout(done, 130)
 }
-addEventListener('keydown', e => { if (e.key === 'Escape') { if (overlayOpen === 'pop') closePopover(); else if (findOpen) closeFind() } })
+addEventListener('keydown', e => { if (e.key === 'Escape') { if (overlayOpen === 'pop') closePopover(); else if (overlayOpen === 'peek') api.do('peekClose'); else if (findOpen) closeFind() } })
 
 const PERM_NAMES = { 'media-audio': 'Microphone', 'media-video': 'Camera', 'media-audio+video': 'Camera and microphone', geolocation: 'Location', notifications: 'Notifications', 'clipboard-read': 'Clipboard', 'display-capture': 'Screen sharing', midi: 'MIDI', midiSysex: 'MIDI control', 'idle-detection': 'Idle detection', 'window-management': 'Window management' }
 async function openSiteInfo() {
@@ -611,6 +614,60 @@ async function openSiteInfo() {
   }
 }
 
+
+// ---------------------------------------------------------------- Peek
+let peekOpen = false
+const peekbar = $('#peekbar')
+const peekG = new SpringGroup({ y: -10, o: 0 }, 'calm', v => { peekbar.style.transform = `translateY(${v.y}px)`; peekbar.style.opacity = Math.max(0, Math.min(1, v.o)) })
+api.on('peek', p => {
+  if (p.open) {
+    if (!peekOpen) { peekOpen = true; overlayOpen = 'peek'; overlay.classList.add('show'); scrimS.to(0.5); peekG.set({ y: -10, o: 0 }).to({ y: 0, o: 1 }) }
+    const r = p.rect
+    Object.assign(peekbar.style, { left: r.x + 'px', top: (r.y - 46) + 'px', width: r.width + 'px', display: 'flex' })
+    peekbar.innerHTML = `<span class="pk-ico">${favHTML({ url: p.url, favicon: '' })}</span><div class="pk-t"><b>${esc(p.title || hostOf(p.url))}</b><span>${esc(hostOf(p.url))}</span></div>
+      <button class="btn sm" data-pk="split">Split view</button><button class="btn sm primary" data-pk="tab">Open in tab</button><button class="ib" data-pk="close" title="Close (esc)">${ICONS.close}</button>`
+  } else if (peekOpen) {
+    peekOpen = false; scrimS.to(0); peekG.to({ y: -10, o: 0 })
+    setTimeout(() => { if (!peekOpen) { peekbar.style.display = 'none'; if (overlayOpen === 'peek') { overlayOpen = null; overlay.classList.remove('show') } } }, 200)
+  }
+})
+peekbar.addEventListener('click', e => { const b = e.target.closest('[data-pk]'); if (b) api.do('peekClose', b.dataset.pk === 'close' ? null : b.dataset.pk) })
+
+// ---------------------------------------------------------------- Now playing
+const np = $('#nowplaying')
+function renderNowPlaying() {
+  const media = S.tabs.filter(t => t.id !== S.activeId && (t.playing || (t.mediaAt && Date.now() - t.mediaAt < 10 * 60000)))
+    .sort((a, b) => (b.playing - a.playing) || (b.mediaAt - a.mediaAt))[0]
+  if (!media) { np.classList.remove('show'); np.innerHTML = ''; return }
+  np.classList.add('show')
+  np.innerHTML = `<button class="np-main" data-np="go" title="Go to tab"><span class="np-ico">${favHTML(media)}</span><span class="np-t"><b>${esc(titleOf(media))}</b><span>${media.playing ? 'Playing' : 'Paused'}  ·  ${esc(hostOf(media.url))}</span></span></button>
+    <button class="ib" data-np="toggle" title="${media.playing ? 'Pause' : 'Play'}">${media.playing ? '<svg viewBox="0 0 16 16" width="16" height="16" fill="currentColor"><rect x="4" y="3" width="3" height="10" rx="1"/><rect x="9" y="3" width="3" height="10" rx="1"/></svg>' : '<svg viewBox="0 0 16 16" width="16" height="16" fill="currentColor"><path d="M5 3.2v9.6c0 .5.6.8 1 .5l7-4.8c.4-.3.4-.8 0-1L6 2.7c-.4-.3-1 0-1 .5z"/></svg>'}</button>`
+  np.dataset.tab = media.id
+}
+np.addEventListener('click', e => { const b = e.target.closest('[data-np]'); if (b) api.do('media', +np.dataset.tab, b.dataset.np) })
+setInterval(() => renderNowPlaying(), 30000)
+
+// ---------------------------------------------------------------- keyboard shortcuts sheet
+function openShortcuts() {
+  const groups = [
+    ['Tabs', [['New tab', `${K.cmd} T`], ['Close tab', `${K.cmd} W`], ['Reopen closed tab', `${K.sh} ${K.cmd} T`], ['Next / previous tab', `Ctrl Tab`], ['Go to tab 1 to 8', `${K.cmd} 1-8`], ['Pin or unpin', 'Double-click tab']]],
+    ['Navigate', [['Command bar', `${K.cmd} K`], ['Edit address', `${K.cmd} L`], ['Back / forward', `${K.cmd} [  ]`], ['Peek a link', 'Shift click'], ['Swipe back / forward', 'Two fingers']]],
+    ['Page', [['Find', `${K.cmd} F`], ['Translate', `${K.opt} ${K.cmd} T`], ['Reader mode', `${K.sh} ${K.cmd} E`], ['Picture in picture', `${K.sh} ${K.cmd} P`], ['Video speed', 'Shift  >  <'], ['Screenshot', `${K.sh} ${K.cmd} 2`], ['Zoom', `${K.cmd} +  -  0`]]],
+    ['Lumen', [['Split view', `${K.sh} ${K.cmd} \\`], ['Toggle sidebar', `${K.sh} ${K.cmd} S`], ['Tabs on top / side', `${K.opt} ${K.cmd} S`], ['Copy clean link', `${K.sh} ${K.cmd} C`], ['Private window', `${K.sh} ${K.cmd} N`], ['This sheet', `${K.cmd} /`]]],
+  ]
+  const html = `<div class="sc-head"><b>Keyboard shortcuts</b><button class="ib sm" data-sc="close">${ICONS.close}</button></div><div class="sc-grid">${groups.map(([g, rows]) => `<div><div class="mm-label">${g}</div>${rows.map(([l, k]) => `<div class="sc-row"><span>${esc(l)}</span><kbd>${esc(k)}</kbd></div>`).join('')}</div>`).join('')}</div>`
+  if (overlayOpen === 'cmd') closeCmd(true)
+  pop.innerHTML = html
+  pop.classList.add('wide', 'sheet')
+  overlay.classList.add('show'); pop.classList.add('show')
+  pop.style.left = Math.max(8, (innerWidth - pop.offsetWidth) / 2) + 'px'
+  pop.style.top = Math.max(20, (innerHeight - pop.offsetHeight) / 2.4) + 'px'
+  pop.style.transformOrigin = '50% 30%'
+  showOverlay('pop'); scrimS.to(0.4)
+  popG.set({ s: 0.9, o: 0, y: 10 }).to({ s: 1, o: 1, y: 0 })
+  api.do('focusUI')
+  pop.onclick = e => { if (e.target.closest('[data-sc="close"]')) closePopover() }
+}
 
 // ---------------------------------------------------------------- main menu
 const K = IS_MAC ? { cmd: 'Cmd', sh: 'Shift', opt: 'Opt' } : { cmd: 'Ctrl', sh: 'Shift', opt: 'Alt' }
@@ -644,6 +701,9 @@ async function openMainMenu() {
     ${item('screenshot', 'camera', 'Take screenshot', `${K.sh} ${K.cmd} 2`)}
     ${item('print', 'arrowRight', 'Print', `${K.cmd} P`)}
     <div class="sep"></div>
+    <div class="sep"></div>
+    ${item('savesession', 'star', 'Save all tabs as a session', '')}
+    ${(info.sessions || []).map(x => `<div class="item mm" data-mm="restore" data-id="${esc(x.id)}"><span class="ri">${ICONS.tabs}</span><div class="grow">${esc(x.name)}<div class="small">${x.count} tabs</div></div><button class="ib sm" data-mm="delsession" data-id="${esc(x.id)}" title="Delete">${ICONS.close}</button></div>`).join('')}
     ${(info.closed || []).length ? `<div class="sep"></div><div class="mm-label">Recently closed</div>` + info.closed.map((c, i) => `<div class="item mm" data-mm="reopen" data-i="${i}"><span class="ri">${favHTML({ url: c.url })}</span><div class="grow" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(c.title)}</div></div>`).join('') : ''}
     <div class="sep"></div>
     ${item('layout', 'tabs', info.tabLayout === 'top' ? 'Move tabs to the sidebar' : 'Move tabs to the top', `${K.opt} ${K.cmd} S`)}
@@ -655,6 +715,9 @@ async function openMainMenu() {
     if (a === 'zoomin' || a === 'zoomout') { await api.do('zoom', a === 'zoomin' ? 0.5 : -0.5); setTimeout(() => { const z = $('#mm-z'); if (z) z.textContent = S.zoom + '%' }, 60); return }
     closePopover(true)
     if (a === 'reopen') return api.do('reopenAt', +b.dataset.i)
+    if (a === 'restore') return api.do('restoreSession', b.dataset.id)
+    if (a === 'delsession') return api.do('deleteSession', b.dataset.id)
+    if (a === 'savesession') return api.do('saveSession')
     const run = {
       settings: () => api.do('openPage', 'settings'), install: () => api.do('update', 'install'),
       newtab: () => api.do('newTab'), newwindow: () => api.do('newWindow', false), private: () => api.do('newWindow', true),
@@ -793,7 +856,7 @@ function toast(msg) {
 // ---------------------------------------------------------------- IPC
 api.on('state', s => {
   S = s
-  renderChrome(); renderTabs()
+  renderChrome(); renderTabs(); renderNowPlaying()
   $('#extbar').classList.toggle('has', !!document.querySelector('#actions') && ($('#actions').shadowRoot ? $('#actions').shadowRoot.querySelectorAll('.action, button').length > 0 : false))
 })
 api.on('settings', s => applySettings(s))
@@ -809,6 +872,7 @@ api.on('command', c => {
   if (c === 'newtab') api.do('newTab')
   else if (c === 'palette') openCmd('newtab')
   else if (c === 'menu') openMainMenu()
+  else if (c === 'shortcuts') openShortcuts()
   else if (c === 'location') openCmd('location')
   else if (c === 'find') openFind()
   else if (c === 'findNext') { if (!findOpen) openFind(); else if (findInput.value) api.do('find', findInput.value, true, true) }

@@ -421,6 +421,8 @@ class BrowserWin {
     wc.on('unresponsive', () => { t.hung = true; upd() })
     wc.on('responsive', () => { t.hung = false; upd() })
     wc.on('audio-state-changed', e => { t.audible = e.audible; upd() })
+    wc.on('media-started-playing', () => { t.playing = true; t.mediaAt = Date.now(); upd() })
+    wc.on('media-paused', () => { t.playing = false; t.mediaAt = Date.now(); upd() })
     wc.on('update-target-url', (e, url) => { if (this.activeId === t.id) this.send('hover-url', url) })
     wc.on('found-in-page', (e, r) => this.send('find-result', { active: r.activeMatchOrdinal, total: r.matches }))
     wc.on('zoom-changed', (e, dir) => { this.zoom(t.id, dir === 'in' ? 0.5 : -0.5) })
@@ -517,6 +519,43 @@ class BrowserWin {
       else if (this.win.contentView.children.includes(t.view)) { t.view.setVisible(false); this.win.contentView.removeChildView(t.view) }
     }
     if (this.overlay) this.win.contentView.addChildView(this.ui) // keep UI on top while an overlay is open
+    if (this.peek) { this.win.contentView.addChildView(this.peek); this.peek.setBounds(this.peekRect()) }
+  }
+
+  // ---- Peek: a floating preview of a link above the current page
+  peekRect() {
+    const [W, H] = this.win.getContentSize()
+    const w = Math.round(Math.min(1100, W * 0.82)), top = 146
+    return { x: Math.round((W - w) / 2), y: top, width: w, height: Math.max(200, H - top - 24) }
+  }
+  openPeek(url) {
+    this.closePeek()
+    const v = new WebContentsView({ webPreferences: { session: this.ses, sandbox: true, contextIsolation: true, plugins: true } })
+    v.setBorderRadius(14)
+    v.setBackgroundColor(nativeTheme.shouldUseDarkColors ? '#1e1f23' : '#ffffff')
+    this.peek = v
+    this.setOverlay(true)
+    this.win.contentView.addChildView(v)
+    v.setBounds(this.peekRect())
+    const wc = v.webContents
+    wc.setWindowOpenHandler(d => { this.createTab(d.url); return { action: 'deny' } })
+    wc.on('before-input-event', (e, input) => { if (input.type === 'keyDown' && input.key === 'Escape') { e.preventDefault(); this.closePeek() } })
+    wc.on('page-title-updated', (e, title) => this.send('peek', { open: true, title, url: wc.getURL(), rect: this.peekRect() }))
+    wc.on('did-navigate', () => this.send('peek', { open: true, title: wc.getTitle(), url: wc.getURL(), rect: this.peekRect() }))
+    wc.loadURL(upgradeURL(url)).catch(() => {})
+    wc.focus()
+    this.send('peek', { open: true, title: '', url, rect: this.peekRect() })
+  }
+  closePeek(action) {
+    const v = this.peek; if (!v) return
+    const url = v.webContents.getURL()
+    this.peek = null
+    try { this.win.contentView.removeChildView(v) } catch {}
+    try { v.webContents.close() } catch {}
+    this.send('peek', { open: false })
+    this.setOverlay(false)
+    if (action === 'tab') this.createTab(url)
+    if (action === 'split') { const n = this.createTab(url, { active: false }); this.splitId = n.id; this.layout(); this.pushState() }
   }
 
   setOverlay(on) {
@@ -574,7 +613,7 @@ class BrowserWin {
     return {
       tabs: this.order.map(id => {
         const t = this.tabs.get(id)
-        return { id: t.id, title: t.title, url: t.url, favicon: t.favicon, pinned: t.pinned, loading: t.loading, audible: t.audible, muted: t.muted, asleep: t.asleep, crashed: t.crashed, hung: !!t.hung }
+        return { id: t.id, title: t.title, url: t.url, favicon: t.favicon, pinned: t.pinned, loading: t.loading, audible: t.audible, muted: t.muted, asleep: t.asleep, crashed: t.crashed, hung: !!t.hung, playing: !!t.playing, mediaAt: t.mediaAt || 0 }
       }),
       activeId: this.activeId, splitId: this.splitId, incognito: this.incognito,
       canBack: !!(awc && awc.navigationHistory.canGoBack()), canForward: !!(awc && awc.navigationHistory.canGoForward()),
@@ -599,6 +638,7 @@ class BrowserWin {
     }
     if (p.linkURL) {
       items.push({ label: 'Open Link in New Tab', click: () => this.createTab(p.linkURL, { active: false, openerId: t.id }) })
+      if (/^https?:/.test(p.linkURL)) items.push({ label: 'Peek Link', click: () => this.openPeek(p.linkURL) })
       items.push({ label: 'Open Link in Split View', click: () => { const n = this.createTab(p.linkURL, { active: false, openerId: t.id }); this.splitId = n.id; this.activate(t.id) } })
       items.push({ label: 'Open Link in New Window', click: () => createWindow({ urls: [p.linkURL] }) })
       if (!this.incognito) items.push({ label: 'Open Link in Private Window', click: () => createWindow({ urls: [p.linkURL], incognito: true }) })
@@ -830,6 +870,23 @@ ipcMain.handle('ui', async (e, action, ...a) => {
       case 'tabMenu': return tabMenu(w, a[0])
       case 'appMenu': return Menu.getApplicationMenu() && appMenuPopup(w)
       case 'print': return wc && wc.print()
+      case 'peekClose': return w.closePeek(a[0])
+      case 'peekOpen': return a[0] && w.openPeek(a[0])
+      case 'media': {
+        const x = w.tabs.get(a[0]); if (!x || !x.view) return
+        if (a[1] === 'go') return w.activate(x.id)
+        return x.view.webContents.executeJavaScript(`(() => { const m = [...document.querySelectorAll('video,audio')]; const p = m.filter(v => !v.paused); if (p.length) { p.forEach(v => v.pause()); return 'paused' } const v = m.sort((a, b) => (b.currentTime > 0) - (a.currentTime > 0))[0]; if (v) { v.play(); return 'playing' } return 'none' })()`, true).catch(() => 'none')
+      }
+      case 'copyAllLinks': { clipboard.writeText(w.order.map(i => { const x = w.tabs.get(i); return cleanURL(x.view ? x.view.webContents.getURL() : x.url) }).filter(u => /^https?:/.test(u)).join('\n')); w.send('toast', 'All tab links copied'); return }
+      case 'saveSession': {
+        const tabs = w.order.map(i => { const x = w.tabs.get(i); return { url: x.view ? x.view.webContents.getURL() : x.url, title: x.title } }).filter(x => /^https?:/.test(x.url))
+        if (!tabs.length) { w.send('toast', 'No web pages to save'); return }
+        const list = D.settings.get('savedSessions') || []
+        list.unshift({ id: Date.now().toString(36), name: new Date().toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }), tabs })
+        D.settings.set('savedSessions', list.slice(0, 12)); w.send('toast', `Saved ${tabs.length} tabs`); return
+      }
+      case 'restoreSession': { const s = (D.settings.get('savedSessions') || []).find(x => x.id === a[0]); if (s) createWindow({ urls: s.tabs.map(x => x.url) }); return }
+      case 'deleteSession': D.settings.set('savedSessions', (D.settings.get('savedSessions') || []).filter(x => x.id !== a[0])); return
       case 'translate': return t && translateTab(w, t)
       case 'fullscreen': return w.win.setFullScreen(!w.win.isFullScreen())
       case 'savePage': return wc && savePage(wc)
@@ -838,7 +895,7 @@ ipcMain.handle('ui', async (e, action, ...a) => {
       case 'closeOthers': { for (const id of [...w.order]) if (id !== w.activeId && !w.tabs.get(id).pinned) w.closeTab(id); return }
       case 'muteOthers': { for (const x of w.tabs.values()) if (x.id !== w.activeId && x.view) { x.muted = true; x.view.webContents.setAudioMuted(true) } w.pushState(); return }
       case 'restart': app.relaunch(); app.quit(); return
-      case 'menuInfo': return { closed: closedTabs.slice(-5).reverse().map(c => ({ title: c.title || c.url, url: c.url })), version: app.getVersion(), update: Updater.getState(), zoom: t ? Math.round(Math.pow(1.2, t.zoom || 0) * 100) : 100, incognito: w.incognito, tabLayout: D.settings.get('tabLayout'), fullscreen: w.win.isFullScreen(), passkeys: Passkeys.list().length, passwords: D.listPasswords().length }
+      case 'menuInfo': return { sessions: (D.settings.get('savedSessions') || []).map(s => ({ id: s.id, name: s.name, count: s.tabs.length })), closed: closedTabs.slice(-5).reverse().map(c => ({ title: c.title || c.url, url: c.url })), version: app.getVersion(), update: Updater.getState(), zoom: t ? Math.round(Math.pow(1.2, t.zoom || 0) * 100) : 100, incognito: w.incognito, tabLayout: D.settings.get('tabLayout'), fullscreen: w.win.isFullScreen(), passkeys: Passkeys.list().length, passwords: D.listPasswords().length }
       case 'zoom': return t && w.zoom(t.id, a[0])
       case 'openPage': return w.createTab('lumen://' + a[0])
       case 'reader': return wc && readerMode(wc)
@@ -889,7 +946,8 @@ function tabMenu(w, id) {
       else { w.splitId = id; w.layout(); w.pushState() }
     } },
     { type: 'separator' },
-    { label: 'Copy Link', click: () => clipboard.writeText(t.view ? t.view.webContents.getURL() : t.url) },
+    { label: 'Copy Link', click: () => clipboard.writeText(cleanURL(t.view ? t.view.webContents.getURL() : t.url)) },
+    { label: 'Copy All Tab Links', click: () => { clipboard.writeText(w.order.map(i => { const x = w.tabs.get(i); return cleanURL(x.view ? x.view.webContents.getURL() : x.url) }).filter(u => /^https?:/.test(u)).join('\n')); w.send('toast', 'All tab links copied') } },
     { label: 'Bookmark', click: () => { D.addBookmark(t.url, t.title); w.pushState() } },
     { label: 'Move to New Window', enabled: w.order.length > 1, click: () => { const url = t.view ? t.view.webContents.getURL() : t.url; w.closeTab(id); createWindow({ urls: [url] }) } },
     { label: 'Put to Sleep', enabled: !!t.view && id !== w.activeId, click: () => w.sleep(t) },
@@ -985,6 +1043,7 @@ ipcMain.on('nav:swipe', (e, dir) => {
   if (dir === 'back' && h.canGoBack()) h.goBack()
   if (dir === 'forward' && h.canGoForward()) h.goForward()
 })
+ipcMain.on('peek:open', (e, url) => { const w = winForWc(e.sender.id); if (w && /^https?:/.test(url)) w.openPeek(url) })
 ipcMain.on('lumen:qol', e => { e.returnValue = { swipe: !!D.settings.get('swipeNav'), speed: !!D.settings.get('videoSpeedKeys') } })
 ipcMain.on('lumen:auth-ua', e => { e.returnValue = isGoogleSignIn(e.senderFrame && e.senderFrame.url) ? firefoxUA() : '' })
 
@@ -1076,6 +1135,13 @@ ipcMain.handle('lumen', async (e, action, ...a) => {
       case 'addBookmark': return D.addBookmark(a[0], a[1])
       case 'passwords': return D.listPasswords()
       case 'passkeys': return Passkeys.list()
+      case 'passwordHealth': {
+        const all = D.listPasswords().map(p => ({ id: p.id, pw: D.revealPassword(p.id) }))
+        const counts = {}; for (const p of all) counts[p.pw] = (counts[p.pw] || 0) + 1
+        const weak = pw => pw.length < 10 || /^[a-z]+$|^[0-9]+$|^[A-Za-z]+$/.test(pw) || /(password|123456|qwerty|letmein|admin|welcome|iloveyou)/i.test(pw) || new Set(pw).size < 5
+        const out = {}; for (const p of all) out[p.id] = { weak: weak(p.pw), reused: counts[p.pw] > 1 }
+        return out
+      }
       case 'deletePasskey': return Passkeys.remove(a[0])
       case 'revealPassword': {
         if (isMac && systemPreferences.canPromptTouchID && systemPreferences.canPromptTouchID()) {
@@ -1208,6 +1274,7 @@ function buildMenu() {
       { label: 'Zoom In ', accelerator: 'CmdOrCtrl+=', visible: false, click: focused((w, t) => t && w.zoom(t.id, 0.5)) },
       { label: 'Zoom Out', accelerator: 'CmdOrCtrl+-', click: focused((w, t) => t && w.zoom(t.id, -0.5)) },
       { type: 'separator' },
+      { label: 'Keyboard Shortcuts', accelerator: 'CmdOrCtrl+/', click: focused(w => w.send('command', 'shortcuts')) },
       { label: 'Developer Tools', accelerator: isMac ? 'Alt+Cmd+I' : 'Ctrl+Shift+I', click: focused((w, t) => activeWc(w, t) && activeWc(w, t).toggleDevTools()) },
       { label: 'View Source', accelerator: isMac ? 'Alt+Cmd+U' : 'Ctrl+U', click: focused((w, t) => t && w.createTab('view-source:' + t.url)) },
       { type: 'separator' }, { role: 'togglefullscreen' },

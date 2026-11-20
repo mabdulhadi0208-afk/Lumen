@@ -256,8 +256,8 @@ body.collapsed #resizer { display: none; }
 /* ----------------------------------------------------------- tabs on top */
 body.toplayout #sidebar {
   right: 0; bottom: auto; width: auto !important; transform: none !important;
-  display: grid; grid-template-columns: auto auto minmax(0, 1fr) auto auto; grid-template-rows: 44px 40px auto;
-  grid-template-areas: "lights pins tabs tabs newtab" "nav url url ext bottom" "prompts prompts prompts prompts prompts";
+  display: grid; grid-template-columns: auto auto minmax(0, 1fr) auto auto auto; grid-template-rows: 44px 40px auto;
+  grid-template-areas: "lights pins tabs tabs tabs newtab" "nav url url np ext bottom" "prompts prompts prompts prompts prompts prompts";
   column-gap: 8px; align-items: center; padding: 0 8px 4px 10px; -webkit-app-region: drag;
 }
 body.toplayout .topbar { display: contents; }
@@ -284,7 +284,7 @@ body.toplayout .prompt .ph { margin: 0; }
 body.toplayout .prompt .pt { margin: 0; flex: 1; }
 body.toplayout .prompt label { margin: 0; }
 body.toplayout .bottombar { grid-area: bottom; padding: 0; }
-body.toplayout #toast { left: auto; right: 70px; bottom: auto; top: 8px; }
+body.toplayout #toast { left: 50%; right: auto; bottom: auto; top: 6px; margin-left: -110px; text-align: center; min-width: 220px; z-index: 300; }
 body.toplayout .tab:not(.active):not(:hover) .x { display: none; }
 body.toplayout .tab .title { mask-image: linear-gradient(90deg, #000 80%, transparent); }
 
@@ -323,3 +323,30 @@ body.nonmac { --bg: color-mix(in srgb, var(--accent) 8%, var(--bg-solid)); }
 .mm-count { font-size: 11px; color: var(--fg3); margin-right: 4px; }
 
 .mm-label { font-size: 11px; font-weight: 600; color: var(--fg3); letter-spacing: .02em; padding: 6px 8px 2px; }
+
+/* ----------------------------------------------------------- peek */
+.peekbar { position: absolute; display: none; align-items: center; gap: 10px; height: 38px; padding: 0 6px 0 10px; z-index: 5; background: var(--card-solid); border-radius: 12px; box-shadow: var(--shadow-lg); }
+.peekbar .pk-ico { width: 18px; height: 18px; display: grid; place-items: center; flex: none; }
+.peekbar .pk-ico img, .peekbar .pk-ico .fav { width: 16px; height: 16px; border-radius: 3px; }
+.peekbar .pk-t { flex: 1; min-width: 0; display: flex; gap: 8px; align-items: baseline; white-space: nowrap; overflow: hidden; }
+.peekbar .pk-t b { font-weight: 600; overflow: hidden; text-overflow: ellipsis; }
+.peekbar .pk-t span { color: var(--fg3); font-size: 12px; }
+/* ----------------------------------------------------------- now playing */
+.nowplaying { display: none; align-items: center; gap: 4px; margin-top: 8px; padding: 6px 6px 6px 8px; border-radius: 12px; background: var(--card); box-shadow: var(--shadow); flex: none; }
+.nowplaying.show { display: flex; }
+.np-main { flex: 1; min-width: 0; display: flex; align-items: center; gap: 9px; text-align: left; }
+.np-ico { width: 26px; height: 26px; border-radius: 7px; background: var(--hover); display: grid; place-items: center; flex: none; }
+.np-ico img, .np-ico .fav { width: 16px; height: 16px; border-radius: 3px; }
+.np-t { min-width: 0; display: flex; flex-direction: column; }
+.np-t b { font-weight: 600; font-size: 12.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.np-t span { font-size: 11px; color: var(--fg3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+body.toplayout .nowplaying { grid-area: np; margin: 0; padding: 2px 4px 2px 6px; max-width: 240px; height: 34px; }
+body.toplayout .nowplaying .np-ico { width: 22px; height: 22px; }
+body.toplayout .extbar.has + .pins { }
+/* ----------------------------------------------------------- shortcuts sheet */
+.popover.sheet { width: min(760px, calc(100vw - 40px)); padding: 18px 20px; }
+.sc-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; font-size: 16px; }
+.sc-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px 28px; }
+.sc-row { display: flex; justify-content: space-between; gap: 12px; padding: 5px 8px; border-radius: 7px; font-size: 13px; }
+.sc-row:hover { background: var(--hover); }
+.sc-row kbd { font-size: 11.5px; color: var(--fg2); background: var(--hover); padding: 2px 7px; border-radius: 6px; white-space: nowrap; }

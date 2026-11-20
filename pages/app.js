@@ -224,12 +224,17 @@ async function passwords(m) {
   <div class="card list" id="pklist"></div>
   <p class="note">When a site offers to create a passkey, Lumen saves it here and signs you in with Touch ID next time. Passkeys sync with Sync on, end-to-end encrypted.</p>
   <p class="note">In Chrome: Settings, Passwords and autofill, Google Password Manager, Settings, Export passwords. Then import the CSV here.</p>`
+  const health = await L.invoke('passwordHealth') || {}
+  const weakN = Object.values(health).filter(h => h.weak).length, reusedN = Object.values(health).filter(h => h.reused).length
+  if (list.length) $('#main').querySelector('.toolbar').insertAdjacentHTML('beforebegin', `<div class="card health"><div class="row"><span class="hscore ${weakN + reusedN ? 'warn' : 'ok'}">${ICONS.shield}</span><div class="grow"><div class="t">${weakN + reusedN ? 'Some passwords could be stronger' : 'Your passwords look good'}</div><div class="d">${list.length} saved  ·  ${reusedN} reused  ·  ${weakN} weak. Checked on this device only.</div></div>${weakN + reusedN ? '<button class="btn sm" id="onlyrisk">Show them</button>' : ''}</div></div>`)
+  let onlyRisk = false
   const draw = q => {
-    const f = list.filter(p => !q || p.origin.includes(q) || p.username.toLowerCase().includes(q))
-    $('#list').innerHTML = f.length ? f.map(p => `<div class="row" data-id="${p.id}">${fav(p.origin)}<div class="grow"><div class="t">${esc(hostOf(p.origin))}</div><div class="d">${esc(p.username || '(no username)')}</div></div><span class="mono pw" style="color:var(--fg3)">••••••••••</span><button class="btn sm" data-a="show">Show</button><button class="btn sm" data-a="copy">Copy</button><button class="ib" data-a="del" title="Delete">${ICONS.close}</button></div>`).join('') : `<div class="empty">${q ? 'No matches' : 'No saved passwords yet. Lumen will offer to save them when you sign in to sites.'}</div>`
+    const f = list.filter(p => (!q || p.origin.includes(q) || p.username.toLowerCase().includes(q)) && (!onlyRisk || (health[p.id] && (health[p.id].weak || health[p.id].reused))))
+    $('#list').innerHTML = f.length ? f.map(p => `<div class="row" data-id="${p.id}">${fav(p.origin)}<div class="grow"><div class="t">${esc(hostOf(p.origin))} ${health[p.id] && health[p.id].reused ? '<span class="pill warn">Reused</span>' : ''} ${health[p.id] && health[p.id].weak ? '<span class="pill warn">Weak</span>' : ''}</div><div class="d">${esc(p.username || '(no username)')}</div></div><span class="mono pw" style="color:var(--fg3)">••••••••••</span><button class="btn sm" data-a="show">Show</button><button class="btn sm" data-a="copy">Copy</button><button class="ib" data-a="del" title="Delete">${ICONS.close}</button></div>`).join('') : `<div class="empty">${q ? 'No matches' : 'No saved passwords yet. Lumen will offer to save them when you sign in to sites.'}</div>`
   }
   draw('')
   $('#q').oninput = e => draw(e.target.value.toLowerCase())
+  const orb = $('#onlyrisk'); if (orb) orb.onclick = () => { onlyRisk = !onlyRisk; orb.textContent = onlyRisk ? 'Show all' : 'Show them'; draw($('#q').value.toLowerCase()) }
   $('#list').onclick = async e => {
     const b = e.target.closest('[data-a]'); if (!b) return
     const r = b.closest('[data-id]'), id = r.dataset.id

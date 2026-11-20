@@ -13,7 +13,8 @@ let engines = {}
 let downloads = []
 let updateState = {}
 
-const ROW = 36
+let ROW = 36
+let GUT = 8
 Jelly.init({
   buttons: '.ib, .btn, .pin, .site, .update, .wincontrols button, .tab .x, .tab .audio, .popover .seg button, .mm-tile',
   cards: '.prompt, .newtab',
@@ -68,7 +69,9 @@ let collapsed = false
 let peeking = false
 const sideX = new Spring(0, 'calm', () => queueLayout())      // content left edge offset (sidebar visible amount)
 const findH = new Spring(0, 'calm', () => queueLayout())
-const barH = new Spring(88, 'calm', () => queueLayout())   // height of the top bar in the tabs-on-top layout
+const barH = new Spring(88, 'calm', () => queueLayout())
+const AI_W = 372
+const aiW = new Spring(0, 'calm', () => queueLayout())     // width taken by the AI panel on the right   // height of the top bar in the tabs-on-top layout
 new ResizeObserver(() => { if (TOP) barH.to(sidebar.offsetHeight) }).observe(sidebar)
 const peekX = new Spring(0, 'calm', v => { sidebar.style.transform = `translateX(${v}px)` })
 let layoutQueued = false
@@ -77,10 +80,15 @@ let lastRectKey = ''
 function doLayout() {
   layoutQueued = false
   const W = innerWidth, H = innerHeight
-  const left = TOP ? 8 : Math.round(8 + sideX.value)
-  const barTop = TOP ? Math.round(barH.value) : 8
+  const left = TOP ? GUT : Math.round(GUT + sideX.value)
+  const barTop = TOP ? Math.round(barH.value) : GUT
   const top = Math.round(barTop + findH.value)
-  const rect = { x: left, y: top, width: Math.max(80, W - left - 8), height: Math.max(80, H - top - 8) }
+  const aiw = Math.max(0, aiW.value)
+  const rect = { x: left, y: top, width: Math.max(80, W - left - GUT - aiw), height: Math.max(80, H - top - GUT) }
+  const ap = $('#aipanel')
+  Object.assign(ap.style, { top: top + 'px', height: rect.height + 'px', width: (AI_W - GUT) + 'px', transform: `translateX(${AI_W - aiw}px)`, opacity: Math.min(1, aiw / (AI_W * 0.6)), visibility: aiw < 2 ? 'hidden' : 'visible' })
+  const ds = document.documentElement.style
+  ds.setProperty('--cx', rect.x + 'px'); ds.setProperty('--cy', rect.y + 'px'); ds.setProperty('--cw', rect.width + 'px'); ds.setProperty('--ch', rect.height + 'px')
   const sh = $('#content-shadow')
   Object.assign(sh.style, { left: rect.x + 'px', top: rect.y + 'px', width: rect.width + 'px', height: rect.height + 'px' })
   const fb = $('#findbar')
@@ -97,7 +105,7 @@ function setCollapsed(c, { save = true, instant = false } = {}) {
   if (TOP) c = false
   collapsed = c
   document.body.classList.toggle('collapsed', c)
-  const target = c ? 0 : sidebarW - 8
+  const target = c ? 0 : sidebarW - GUT
   if (instant) sideX.set(target); else sideX.to(target)
   if (c) { if (instant) peekX.set(-sidebarW - 12); else peekX.to(-sidebarW - 12) }
   else {
@@ -105,7 +113,7 @@ function setCollapsed(c, { save = true, instant = false } = {}) {
     peeking = false; sidebar.classList.remove('peek'); peekX.to(0)
     if (wasPeeking && !overlayOpen) api.do('overlay', false)
   }
-  api.do('trafficLights', !c, TOP ? { x: 16, y: 15 } : { x: 16, y: 18 })
+  api.do('trafficLights', !c, TOP ? { x: 16, y: settings.compact ? 11 : 15 } : { x: 16, y: 18 })
   if (save) api.do('setSetting', 'sidebarCollapsed', c)
 }
 $('#btn-sidebar').onclick = () => setCollapsed(!collapsed)
@@ -202,9 +210,37 @@ let TOP = false
 const GAP = 6
 let tabW = 200
 const stepOf = () => TOP ? tabW + GAP : ROW
+const GROUP_COLORS = { blue: '#5b8cff', purple: '#8a63f2', pink: '#e9609c', orange: '#f08a3c', yellow: '#dcae22', green: '#3fb37f', teal: '#22a6b3', gray: '#8a8f98' }
+const groupOf = id => (S.groups || []).find(g => g.id === id)
+const headW = g => g.collapsed ? Math.min(150, 34 + g.name.length * 7) : Math.min(150, 26 + g.name.length * 7)
+const HEAD_H = () => ROW - 8
+// where every tab and group header sits along the tab axis, for a given order of tab objects
+function layoutOf(list) {
+  const pos = new Map(), heads = [], hidden = new Set()
+  let p = 0, cur = null
+  for (const t of list) {
+    const g = t.group && groupOf(t.group)
+    if (g && (!cur || cur.id !== g.id)) {
+      cur = g
+      const size = TOP ? headW(g) : HEAD_H()
+      heads.push({ g, p, size })
+      p += size + (TOP ? GAP : 0)
+    }
+    if (!g) cur = null
+    if (g && g.collapsed) { pos.set(t.id, Math.max(0, p - (TOP ? GAP : 0) - (TOP ? headW(g) : HEAD_H()))); hidden.add(t.id); continue }
+    pos.set(t.id, p)
+    p += stepOf()
+  }
+  return { pos, heads, hidden, total: Math.max(0, p - (TOP ? GAP : 0)) }
+}
+let LAYOUT = { pos: new Map(), heads: [], hidden: new Set(), total: 0 }
 function measureTabW(n) {
-  const avail = $('#tablist').clientWidth || 600
-  tabW = Math.max(84, Math.min(220, Math.floor((avail - Math.max(0, n - 1) * GAP) / Math.max(1, n))))
+  const list = S.tabs.filter(t => !t.pinned)
+  const vis = list.filter(t => !(t.group && groupOf(t.group) && groupOf(t.group).collapsed)).length
+  const seenG = new Set(); let heads = 0
+  for (const t of list) { const g = t.group && groupOf(t.group); if (g && !seenG.has(g.id)) { seenG.add(g.id); heads += headW(g) + GAP } }
+  const avail = ($('#tablist').clientWidth || 600) - heads
+  tabW = Math.max(84, Math.min(220, Math.floor((avail - Math.max(0, vis - 1) * GAP) / Math.max(1, vis))))
 }
 const pillG = new SpringGroup({ p: 0, o: 0, s: 1, w: 200 }, 'calm', v => {
   pill.style.transform = TOP ? `translateX(${v.p}px) scale(${v.s})` : `translateY(${v.p}px) scale(${v.s})`
@@ -227,6 +263,7 @@ function renderTabs() {
   const list = S.tabs.filter(t => !t.pinned)
   if (TOP) measureTabW(list.length)
   const step = stepOf()
+  LAYOUT = layoutOf(list)
 
   // pinned tabs
   const pinIds = pinned.map(t => String(t.id)).join(',')
@@ -248,7 +285,7 @@ function renderTabs() {
   list.forEach((t, i) => {
     seen.add(t.id)
     let v = tabViews.get(t.id)
-    const p = i * step
+    const p = LAYOUT.pos.get(t.id)
     if (!v) {
       const el = document.createElement('div')
       el.className = 'tab'
@@ -273,7 +310,12 @@ function renderTabs() {
       v.el.innerHTML = tabInner(t)
     }
     v.index = i
-    if (!(drag && drag.id === t.id && drag.active)) v.g.to({ p })
+    const hid = LAYOUT.hidden.has(t.id)
+    if (!(drag && drag.id === t.id && drag.active)) v.g.to(hid ? { p, o: 0, s: 0.85 } : { p, o: 1, s: 1 })
+    v.el.style.pointerEvents = hid ? 'none' : ''
+    const g = t.group && groupOf(t.group)
+    v.el.classList.toggle('grouped', !!g)
+    if (g) v.el.style.setProperty('--gc', GROUP_COLORS[g.color] || g.color)
     v.paint(v.g.state)
     v.el.classList.toggle('active', t.id === S.activeId)
     v.el.classList.toggle('asleep', t.asleep)
@@ -289,16 +331,65 @@ function renderTabs() {
     v.g.to({ o: 0, s: 0.9, e: TOP ? 8 : -8 })
     v.g.onRest(() => { v.el.remove(); tabViews.delete(id) })
   }
-  if (TOP) { tabsEl.style.height = ''; tabsEl.style.width = Math.max(0, list.length * step - GAP) + 'px' }
-  else { tabsEl.style.width = ''; tabsEl.style.height = list.length * ROW + 'px' }
+  if (TOP) { tabsEl.style.height = ''; tabsEl.style.width = LAYOUT.total + 'px' }
+  else { tabsEl.style.width = ''; tabsEl.style.height = LAYOUT.total + 'px' }
+  renderGroupHeads()
 
   const act = tabViews.get(S.activeId)
-  if (act && !act.leaving) {
-    const p = act.index * step
+  if (act && !act.leaving && !LAYOUT.hidden.has(S.activeId)) {
+    const p = LAYOUT.pos.get(S.activeId)
     if (pillG.state.o < 0.05) pillG.set({ p, w: tabW })
     pillG.to({ p, o: 1, w: tabW })
     if (!drag) act.el.scrollIntoView({ block: 'nearest', inline: 'nearest' })
   } else pillG.to({ o: 0 })
+}
+
+// group headers: a colored chip in the top bar, a labelled row in the sidebar
+const headViews = new Map()
+function renderGroupHeads() {
+  const seen = new Set()
+  for (const h of LAYOUT.heads) {
+    seen.add(h.g.id)
+    let v = headViews.get(h.g.id)
+    if (!v) {
+      const el = document.createElement('div')
+      el.className = 'ghead'
+      el.dataset.gid = h.g.id
+      el.innerHTML = '<i></i><span class="gn"></span><b class="gc"></b>'
+      tabsEl.appendChild(el)
+      v = { el }
+      v.g = new SpringGroup({ p: h.p, o: 0, s: 0.8 }, 'jelly', st => {
+        el.style.transform = (TOP ? `translateX(${st.p}px)` : `translateY(${st.p}px)`) + ` scale(${st.s})`
+        el.style.opacity = Math.max(0, Math.min(1, st.o))
+      })
+      el.addEventListener('click', () => { if (!el.querySelector('[contenteditable]')) api.do('groupToggle', el.dataset.gid) })
+      el.addEventListener('contextmenu', e => { e.preventDefault(); api.do('groupMenu', el.dataset.gid) })
+      el.addEventListener('dblclick', e => { e.preventDefault(); renameGroup(el.dataset.gid) })
+      headViews.set(h.g.id, v)
+      v.leaving = false
+    }
+    v.el.style.setProperty('--gc', GROUP_COLORS[h.g.color] || h.g.color)
+    v.el.querySelector('.gn').textContent = h.g.name
+    v.el.querySelector('.gc').textContent = h.g.collapsed ? String(S.tabs.filter(t => t.group === h.g.id).length) : ''
+    v.el.classList.toggle('collapsed', !!h.g.collapsed)
+    if (TOP) v.el.style.width = h.size + 'px'; else v.el.style.width = ''
+    v.g.to({ p: h.p, o: 1, s: 1 })
+  }
+  for (const [id, v] of headViews) {
+    if (seen.has(id)) continue
+    headViews.delete(id)
+    v.g.to({ o: 0, s: 0.8 })
+    v.g.onRest(() => v.el.remove())
+  }
+}
+function renameGroup(gid) {
+  const v = headViews.get(gid); if (!v) return
+  const n = v.el.querySelector('.gn')
+  n.contentEditable = 'plaintext-only'; n.focus()
+  const sel = getSelection(); sel.selectAllChildren(n)
+  const done = save => { n.removeAttribute('contenteditable'); n.onblur = n.onkeydown = null; if (save) api.do('groupRename', gid, n.textContent.trim()); else renderTabs() }
+  n.onkeydown = e => { if (e.key === 'Enter') { e.preventDefault(); done(true) } else if (e.key === 'Escape') done(false) }
+  n.onblur = () => done(true)
 }
 
 function setTabLayout(top) {
@@ -307,9 +398,11 @@ function setTabLayout(top) {
   // re-seat every tab and the pill on the new axis without animating across the screen
   const list = S.tabs.filter(t => !t.pinned)
   if (TOP) measureTabW(list.length)
-  for (const [, v] of tabViews) { v.g.set({ p: (v.index || 0) * stepOf(), e: 0 }) }
-  const act = tabViews.get(S.activeId)
-  pillG.set({ p: act ? act.index * stepOf() : 0, w: tabW })
+  LAYOUT = layoutOf(list)
+  for (const [id, v] of tabViews) { v.g.set({ p: LAYOUT.pos.get(id) || 0, e: 0 }) }
+  for (const [, v] of headViews) v.el.remove()
+  headViews.clear()
+  pillG.set({ p: LAYOUT.pos.get(S.activeId) || 0, w: tabW })
   renderTabs()
 }
 addEventListener('resize', () => { if (TOP) renderTabs() })
@@ -320,7 +413,7 @@ function bindTab(v, id) {
   el.addEventListener('pointerdown', e => {
     if (e.button === 1) { e.preventDefault(); return }
     if (e.button !== 0 || e.target.closest('.x, .audio')) return
-    drag = { id, active: false, start: coord(e), startPos: v.index * stepOf(), index: v.index }
+    drag = { id, active: false, start: coord(e), startPos: LAYOUT.pos.get(id) || 0, index: v.index }
     el.setPointerCapture(e.pointerId)
     // press squashes the tab a little
     v.g.to({ s: 0.97 })
@@ -330,17 +423,21 @@ function bindTab(v, id) {
     const d = coord(e) - drag.start
     if (!drag.active && Math.abs(d) > 4) { drag.active = true; el.classList.add('dragging'); v.g.to({ s: 1.02 }) }
     if (!drag.active) return
-    const step = stepOf()
-    const count = S.tabs.filter(t => !t.pinned).length
-    const p = Math.max(-6, Math.min((count - 1) * step + 6, drag.startPos + d))
+    const all = S.tabs.filter(t => !t.pinned)
+    const p = Math.max(-6, Math.min(LAYOUT.total - stepOf() + 6 + GAP, drag.startPos + d))
     v.g.set({ p })
-    const to = Math.max(0, Math.min(count - 1, Math.round(p / step)))
-    drag.index = to
-    // shift the others into their new slots
-    const ids = S.tabs.filter(t => !t.pinned).map(t => t.id).filter(x => x !== id)
-    ids.splice(to, 0, id)
-    ids.forEach((tid, i) => { if (tid !== id) { const o = tabViews.get(tid); if (o) o.g.to({ p: i * step }) } })
-    if (S.activeId !== id) { const ai = ids.indexOf(S.activeId); if (ai >= 0 && tabViews.get(S.activeId)) pillG.to({ p: ai * step }) }
+    // pick the slot whose position is closest to where the tab is being held
+    const me = all.find(t => t.id === id), others = all.filter(t => t.id !== id)
+    let best = 0, bestD = Infinity, bestL = null
+    for (let k = 0; k <= others.length; k++) {
+      const o = others.slice(); o.splice(k, 0, me)
+      const L = layoutOf(o), dd = Math.abs(L.pos.get(id) - p)
+      if (dd < bestD) { bestD = dd; best = k; bestL = L }
+    }
+    drag.index = best; drag.L = bestL
+    for (const t of others) { const o = tabViews.get(t.id); if (o) o.g.to({ p: bestL.pos.get(t.id) }) }
+    for (const h of bestL.heads) { const hv = headViews.get(h.g.id); if (hv) hv.g.to({ p: h.p }) }
+    if (S.activeId !== id) { if (tabViews.get(S.activeId) && bestL.pos.has(S.activeId)) pillG.to({ p: bestL.pos.get(S.activeId) }) }
     else pillG.set({ p })
   })
   const end = e => {
@@ -352,7 +449,7 @@ function bindTab(v, id) {
       // dropped: squash flat, then bounce once or twice
       v.q.to(0, { velocity: 3 })
       const pinnedCount = S.tabs.filter(t => t.pinned).length
-      v.g.to({ p: d.index * stepOf() })
+      v.g.to({ p: d.L ? d.L.pos.get(id) : (LAYOUT.pos.get(id) || 0) })
       // reorder locally right away so nothing jumps, then tell the browser
       const moved = S.tabs.find(t => t.id === id)
       const rest = S.tabs.filter(t => t.id !== id)
@@ -421,6 +518,10 @@ const COMMANDS = [
   { t: 'Mute Other Tabs', k: ['mute', 'silence', 'quiet'], i: 'muted', run: () => api.do('muteOthers') },
   { t: 'Copy Clean Link', k: ['copy link', 'share', 'clean link'], i: 'arrowRight', run: () => navigator.clipboard.writeText(S.url).then(() => toast('Link copied')) },
   { t: 'Translate Page', k: ['translate', 'translation', 'language'], i: 'globe', run: () => api.do('translate') },
+  { t: 'Lumen AI', k: ['ai', 'ask', 'chat', 'assistant', 'claude'], i: 'bolt', run: () => openAI() },
+  { t: 'Summarize Page', k: ['summarize', 'summary', 'tldr', 'ai'], i: 'book', run: () => { openAI(); aiRun('summarize') } },
+  { t: 'Sort Tabs into Groups', k: ['group', 'sort tabs', 'organize', 'tidy'], i: 'tabs', run: () => api.do('autoGroup') },
+  { t: 'Ungroup All Tabs', k: ['ungroup', 'remove groups'], i: 'tabs', run: () => api.do('ungroupAll') },
   { t: 'Reader Mode', k: ['reader', 'read'], i: 'book', run: () => api.do('reader') },
   { t: 'Picture in Picture', k: ['pip', 'picture', 'video'], i: 'pip', run: () => api.do('pip') },
   { t: 'Take Screenshot', k: ['screenshot', 'capture'], i: 'camera', run: () => api.do('screenshot') },
@@ -701,6 +802,9 @@ async function openMainMenu() {
     ${item('screenshot', 'camera', 'Take screenshot', `${K.sh} ${K.cmd} 2`)}
     ${item('print', 'arrowRight', 'Print', `${K.cmd} P`)}
     <div class="sep"></div>
+    ${item('ai', 'bolt', 'Lumen AI', `${K.sh} ${K.cmd} A`)}
+    ${item('autogroup', 'tabs', 'Sort tabs into groups', `${K.sh} ${K.cmd} G`)}
+    ${(S.groups || []).length ? item('ungroup', 'close', 'Ungroup all tabs', '') : ''}
     <div class="sep"></div>
     ${item('savesession', 'star', 'Save all tabs as a session', '')}
     ${(info.sessions || []).map(x => `<div class="item mm" data-mm="restore" data-id="${esc(x.id)}"><span class="ri">${ICONS.tabs}</span><div class="grow">${esc(x.name)}<div class="small">${x.count} tabs</div></div><button class="ib sm" data-mm="delsession" data-id="${esc(x.id)}" title="Delete">${ICONS.close}</button></div>`).join('')}
@@ -727,6 +831,7 @@ async function openMainMenu() {
       find: () => openFind(), translate: () => api.do('translate'), reader: () => api.do('reader'), pip: () => api.do('pip').then(ok => { if (ok === false) toast('No video on this page') }),
       split: () => toggleSplit(), screenshot: () => api.do('screenshot'), print: () => api.do('print'),
       layout: () => api.do('setSetting', 'tabLayout', TOP ? 'side' : 'top'), intro: () => playIntro(),
+      ai: () => openAI(), autogroup: () => api.do('autoGroup'), ungroup: () => api.do('ungroupAll'),
     }[a]
     if (run) run()
   }
@@ -869,6 +974,8 @@ api.on('update', u => { updateState = u; $('#btn-update').classList.toggle('show
 api.on('fullscreen', f => { fullscreenWindow = f })
 let fullscreenWindow = false
 api.on('command', c => {
+  if (c && typeof c === 'object' && c.ai) { openAI(); aiRun(c.ai, c.text); return }
+  if (c === 'ai') { toggleAI(); return }
   if (c === 'newtab') api.do('newTab')
   else if (c === 'palette') openCmd('newtab')
   else if (c === 'menu') openMainMenu()
@@ -880,8 +987,29 @@ api.on('command', c => {
   else if (c === 'sidebar') { if (!TOP) setCollapsed(!collapsed) }
   else if (c === 'tabsTop') api.do('setSetting', 'tabLayout', TOP ? 'side' : 'top')
   else if (c === 'split') toggleSplit()
+  else if (c.startsWith && c.startsWith('rename-group:')) renameGroup(c.slice(13))
+  else if (c === 'autoGroup') api.do('autoGroup')
   else if (c === 'pip') api.do('pip').then(ok => { if (ok === false) toast('No video on this page') })
 })
+
+function applyTheme() {
+  const th = INCOGNITO ? LUMEN_THEMES.default : themeBg(settings.browserTheme || 'default', settings.themeCustom)
+  const b = document.body
+  b.classList.toggle('themed', !!th.bg)
+  b.classList.toggle('glass', !!th.glass)
+  b.classList.toggle('chrome-dark', th.dark === true)
+  b.classList.toggle('chrome-light', th.dark === false)
+  document.documentElement.style.setProperty('--theme-bg', th.bg || 'none')
+  const compact = !!settings.compact
+  if (compact !== b.classList.contains('compact') || ROW !== (compact ? 30 : 36)) {
+    api.do('trafficLights', !collapsed, TOP ? { x: 16, y: compact ? 11 : 15 } : { x: 16, y: 18 })
+    b.classList.toggle('compact', compact)
+    ROW = compact ? 30 : 36; GUT = compact ? 4 : 8
+    if (typeof renderTabs === 'function' && S.tabs.length) { for (const [, v] of tabViews) v.g.set({ p: (v.index || 0) * stepOf() }); renderTabs() }
+    if (!TOP && !collapsed) sideX.set(sidebarW - GUT)
+    queueLayout()
+  }
+}
 
 function applySettings(s) {
   const prevMotion = settings.motion
@@ -890,12 +1018,13 @@ function applySettings(s) {
   document.documentElement.style.setProperty('--accent', settings.accent || '#5b8cff')
   if (settings.sidebarWidth && settings.sidebarWidth !== sidebarW && !collapsed) { sidebarW = settings.sidebarWidth; sideX.to(sidebarW - 8) }
   if (prevMotion !== settings.motion) document.body.dataset.motion = settings.motion
+  applyTheme()
   const wantTop = settings.tabLayout === 'top'
   if (wantTop !== TOP) {
     setTabLayout(wantTop)
     if (wantTop) { collapsed = false; document.body.classList.remove('collapsed'); peeking = false; sidebar.classList.remove('peek'); peekX.set(0); barH.set(sidebar.offsetHeight) }
     else { sideX.set(sidebarW - 8); if (settings.sidebarCollapsed) setCollapsed(true, { save: false, instant: true }) }
-    api.do('trafficLights', !collapsed, wantTop ? { x: 16, y: 15 } : { x: 16, y: 18 })
+    api.do('trafficLights', !collapsed, wantTop ? { x: 16, y: settings.compact ? 11 : 15 } : { x: 16, y: 18 })
     queueLayout()
   }
 }
@@ -931,3 +1060,80 @@ function playIntro() {
   api.do('overlay', true); api.do('intro', true)
   Intro.play({ onDone: () => { api.do('intro', false); api.do('setSetting', 'introSeen', true); if (!overlayOpen && !peeking) api.do('overlay', false) } })
 }
+
+
+// ---------------------------------------------------------------- Lumen AI panel
+let aiOpen = false, aiBusy = null, aiHistory = [], aiSeq = 0
+const aiLog = $('#ai-log'), aiQ = $('#ai-q')
+$('#ai-close').innerHTML = ICONS.close; $('#ai-clear').innerHTML = ICONS.reload; $('#ai-send').innerHTML = ICONS.arrowRight
+function mdToHTML(src) {
+  const lines = esc(src).split('\n'); let out = '', list = null
+  const inline = s => s.replace(/`([^`]+)`/g, '<code>$1</code>').replace(/\*\*([^*]+)\*\*/g, '<b>$1</b>').replace(/(^|[^*])\*([^*\n]+)\*/g, '$1<i>$2</i>')
+  const close = () => { if (list) { out += `</${list}>`; list = null } }
+  for (const l of lines) {
+    let m
+    if ((m = l.match(/^\s*[-*•]\s+(.*)/))) { if (list !== 'ul') { close(); out += '<ul>'; list = 'ul' } out += `<li>${inline(m[1])}</li>` }
+    else if ((m = l.match(/^\s*\d+[.)]\s+(.*)/))) { if (list !== 'ol') { close(); out += '<ol>'; list = 'ol' } out += `<li>${inline(m[1])}</li>` }
+    else if ((m = l.match(/^#{1,4}\s+(.*)/))) { close(); out += `<h5>${inline(m[1])}</h5>` }
+    else if (!l.trim()) close()
+    else { close(); out += `<p>${inline(l)}</p>` }
+  }
+  close(); return out
+}
+async function refreshAI() {
+  const st = await api.do('aiStatus').catch(() => null) || {}
+  $('#aipanel').classList.toggle('nokey', !st.ready)
+  $('#ai-page').textContent = st.title || hostOf(st.url || '') || ''
+  return st
+}
+function openAI() {
+  if (aiOpen) { refreshAI(); return }
+  aiOpen = true; $('#aipanel').classList.add('open')
+  aiW.to(AI_W); refreshAI()
+  setTimeout(() => aiQ.focus(), 120)
+}
+function closeAI() { aiOpen = false; $('#aipanel').classList.remove('open'); aiW.to(0) }
+function toggleAI() { aiOpen ? closeAI() : openAI() }
+function aiBubble(role, html) {
+  const el = document.createElement('div'); el.className = 'ai-msg ' + role; el.innerHTML = html
+  aiLog.appendChild(el); aiLog.scrollTop = aiLog.scrollHeight
+  requestAnimationFrame(() => Jelly.kick && Jelly.kick(el, 0.6, 0.5))
+  return el
+}
+const AI_LABEL = { summarize: 'Summarize this page', keypoints: 'Key points', explain: 'Explain the selection' }
+async function aiRun(mode, text) {
+  const st = await refreshAI()
+  if (!st.ready) return
+  if (aiBusy) api.do('aiStop', aiBusy)
+  if (mode === 'explain' && !text) text = st.sel
+  if (mode === 'explain' && !text) { aiBubble('note', '<p>Highlight some text on the page first, then press Explain selection, or right-click it and pick Explain with Lumen AI.</p>'); return }
+  const shown = mode === 'chat' ? text : AI_LABEL[mode] + (mode === 'explain' ? `<blockquote>${esc(text.slice(0, 280))}${text.length > 280 ? '...' : ''}</blockquote>` : '')
+  aiBubble('user', mode === 'chat' ? `<p>${esc(text)}</p>` : `<p>${shown}</p>`)
+  const out = aiBubble('bot', '<div class="ai-dots"><i></i><i></i><i></i></div>')
+  const id = 'r' + (++aiSeq); aiBusy = id
+  $('#aipanel').classList.add('busy')
+  out.dataset.id = id; out.dataset.buf = ''
+  api.do('aiAsk', { id, mode, text, history: aiHistory })
+}
+api.on('ai', m => {
+  const out = aiLog.querySelector(`[data-id="${m.id}"]`)
+  if (!out) return
+  if (m.delta) { out.dataset.buf += m.delta; out.innerHTML = mdToHTML(out.dataset.buf); aiLog.scrollTop = aiLog.scrollHeight }
+  if (m.error) { out.classList.add('err'); out.innerHTML = `<p>${esc(m.error)}</p>` }
+  if (m.done && m.prompt) { aiHistory.push({ role: 'user', content: m.prompt }, { role: 'assistant', content: m.text }); aiHistory = aiHistory.slice(-12) }
+  if (m.done && m.stopped && !out.dataset.buf) out.innerHTML = '<p class="small">Stopped</p>'
+  if (m.done || m.error) { if (aiBusy === m.id) { aiBusy = null; $('#aipanel').classList.remove('busy') } }
+})
+$('#ai-form').addEventListener('submit', e => {
+  e.preventDefault()
+  if (aiBusy) { api.do('aiStop', aiBusy); return }
+  const q = aiQ.value.trim(); if (!q) return
+  aiQ.value = ''; aiQ.style.height = ''
+  aiRun('chat', q)
+})
+aiQ.addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) { e.preventDefault(); $('#ai-form').requestSubmit() } else if (e.key === 'Escape') closeAI() })
+aiQ.addEventListener('input', () => { aiQ.style.height = ''; aiQ.style.height = Math.min(140, aiQ.scrollHeight) + 'px' })
+$('#aipanel .ai-actions').addEventListener('click', e => { const b = e.target.closest('[data-ai]'); if (b) aiRun(b.dataset.ai) })
+$('#ai-close').onclick = closeAI
+$('#ai-clear').onclick = () => { if (aiBusy) api.do('aiStop', aiBusy); aiHistory = []; aiLog.innerHTML = ''; refreshAI() }
+$('#ai-addkey').onclick = () => api.do('openPage', 'settings/ai')

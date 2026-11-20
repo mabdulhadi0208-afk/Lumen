@@ -19,7 +19,7 @@ function applyLook(s) {
   document.body.dataset.motion = s.motion
   Jelly.setMode(s.motion === 'lively' ? 'jelly' : s.motion)
 }
-Jelly.init({ buttons: '.btn, .ib, .seg button, .swatches button, .nav a, .ntp .foot a, .customize', cards: '.tile, .err .ico, .key, .wpb', press: '.list .row' })
+Jelly.init({ buttons: '.btn, .ib, .seg button, .swatches button, .nav a, .ntp .foot a, .customize', cards: '.tile, .err .ico, .key, .wpb, .thb, .icb', press: '.list .row' })
 Jelly.smoothScroll(window)
 
 // ======================================================================= new tab
@@ -106,7 +106,7 @@ async function newTab() {
 
 // ======================================================================= settings shell
 const SECTIONS = [
-  ['general', 'General', 'gear'], ['appearance', 'Appearance', 'moon'], ['privacy', 'Privacy and security', 'shield'],
+  ['general', 'General', 'gear'], ['appearance', 'Appearance', 'moon'], ['ai', 'Lumen AI', 'bolt'], ['privacy', 'Privacy and security', 'shield'],
   ['passwords', 'Passwords', 'key'], ['sync', 'Sync', 'reload'], ['import', 'Move from Chrome', 'arrowRight'],
   ['extensions', 'Extensions', 'puzzle'], ['history', 'History', 'clock'], ['bookmarks', 'Bookmarks', 'star'],
   ['downloads', 'Downloads', 'download'], ['about', 'About Lumen', 'bolt'],
@@ -162,17 +162,68 @@ async function general(m) {
   const b = $('#mkdef'); if (b) b.onclick = async () => { await L.invoke('defaultBrowser', 'set'); setTimeout(() => general(m), 1200) }
 }
 
+async function aiPage(m) {
+  const st = await L.invoke('aiStatus') || {}
+  m.innerHTML = `<h2>Lumen AI</h2><p class="lead">Summarize any page, ask questions about it, or get a highlighted paragraph explained. Open it with Shift ${PLATFORM === 'darwin' ? 'Cmd' : 'Ctrl'} A, from the menu, or by right-clicking a page.</p>
+  <div class="card"><h3>CLAUDE API KEY</h3>
+    ${row(st.ready ? 'Key saved' : 'No key yet', st.ready ? 'Your key is stored encrypted on this device and only sent to Anthropic.' : 'Lumen AI runs on Claude with your own API key. Create one at console.anthropic.com, under API Keys, then paste it here.', st.ready ? '<span class="pill">Connected</span><button class="btn sm" id="aikeyrm">Remove</button>' : '')}
+    <div class="row"><input id="aikey" type="password" placeholder="sk-ant-..." autocomplete="off" spellcheck="false" style="flex:1"><button class="btn primary" id="aikeysave">${st.ready ? 'Replace' : 'Save key'}</button></div>
+  </div>
+  <div class="card"><h3>OPTIONS</h3>
+    ${row('Model', 'Fast is quicker and cheaper. Smart writes deeper answers.', seg('aiModel', [['fast', 'Fast'], ['smart', 'Smart']], S.aiModel || 'fast'))}
+    ${row('Use AI to sort tab groups', 'When on, Sort tabs into groups sends your tab titles and links to Claude for smarter groups. When off, Lumen groups tabs on your device.', sw('aiTabGroups', S.aiTabGroups !== false))}
+  </div>
+  <p class="note">Page text is sent to Anthropic only when you ask Lumen AI something. Nothing is sent in the background.</p>`
+  bindSettings(m)
+  $('#aikeysave').onclick = async () => {
+    const v = $('#aikey').value.trim()
+    if (!/^sk-ant-/.test(v)) { $('#aikey').focus(); $('#aikey').style.boxShadow = '0 0 0 2px #e5484d'; return }
+    await L.invoke('aiSetKey', v); aiPage(m)
+  }
+  const rm = $('#aikeyrm'); if (rm) rm.onclick = async () => { await L.invoke('aiSetKey', ''); aiPage(m) }
+}
+
 function appearance(m) {
   const colors = ['#5b8cff', '#7c5cff', '#e5487d', '#f0763b', '#e8b22c', '#2fb67c', '#16a3b8', '#7a7d87']
   m.innerHTML = `<h2>Appearance</h2><p class="lead">Make it yours.</p>
   <div class="card">
     ${row('Tabs', 'Down the side in a sidebar, or across the top like Chrome.', seg('tabLayout', [['side', 'Sidebar'], ['top', 'Top']], S.tabLayout || 'top'))}
+    ${row('Compact mode', 'Thinner bars and tabs, more room for the page.', sw('compact', !!S.compact))}
+  </div>
+  <div class="card"><h3>BROWSER THEME</h3>
+    <div class="themes">${Object.entries(LUMEN_THEMES).map(([k, v]) => `<button class="thb ${k === (S.browserTheme || 'default') ? 'on' : ''}" data-th="${k}"><i style="background:${v.bg || 'linear-gradient(135deg, #e9ecf2, #d9dde6)'}"><b class="${v.dark ? 'dk' : ''}"></b></i><span>${v.name}</span></button>`).join('')}
+      <button class="thb ${S.browserTheme === 'custom' ? 'on' : ''}" data-th="custom"><i id="cprev" style="background:linear-gradient(${(S.themeCustom || {}).angle || 135}deg, ${(S.themeCustom || {}).a || '#5b8cff'}, ${(S.themeCustom || {}).b || '#8a63f2'})"><b></b></i><span>Custom</span></button></div>
+    <div class="row" id="customrow" style="${S.browserTheme === 'custom' ? '' : 'display:none'}"><div class="grow"><div class="t">Your colors</div><div class="d">Pick two colors for the gradient.</div></div>
+      <input type="color" id="ca" value="${(S.themeCustom || {}).a || '#5b8cff'}"><input type="color" id="cb" value="${(S.themeCustom || {}).b || '#8a63f2'}">
+      <select id="cang">${[90, 135, 180, 225].map(a => `<option value="${a}" ${a === ((S.themeCustom || {}).angle || 135) ? 'selected' : ''}>${a} degrees</option>`).join('')}</select>
+      <label style="display:flex;gap:6px;align-items:center;font-size:13px;color:var(--fg2)"><input type="checkbox" id="cglass" ${(S.themeCustom || {}).glass ? 'checked' : ''}> Glass</label></div>
+  </div>
+  <div class="card"><h3>APP ICON</h3>
+    <div class="icons">${['default', 'midnight', 'sunset', 'mint', 'ocean', 'gold', 'rose', 'mono'].map(k => `<button class="icb ${k === (S.appIcon || 'default') ? 'on' : ''}" data-ic="${k}"><img src="lumen://assets/icon-${k}.png" alt=""><span>${k[0].toUpperCase() + k.slice(1)}</span></button>`).join('')}</div>
+    <p class="note" style="padding:0 18px 14px">Changes Lumen's icon in the Dock while it's running.</p>
+  </div>
+  <div class="card"><h3>COLORS AND MOTION</h3>
     ${row('Theme', '', seg('theme', [['system', 'System'], ['light', 'Light'], ['dark', 'Dark']], S.theme))}
     ${row('Accent color', '', `<div class="swatches">${colors.map(c => `<button data-c="${c}" style="background:${c};color:${c}" class="${c === S.accent ? 'on' : ''}"></button>`).join('')}</div>`)}
     ${row('Motion', 'Jelly is the default: things overshoot a little and settle with a soft wobble. Calm barely overshoots. Off removes animation. Scrolling always glides straight to a stop.', seg('motion', [['jelly', 'Jelly'], ['calm', 'Calm'], ['off', 'Off']], S.motion === 'lively' ? 'jelly' : S.motion))}
   </div>
   <p class="note">Tip: hide the sidebar with Shift + ${PLATFORM === 'darwin' ? 'Cmd' : 'Ctrl'} + S and move your mouse to the left edge to peek at it. Switch between sidebar and top tabs with Option + ${PLATFORM === 'darwin' ? 'Cmd' : 'Ctrl'} + S.</p>`
   bindSettings(m)
+  m.querySelectorAll('[data-th]').forEach(b => b.onclick = () => {
+    m.querySelectorAll('[data-th]').forEach(x => x.classList.toggle('on', x === b))
+    S.browserTheme = b.dataset.th; L.invoke('setSetting', 'browserTheme', b.dataset.th)
+    $('#customrow').style.display = b.dataset.th === 'custom' ? '' : 'none'
+  })
+  const saveCustom = () => {
+    const c = { a: $('#ca').value, b: $('#cb').value, angle: +$('#cang').value, glass: $('#cglass').checked }
+    $('#cprev').style.background = `linear-gradient(${c.angle}deg, ${c.a}, ${c.b})`
+    S.themeCustom = c; L.invoke('setSetting', 'themeCustom', c)
+  }
+  for (const id of ['ca', 'cb', 'cang', 'cglass']) $('#' + id).addEventListener('input', saveCustom)
+  m.querySelectorAll('[data-ic]').forEach(b => b.onclick = () => {
+    m.querySelectorAll('[data-ic]').forEach(x => x.classList.toggle('on', x === b))
+    S.appIcon = b.dataset.ic; L.invoke('setSetting', 'appIcon', b.dataset.ic)
+  })
   m.querySelectorAll('[data-c]').forEach(b => b.onclick = () => {
     m.querySelectorAll('[data-c]').forEach(x => x.classList.toggle('on', x === b))
     S.accent = b.dataset.c; L.invoke('setSetting', 'accent', b.dataset.c); applyLook(S)
@@ -425,8 +476,8 @@ function errorPage() {
     passwords: () => passwords(shell('passwords')), extensions: () => extensionsPage(shell('extensions')), about: () => about(shell('about')),
     settings: () => {
       const s = sub || 'general'
-      const fn = { general, appearance, privacy, passwords, sync, import: importPage, extensions: extensionsPage, about, history: historyPage, bookmarks: bookmarksPage, downloads: downloadsPage }[s] || general
-      fn(shell(s in { general: 1, appearance: 1, privacy: 1, passwords: 1, sync: 1, import: 1, extensions: 1, about: 1 } ? s : 'general'))
+      const fn = { general, appearance, ai: aiPage, privacy, passwords, sync, import: importPage, extensions: extensionsPage, about, history: historyPage, bookmarks: bookmarksPage, downloads: downloadsPage }[s] || general
+      fn(shell(s in { general: 1, appearance: 1, ai: 1, privacy: 1, passwords: 1, sync: 1, import: 1, extensions: 1, about: 1 } ? s : 'general'))
     },
   }
   ;(routes[page] || routes.newtab)()

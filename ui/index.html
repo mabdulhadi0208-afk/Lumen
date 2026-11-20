@@ -57,9 +57,17 @@
       </div>
     </aside>
 
+    <div id="themebg"></div>
     <div id="peekzone"></div>
     <div id="resizer" class="no-drag"></div>
     <div id="content-shadow"></div>
+    <aside id="aipanel" class="no-drag" aria-label="Lumen AI">
+      <div class="ai-head"><div class="ai-mark"></div><div class="grow"><div class="ai-title">Lumen AI</div><div class="ai-page" id="ai-page"></div></div><button class="ib sm" id="ai-clear" title="New chat"></button><button class="ib sm" id="ai-close" title="Close"></button></div>
+      <div class="ai-actions"><button class="ai-chip" data-ai="summarize">Summarize page</button><button class="ai-chip" data-ai="keypoints">Key points</button><button class="ai-chip" data-ai="explain">Explain selection</button></div>
+      <div class="ai-log" id="ai-log"></div>
+      <div class="ai-nokey" id="ai-nokey"><div class="ai-mark big"></div><h4>Bring your own Claude key</h4><p>Lumen AI uses the Claude API with your own key, so your chats stay between you and Anthropic. Add a key once and you are set.</p><button class="btn primary" id="ai-addkey">Add API key</button></div>
+      <form class="ai-input" id="ai-form"><textarea id="ai-q" rows="1" placeholder="Ask about this page"></textarea><button class="ai-send" id="ai-send" type="submit" title="Send"></button></form>
+    </aside>
     <div id="findbar" class="no-drag">
       <input id="find-input" placeholder="Find in page" spellcheck="false">
       <span id="find-count"></span>
@@ -89,6 +97,7 @@
   <script src="spring.js"></script>
   <script src="jelly.js"></script>
   <script src="icons.js"></script>
+  <script src="themes.js"></script>
   <script src="intro.js"></script>
   <script src="ui.js"></script>
 </body>

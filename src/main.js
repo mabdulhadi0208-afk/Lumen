@@ -11,6 +11,7 @@ const Importer = require('./importer')
 const Updater = require('./updater')
 const Passkeys = require('./passkeys')
 const Translate = require('./translate')
+const Groups = require('./groups')
 const { Store: WStore } = require('./store')
 let wallpaperStore
 app.whenReady().then(() => { wallpaperStore = new WStore('wallpaper', { image: '' }) })
@@ -186,6 +187,7 @@ const PAGES = ['newtab', 'settings', 'history', 'downloads', 'bookmarks', 'passw
 async function serveInternal(req) {
   const u = new URL(req.url)
   let file
+  if (u.host === 'assets' && u.pathname === '/themes.js') return new Response(await fs.promises.readFile(path.join(ROOT, 'ui', 'themes.js')), { headers: { 'content-type': 'text/javascript; charset=utf-8' } })
   if (u.host === 'assets' && u.pathname === '/jelly.js') return new Response(await fs.promises.readFile(path.join(ROOT, 'ui', 'jelly.js')), { headers: { 'content-type': 'text/javascript; charset=utf-8' } })
   if (u.host === 'assets' && u.pathname === '/icons.js') return new Response(await fs.promises.readFile(path.join(ROOT, 'ui', 'icons.js')), { headers: { 'content-type': 'text/javascript; charset=utf-8' } })
   if (u.host === 'assets') file = path.join(ROOT, 'pages', path.normalize(u.pathname).replace(/^(\.\.[/\\])+/, ''))
@@ -323,6 +325,8 @@ class BrowserWin {
       transparent: false, icon: ICON,
     })
     this.tabs = new Map()
+    this.groups = new Map()
+    this.groupSeq = 0
     this.order = []
     this.activeId = null
     this.splitId = null
@@ -587,6 +591,7 @@ class BrowserWin {
       else if (next) this.activate(next)
     }
     this.destroyView(t)
+    this.pruneGroups()
     if (!this.order.length) { this.win.close(); return }
     this.pushState(); saveSession()
   }
@@ -596,8 +601,57 @@ class BrowserWin {
     if (i < 0) return
     this.order.splice(i, 1)
     this.order.splice(Math.max(0, Math.min(toIndex, this.order.length)), 0, id)
+    // a moved tab joins the group it lands inside, and leaves its group when dropped outside it
+    const t = this.tabs.get(id), j = this.order.indexOf(id)
+    const prev = this.tabs.get(this.order[j - 1]), next = this.tabs.get(this.order[j + 1])
+    if (t && !t.pinned) {
+      if (prev && next && prev.group && prev.group === next.group) t.group = prev.group
+      else if (!((prev && prev.group && prev.group === t.group) || (next && next.group && next.group === t.group))) t.group = null
+    }
+    this.pruneGroups()
     this.layout(); this.pushState(); saveSession()
   }
+
+  // ---- tab groups
+  pruneGroups() { for (const id of [...this.groups.keys()]) if (![...this.tabs.values()].some(t => t.group === id)) this.groups.delete(id) }
+  regroupOrder() {
+    const pinned = this.order.filter(i => this.tabs.get(i).pinned)
+    const rest = this.order.filter(i => !this.tabs.get(i).pinned)
+    const seen = [], byGroup = new Map()
+    for (const i of rest) { const g = this.tabs.get(i).group; if (g) { if (!byGroup.has(g)) { byGroup.set(g, []); seen.push(g) } byGroup.get(g).push(i) } }
+    const out = []; const placed = new Set()
+    for (const i of rest) {
+      const g = this.tabs.get(i).group
+      if (!g) out.push(i)
+      else if (!placed.has(g)) { placed.add(g); out.push(...byGroup.get(g)) }
+    }
+    this.order = [...pinned, ...out]
+  }
+  newGroup(ids, name, color) {
+    const id = 'g' + (++this.groupSeq)
+    this.groups.set(id, { id, name: name || 'New group', color: color || Groups.COLORS[(this.groupSeq - 1) % Groups.COLORS.length], collapsed: false })
+    for (const tid of ids) { const t = this.tabs.get(tid); if (t && !t.pinned) t.group = id }
+    this.regroupOrder(); this.pruneGroups(); this.layout(); this.pushState(); saveSession()
+    return id
+  }
+  applyAutoGroups(list) {
+    for (const t of this.tabs.values()) t.group = null
+    this.groups.clear()
+    const head = [], rank = new Map()
+    list.forEach((g, gi) => {
+      const id = 'g' + (++this.groupSeq)
+      this.groups.set(id, { id, name: g.name, color: g.color || Groups.COLORS[gi % Groups.COLORS.length], collapsed: false })
+      g.ids.forEach(tid => { const t = this.tabs.get(tid); if (t && !t.pinned) { t.group = id; rank.set(tid, gi) } })
+    })
+    const pinned = this.order.filter(i => this.tabs.get(i).pinned)
+    const grouped = this.order.filter(i => !this.tabs.get(i).pinned && this.tabs.get(i).group).sort((a, b) => rank.get(a) - rank.get(b))
+    const loose = this.order.filter(i => !this.tabs.get(i).pinned && !this.tabs.get(i).group)
+    this.order = [...pinned, ...grouped, ...loose]
+    this.pruneGroups(); this.layout(); this.pushState(); saveSession()
+  }
+  setGroup(id, patch) { const g = this.groups.get(id); if (g) { Object.assign(g, patch); this.pushState(); saveSession() } }
+  ungroup(id) { for (const t of this.tabs.values()) if (!id || t.group === id) t.group = null; if (id) this.groups.delete(id); else this.groups.clear(); this.pushState(); saveSession() }
+  closeGroup(id) { for (const t of [...this.tabs.values()]) if (t.group === id) this.closeTab(t.id); this.groups.delete(id) }
 
   zoom(id, delta) {
     const t = this.tabs.get(id); if (!t || !t.view) return
@@ -613,9 +667,9 @@ class BrowserWin {
     return {
       tabs: this.order.map(id => {
         const t = this.tabs.get(id)
-        return { id: t.id, title: t.title, url: t.url, favicon: t.favicon, pinned: t.pinned, loading: t.loading, audible: t.audible, muted: t.muted, asleep: t.asleep, crashed: t.crashed, hung: !!t.hung, playing: !!t.playing, mediaAt: t.mediaAt || 0 }
+        return { id: t.id, title: t.title, url: t.url, favicon: t.favicon, pinned: t.pinned, loading: t.loading, audible: t.audible, muted: t.muted, asleep: t.asleep, crashed: t.crashed, hung: !!t.hung, playing: !!t.playing, mediaAt: t.mediaAt || 0, group: t.group || null }
       }),
-      activeId: this.activeId, splitId: this.splitId, incognito: this.incognito,
+      activeId: this.activeId, splitId: this.splitId, incognito: this.incognito, groups: [...this.groups.values()],
       canBack: !!(awc && awc.navigationHistory.canGoBack()), canForward: !!(awc && awc.navigationHistory.canGoForward()),
       url: a ? a.url : '', zoom: a ? Math.round(Math.pow(1.2, a.zoom || 0) * 100) : 100,
       bookmarked: a ? D.isBookmarked(a.url) : false,
@@ -662,6 +716,7 @@ class BrowserWin {
     if (p.selectionText && !p.isEditable) {
       const q = p.selectionText.trim().slice(0, 80)
       items.push({ label: 'Copy', role: 'copy' })
+      items.push({ label: 'Explain with Lumen AI', click: () => this.send('command', { ai: 'explain', text: p.selectionText.slice(0, 6000) }) })
       items.push({ label: `Translate to ${Translate.langName(Translate.target(D.settings))}`, click: () => Translate.bubble(wc, p.selectionText.slice(0, 4000), Translate.target(D.settings)).catch(e => this.send('toast', 'Translation failed')) })
       items.push({ label: `Search ${(SEARCH[D.settings.get('searchEngine')] || SEARCH.google).name} for "${q.length > 30 ? q.slice(0, 30) + '...' : q}"`, click: () => this.createTab(toURL(q), { openerId: t.id }) })
       sep()
@@ -677,6 +732,7 @@ class BrowserWin {
       items.push({ label: 'Forward', enabled: wc.navigationHistory.canGoForward(), click: () => wc.navigationHistory.goForward() })
       items.push({ label: 'Reload', click: () => wc.reload() })
       sep()
+      items.push({ label: 'Summarize with Lumen AI', click: () => this.send('command', { ai: 'summarize' }) })
       items.push({ label: 'Translate Page', click: () => translateTab(this, t) })
       items.push({ label: 'Reader Mode', click: () => readerMode(wc) })
       items.push({ label: 'Take Screenshot', click: () => screenshot(wc) })
@@ -718,7 +774,9 @@ class BrowserWin {
 function createWindow({ urls = null, incognito = false, restore = null, bounds } = {}) {
   const w = new BrowserWin({ incognito, bounds })
   if (restore && restore.tabs && restore.tabs.length) {
-    restore.tabs.forEach((t, i) => w.createTab(t.url, { active: false, pinned: t.pinned, title: t.title, favicon: t.favicon, asleep: i !== restore.active }))
+    for (const g of restore.groups || []) { w.groups.set(g.id, { ...g }); const n = parseInt(String(g.id).slice(1)) || 0; if (n > w.groupSeq) w.groupSeq = n }
+    restore.tabs.forEach((t, i) => { const x = w.createTab(t.url, { active: false, pinned: t.pinned, title: t.title, favicon: t.favicon, asleep: i !== restore.active }); if (t.group && w.groups.has(t.group)) x.group = t.group })
+    w.pruneGroups()
     w.activate(w.order[Math.min(restore.active || 0, w.order.length - 1)])
   } else {
     const list = urls && urls.length ? urls : ['lumen://newtab']
@@ -736,11 +794,25 @@ function saveSessionNow() {
     windows: windows.filter(w => !w.incognito && !w.win.isDestroyed()).map(w => ({
       bounds: w.win.getBounds(),
       active: Math.max(0, w.order.indexOf(w.activeId)),
-      tabs: w.order.map(id => { const t = w.tabs.get(id); return { url: (t.view && !t.view.webContents.isDestroyed() ? t.view.webContents.getURL() : t.url) || t.url, title: t.title, pinned: t.pinned, favicon: t.favicon } }),
+      groups: [...w.groups.values()],
+      tabs: w.order.map(id => { const t = w.tabs.get(id); return { url: (t.view && !t.view.webContents.isDestroyed() ? t.view.webContents.getURL() : t.url) || t.url, title: t.title, pinned: t.pinned, favicon: t.favicon, group: t.group || null } }),
     })),
   }
   if (data.windows.length || quitting) D.session.replace(data)
 }
+
+// ---------------------------------------------------------------- smart grouping
+async function autoGroupWindow(w) {
+  const tabs = w.order.map(i => w.tabs.get(i)).filter(t => !t.pinned).map(t => ({ id: t.id, url: t.view ? t.view.webContents.getURL() : t.url, title: t.title || '' }))
+  let groups = null
+  if (AI.ready() && D.settings.get('aiTabGroups') !== false) { try { groups = await AI.groupTabs(tabs) } catch (e) { log('ai grouping failed', e.message) } }
+  if (!groups) groups = Groups.autoGroup(tabs)
+  if (!groups.length) { w.send('toast', 'Not enough similar tabs to group'); return 0 }
+  w.applyAutoGroups(groups)
+  w.send('toast', `Sorted into ${groups.length} group${groups.length > 1 ? 's' : ''}`)
+  return groups.length
+}
+const AI = require('./ai')
 
 // ---------------------------------------------------------------- translator
 async function translateTab(w, t) {
@@ -769,6 +841,64 @@ async function offerTranslate(w, t) {
     else if (ans.never) D.settings.set('neverTranslate', [...(D.settings.get('neverTranslate') || []), lang])
   })
   w.send('prompt', { id, kind: 'translate', tabId: t.id, host: new URL(wc.getURL()).host, text: `This page is in ${Translate.langName(lang)}. Translate it to ${Translate.langName(to)}?`, lang: Translate.langName(lang) })
+}
+
+// ---------------------------------------------------------------- Lumen AI
+const PAGE_TEXT_JS = `(() => {
+  const pick = document.querySelector('article') || document.querySelector('main') || document.querySelector('[role=main]') || document.body
+  let t = (pick && pick.innerText || '').replace(/\\n{3,}/g, '\\n\\n').trim()
+  if (t.length < 400 && pick !== document.body) t = (document.body.innerText || '').trim()
+  return { title: document.title, url: location.href, text: t.slice(0, 60000), sel: String(getSelection() || '').slice(0, 6000) }
+})()`
+async function pageInfo(w) {
+  const t = w.tabs.get(w.activeId)
+  const wc = t && t.view && !t.view.webContents.isDestroyed() ? t.view.webContents : null
+  if (!wc) return null
+  const url = wc.getURL()
+  if (!/^https?:|^file:/.test(url)) return { title: wc.getTitle(), url, text: '', sel: '', internal: true }
+  try { return await wc.executeJavaScriptInIsolatedWorld(1018, [{ code: PAGE_TEXT_JS }]) } catch { return { title: wc.getTitle(), url, text: '', sel: '' } }
+}
+const aiRuns = new Map()
+async function aiAsk(w, req) {
+  const id = req.id
+  const send = m => w.send('ai', { id, ...m })
+  const ctl = new AbortController(); aiRuns.set(id, ctl)
+  try {
+    const page = await pageInfo(w)
+    if (!page || page.internal || !page.text) {
+      if (req.mode !== 'chat') throw new Error('Open a web page first, then ask Lumen AI about it.')
+    }
+    let prompt
+    if (req.mode === 'summarize') prompt = 'Summarize this page. Start with a one-sentence overview, then the key points as a short bulleted list, then anything important to watch out for, if there is any.'
+    else if (req.mode === 'explain') prompt = `Explain this passage from the page in plain language. Say what it means and why it matters in the context of the page. Keep it short.\n\n<passage>\n${String(req.text || (page && page.sel) || '').slice(0, 6000)}\n</passage>`
+    else if (req.mode === 'keypoints') prompt = 'List the 5 most important points on this page, one line each.'
+    else prompt = String(req.text || '').slice(0, 8000)
+    const history = (req.history || []).slice(-8).filter(m => m && (m.role === 'user' || m.role === 'assistant') && m.content).map(m => ({ role: m.role, content: String(m.content).slice(0, 12000) }))
+    const first = page && page.text ? pageBlock(page) + '\n\n' : ''
+    // the page goes into the first user turn so follow-up questions keep it
+    const messages = history.length
+      ? [{ role: 'user', content: first + history[0].content }, ...history.slice(1), { role: 'user', content: prompt }]
+      : [{ role: 'user', content: first + prompt }]
+    send({ start: true, title: page ? page.title : '', url: page ? page.url : '' })
+    const full = await AI.stream({ system: AI.SYSTEM, messages }, d => send({ delta: d }), ctl.signal)
+    send({ done: true, text: full, prompt })
+  } catch (e) {
+    if (e.name === 'AbortError') send({ done: true, stopped: true })
+    else send({ error: e.message || String(e) })
+  } finally { aiRuns.delete(id) }
+}
+const pageBlock = p => AI.pageBlock(p)
+
+// ---------------------------------------------------------------- app icon
+const APP_ICONS = ['default', 'midnight', 'sunset', 'mint', 'ocean', 'gold', 'rose', 'mono']
+function applyAppIcon() {
+  const id = APP_ICONS.includes(D.settings.get('appIcon')) ? D.settings.get('appIcon') : 'default'
+  try {
+    const img = nativeImage.createFromPath(path.join(ROOT, 'build', 'icons', id + '.png'))
+    if (img.isEmpty()) return
+    if (isMac && app.dock) app.dock.setIcon(img)
+    else for (const w of windows) { try { w.win.setIcon(img) } catch {} }
+  } catch (e) { log('icon failed', e.message) }
 }
 
 // ---------------------------------------------------------------- page tools
@@ -870,6 +1000,26 @@ ipcMain.handle('ui', async (e, action, ...a) => {
       case 'tabMenu': return tabMenu(w, a[0])
       case 'appMenu': return Menu.getApplicationMenu() && appMenuPopup(w)
       case 'print': return wc && wc.print()
+      case 'autoGroup': return autoGroupWindow(w)
+      case 'aiAsk': aiAsk(w, a[0] || {}); return true
+      case 'aiStop': { const c = aiRuns.get(a[0]); if (c) c.abort(); return true }
+      case 'aiStatus': { const pi = await pageInfo(w).catch(() => null); return { ready: AI.ready(), title: pi ? pi.title : '', url: pi ? pi.url : '', sel: pi ? pi.sel : '' } }
+      case 'ungroupAll': return w.ungroup(null)
+      case 'groupToggle': { const g = w.groups.get(a[0]); if (g) w.setGroup(a[0], { collapsed: !g.collapsed }); return }
+      case 'groupRename': return w.setGroup(a[0], { name: String(a[1] || '').slice(0, 40) || 'Group' })
+      case 'groupMenu': {
+        const g = w.groups.get(a[0]); if (!g) return
+        Menu.buildFromTemplate([
+          { label: g.collapsed ? 'Expand' : 'Collapse', click: () => w.setGroup(g.id, { collapsed: !g.collapsed }) },
+          { label: 'Rename', click: () => w.send('command', 'rename-group:' + g.id) },
+          { label: 'Color', submenu: Groups.COLORS.map(c => ({ label: c[0].toUpperCase() + c.slice(1), type: 'radio', checked: g.color === c, click: () => w.setGroup(g.id, { color: c }) })) },
+          { label: 'New Tab in Group', click: () => { const last = [...w.order].reverse().find(i => w.tabs.get(i).group === g.id); const n = w.createTab('lumen://newtab', { index: w.order.indexOf(last) + 1 }); n.group = g.id; w.pushState() } },
+          { type: 'separator' },
+          { label: 'Ungroup', click: () => w.ungroup(g.id) },
+          { label: 'Close Group', click: () => w.closeGroup(g.id) },
+        ]).popup({ window: w.win })
+        return
+      }
       case 'peekClose': return w.closePeek(a[0])
       case 'peekOpen': return a[0] && w.openPeek(a[0])
       case 'media': {
@@ -946,6 +1096,12 @@ function tabMenu(w, id) {
       else { w.splitId = id; w.layout(); w.pushState() }
     } },
     { type: 'separator' },
+    ...(t.pinned ? [] : [
+      { label: 'Add to New Group', click: () => w.newGroup([id]) },
+      ...(w.groups.size ? [{ label: 'Move to Group', submenu: [...w.groups.values()].filter(g => g.id !== t.group).map(g => ({ label: g.name, click: () => { t.group = g.id; w.regroupOrder(); w.layout(); w.pushState(); saveSession() } })) }] : []),
+      ...(t.group ? [{ label: 'Remove from Group', click: () => { t.group = null; w.regroupOrder(); w.pruneGroups(); w.layout(); w.pushState(); saveSession() } }] : []),
+      { type: 'separator' },
+    ]),
     { label: 'Copy Link', click: () => clipboard.writeText(cleanURL(t.view ? t.view.webContents.getURL() : t.url)) },
     { label: 'Copy All Tab Links', click: () => { clipboard.writeText(w.order.map(i => { const x = w.tabs.get(i); return cleanURL(x.view ? x.view.webContents.getURL() : x.url) }).filter(u => /^https?:/.test(u)).join('\n')); w.send('toast', 'All tab links copied') } },
     { label: 'Bookmark', click: () => { D.addBookmark(t.url, t.title); w.pushState() } },
@@ -996,7 +1152,7 @@ function downloadAction(id, what) {
   broadcast('downloads', listDownloads())
 }
 
-const PUBLIC_SETTINGS = ['cleanLinks', 'swipeNav', 'videoSpeedKeys', 'hideCookieBanners', 'blockNotifications', 'forceDark', 'translateTo', 'offerTranslate', 'autoPip', 'ntpShortcuts', 'ntpWallpaper', 'ntpClock', 'searchEngine', 'motion', 'theme', 'accent', 'adblock', 'blockTrackers', 'httpsOnly', 'sleepTabsAfterMin', 'restoreSession', 'sidebarCollapsed', 'sidebarWidth', 'tabLayout', 'introSeen', 'autoUpdate', 'askWhereToSave', 'doNotTrack', 'showSuggestions', 'homeTiles']
+const PUBLIC_SETTINGS = ['aiModel', 'aiTabGroups', 'browserTheme', 'themeCustom', 'compact', 'appIcon', 'cleanLinks', 'swipeNav', 'videoSpeedKeys', 'hideCookieBanners', 'blockNotifications', 'forceDark', 'translateTo', 'offerTranslate', 'autoPip', 'ntpShortcuts', 'ntpWallpaper', 'ntpClock', 'searchEngine', 'motion', 'theme', 'accent', 'adblock', 'blockTrackers', 'httpsOnly', 'sleepTabsAfterMin', 'restoreSession', 'sidebarCollapsed', 'sidebarWidth', 'tabLayout', 'introSeen', 'autoUpdate', 'askWhereToSave', 'doNotTrack', 'showSuggestions', 'homeTiles']
 function publicSettings() { const s = D.settings.get(); return Object.fromEntries(PUBLIC_SETTINGS.map(k => [k, s[k]])) }
 function setSetting(k, v) {
   if (!PUBLIC_SETTINGS.includes(k)) return
@@ -1007,6 +1163,7 @@ function setSetting(k, v) {
   if (k === 'theme') nativeTheme.themeSource = v
   if (k === 'autoUpdate') Updater.setEnabled(!!v)
   if (k === 'tabLayout') buildMenu()
+  if (k === 'appIcon') applyAppIcon()
   broadcast('settings', publicSettings())
   for (const w of windows) for (const t of w.tabs.values()) if (t.view && (t.url || '').startsWith('lumen://')) t.view.webContents.send('lumen:settings', publicSettings())
 }
@@ -1109,6 +1266,8 @@ ipcMain.handle('lumen', async (e, action, ...a) => {
   const w = winForWc(e.sender.id) || lastFocused()
   try {
     switch (action) {
+      case 'aiSetKey': return AI.setKey(a[0])
+      case 'aiStatus': return { ready: AI.ready() }
       case 'settings': return { settings: publicSettings(), engines: Object.fromEntries(Object.entries(SEARCH).map(([k, v]) => [k, v.name])), version: app.getVersion(), platform: process.platform }
       case 'setSetting': return setSetting(a[0], a[1])
       case 'topSites': return D.topSites(8)
@@ -1265,6 +1424,8 @@ function buildMenu() {
       { label: 'Tabs on Top', type: 'checkbox', checked: D.settings.get('tabLayout') === 'top', accelerator: 'CmdOrCtrl+Alt+S', click: item => setSetting('tabLayout', item.checked ? 'top' : 'side') },
       { label: 'Split View', accelerator: 'CmdOrCtrl+Shift+\\', click: focused(w => w.send('command', 'split')) },
       { label: 'Translate Page', accelerator: isMac ? 'Alt+Cmd+T' : 'Ctrl+Alt+T', click: focused((w, t) => t && translateTab(w, t)) },
+      { label: 'Lumen AI', accelerator: 'CmdOrCtrl+Shift+A', click: focused(w => w.send('command', 'ai')) },
+      { label: 'Sort Tabs into Groups', accelerator: 'CmdOrCtrl+Shift+G', click: focused(w => autoGroupWindow(w)) },
       { label: 'Reader Mode', accelerator: 'CmdOrCtrl+Shift+E', click: focused((w, t) => activeWc(w, t) && readerMode(activeWc(w, t))) },
       { label: 'Picture in Picture', accelerator: 'CmdOrCtrl+Shift+P', click: focused(w => w.send('command', 'pip')) },
       { label: 'Take Screenshot', accelerator: 'CmdOrCtrl+Shift+2', click: focused((w, t) => activeWc(w, t) && screenshot(activeWc(w, t))) },
@@ -1376,10 +1537,11 @@ app.whenReady().then(async () => {
   if (saved.length) {
     saved.forEach(sw => {
       const tabs = restore ? sw.tabs : sw.tabs.filter(t => t.pinned)
-      createWindow({ restore: tabs.length ? { tabs, active: restore ? sw.active : 0 } : null, bounds: sw.bounds })
+      createWindow({ restore: tabs.length ? { tabs, groups: sw.groups || [], active: restore ? sw.active : 0 } : null, bounds: sw.bounds })
     })
   } else createWindow({})
   for (const u of [...argUrls, ...pendingOpen.splice(0)]) openExternalURL(u)
+  applyAppIcon()
   Updater.onState(s => broadcast('update', s))
   Updater.start({
     autoUpdate: () => D.settings.get('autoUpdate'),

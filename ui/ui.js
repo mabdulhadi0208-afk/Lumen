@@ -413,6 +413,7 @@ const COMMANDS = [
   { t: 'Extensions', k: ['extensions', 'addons', 'plugins'], i: 'puzzle', run: () => api.do('openPage', 'extensions') },
   { t: 'Chrome Web Store', k: ['web store', 'chrome store', 'extensions store'], i: 'puzzle', run: () => api.do('newTab', 'https://chromewebstore.google.com/') },
   { t: 'Split View', k: ['split', 'side by side'], i: 'split', run: () => toggleSplit() },
+  { t: 'Translate Page', k: ['translate', 'translation', 'language'], i: 'globe', run: () => api.do('translate') },
   { t: 'Reader Mode', k: ['reader', 'read'], i: 'book', run: () => api.do('reader') },
   { t: 'Picture in Picture', k: ['pip', 'picture', 'video'], i: 'pip', run: () => api.do('pip') },
   { t: 'Take Screenshot', k: ['screenshot', 'capture'], i: 'camera', run: () => api.do('screenshot') },
@@ -632,6 +633,7 @@ async function openMainMenu() {
     ${item('extensions', 'puzzle', 'Extensions', '')}
     <div class="sep"></div>
     ${item('find', 'search', 'Find in page', `${K.cmd} F`)}
+    ${item('translate', 'globe', 'Translate page', `${K.opt} ${K.cmd} T`)}
     ${item('reader', 'book', 'Reader mode', `${K.sh} ${K.cmd} E`)}
     ${item('pip', 'pip', 'Picture in picture', `${K.sh} ${K.cmd} P`)}
     ${item('split', 'split', S.splitId ? 'Exit split view' : 'Split view', `${K.sh} ${K.cmd} \\`)}
@@ -652,7 +654,7 @@ async function openMainMenu() {
       fullscreen: () => api.do('fullscreen'),
       history: () => api.do('openPage', 'history'), downloads: () => api.do('openPage', 'downloads'), bookmarks: () => api.do('openPage', 'bookmarks'),
       passwords: () => api.do('openPage', 'passwords'), extensions: () => api.do('openPage', 'extensions'),
-      find: () => openFind(), reader: () => api.do('reader'), pip: () => api.do('pip').then(ok => { if (ok === false) toast('No video on this page') }),
+      find: () => openFind(), translate: () => api.do('translate'), reader: () => api.do('reader'), pip: () => api.do('pip').then(ok => { if (ok === false) toast('No video on this page') }),
       split: () => toggleSplit(), screenshot: () => api.do('screenshot'), print: () => api.do('print'),
       layout: () => api.do('setSetting', 'tabLayout', TOP ? 'side' : 'top'), intro: () => playIntro(),
     }[a]
@@ -736,6 +738,10 @@ function addPrompt(p) {
     el.innerHTML = `<div class="ph">${esc(p.host)}</div><div class="pt">Wants to ${esc(p.text)}</div>
       <label><input type="checkbox" checked> Remember for this site</label>
       <div class="row"><button class="btn primary" data-a="allow">Allow</button><button class="btn" data-a="block">Block</button></div>`
+  } else if (p.kind === 'translate') {
+    el.innerHTML = `<div class="ph">Lumen Translate</div><div class="pt">${esc(p.text)}</div>
+      <label><input type="checkbox"> Always translate ${esc(p.lang || 'this language')}</label>
+      <div class="row"><button class="btn primary" data-a="translate">Translate</button><button class="btn" data-a="later">Not now</button><div class="spacer"></div><button class="btn" data-a="never">Never</button></div>`
   } else {
     el.innerHTML = `<div class="ph">${esc(p.host)}</div><div class="pt">${esc(p.text)}</div>
       <div class="row"><button class="btn primary" data-a="save">Save</button><button class="btn" data-a="later">Not now</button><div class="spacer"></div><button class="btn" data-a="never">Never</button></div>`
@@ -753,6 +759,7 @@ function addPrompt(p) {
     const a = b.dataset.a
     const remember = el.querySelector('input') ? el.querySelector('input').checked : false
     if (p.kind === 'permission') api.do('prompt', p.id, { allow: a === 'allow', remember })
+    else if (p.kind === 'translate') api.do('prompt', p.id, { allow: a === 'translate', always: remember, never: a === 'never' })
     else api.do('prompt', p.id, { allow: a === 'save', never: a === 'never' })
     prompts.splice(prompts.indexOf(entry), 1)
     el.setAttribute('data-nojelly', '')

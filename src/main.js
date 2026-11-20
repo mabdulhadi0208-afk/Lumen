@@ -10,6 +10,7 @@ const Sync = require('./sync')
 const Importer = require('./importer')
 const Updater = require('./updater')
 const Passkeys = require('./passkeys')
+const Translate = require('./translate')
 const { Store: WStore } = require('./store')
 let wallpaperStore
 app.whenReady().then(() => { wallpaperStore = new WStore('wallpaper', { image: '' }) })
@@ -364,6 +365,7 @@ class BrowserWin {
     wc.on('page-favicon-updated', (e, icons) => { t.favicon = icons[icons.length - 1] || icons[0] || ''; upd() })
     wc.on('did-start-loading', () => { t.loading = true; t.crashed = false; upd() })
     wc.on('did-stop-loading', () => { t.loading = false; upd() })
+    wc.on('did-finish-load', () => { offerTranslate(this, t).catch(() => {}) })
     wc.on('will-navigate', e => {
       // web pages may not open Lumen's internal pages (same rule Chrome uses for chrome://)
       if (e.url.startsWith('lumen://') && !(wc.getURL() || '').startsWith('lumen://')) e.preventDefault()
@@ -590,6 +592,7 @@ class BrowserWin {
     if (p.selectionText && !p.isEditable) {
       const q = p.selectionText.trim().slice(0, 80)
       items.push({ label: 'Copy', role: 'copy' })
+      items.push({ label: `Translate to ${Translate.langName(Translate.target(D.settings))}`, click: () => Translate.bubble(wc, p.selectionText.slice(0, 4000), Translate.target(D.settings)).catch(e => this.send('toast', 'Translation failed')) })
       items.push({ label: `Search ${(SEARCH[D.settings.get('searchEngine')] || SEARCH.google).name} for "${q.length > 30 ? q.slice(0, 30) + '...' : q}"`, click: () => this.createTab(toURL(q), { openerId: t.id }) })
       sep()
     }
@@ -604,6 +607,7 @@ class BrowserWin {
       items.push({ label: 'Forward', enabled: wc.navigationHistory.canGoForward(), click: () => wc.navigationHistory.goForward() })
       items.push({ label: 'Reload', click: () => wc.reload() })
       sep()
+      items.push({ label: 'Translate Page', click: () => translateTab(this, t) })
       items.push({ label: 'Reader Mode', click: () => readerMode(wc) })
       items.push({ label: 'Take Screenshot', click: () => screenshot(wc) })
       items.push({ label: 'Save Page As...', click: () => savePage(wc) })
@@ -666,6 +670,35 @@ function saveSessionNow() {
     })),
   }
   if (data.windows.length || quitting) D.session.replace(data)
+}
+
+// ---------------------------------------------------------------- translator
+async function translateTab(w, t) {
+  if (!t || !t.view) return
+  const wc = t.view.webContents
+  if (await Translate.isTranslated(wc)) { await Translate.showOriginal(wc); w.send('toast', 'Showing the original'); return }
+  const to = Translate.target(D.settings)
+  w.send('toast', `Translating to ${Translate.langName(to)}...`)
+  try { const r = await Translate.translatePage(wc, to); w.send('toast', r.ok ? `Translated to ${Translate.langName(to)}` : r.error) }
+  catch (e) { log('translate failed', e.message); w.send('toast', 'Translation failed. Check your connection.') }
+}
+const offered = new Set()
+async function offerTranslate(w, t) {
+  if (!t.view || !D.settings.get('offerTranslate') || !/^https?:/.test(t.view.webContents.getURL())) return
+  const wc = t.view.webContents
+  const lang = await Translate.pageLang(wc)
+  const to = Translate.target(D.settings)
+  if (!lang || lang === to || (D.settings.get('neverTranslate') || []).includes(lang)) return
+  if ((D.settings.get('alwaysTranslate') || []).includes(lang)) return translateTab(w, t)
+  const key = t.id + '|' + new URL(wc.getURL()).host
+  if (offered.has(key)) return
+  offered.add(key)
+  const id = ++promptSeq
+  pendingPrompts.set(id, ans => {
+    if (ans.allow) { translateTab(w, t); if (ans.always) D.settings.set('alwaysTranslate', [...(D.settings.get('alwaysTranslate') || []), lang]) }
+    else if (ans.never) D.settings.set('neverTranslate', [...(D.settings.get('neverTranslate') || []), lang])
+  })
+  w.send('prompt', { id, kind: 'translate', tabId: t.id, host: new URL(wc.getURL()).host, text: `This page is in ${Translate.langName(lang)}. Translate it to ${Translate.langName(to)}?`, lang: Translate.langName(lang) })
 }
 
 // ---------------------------------------------------------------- page tools
@@ -767,6 +800,7 @@ ipcMain.handle('ui', async (e, action, ...a) => {
       case 'tabMenu': return tabMenu(w, a[0])
       case 'appMenu': return Menu.getApplicationMenu() && appMenuPopup(w)
       case 'print': return wc && wc.print()
+      case 'translate': return t && translateTab(w, t)
       case 'fullscreen': return w.win.setFullScreen(!w.win.isFullScreen())
       case 'savePage': return wc && savePage(wc)
       case 'menuInfo': return { version: app.getVersion(), update: Updater.getState(), zoom: t ? Math.round(Math.pow(1.2, t.zoom || 0) * 100) : 100, incognito: w.incognito, tabLayout: D.settings.get('tabLayout'), fullscreen: w.win.isFullScreen(), passkeys: Passkeys.list().length, passwords: D.listPasswords().length }
@@ -869,7 +903,7 @@ function downloadAction(id, what) {
   broadcast('downloads', listDownloads())
 }
 
-const PUBLIC_SETTINGS = ['autoPip', 'ntpShortcuts', 'ntpWallpaper', 'ntpClock', 'searchEngine', 'motion', 'theme', 'accent', 'adblock', 'blockTrackers', 'httpsOnly', 'sleepTabsAfterMin', 'restoreSession', 'sidebarCollapsed', 'sidebarWidth', 'tabLayout', 'introSeen', 'autoUpdate', 'askWhereToSave', 'doNotTrack', 'showSuggestions', 'homeTiles']
+const PUBLIC_SETTINGS = ['translateTo', 'offerTranslate', 'autoPip', 'ntpShortcuts', 'ntpWallpaper', 'ntpClock', 'searchEngine', 'motion', 'theme', 'accent', 'adblock', 'blockTrackers', 'httpsOnly', 'sleepTabsAfterMin', 'restoreSession', 'sidebarCollapsed', 'sidebarWidth', 'tabLayout', 'introSeen', 'autoUpdate', 'askWhereToSave', 'doNotTrack', 'showSuggestions', 'homeTiles']
 function publicSettings() { const s = D.settings.get(); return Object.fromEntries(PUBLIC_SETTINGS.map(k => [k, s[k]])) }
 function setSetting(k, v) {
   if (!PUBLIC_SETTINGS.includes(k)) return
@@ -1120,6 +1154,7 @@ function buildMenu() {
       { label: 'Toggle Sidebar', accelerator: 'CmdOrCtrl+Shift+S', click: focused(w => w.send('command', 'sidebar')) },
       { label: 'Tabs on Top', type: 'checkbox', checked: D.settings.get('tabLayout') === 'top', accelerator: 'CmdOrCtrl+Alt+S', click: item => setSetting('tabLayout', item.checked ? 'top' : 'side') },
       { label: 'Split View', accelerator: 'CmdOrCtrl+Shift+\\', click: focused(w => w.send('command', 'split')) },
+      { label: 'Translate Page', accelerator: isMac ? 'Alt+Cmd+T' : 'Ctrl+Alt+T', click: focused((w, t) => t && translateTab(w, t)) },
       { label: 'Reader Mode', accelerator: 'CmdOrCtrl+Shift+E', click: focused((w, t) => activeWc(w, t) && readerMode(activeWc(w, t))) },
       { label: 'Picture in Picture', accelerator: 'CmdOrCtrl+Shift+P', click: focused(w => w.send('command', 'pip')) },
       { label: 'Take Screenshot', accelerator: 'CmdOrCtrl+Shift+2', click: focused((w, t) => activeWc(w, t) && screenshot(activeWc(w, t))) },

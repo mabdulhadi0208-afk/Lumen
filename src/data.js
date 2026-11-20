@@ -17,6 +17,10 @@ const settings = new Store('settings', {
   sidebarWidth: 248,
   introSeen: false,
   autoPip: true,
+  translateTo: '',            // '' = system language
+  offerTranslate: true,
+  neverTranslate: [],
+  alwaysTranslate: [],
   ntpShortcuts: null,        // null = most visited
   ntpWallpaper: 'aurora',
   ntpClock: true,

@@ -139,6 +139,8 @@ async function general(m) {
     ${row('Search suggestions', 'Show suggestions from your search engine as you type.', sw('showSuggestions', S.showSuggestions))}
     ${row('Open where you left off', 'Bring back your tabs when Lumen starts. Pinned tabs always come back.', sw('restoreSession', S.restoreSession))}
     ${row('Show frequently visited on new tab', '', sw('homeTiles', S.homeTiles))}
+    ${row('Translate pages into', 'Lumen offers to translate pages in other languages. Right-click selected text to translate just that.', `<select data-sel="translateTo">${[['', 'System language'], ['en', 'English'], ['ar', 'Arabic'], ['ur', 'Urdu'], ['hi', 'Hindi'], ['fr', 'French'], ['es', 'Spanish'], ['de', 'German'], ['tr', 'Turkish'], ['zh-CN', 'Chinese'], ['ja', 'Japanese'], ['ko', 'Korean'], ['ru', 'Russian'], ['pt', 'Portuguese'], ['it', 'Italian'], ['id', 'Indonesian']].map(([v, l]) => `<option value="${v}" ${v === (S.translateTo || '') ? 'selected' : ''}>${l}</option>`).join('')}</select>`)}
+    ${row('Offer to translate', 'Ask when a page is in another language.', sw('offerTranslate', S.offerTranslate !== false))}
     ${row('Picture in picture when you switch tabs', 'A playing video pops out into a floating window when you leave its tab, and back in when you return.', sw('autoPip', S.autoPip !== false))}
   </div>
   <div class="card"><h3>PERFORMANCE</h3>

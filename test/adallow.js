@@ -1,0 +1,38 @@
+process.env.ELECTRON_DISABLE_SECURITY_WARNINGS = '1'
+const http = require('http'), fs = require('fs')
+const { app, session } = require('electron')
+fs.rmSync('/tmp/lumen-ad', { recursive: true, force: true }); app.setPath('userData', '/tmp/lumen-ad')
+const L = require('../src/main.js')
+const wait = ms => new Promise(r => setTimeout(r, ms))
+http.createServer((q, r) => {
+  if (q.url.startsWith('/adbanner.js')) { r.setHeader('content-type', 'text/javascript'); return r.end('window.adLoaded = true') }
+  r.setHeader('content-type', 'text/html'); r.end('<title>Shop</title><div class="product" id="p">Product</div><script src="/adbanner.js"></script>')
+}).listen(48130)
+let fails = 0; const ok = (c, m) => { console.log((c ? 'PASS ' : 'FAIL ') + m); if (!c) fails++ }
+app.whenReady().then(async () => {
+  console.log('ready'); await wait(4000)
+  const w = L.windows[0]
+  await w.ui.webContents.executeJavaScript(`document.querySelector('#intro .skip') && document.querySelector('#intro .skip').click()`); await wait(2500)
+  await w.ui.webContents.executeJavaScript(`document.querySelector('#intro .go') && document.querySelector('#intro .go').click()`); await wait(1000)
+  const { ElectronBlocker } = require('@ghostery/adblocker-electron')
+  const b = ElectronBlocker.parse('/adbanner.js\n##.product')
+  L.allowSites(b)
+  const t = w.createTab('http://127.0.0.1:48130/', { active: true }); await wait(300)
+  for (const c of ['inject-cosmetic-filters','is-mutation-observer-enabled']) require('electron').ipcMain.removeHandler('@ghostery/adblocker/' + c)
+  b.enableBlockingInSession(t.view.webContents.session)
+  t.view.webContents.reload(); await wait(2500)
+  const st = () => t.view.webContents.executeJavaScript(`[!!window.adLoaded, getComputedStyle(document.getElementById('p')).display]`)
+  console.log('loaded', t.view.webContents.getURL()); let s = await st(); ok(s[0] === false && s[1] === 'none', 'blocked before: ' + s)
+  L.D.settings.set({ adblock: true })
+  L.toggleSiteAdblock(w, false); await wait(2500)
+  s = await st(); ok(s[0] === true && s[1] !== 'none', 'allowed after turning off: ' + s)
+  ok(w.serialize().adOff === true, 'state reports off')
+  ok((L.D.settings.get('adblockAllow') || []).includes('127.0.0.1'), 'saved to list')
+  L.toggleSiteAdblock(w, true); await wait(2500)
+  s = await st(); ok(s[0] === false && s[1] === 'none', 'blocked again: ' + s)
+  L.toggleSiteAdblock(w, false); await wait(1500)
+  await w.ui.webContents.executeJavaScript(`openSiteInfo()`); await wait(1200)
+  fs.writeFileSync('/tmp/lumen-shots/ad-popover.png', (await w.ui.webContents.capturePage()).toPNG())
+  ok(await w.ui.webContents.executeJavaScript(`!!document.querySelector('[data-act=adblock]') && document.getElementById('shield').textContent === 'OFF'`), 'popover toggle + OFF badge')
+  console.log(fails ? 'FAILED' : 'ALL PASS'); app.exit(fails ? 1 : 0)
+})

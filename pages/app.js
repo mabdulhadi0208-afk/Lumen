@@ -237,6 +237,8 @@ async function privacy(m) {
   m.innerHTML = `<h2>Privacy and security</h2><p class="lead">Ads and trackers are blocked out of the box. No account, no telemetry.</p>
   <div class="card">
     ${row('Block ads and trackers', 'Built in, works on every site, faster pages and less data. No extension needed.', sw('adblock', S.adblock))}
+    ${row('Sites where the ad blocker is off', (S.adblockAllow || []).length ? 'If a site looks broken or is missing things, turn the blocker off just there from the shield in the address bar.' : 'None yet. If a site looks broken or is missing things, click the shield in the address bar and turn the blocker off just for that site.', '')}
+    ${(S.adblockAllow || []).map(h => `<div class="row"><div class="grow"><div class="t" style="font-weight:500">${esc(h)}</div></div><button class="btn sm" data-unallow="${esc(h)}">Block ads again</button></div>`).join('')}
     ${row('Ask sites not to track you', 'Sends Global Privacy Control and Do Not Track with every request.', sw('doNotTrack', S.doNotTrack))}
     ${row('Always use secure connections', 'Upgrades sites to HTTPS when they support it.', sw('httpsOnly', S.httpsOnly))}
   </div>
@@ -251,6 +253,7 @@ async function privacy(m) {
     ${sites.length ? sites.map(([origin, p]) => Object.entries(p).map(([k, v]) => `<div class="row"><div class="grow"><div class="t">${esc(hostOf(origin))}</div><div class="d">${esc(PERM_NAMES[k] || k)}</div></div>${seg('', [['allow', 'Allow'], ['deny', 'Block']], v).replace('data-seg=""', `data-origin="${esc(origin)}" data-perm="${esc(k)}"`)}<button class="ib" data-del-origin="${esc(origin)}" data-del-perm="${esc(k)}" title="Remove">${ICONS.close}</button></div>`).join('')).join('') : '<div class="row"><div class="d">Sites you allow or block camera, location, notifications and more will show up here.</div></div>'}
   </div>`
   bindSettings(m)
+  m.querySelectorAll('[data-unallow]').forEach(b => b.onclick = async () => { S.adblockAllow = (S.adblockAllow || []).filter(x => x !== b.dataset.unallow); await L.invoke('setSetting', 'adblockAllow', S.adblockAllow); privacy(m) })
   $('#clear').onclick = async () => {
     const b = $('#clear'); b.disabled = true; b.textContent = 'Clearing...'
     await L.invoke('clearHistory', parseInt($('#range').value), $('#cc').checked, $('#ca').checked)

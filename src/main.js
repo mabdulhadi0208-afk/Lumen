@@ -129,6 +129,7 @@ async function setupAdblock() {
     const next = await Promise.race([full ? ElectronBlocker.fromPrebuiltFull(fetchImpl, caching) : ElectronBlocker.fromPrebuiltAdsAndTracking(fetchImpl, caching), timeout])
     if (old) for (const ses of sessionsReady) { try { if (old.isBlockingEnabled(ses)) old.disableBlockingInSession(ses) } catch {} }
     blocker = next
+    allowSites(blocker)
     blocker.on('request-blocked', req => {
       const id = req.tabId
       if (id == null) return
@@ -139,6 +140,40 @@ async function setupAdblock() {
     if (D.settings.get('adblock')) for (const ses of sessionsReady) { try { blocker.enableBlockingInSession(ses) } catch {} }
   } catch (e) { console.error('adblock unavailable:', e.message); blocker = null }
 }
+// ---- sites where the ad blocker is turned off (it broke something there)
+const siteKey = u => { try { const h = new URL(u).hostname.replace(/^www\./, ''); return /^(https?)$/.test(new URL(u).protocol.slice(0, -1)) ? h : '' } catch { return '' } }
+function adAllowed(url) {
+  const h = siteKey(url); if (!h) return false
+  const list = D.settings.get('adblockAllow') || []
+  return list.some(a => h === a || h.endsWith('.' + a))
+}
+function topURLOf(details) {
+  try { if (details.frame && details.frame.top && details.frame.top.url) return details.frame.top.url } catch {}
+  try { const wc = details.webContentsId && webContents.fromId(details.webContentsId); if (wc && !wc.isDestroyed()) return wc.getURL() } catch {}
+  return details.referrer || ''
+}
+function allowSites(b) {
+  const br = b.onBeforeRequest, hr = b.onHeadersReceived, cf = b.onInjectCosmeticFilters
+  b.onBeforeRequest = (details, cb) => (details.resourceType !== 'mainFrame' && adAllowed(topURLOf(details))) ? cb({}) : br(details, cb)
+  b.onHeadersReceived = (details, cb) => adAllowed(details.resourceType === 'mainFrame' ? details.url : topURLOf(details)) ? cb({}) : hr(details, cb)
+  b.onInjectCosmeticFilters = (event, url, msg) => {
+    let top = url; try { top = event.sender.getURL() || url } catch {}
+    return adAllowed(top) || adAllowed(url) ? undefined : cf(event, url, msg)
+  }
+}
+function toggleSiteAdblock(w, on) {
+  const t = w.active(); if (!t) return
+  const url = t.view ? t.view.webContents.getURL() : t.url
+  const h = siteKey(url); if (!h) return
+  let list = (D.settings.get('adblockAllow') || []).filter(a => !(h === a || h.endsWith('.' + a)))
+  if (!on) list.push(h)
+  D.settings.set({ adblockAllow: list })
+  if (t.view) { blockedByWc.delete(t.view.webContents.id); t.view.webContents.reload() }
+  w.pushState()
+  w.send('toast', on ? `Ad blocker back on for ${h}` : `Ad blocker off for ${h}`)
+  for (const x of windows) for (const tt of x.tabs.values()) if (tt.view && (tt.url || '').startsWith('lumen://settings')) tt.view.webContents.send('lumen:settings', publicSettings())
+}
+
 function setAdblock(on) {
   if (!blocker) return
   for (const ses of sessionsReady) {
@@ -674,6 +709,7 @@ class BrowserWin {
       url: a ? a.url : '', zoom: a ? Math.round(Math.pow(1.2, a.zoom || 0) * 100) : 100,
       bookmarked: a ? D.isBookmarked(a.url) : false,
       blocked: awc ? (blockedByWc.get(awc.id) || 0) : 0,
+      adOff: a ? adAllowed(awc ? awc.getURL() : a.url) : false,
       secure: a ? /^(https|lumen):/.test(a.url) : true,
       closedCount: closedTabs.length,
     }
@@ -732,6 +768,7 @@ class BrowserWin {
       items.push({ label: 'Forward', enabled: wc.navigationHistory.canGoForward(), click: () => wc.navigationHistory.goForward() })
       items.push({ label: 'Reload', click: () => wc.reload() })
       sep()
+      if (D.settings.get('adblock') && siteKey(wc.getURL())) { const off = adAllowed(wc.getURL()); items.push({ label: off ? 'Turn Ad Blocker Back On for This Site' : 'Turn Off Ad Blocker for This Site', click: () => toggleSiteAdblock(this, off) }) }
       items.push({ label: 'Summarize with Lumen AI', click: () => this.send('command', { ai: 'summarize' }) })
       items.push({ label: 'Translate Page', click: () => translateTab(this, t) })
       items.push({ label: 'Reader Mode', click: () => readerMode(wc) })
@@ -1056,6 +1093,7 @@ ipcMain.handle('ui', async (e, action, ...a) => {
       case 'download': return downloadAction(a[0], a[1])
       case 'setSetting': return setSetting(a[0], a[1])
       case 'siteInfo': return siteInfo(w)
+      case 'siteAdblock': return toggleSiteAdblock(w, !!a[0])
       case 'resetSite': { if (!t) return; try { const o = new URL(t.url).origin; const all = D.permissions.get(); delete all[o]; D.permissions.set(all) } catch {} return }
       case 'update': if (a[0] === 'check') return Updater.check(true); if (a[0] === 'install') return Updater.install(true); return Updater.getState()
       case 'trafficLights': if (isMac) { w.win.setWindowButtonVisibility(!!a[0]); if (a[1] && w.win.setWindowButtonPosition) { try { w.win.setWindowButtonPosition(a[1]) } catch {} } } return
@@ -1074,7 +1112,7 @@ ipcMain.handle('ui', async (e, action, ...a) => {
 function siteInfo(w) {
   const t = w.active(); if (!t) return null
   let origin = ''; try { origin = new URL(t.url).origin } catch {}
-  return { url: t.url, host: origin ? new URL(origin).host : '', secure: /^https:/.test(t.url), permissions: D.permissions.get()[origin] || {}, blocked: t.view ? (blockedByWc.get(t.view.webContents.id) || 0) : 0 }
+  return { url: t.url, host: origin ? new URL(origin).host : '', secure: /^https:/.test(t.url), permissions: D.permissions.get()[origin] || {}, blocked: t.view ? (blockedByWc.get(t.view.webContents.id) || 0) : 0, adblock: !!D.settings.get('adblock'), adOff: adAllowed(t.view ? t.view.webContents.getURL() : t.url) }
 }
 
 function reopenClosed(w) {
@@ -1152,11 +1190,12 @@ function downloadAction(id, what) {
   broadcast('downloads', listDownloads())
 }
 
-const PUBLIC_SETTINGS = ['aiModel', 'aiTabGroups', 'browserTheme', 'themeCustom', 'compact', 'appIcon', 'cleanLinks', 'swipeNav', 'videoSpeedKeys', 'hideCookieBanners', 'blockNotifications', 'forceDark', 'translateTo', 'offerTranslate', 'autoPip', 'ntpShortcuts', 'ntpWallpaper', 'ntpClock', 'searchEngine', 'motion', 'theme', 'accent', 'adblock', 'blockTrackers', 'httpsOnly', 'sleepTabsAfterMin', 'restoreSession', 'sidebarCollapsed', 'sidebarWidth', 'tabLayout', 'introSeen', 'autoUpdate', 'askWhereToSave', 'doNotTrack', 'showSuggestions', 'homeTiles']
+const PUBLIC_SETTINGS = ['adblockAllow', 'aiModel', 'aiTabGroups', 'browserTheme', 'themeCustom', 'compact', 'appIcon', 'cleanLinks', 'swipeNav', 'videoSpeedKeys', 'hideCookieBanners', 'blockNotifications', 'forceDark', 'translateTo', 'offerTranslate', 'autoPip', 'ntpShortcuts', 'ntpWallpaper', 'ntpClock', 'searchEngine', 'motion', 'theme', 'accent', 'adblock', 'blockTrackers', 'httpsOnly', 'sleepTabsAfterMin', 'restoreSession', 'sidebarCollapsed', 'sidebarWidth', 'tabLayout', 'introSeen', 'autoUpdate', 'askWhereToSave', 'doNotTrack', 'showSuggestions', 'homeTiles']
 function publicSettings() { const s = D.settings.get(); return Object.fromEntries(PUBLIC_SETTINGS.map(k => [k, s[k]])) }
 function setSetting(k, v) {
   if (!PUBLIC_SETTINGS.includes(k)) return
   if (k === 'tabLayout' && !['side', 'top'].includes(v)) return
+  if (k === 'adblockAllow') { if (!Array.isArray(v)) return; v = v.filter(x => typeof x === 'string' && /^[a-z0-9.-]+$/i.test(x)).slice(0, 500) }
   D.settings.set({ [k]: v, ...(!['sidebarCollapsed', 'sidebarWidth', 'introSeen'].includes(k) ? { settingsAt: Date.now() } : {}) })
   if (k === 'adblock') setAdblock(!!v)
   if (k === 'hideCookieBanners') setupAdblock().then(() => setAdblock(!!D.settings.get('adblock')))
@@ -1559,4 +1598,4 @@ app.whenReady().then(async () => {
   powerMonitor.on('resume', () => Sync.syncNow().catch(() => {}))
 })
 
-module.exports = { windows, createWindow, D }
+module.exports = { windows, createWindow, D, allowSites, toggleSiteAdblock }

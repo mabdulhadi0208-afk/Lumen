@@ -446,3 +446,11 @@ body.glass #aipanel { background: color-mix(in srgb, var(--bg-solid, #f4f5f8) 72
 .ai-nokey h4 { margin: 0 0 6px; font-size: 15px; } .ai-nokey p { margin: 0 0 16px; font-size: 12.5px; color: var(--fg2); line-height: 1.5; }
 #aipanel.nokey .ai-nokey { display: flex; } #aipanel.nokey .ai-log, #aipanel.nokey .ai-input, #aipanel.nokey .ai-actions { display: none; }
 .ai-nokey .btn { align-self: center; height: 32px; padding: 0 16px; }
+
+#shield.off { background: var(--hover); color: var(--fg3); }
+.popover .switch.sm, .switch.sm { position: relative; width: 34px; height: 20px; flex: none; }
+.switch.sm input { position: absolute; opacity: 0; pointer-events: none; }
+.switch.sm span { position: absolute; inset: 0; border-radius: 10px; background: var(--press); transition: background .2s; }
+.switch.sm span::after { content: ''; position: absolute; left: 2px; top: 2px; width: 16px; height: 16px; border-radius: 50%; background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,.25); transition: transform .25s cubic-bezier(.3,1.4,.5,1); }
+.switch.sm input:checked + span { background: var(--accent); }
+.switch.sm input:checked + span::after { transform: translateX(14px); }

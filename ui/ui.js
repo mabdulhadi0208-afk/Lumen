@@ -196,8 +196,12 @@ function renderChrome() {
   site.innerHTML = url.startsWith('lumen://') || !url ? ICONS.search : (S.secure ? ICONS.tune : ICONS.unlock)
   site.classList.toggle('insecure', !S.secure && !!url && !url.startsWith('lumen://'))
   const sh = $('#shield')
+  if (!sh.dataset.bound) { sh.dataset.bound = 1; sh.addEventListener('click', e => { e.stopPropagation(); openSiteInfo() }) }
   sh.textContent = S.blocked > 999 ? '999+' : S.blocked
-  sh.classList.toggle('show', S.blocked > 0)
+  sh.classList.toggle('show', S.blocked > 0 || !!S.adOff)
+  sh.classList.toggle('off', !!S.adOff)
+  if (S.adOff) sh.textContent = 'OFF'
+  sh.title = S.adOff ? 'Ad blocker is off for this site' : S.blocked + ' ads and trackers blocked'
   document.title = a ? titleOf(a) : 'Lumen'
 }
 
@@ -694,7 +698,7 @@ async function openSiteInfo() {
   const html = `
     <h3>${esc(info.host)}</h3>
     <div class="sub">${info.secure ? ICONS.lock + ' Connection is secure' : ICONS.unlock + ' Connection is not secure'}</div>
-    <div class="item"><span class="ri">${ICONS.shield}</span><div class="grow">${info.blocked} ads and trackers blocked<div class="small">On this page</div></div></div>
+    ${info.adblock ? `<div class="item" data-act="adblock"><span class="ri">${ICONS.shield}</span><div class="grow">Ad blocker on this site<div class="small">${info.adOff ? 'Off here. Ads can show on this site.' : `${info.blocked} blocked on this page. Turn off if something is missing.`}</div></div><label class="switch sm"><input type="checkbox" ${info.adOff ? '' : 'checked'} tabindex="-1"><span></span></label></div>` : ''}
     <div class="item"><span class="ri">${ICONS.search}</span><div class="grow">Zoom</div><div class="zoom"><button class="ib sm" data-z="-0.5">${ICONS.minus}</button><span id="zv">${S.zoom}%</span><button class="ib sm" data-z="0.5">${ICONS.plus}</button></div></div>
     ${perms.length ? '<div class="sep"></div>' + perms.map(([k, v]) => `<div class="item"><span class="ri">${ICONS.check}</span><div class="grow">${esc(PERM_NAMES[k] || k)}</div><div class="small">${v === 'allow' ? 'Allowed' : 'Blocked'}</div></div>`).join('') + `<div class="item" data-act="reset"><span class="ri">${ICONS.reload}</span><div class="grow">Reset permissions</div></div>` : ''}
     <div class="sep"></div>
@@ -707,6 +711,7 @@ async function openSiteInfo() {
     if (z) { await api.do('zoom', parseFloat(z.dataset.z)); setTimeout(() => { const zv = $('#zv'); if (zv) zv.textContent = S.zoom + '%' }, 60); return }
     const it = e.target.closest('[data-act]'); if (!it) return
     const act = it.dataset.act
+    if (act === 'adblock') { e.preventDefault(); const cb = it.querySelector('input'); cb.checked = !cb.checked; setTimeout(() => closePopover(true), 260); api.do('siteAdblock', cb.checked); return }
     closePopover(true)
     if (act === 'reset') { await api.do('resetSite'); toast('Permissions reset') }
     if (act === 'reader') api.do('reader')

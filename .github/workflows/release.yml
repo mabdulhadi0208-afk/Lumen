@@ -12,7 +12,8 @@ permissions:
 
 jobs:
   mac:
-    runs-on: macos-latest
+    # Intel runner: GitHub's Apple Silicon Mac runners are often out of capacity. Intel builds both architectures.
+    runs-on: macos-15-intel
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -68,10 +69,13 @@ jobs:
       - name: Release gate (refuse to publish broken files)
         run: |
           set -e
-          APP=dist/mac-arm64/Lumen.app
+          # test the build that matches this runner's chip
+          if [ "$(uname -m)" = "arm64" ]; then APP=dist/mac-arm64/Lumen.app; DMG=dist/Lumen-mac-arm64.dmg; else APP=dist/mac/Lumen.app; DMG=dist/Lumen-mac-x64.dmg; fi
+          echo "testing $APP on $(uname -m)"
+          codesign --verify --deep --strict dist/mac-arm64/Lumen.app && echo "arm64 zip app signature valid"
           codesign --verify --deep --strict "$APP" && echo "zip app signature valid"
           if [ "$SIGN_ID" != "-" ]; then codesign -d -r- "$APP" 2>&1 | grep -qi "certificate leaf = H\"$LEAF\"" && echo "zip app has the pinned identity" || { echo "zip app is not cert-signed"; exit 1; }; fi
-          MNT=$(mktemp -d); hdiutil attach -nobrowse -quiet -mountpoint "$MNT" dist/Lumen-mac-arm64.dmg
+          MNT=$(mktemp -d); hdiutil attach -nobrowse -quiet -mountpoint "$MNT" "$DMG"
           codesign -dv "$MNT/Lumen.app" 2>&1 | grep -q 'Signature=adhoc' && echo "dmg app is ad-hoc (right-click, Open works)" || { echo "dmg app is not ad-hoc"; hdiutil detach -quiet "$MNT"; exit 1; }
           codesign --verify --deep --strict "$MNT/Lumen.app" && echo "dmg app signature valid"
           test -L "$MNT/Applications" && echo "dmg has Applications shortcut"

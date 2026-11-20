@@ -22,6 +22,7 @@ protocol.registerSchemesAsPrivileged([
 ])
 
 // Clean, plain-Chrome user agent so sites (and Google sign-in) treat Lumen like Chrome.
+const winBg = () => nativeTheme.shouldUseDarkColors ? '#1b1c20' : '#e6e9f0'
 function chromeUA(ua) { return ua.replace(/\sElectron\/\S+/, '').replace(/\s(Lumen|lumen)\/\S+/, '') }
 // Google blocks sign-in from browsers built on Electron ("This browser or app may not be secure"), but allows Firefox.
 // On Google's sign-in pages only, Lumen presents itself as the current Firefox release.
@@ -287,8 +288,8 @@ class BrowserWin {
       title: incognito ? 'Lumen Private' : 'Lumen',
       titleBarStyle: isMac ? 'hiddenInset' : 'hidden',
       trafficLightPosition: { x: 16, y: 18 },
-      vibrancy: isMac ? 'sidebar' : undefined, visualEffectState: 'followWindow',
-      backgroundColor: isMac ? '#00000000' : (nativeTheme.shouldUseDarkColors ? '#1b1c20' : '#eef0f4'),
+      // solid window: macOS vibrancy behind WebContentsViews breaks video layers (YouTube showed a blank player)
+      backgroundColor: winBg(),
       transparent: false, icon: ICON,
     })
     this.tabs = new Map()
@@ -348,7 +349,7 @@ class BrowserWin {
 
   makeView(t) {
     const view = new WebContentsView({
-      webPreferences: { session: this.ses, sandbox: true, contextIsolation: true, plugins: true, spellcheck: true, scrollBounce: false, autoplayPolicy: 'document-user-activation-required' },
+      webPreferences: { session: this.ses, sandbox: true, contextIsolation: true, plugins: true, spellcheck: true, scrollBounce: false, autoplayPolicy: 'no-user-gesture-required' },
     })
     view.setBorderRadius(this.fullscreenTab ? 0 : 10)
     view.setBackgroundColor(nativeTheme.shouldUseDarkColors ? '#1e1f23' : '#ffffff')
@@ -1224,7 +1225,7 @@ app.whenReady().then(async () => {
   })
   log('boot ' + app.getVersion())
   Sync.start()
-  nativeTheme.on('updated', () => broadcast('theme', nativeTheme.shouldUseDarkColors))
+  nativeTheme.on('updated', () => { broadcast('theme', nativeTheme.shouldUseDarkColors); for (const w of windows) { try { w.win.setBackgroundColor(winBg()) } catch {} } })
   powerMonitor.on('resume', () => Sync.syncNow().catch(() => {}))
 })
 

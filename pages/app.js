@@ -149,6 +149,12 @@ async function general(m) {
     ${row('Video speed keys', 'Shift + &gt; speeds up and Shift + &lt; slows down any video, on any site.', sw('videoSpeedKeys', S.videoSpeedKeys !== false))}
     ${row('Hide cookie pop-ups', 'Blocks cookie consent banners and other annoyances along with ads.', sw('hideCookieBanners', S.hideCookieBanners !== false))}
     ${row('Block notification requests', 'Sites never ask to send you notifications.', sw('blockNotifications', !!S.blockNotifications))}
+    ${row('Search shortcuts', 'Type yt, gh, w, amz, noon, maps, img, r, x, sp, tr, so, npm, news or ai, then a space and your search. Example: yt lofi beats.', sw('searchShortcuts', S.searchShortcuts !== false))}
+    ${row('Remember zoom for each site', 'A site you zoomed stays zoomed next time.', sw('rememberZoom', S.rememberZoom !== false))}
+    ${row('Scroll on the tab bar to switch tabs', 'Works when tabs are on top.', sw('wheelTabs', S.wheelTabs !== false))}
+    ${row('Only play sound from the tab you are on', 'Other tabs are muted while you look at something else.', sw('soundActiveOnly', !!S.soundActiveOnly))}
+    ${row('Open new tabs from links in the background', 'Links that open a new tab stay behind the page you are reading.', sw('linksBackground', !!S.linksBackground))}
+    ${row('Ask before quitting', 'Asks before Cmd Q closes a window with several tabs.', sw('confirmQuit', S.confirmQuit !== false))}
     ${row('Dark mode for every website', 'Turns light sites dark. Takes effect after Lumen restarts.', sw('forceDark', !!S.forceDark) + '<button class="btn sm" id="restart">Restart</button>')}
   </div>
   <div class="card"><h3>PERFORMANCE</h3>

@@ -53,12 +53,30 @@ const SEARCH = {
   kagi: { name: 'Kagi', url: 'https://kagi.com/search?q=%s', suggest: null },
 }
 
+// search shortcuts: "yt lofi", "gh electron", "w saturn", "amz usb c cable"...
+const SHORTCUTS = {
+  yt: ['YouTube', 'https://www.youtube.com/results?search_query=%s'], gh: ['GitHub', 'https://github.com/search?q=%s'],
+  w: ['Wikipedia', 'https://en.wikipedia.org/w/index.php?search=%s'], amz: ['Amazon', 'https://www.amazon.sa/s?k=%s'],
+  maps: ['Google Maps', 'https://www.google.com/maps/search/%s'], img: ['Google Images', 'https://www.google.com/search?tbm=isch&q=%s'],
+  r: ['Reddit', 'https://www.reddit.com/search/?q=%s'], x: ['X', 'https://x.com/search?q=%s'], tr: ['Google Translate', 'https://translate.google.com/?sl=auto&op=translate&text=%s'],
+  noon: ['noon', 'https://www.noon.com/saudi-en/search/?q=%s'], so: ['Stack Overflow', 'https://stackoverflow.com/search?q=%s'], npm: ['npm', 'https://www.npmjs.com/search?q=%s'],
+  sp: ['Spotify', 'https://open.spotify.com/search/%s'], ai: ['Claude', 'https://claude.ai/new?q=%s'], news: ['Google News', 'https://news.google.com/search?q=%s'],
+}
+function shortcutFor(text) {
+  if (D.settings.get('searchShortcuts') === false) return null
+  const m = String(text || '').trim().match(/^([a-z]{1,5})\s+(.+)$/i)
+  if (!m || !SHORTCUTS[m[1].toLowerCase()]) return null
+  const [name, url] = SHORTCUTS[m[1].toLowerCase()]
+  return { name, query: m[2], url: url.replace('%s', encodeURIComponent(m[2])) }
+}
+
 function toURL(text) {
   const t = (text || '').trim()
   if (!t) return null
   if (/^(https?|file|lumen|chrome-extension|about|data|view-source):/i.test(t)) return t
   if (/^localhost(:\d+)?(\/.*)?$/i.test(t) || /^(\d{1,3}\.){3}\d{1,3}(:\d+)?(\/.*)?$/.test(t)) return 'http://' + t
   if (!/\s/.test(t) && /^[^\s/]+\.[a-z]{2,}(:\d+)?(\/.*)?$/i.test(t)) return 'https://' + t
+  const sc = shortcutFor(t); if (sc) return sc.url
   const eng = SEARCH[D.settings.get('searchEngine')] || SEARCH.google
   return eng.url.replace('%s', encodeURIComponent(t))
 }
@@ -84,7 +102,7 @@ function upgradeURL(u) {
 }
 
 // ---------------------------------------------------------------- sessions
-let mainSession, extensions = null, blocker = null
+let mainSession, extensions = null, blocker = null, addingTab = false
 const blockedByWc = new Map()
 const sessionsReady = new Set()
 
@@ -192,7 +210,7 @@ async function setupExtensions() {
         const tab = w.createTab(details.url || 'lumen://newtab', { active: details.active !== false })
         return [tab.view.webContents, w.win]
       },
-      selectTab(wc) { const w = winForWc(wc.id); if (w) { const t = w.tabByWc(wc.id); if (t) w.activate(t.id) } },
+      selectTab(wc) { if (addingTab) return; const w = winForWc(wc.id); if (w) { const t = w.tabByWc(wc.id); if (t) w.activate(t.id) } },
       removeTab(wc) { const w = winForWc(wc.id); if (w) { const t = w.tabByWc(wc.id); if (t) w.closeTab(t.id) } },
       async createWindow(details) {
         const w = createWindow({ urls: [].concat(details.url || 'lumen://newtab') })
@@ -424,7 +442,8 @@ class BrowserWin {
     view.setBackgroundColor(nativeTheme.shouldUseDarkColors ? '#1e1f23' : '#ffffff')
     t.view = view; t.asleep = false
     const wc = view.webContents
-    if (extensions && !this.incognito) { try { extensions.addTab(wc, this.win) } catch {} }
+    // the extensions library marks every added tab as active; ignore that so background tabs stay in the background
+    if (extensions && !this.incognito) { addingTab = true; try { extensions.addTab(wc, this.win) } catch {} finally { addingTab = false } }
     const upd = () => this.pushStateSoon()
     wc.on('page-title-updated', (e, title) => { t.title = title; D.updateHistoryTitle(wc.getURL(), title); upd() })
     wc.on('page-favicon-updated', (e, icons) => { t.favicon = icons[icons.length - 1] || icons[0] || ''; upd() })
@@ -447,6 +466,7 @@ class BrowserWin {
     const nav = () => {
       t.url = wc.getURL(); t.canBack = wc.navigationHistory.canGoBack(); t.canForward = wc.navigationHistory.canGoForward()
       if (!this.incognito) D.addHistory(t.url, wc.getTitle())
+      applySiteZoom(t)
       upd(); saveSession()
     }
     wc.on('did-navigate', nav)
@@ -475,7 +495,7 @@ class BrowserWin {
         return { action: 'allow', overrideBrowserWindowOptions: { width: 520, height: 680, autoHideMenuBar: true, webPreferences: { session: this.ses } } }
       }
       if (d.url.startsWith('lumen://') && !wc.getURL().startsWith('lumen://')) return { action: 'deny' }
-      const bg = d.disposition === 'background-tab'
+      const bg = d.disposition === 'background-tab' || (D.settings.get('linksBackground') && d.disposition === 'foreground-tab')
       this.createTab(d.url, { active: !bg, openerId: t.id })
       return { action: 'deny' }
     })
@@ -514,8 +534,11 @@ class BrowserWin {
       if (id === this.splitId) this.splitId = this.activeId
       else if (id !== this.activeId) this.splitId = null
     }
+    if (this.activeId && this.activeId !== id) this.lastTabId = this.activeId
     this.activeId = id
     t.lastActive = Date.now()
+    if (D.settings.get('soundActiveOnly')) for (const o of this.tabs.values()) if (o.view && o.id !== id && o.id !== this.splitId) { o.view.webContents.setAudioMuted(true); o.autoMuted = true }
+    if (t.autoMuted && t.view) { t.view.webContents.setAudioMuted(!!t.muted); t.autoMuted = false }
     if (!t.view) this.makeView(t)
     this.layout()
     if (!this.overlay) t.view.webContents.focus()
@@ -693,6 +716,8 @@ class BrowserWin {
     const wc = t.view.webContents
     const z = delta === 0 ? 0 : Math.max(-6, Math.min(8, wc.getZoomLevel() + delta))
     wc.setZoomLevel(z); t.zoom = z
+    const h = siteKey(wc.getURL())
+    if (h && !this.incognito && D.settings.get('rememberZoom') !== false) { const zs = { ...(D.settings.get('zoomBySite') || {}) }; if (z) zs[h] = z; else delete zs[h]; D.settings.set({ zoomBySite: zs }) }
     this.pushState()
   }
 
@@ -752,6 +777,7 @@ class BrowserWin {
     if (p.selectionText && !p.isEditable) {
       const q = p.selectionText.trim().slice(0, 80)
       items.push({ label: 'Copy', role: 'copy' })
+      if (/^https?:/.test(wc.getURL()) && p.selectionText.trim().length < 300) items.push({ label: 'Copy Link to Highlight', click: () => { const u = cleanURL(wc.getURL()).split('#')[0]; const txt = p.selectionText.trim().replace(/\s+/g, ' '); const words = txt.split(' '); const frag = words.length > 8 ? encodeURIComponent(words.slice(0, 4).join(' ')).replace(/-/g, '%2D') + ',' + encodeURIComponent(words.slice(-4).join(' ')).replace(/-/g, '%2D') : encodeURIComponent(txt).replace(/-/g, '%2D'); clipboard.writeText(u + '#:~:text=' + frag); this.send('toast', 'Link to highlight copied') } })
       items.push({ label: 'Explain with Lumen AI', click: () => this.send('command', { ai: 'explain', text: p.selectionText.slice(0, 6000) }) })
       items.push({ label: `Translate to ${Translate.langName(Translate.target(D.settings))}`, click: () => Translate.bubble(wc, p.selectionText.slice(0, 4000), Translate.target(D.settings)).catch(e => this.send('toast', 'Translation failed')) })
       items.push({ label: `Search ${(SEARCH[D.settings.get('searchEngine')] || SEARCH.google).name} for "${q.length > 30 ? q.slice(0, 30) + '...' : q}"`, click: () => this.createTab(toURL(q), { openerId: t.id }) })
@@ -769,6 +795,8 @@ class BrowserWin {
       items.push({ label: 'Reload', click: () => wc.reload() })
       sep()
       if (D.settings.get('adblock') && siteKey(wc.getURL())) { const off = adAllowed(wc.getURL()); items.push({ label: off ? 'Turn Ad Blocker Back On for This Site' : 'Turn Off Ad Blocker for This Site', click: () => toggleSiteAdblock(this, off) }) }
+      items.push({ label: 'Copy Link as Markdown', click: () => { clipboard.writeText(`[${wc.getTitle().replace(/[\[\]]/g, '')}](${cleanURL(wc.getURL())})`); this.send('toast', 'Markdown link copied') } })
+      items.push({ label: 'Send to Phone with QR Code', click: () => this.send('command', 'qr') })
       items.push({ label: 'Summarize with Lumen AI', click: () => this.send('command', { ai: 'summarize' }) })
       items.push({ label: 'Translate Page', click: () => translateTab(this, t) })
       items.push({ label: 'Reader Mode', click: () => readerMode(wc) })
@@ -963,9 +991,37 @@ function genPassword(n = 18) {
 }
 
 // ---------------------------------------------------------------- suggestions
+// tiny calculator for the address bar: + - * / ^ % ( ) and sqrt, pi
+function calcOf(q) {
+  const s = String(q || '').replace(/\s+/g, '').replace(/[x\u00d7]/g, '*').replace(/\u00f7/g, '/').replace(/,/g, '').replace(/^=/, '')
+  if (!/[-+*/^%]/.test(s.replace(/^-/, '')) && !/sqrt|pi/.test(s)) return null
+  if (/^[\d-]+$/.test(s) && (s.match(/-/g) || []).length >= 2) return null   // dates and phone numbers
+  if (!/^[\d.+\-*/^%()]*(sqrt|pi)?[\d.+\-*/^%()sqrtpi]*$/.test(s) || s.length > 80) return null
+  let i = 0
+  const peek = () => s[i], eat = c => s[i] === c && ++i
+  function num() {
+    if (s.startsWith('pi', i)) { i += 2; return Math.PI }
+    if (s.startsWith('sqrt', i)) { i += 4; return Math.sqrt(atom()) }
+    const m = s.slice(i).match(/^\d*\.?\d+/); if (!m) throw 0
+    i += m[0].length; return parseFloat(m[0])
+  }
+  function atom() {
+    if (eat('-')) return -atom()
+    if (eat('+')) return atom()
+    if (eat('(')) { const v = expr(); if (!eat(')')) throw 0; return v }
+    let v = num(); if (eat('%')) v /= 100; return v
+  }
+  function power() { const b = atom(); return eat('^') ? Math.pow(b, power()) : b }
+  function term() { let v = power(); for (;;) { if (eat('*')) v *= power(); else if (eat('/')) v /= power(); else if (peek() === '(') v *= power(); else return v } }
+  function expr() { let v = term(); for (;;) { if (eat('+')) v += term(); else if (eat('-')) v -= term(); else return v } }
+  try { const v = expr(); if (i !== s.length || !isFinite(v)) return null; return +v.toPrecision(12) } catch { return null }
+}
+
 async function suggest(w, text) {
   const q = (text || '').trim()
   const out = { query: q, tabs: [], history: [], bookmarks: [], search: [] }
+  const sc = shortcutFor(q); if (sc) out.shortcut = { name: sc.name, query: sc.query }
+  const calc = calcOf(q); if (calc !== null) out.calc = calc
   if (!q) {
     out.history = D.topSites(6).map(s => ({ url: s.url, title: s.title }))
     return out
@@ -1093,6 +1149,13 @@ ipcMain.handle('ui', async (e, action, ...a) => {
       case 'download': return downloadAction(a[0], a[1])
       case 'setSetting': return setSetting(a[0], a[1])
       case 'siteInfo': return siteInfo(w)
+      case 'qr': { const u = wc ? cleanURL(wc.getURL()) : ''; if (!/^https?:/.test(u)) return null; return { url: u, img: await require('qrcode').toDataURL(u, { margin: 1, width: 440, errorCorrectionLevel: 'M' }) } }
+      case 'pageStats': { if (!wc) return null; try { return await wc.executeJavaScriptInIsolatedWorld(1019, [{ code: `(() => { const el = document.querySelector('article') || document.querySelector('main') || document.body; const words = ((el && el.innerText) || '').trim().split(/\\s+/).filter(Boolean).length; return { words, mins: Math.max(1, Math.round(words / 230)) } })()` }]) } catch { return null } }
+      case 'clearSiteData': { if (!wc) return; let origin = ''; try { origin = new URL(wc.getURL()).origin } catch { return } await w.ses.clearStorageData({ origin }); try { await w.ses.clearData({ origins: [origin] }) } catch {} wc.reload(); w.send('toast', 'Site data cleared'); return }
+      case 'lastTab': { if (w.lastTabId && w.tabs.has(w.lastTabId)) w.activate(w.lastTabId); return }
+      case 'pasteGo': { const txt = String(await clipboard.readText() || '').trim().slice(0, 4000); if (txt) { const url = toURL(txt); if (url) w.createTab(url, { active: true }) } return }
+      case 'copyText': clipboard.writeText(String(a[0] || '')); return
+      case 'duplicateTab': { if (t) w.createTab(wc ? wc.getURL() : t.url, { active: true, index: w.order.indexOf(t.id) + 1 }); return }
       case 'siteAdblock': return toggleSiteAdblock(w, !!a[0])
       case 'resetSite': { if (!t) return; try { const o = new URL(t.url).origin; const all = D.permissions.get(); delete all[o]; D.permissions.set(all) } catch {} return }
       case 'update': if (a[0] === 'check') return Updater.check(true); if (a[0] === 'install') return Updater.install(true); return Updater.getState()
@@ -1148,7 +1211,7 @@ function tabMenu(w, id) {
     { type: 'separator' },
     { label: 'Close Tab', click: () => w.closeTab(id) },
     { label: 'Close Other Tabs', enabled: others.length > 0, click: () => others.filter(i => !w.tabs.get(i).pinned).forEach(i => w.closeTab(i)) },
-    { label: 'Close Tabs Below', click: () => w.order.slice(w.order.indexOf(id) + 1).filter(i => !w.tabs.get(i).pinned).forEach(i => w.closeTab(i)) },
+    { label: D.settings.get('tabLayout') === 'top' ? 'Close Tabs to the Right' : 'Close Tabs Below', click: () => w.order.slice(w.order.indexOf(id) + 1).filter(i => !w.tabs.get(i).pinned).forEach(i => w.closeTab(i)) },
   ]).popup({ window: w.win })
 }
 function appMenuPopup(w) {
@@ -1190,7 +1253,7 @@ function downloadAction(id, what) {
   broadcast('downloads', listDownloads())
 }
 
-const PUBLIC_SETTINGS = ['adblockAllow', 'aiModel', 'aiTabGroups', 'browserTheme', 'themeCustom', 'compact', 'appIcon', 'cleanLinks', 'swipeNav', 'videoSpeedKeys', 'hideCookieBanners', 'blockNotifications', 'forceDark', 'translateTo', 'offerTranslate', 'autoPip', 'ntpShortcuts', 'ntpWallpaper', 'ntpClock', 'searchEngine', 'motion', 'theme', 'accent', 'adblock', 'blockTrackers', 'httpsOnly', 'sleepTabsAfterMin', 'restoreSession', 'sidebarCollapsed', 'sidebarWidth', 'tabLayout', 'introSeen', 'autoUpdate', 'askWhereToSave', 'doNotTrack', 'showSuggestions', 'homeTiles']
+const PUBLIC_SETTINGS = ['searchShortcuts', 'rememberZoom', 'soundActiveOnly', 'linksBackground', 'confirmQuit', 'wheelTabs', 'adblockAllow', 'aiModel', 'aiTabGroups', 'browserTheme', 'themeCustom', 'compact', 'appIcon', 'cleanLinks', 'swipeNav', 'videoSpeedKeys', 'hideCookieBanners', 'blockNotifications', 'forceDark', 'translateTo', 'offerTranslate', 'autoPip', 'ntpShortcuts', 'ntpWallpaper', 'ntpClock', 'searchEngine', 'motion', 'theme', 'accent', 'adblock', 'blockTrackers', 'httpsOnly', 'sleepTabsAfterMin', 'restoreSession', 'sidebarCollapsed', 'sidebarWidth', 'tabLayout', 'introSeen', 'autoUpdate', 'askWhereToSave', 'doNotTrack', 'showSuggestions', 'homeTiles']
 function publicSettings() { const s = D.settings.get(); return Object.fromEntries(PUBLIC_SETTINGS.map(k => [k, s[k]])) }
 function setSetting(k, v) {
   if (!PUBLIC_SETTINGS.includes(k)) return
@@ -1198,6 +1261,7 @@ function setSetting(k, v) {
   if (k === 'adblockAllow') { if (!Array.isArray(v)) return; v = v.filter(x => typeof x === 'string' && /^[a-z0-9.-]+$/i.test(x)).slice(0, 500) }
   D.settings.set({ [k]: v, ...(!['sidebarCollapsed', 'sidebarWidth', 'introSeen'].includes(k) ? { settingsAt: Date.now() } : {}) })
   if (k === 'adblock') setAdblock(!!v)
+  if (k === 'soundActiveOnly' && !v) for (const w of windows) for (const t of w.tabs.values()) if (t.autoMuted && t.view) { t.view.webContents.setAudioMuted(!!t.muted); t.autoMuted = false }
   if (k === 'hideCookieBanners') setupAdblock().then(() => setAdblock(!!D.settings.get('adblock')))
   if (k === 'theme') nativeTheme.themeSource = v
   if (k === 'autoUpdate') Updater.setEnabled(!!v)
@@ -1347,7 +1411,7 @@ ipcMain.handle('lumen', async (e, action, ...a) => {
         }
         return D.revealPassword(a[0])
       }
-      case 'copyPassword': { const p = D.revealPassword(a[0]); clipboard.writeText(p); setTimeout(() => { if (clipboard.readText() === p) clipboard.clear() }, 60000); return true }
+      case 'copyPassword': { const p = D.revealPassword(a[0]); clipboard.writeText(p); setTimeout(async () => { if (String(await clipboard.readText() || '') === p) clipboard.clear() }, 60000); return true }
       case 'deletePassword': return D.deletePassword(a[0])
       case 'updatePassword': return D.updatePassword(a[0], a[1], a[2])
       case 'addPassword': { let o; try { o = new URL(toURL(a[0])).origin } catch { return false } D.savePassword(o, a[1] || '', a[2] || ''); return true }
@@ -1429,7 +1493,7 @@ function buildMenu() {
       { label: 'Settings...', accelerator: 'Cmd+,', click: focused(w => openSettings(w)) },
       { label: 'Set as Default Browser', click: () => { app.setAsDefaultProtocolClient('http'); app.setAsDefaultProtocolClient('https') } },
       { type: 'separator' }, { role: 'services' }, { type: 'separator' },
-      { role: 'hide' }, { role: 'hideOthers' }, { role: 'unhide' }, { type: 'separator' }, { role: 'quit' },
+      { role: 'hide' }, { role: 'hideOthers' }, { role: 'unhide' }, { type: 'separator' }, { label: 'Quit Lumen', accelerator: 'Cmd+Q', click: () => confirmQuit() },
     ] }] : []),
     { label: 'File', submenu: [
       { label: 'New Tab', accelerator: 'CmdOrCtrl+T', click: focused(w => w.send('command', 'newtab')) },
@@ -1453,6 +1517,9 @@ function buildMenu() {
       { label: 'Find Previous', accelerator: 'CmdOrCtrl+Shift+G', click: focused(w => w.send('command', 'findPrev')) },
       { type: 'separator' },
       { label: 'Command Bar', accelerator: 'CmdOrCtrl+K', click: focused(w => w.send('command', 'palette')) },
+      { label: 'Use Selection for Find', accelerator: 'CmdOrCtrl+E', click: focused(async (w, t) => { const wc = activeWc(w, t); if (!wc) return; const sel = await wc.executeJavaScript('String(getSelection()).slice(0, 200)', true).catch(() => ''); if (sel.trim()) w.send('command', { find: sel.trim() }) }) },
+      { label: 'Paste and Go', accelerator: 'CmdOrCtrl+Shift+V', click: focused(async w => { const txt = String(await clipboard.readText() || '').trim().slice(0, 4000); const url = txt && toURL(txt); if (url) { const t = w.active(); if (t && t.view && (t.url || '').startsWith('lumen://newtab')) t.view.webContents.loadURL(url); else w.createTab(url, { active: true }) } }) },
+      { label: 'Copy Link as Markdown', accelerator: 'CmdOrCtrl+Alt+C', click: focused((w, t) => { const wc = activeWc(w, t); if (wc) { clipboard.writeText(`[${wc.getTitle().replace(/[\[\]]/g, '')}](${cleanURL(wc.getURL())})`); w.send('toast', 'Markdown link copied') } }) },
       { label: 'Copy Clean Link', accelerator: 'CmdOrCtrl+Shift+C', click: focused((w, t) => { if (t) { clipboard.writeText(cleanURL(t.url)); w.send('toast', 'Clean link copied') } }) },
     ] },
     { label: 'View', submenu: [
@@ -1463,6 +1530,9 @@ function buildMenu() {
       { label: 'Tabs on Top', type: 'checkbox', checked: D.settings.get('tabLayout') === 'top', accelerator: 'CmdOrCtrl+Alt+S', click: item => setSetting('tabLayout', item.checked ? 'top' : 'side') },
       { label: 'Split View', accelerator: 'CmdOrCtrl+Shift+\\', click: focused(w => w.send('command', 'split')) },
       { label: 'Translate Page', accelerator: isMac ? 'Alt+Cmd+T' : 'Ctrl+Alt+T', click: focused((w, t) => t && translateTab(w, t)) },
+      { label: 'Switch to Last Used Tab', accelerator: 'Ctrl+`', click: focused(w => { if (w.lastTabId && w.tabs.has(w.lastTabId)) w.activate(w.lastTabId) }) },
+      { label: 'Duplicate Tab', accelerator: 'CmdOrCtrl+Shift+K', click: focused((w, t) => { if (t) w.createTab(t.view ? t.view.webContents.getURL() : t.url, { active: true, index: w.order.indexOf(t.id) + 1 }) }) },
+      { label: 'Send Page to Phone', accelerator: 'CmdOrCtrl+Shift+Y', click: focused(w => w.send('command', 'qr')) },
       { label: 'Lumen AI', accelerator: 'CmdOrCtrl+Shift+A', click: focused(w => w.send('command', 'ai')) },
       { label: 'Sort Tabs into Groups', accelerator: 'CmdOrCtrl+Shift+G', click: focused(w => autoGroupWindow(w)) },
       { label: 'Reader Mode', accelerator: 'CmdOrCtrl+Shift+E', click: focused((w, t) => activeWc(w, t) && readerMode(activeWc(w, t))) },
@@ -1505,6 +1575,24 @@ function buildMenu() {
     { role: 'windowMenu' },
   ]
   Menu.setApplicationMenu(Menu.buildFromTemplate(tpl))
+}
+
+// ---------------------------------------------------------------- quit guard (only for Cmd+Q, never for updates or shutdown)
+function confirmQuit() {
+  const n = windows.reduce((a, w) => a + w.tabs.size, 0)
+  if (!D.settings.get('confirmQuit') || n < 2) return app.quit()
+  const fw = windows.find(w => w.win.isFocused()) || windows[0]
+  dialog.showMessageBox(fw ? fw.win : undefined, { type: 'question', buttons: ['Quit', 'Cancel'], defaultId: 0, cancelId: 1, message: `Quit Lumen with ${n} tabs open?`, detail: D.settings.get('restoreSession') !== false ? 'Your tabs will be back next time you open Lumen.' : 'Your tabs will be closed.', checkboxLabel: 'Do not ask again', checkboxChecked: false })
+    .then(({ response, checkboxChecked }) => { if (response !== 0) return; if (checkboxChecked) D.settings.set({ confirmQuit: false }); app.quit() })
+}
+
+// ---------------------------------------------------------------- remember zoom per site
+function applySiteZoom(t) {
+  if (!t.view || D.settings.get('rememberZoom') === false) return
+  const wc = t.view.webContents, h = siteKey(wc.getURL()); if (!h) return
+  const z = (D.settings.get('zoomBySite') || {})[h]
+  if (typeof z === 'number' && Math.abs(wc.getZoomLevel() - z) > 0.01) { wc.setZoomLevel(z); t.zoom = z }
+  else if (z === undefined && t.zoom) t.zoom = wc.getZoomLevel()
 }
 
 // ---------------------------------------------------------------- tab sleeping

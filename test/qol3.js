@@ -1,0 +1,92 @@
+process.env.ELECTRON_DISABLE_SECURITY_WARNINGS = '1'
+const http = require('http'), fs = require('fs')
+const { app, clipboard, Menu } = require('electron')
+fs.rmSync('/tmp/lumen-q3', { recursive: true, force: true }); app.setPath('userData', '/tmp/lumen-q3')
+const L = require('../src/main.js')
+const wait = ms => new Promise(r => setTimeout(r, ms))
+http.createServer((q, r) => { r.setHeader('content-type', 'text/html'); r.end(`<title>P${q.url}</title><article><p id=t>${'word '.repeat(700)}</p><a id=l href="/new" target="_blank">x</a></article>`) }).listen(48140)
+let fails = 0; const ok = (c, m) => { console.log((c ? 'PASS ' : 'FAIL ') + m); if (!c) fails++ }
+app.whenReady().then(async () => {
+  await wait(4000)
+  const w = L.windows[0], ui = w.ui.webContents, ex = s => ui.executeJavaScript(s)
+  const errors = []; ui.on('console-message', e => { if (e.level === 'error' || e.level === 3) errors.push(e.message) })
+  await ex(`document.querySelector('#intro .skip') && document.querySelector('#intro .skip').click()`); await wait(2500)
+  await ex(`document.querySelector('#intro .go') && document.querySelector('#intro .go').click()`); await wait(1000)
+  const shot = async n => fs.writeFileSync('/tmp/lumen-shots/' + n + '.png', (await ui.capturePage()).toPNG())
+  // calc + shortcuts
+  let s = await ex(`api.do('suggest', '12*4+2')`); ok(s.calc === 50, 'calc 12*4+2 = ' + s.calc)
+  s = await ex(`api.do('suggest', '(2+3)^2/5')`); ok(s.calc === 5, 'calc parens/power ' + s.calc)
+  s = await ex(`api.do('suggest', '15% * 200')`); ok(s.calc === 30, 'calc percent ' + s.calc)
+  s = await ex(`api.do('suggest', 'hello world')`); ok(s.calc === undefined, 'no calc for text')
+  s = await ex(`api.do('suggest', '2026-11-21')`); ok(s.calc === undefined, 'no calc for dates')
+  s = await ex(`api.do('suggest', '100-37')`); ok(s.calc === 63, 'subtraction ' + s.calc)
+  s = await ex(`api.do('suggest', 'yt lofi beats')`); ok(s.shortcut && s.shortcut.name === 'YouTube', 'yt shortcut')
+  await ex(`openCmd('newtab'); document.getElementById('cmdinput') ? 0 : 0`); await wait(500)
+  await ex(`(() => { const i = document.querySelector('#cmdbar input'); i.value = '7*6'; i.dispatchEvent(new Event('input')) })()`); await wait(900)
+  await shot('q3-01-calc')
+  ok(await ex(`document.querySelector('#cmdbar .res .rt').textContent === '= 42'`), 'calc row on top')
+  await ex(`(() => { const i = document.querySelector('#cmdbar input'); i.value = 'gh electron'; i.dispatchEvent(new Event('input')) })()`); await wait(900)
+  await shot('q3-02-shortcut')
+  ok(await ex(`/Search GitHub/.test(document.querySelector('#cmdbar .res .ru').textContent)`), 'shortcut row on top')
+  await ex(`closeCmd(true)`)
+  // tabs
+  const a = w.createTab('http://127.0.0.1:48140/a', { active: true }); await wait(1500)
+  const b = w.createTab('http://127.0.0.1:48140/b', { active: true }); await wait(1500)
+  await ex(`api.do('lastTab')`); await wait(200); ok(w.activeId === a.id, 'last used tab')
+  await ex(`api.do('lastTab')`); await wait(200); ok(w.activeId === b.id, 'last used tab toggles back')
+  // zoom memory
+  w.zoom(b.id, 1); await wait(200)
+  ok((L.D.settings.get('zoomBySite') || {})['127.0.0.1'] === 1, 'zoom saved for site')
+  const c = w.createTab('http://127.0.0.1:48140/c', { active: true }); await wait(1800)
+  ok(Math.abs(c.view.webContents.getZoomLevel() - 1) < 0.01, 'zoom restored on new tab ' + c.view.webContents.getZoomLevel())
+  w.zoom(c.id, 0); await wait(200)
+  ok(!('127.0.0.1' in (L.D.settings.get('zoomBySite') || {})), 'zoom reset clears site')
+  // links background
+  await ex(`api.do('setSetting','linksBackground',true)`)
+  const before = w.order.length
+  await c.view.webContents.executeJavaScript(`document.getElementById('l').click()`, true); await wait(1200)
+  ok(w.order.length === before + 1 && w.activeId === c.id, 'link opened in background ' + [before, w.order.length, w.activeId, c.id, L.D.settings.get('linksBackground')] + require('fs').readFileSync(require('path').join(app.getPath('logs'), 'lumen.log'), 'utf8').split('\n').filter(l => /open/.test(l)).join(';'))
+  await ex(`api.do('setSetting','linksBackground',false)`)
+  // sound only active
+  await ex(`api.do('setSetting','soundActiveOnly',true)`); w.activate(a.id); await wait(200)
+  ok(c.view.webContents.isAudioMuted() && !a.view.webContents.isAudioMuted(), 'other tabs muted')
+  await ex(`api.do('setSetting','soundActiveOnly',false)`); await wait(200)
+  ok(!c.view.webContents.isAudioMuted(), 'unmuted when turned off')
+  // page stats + qr + site popover
+  const st = await ex(`api.do('pageStats')`); ok(st && st.words >= 700 && st.mins === 3, 'reading time ' + JSON.stringify(st))
+  await ex(`openSiteInfo()`); await wait(1200); await shot('q3-03-site')
+  ok(await ex(`/min read/.test(document.getElementById('rtime').textContent)`), 'reading time in popover')
+  await ex(`closePopover(true)`)
+  await ex(`openQR()`); await wait(1000); await shot('q3-04-qr')
+  ok(await ex(`document.querySelector('.qrbox img').naturalWidth > 100`), 'QR rendered')
+  await ex(`closePopover(true)`)
+  // markdown + duplicate + paste and go via menu
+  const menu = Menu.getApplicationMenu()
+  const item = label => { let f; const walk = m => m.items.forEach(i => { if (i.label === label) f = i; if (i.submenu) walk(i.submenu) }); walk(menu); return f }
+  w.win.focus(); await wait(200)
+  for (const lbl of ['Copy Link as Markdown', 'Paste and Go', 'Duplicate Tab', 'Use Selection for Find', 'Switch to Last Used Tab', 'Send Page to Phone']) ok(!!item(lbl), 'menu has ' + lbl)
+  const n0 = w.order.length; await ex(`api.do('duplicateTab')`); await wait(800); ok(w.order.length === n0 + 1, 'duplicate tab')
+  clipboard.writeText('yt cats'); await ex(`api.do('pasteGo')`); await wait(500)
+  ok(/youtube\.com(\/|%2F)results(\?|%3F)search_query(=|%3D)cats/.test(w.active().url), 'paste and go with shortcut ' + w.active().url)
+  // selection find
+  w.activate(a.id); await wait(300)
+  w.send('command', { find: 'word' }); await wait(600)
+  ok(await ex(`document.getElementById('findbar').classList.contains('open') && findInput.value === 'word'`), 'find with selection')
+  await ex(`closeFind()`)
+  for (const id of [...w.order].slice(3)) w.closeTab(id); await wait(800)
+  // wheel to switch tabs (top layout)
+  const act0 = w.activeId
+  await ex(`document.getElementById('tablist').dispatchEvent(new WheelEvent('wheel', { deltaY: 40, bubbles: true, cancelable: true }))`); await wait(400)
+  ok(w.activeId !== act0, 'wheel switches tab')
+  const n1 = w.order.length
+  await ex(`(() => { const t = document.getElementById('tablist'); const r = t.getBoundingClientRect(); const el = document.elementFromPoint(r.right - 5, r.top + r.height / 2); t.dispatchEvent(new MouseEvent('dblclick', { bubbles: true })) })()`); await wait(800)
+  ok(w.order.length === n1 + 1, 'double-click tab strip opens tab ' + [n1, w.order.length] + await ex(`(() => { const t = document.getElementById('tablist'); const r = t.getBoundingClientRect(); const el = document.elementFromPoint(r.right - 5, r.top + r.height / 2); return JSON.stringify([r.left, r.right, r.top, r.height, el && (el.id || el.className)]) })()`))
+  // settings page
+  const sp = w.createTab('lumen://settings/general', { active: true }); await wait(1800)
+  fs.writeFileSync('/tmp/lumen-shots/q3-05-settings.png', (await sp.view.webContents.capturePage()).toPNG())
+  ok(await sp.view.webContents.executeJavaScript(`!!document.querySelector('[data-k="searchShortcuts"], #searchShortcuts, input[name="searchShortcuts"]') || /Search shortcuts/.test(document.body.innerText)`), 'settings rows')
+  const emo = /[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]/u
+  ok(!emo.test(await ex('document.body.innerText') + await sp.view.webContents.executeJavaScript('document.body.innerText')), 'no emoji')
+  ok(!errors.length, 'no UI errors ' + errors.join(' | '))
+  console.log(fails ? 'FAILED ' + fails : 'ALL PASS'); app.exit(fails ? 1 : 0)
+})

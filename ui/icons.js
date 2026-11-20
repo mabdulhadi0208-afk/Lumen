@@ -39,4 +39,7 @@ window.ICONS = {
   winMin: I('<path d="M4 8h8"/>', 'stroke-width="1"'),
   winMax: I('<rect x="4.5" y="4.5" width="7" height="7" rx=".5"/>', 'stroke-width="1"'),
   winClose: I('<path d="m4.5 4.5 7 7m0-7-7 7"/>', 'stroke-width="1"'),
+  phone: I('<rect x="4.5" y="1.5" width="7" height="13" rx="1.6"/><path d="M7 12h2"/>'),
+  trash: I('<path d="M2.5 4h11M6 4V2.5h4V4M4 4l.7 9.2a1 1 0 0 0 1 .8h4.6a1 1 0 0 0 1-.8L12 4"/>'),
+  link: I('<path d="M6.5 9.5 9.5 6.5"/><path d="M7.5 4.5 9 3a2.5 2.5 0 0 1 3.5 3.5L11 8"/><path d="M8.5 11.5 7 13a2.5 2.5 0 0 1-3.5-3.5L5 8"/>'),
 }

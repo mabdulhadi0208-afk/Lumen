@@ -522,6 +522,11 @@ const COMMANDS = [
   { t: 'Mute Other Tabs', k: ['mute', 'silence', 'quiet'], i: 'muted', run: () => api.do('muteOthers') },
   { t: 'Copy Clean Link', k: ['copy link', 'share', 'clean link'], i: 'arrowRight', run: () => navigator.clipboard.writeText(S.url).then(() => toast('Link copied')) },
   { t: 'Translate Page', k: ['translate', 'translation', 'language'], i: 'globe', run: () => api.do('translate') },
+  { t: 'Send Page to Phone', k: ['qr', 'phone', 'share', 'send'], i: 'phone', run: () => openQR() },
+  { t: 'Paste and Go', k: ['paste', 'clipboard'], i: 'link', run: () => api.do('pasteGo') },
+  { t: 'Duplicate Tab', k: ['duplicate', 'copy tab', 'clone'], i: 'tabs', run: () => api.do('duplicateTab') },
+  { t: 'Switch to Last Used Tab', k: ['last tab', 'previous tab', 'recent'], i: 'tabs', run: () => api.do('lastTab') },
+  { t: 'Clear Data for This Site', k: ['clear', 'cookies', 'site data', 'sign out'], i: 'trash', run: () => api.do('clearSiteData') },
   { t: 'Lumen AI', k: ['ai', 'ask', 'chat', 'assistant', 'claude'], i: 'bolt', run: () => openAI() },
   { t: 'Summarize Page', k: ['summarize', 'summary', 'tldr', 'ai'], i: 'book', run: () => { openAI(); aiRun('summarize') } },
   { t: 'Sort Tabs into Groups', k: ['group', 'sort tabs', 'organize', 'tidy'], i: 'tabs', run: () => api.do('autoGroup') },
@@ -576,6 +581,8 @@ function buildResults(q, data) {
     if (looksLikeURL(qq)) out.push({ sec: '', icon: ICONS.globe, title: qq, sub: '', key: 'Open', go: () => go(qq) })
     else out.push({ sec: '', icon: ICONS.search, title: qq, sub: '  ' + eng, key: 'Search', go: () => go(qq) })
   }
+  if (data.calc !== undefined && data.calc !== null) out.unshift({ sec: '', icon: ICONS.bolt, title: '= ' + data.calc.toLocaleString('en-US', { maximumFractionDigits: 10 }), sub: '  Press Enter to copy', key: 'Copy', go: () => { api.do('copyText', String(data.calc)); closeCmd(true); toast('Copied ' + data.calc) } })
+  if (data.shortcut) out.unshift({ sec: '', icon: ICONS.search, title: data.shortcut.query, sub: '  Search ' + data.shortcut.name, key: 'Search', go: () => go(qq) })
   const lq = qq.toLowerCase()
   const cmds = lq ? COMMANDS.filter(c => c.t.toLowerCase().includes(lq) || c.k.some(k => k.startsWith(lq) || lq.startsWith(k))).slice(0, 3) : []
   for (const c of cmds) out.push({ sec: 'Actions', icon: ICONS[c.i], title: c.t, sub: '', key: 'Run', go: () => { closeCmd(true); c.run() } })
@@ -698,14 +705,18 @@ async function openSiteInfo() {
   const html = `
     <h3>${esc(info.host)}</h3>
     <div class="sub">${info.secure ? ICONS.lock + ' Connection is secure' : ICONS.unlock + ' Connection is not secure'}</div>
-    ${info.adblock ? `<div class="item" data-act="adblock"><span class="ri">${ICONS.shield}</span><div class="grow">Ad blocker on this site<div class="small">${info.adOff ? 'Off here. Ads can show on this site.' : `${info.blocked} blocked on this page. Turn off if something is missing.`}</div></div><label class="switch sm"><input type="checkbox" ${info.adOff ? '' : 'checked'} tabindex="-1"><span></span></label></div>` : ''}
+    ${info.adblock ? `<div class="item" data-act="adblock"><span class="ri">${ICONS.shield}</span><div class="grow">Ad blocker on this site<div class="small">${info.adOff ? 'Off here. Ads can show on this site.' : `${info.blocked} blocked on this page`}</div></div><label class="switch sm"><input type="checkbox" ${info.adOff ? '' : 'checked'} tabindex="-1"><span></span></label></div>` : ''}
     <div class="item"><span class="ri">${ICONS.search}</span><div class="grow">Zoom</div><div class="zoom"><button class="ib sm" data-z="-0.5">${ICONS.minus}</button><span id="zv">${S.zoom}%</span><button class="ib sm" data-z="0.5">${ICONS.plus}</button></div></div>
     ${perms.length ? '<div class="sep"></div>' + perms.map(([k, v]) => `<div class="item"><span class="ri">${ICONS.check}</span><div class="grow">${esc(PERM_NAMES[k] || k)}</div><div class="small">${v === 'allow' ? 'Allowed' : 'Blocked'}</div></div>`).join('') + `<div class="item" data-act="reset"><span class="ri">${ICONS.reload}</span><div class="grow">Reset permissions</div></div>` : ''}
     <div class="sep"></div>
-    <div class="item" data-act="reader"><span class="ri">${ICONS.book}</span><div class="grow">Reader mode</div></div>
+    <div class="item" data-act="reader"><span class="ri">${ICONS.book}</span><div class="grow">Reader mode<div class="small" id="rtime"></div></div></div>
+    <div class="item" data-act="qr"><span class="ri">${ICONS.phone}</span><div class="grow">Send to phone<div class="small">Show a QR code for this page</div></div></div>
     <div class="item" data-act="pip"><span class="ri">${ICONS.pip}</span><div class="grow">Picture in picture</div></div>
-    <div class="item" data-act="shot"><span class="ri">${ICONS.camera}</span><div class="grow">Take screenshot</div></div>`
+    <div class="item" data-act="shot"><span class="ri">${ICONS.camera}</span><div class="grow">Take screenshot</div></div>
+    <div class="sep"></div>
+    <div class="item" data-act="clear"><span class="ri">${ICONS.trash}</span><div class="grow">Clear data for this site<div class="small">Cookies and storage. Signs you out here.</div></div></div>`
   openPopover(html, $('#urlbar'))
+  api.do('pageStats').then(st => { const el = $('#rtime'); if (el && st && st.words > 120) el.textContent = `${st.mins} min read, ${st.words.toLocaleString('en-US')} words` })
   pop.onclick = async e => {
     const z = e.target.closest('[data-z]')
     if (z) { await api.do('zoom', parseFloat(z.dataset.z)); setTimeout(() => { const zv = $('#zv'); if (zv) zv.textContent = S.zoom + '%' }, 60); return }
@@ -717,6 +728,8 @@ async function openSiteInfo() {
     if (act === 'reader') api.do('reader')
     if (act === 'pip') api.do('pip')
     if (act === 'shot') api.do('screenshot')
+    if (act === 'qr') setTimeout(openQR, 60)
+    if (act === 'clear') api.do('clearSiteData')
   }
 }
 
@@ -980,6 +993,8 @@ api.on('fullscreen', f => { fullscreenWindow = f })
 let fullscreenWindow = false
 api.on('command', c => {
   if (c && typeof c === 'object' && c.ai) { openAI(); aiRun(c.ai, c.text); return }
+  if (c && typeof c === 'object' && c.find) { findInput.value = c.find; openFind(); return }
+  if (c === 'qr') { openQR(); return }
   if (c === 'ai') { toggleAI(); return }
   if (c === 'newtab') api.do('newTab')
   else if (c === 'palette') openCmd('newtab')
@@ -1142,3 +1157,30 @@ $('#aipanel .ai-actions').addEventListener('click', e => { const b = e.target.cl
 $('#ai-close').onclick = closeAI
 $('#ai-clear').onclick = () => { if (aiBusy) api.do('aiStop', aiBusy); aiHistory = []; aiLog.innerHTML = ''; refreshAI() }
 $('#ai-addkey').onclick = () => api.do('openPage', 'settings/ai')
+
+
+// ---------------------------------------------------------------- send to phone (QR)
+async function openQR() {
+  const q = await api.do('qr')
+  if (!q) { toast('Open a web page first'); return }
+  openPopover(`<h3>Open on your phone</h3><div class="sub">Point your phone camera at the code.</div>
+    <div class="qrbox"><img src="${q.img}" alt=""></div>
+    <div class="qrurl">${esc(q.url.length > 70 ? q.url.slice(0, 70) + '...' : q.url)}</div>
+    <div class="item" data-act="copy"><span class="ri">${ICONS.link}</span><div class="grow">Copy link</div></div>`, $('#urlbar'))
+  pop.onclick = e => { if (e.target.closest('[data-act=copy]')) { api.do('copyText', q.url); closePopover(); toast('Link copied') } }
+}
+
+// ---------------------------------------------------------------- tab strip: scroll to switch tabs
+$('#tablist').addEventListener('wheel', e => {
+  if (!TOP || settings.wheelTabs === false) return
+  const el = $('#tablist'); if (LAYOUT.total > el.clientWidth + 6) return
+  e.preventDefault()
+  const now = Date.now(); if (now - (window._wheelAt || 0) < 140) return
+  const d = Math.abs(e.deltaY) > Math.abs(e.deltaX) ? e.deltaY : e.deltaX
+  if (Math.abs(d) < 4) return
+  window._wheelAt = now
+  const vis = S.tabs.filter(t => !LAYOUT.hidden.has(t.id))
+  const i = vis.findIndex(t => t.id === S.activeId)
+  const n = vis[Math.max(0, Math.min(vis.length - 1, i + (d > 0 ? 1 : -1)))]
+  if (n && n.id !== S.activeId) api.do('switchTab', n.id)
+}, { passive: false })

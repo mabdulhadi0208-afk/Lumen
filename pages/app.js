@@ -143,12 +143,16 @@ async function privacy(m) {
   m.querySelectorAll('[data-del-origin]').forEach(b => b.onclick = async () => { await L.invoke('setPermission', b.dataset.delOrigin, b.dataset.delPerm, null); privacy(m) })
 }
 
+let confirmDelete = false
 async function passwords(m) {
   const list = await L.invoke('passwords')
-  m.innerHTML = `<h2>Passwords</h2><p class="lead">Saved and filled in for you, encrypted with your ${PLATFORM === 'darwin' ? 'macOS Keychain' : 'system keychain'}. Syncs end-to-end encrypted if you turn on Sync.</p>
+  m.innerHTML = `<h2>Passwords</h2><p class="lead">Passwords and passkeys, saved and filled in for you, encrypted with your ${PLATFORM === 'darwin' ? 'macOS Keychain' : 'system keychain'}. Syncs end-to-end encrypted if you turn on Sync.</p>
   <div class="toolbar"><input type="search" id="q" placeholder="Search passwords"><button class="btn" id="add">Add</button><button class="btn" id="imp">Import CSV</button><button class="btn" id="exp">Export</button></div>
   <div class="card list" id="list"></div>
   <div class="card hidden" id="addcard"><h3>ADD PASSWORD</h3><div class="row" style="gap:8px;flex-wrap:wrap"><input type="text" id="a-site" placeholder="Website" style="flex:1"><input type="text" id="a-user" placeholder="Username" style="flex:1"><input type="text" id="a-pass" placeholder="Password" style="flex:1"><button class="btn" id="a-gen">Generate</button><button class="btn primary" id="a-save">Save</button></div></div>
+  <h3 style="margin:26px 4px 10px;font-size:15px">Passkeys</h3>
+  <div class="card list" id="pklist"></div>
+  <p class="note">When a site offers to create a passkey, Lumen saves it here and signs you in with Touch ID next time. Passkeys sync with Sync on, end-to-end encrypted.</p>
   <p class="note">In Chrome: Settings, Passwords and autofill, Google Password Manager, Settings, Export passwords. Then import the CSV here.</p>`
   const draw = q => {
     const f = list.filter(p => !q || p.origin.includes(q) || p.username.toLowerCase().includes(q))
@@ -168,6 +172,9 @@ async function passwords(m) {
     if (b.dataset.a === 'copy') { await L.invoke('copyPassword', id); b.textContent = 'Copied'; setTimeout(() => b.textContent = 'Copy', 1400) }
     if (b.dataset.a === 'del') { await L.invoke('deletePassword', id); passwords(m) }
   }
+  const pks = await L.invoke('passkeys')
+  $('#pklist').innerHTML = pks.length ? pks.map(p => `<div class="row" data-pk="${p.id}">${fav('https://' + p.rpId)}<div class="grow"><div class="t">${esc(p.rpId)}</div><div class="d">${esc(p.userName || 'Account')}  ·  saved ${new Date(p.createdAt).toLocaleDateString()}${p.lastUsed ? '  ·  last used ' + new Date(p.lastUsed).toLocaleDateString() : ''}</div></div><span class="pill">Passkey</span><button class="ib" data-a="delpk" title="Delete">${ICONS.close}</button></div>`).join('') : '<div class="empty">No passkeys yet. Sites like Google, GitHub, Amazon and PayPal can save one for you.</div>'
+  $('#pklist').onclick = async e => { const b = e.target.closest('[data-a="delpk"]'); if (!b) return; if (!confirmDelete) { confirmDelete = true; b.title = 'Click again to delete'; b.style.color = '#e5484d'; setTimeout(() => { confirmDelete = false }, 3000); return } await L.invoke('deletePasskey', b.closest('[data-pk]').dataset.pk); passwords(m) }
   $('#add').onclick = () => $('#addcard').classList.toggle('hidden')
   $('#a-gen').onclick = async () => { $('#a-pass').value = await L.invoke('genPassword') }
   $('#a-save').onclick = async () => { if (await L.invoke('addPassword', $('#a-site').value, $('#a-user').value, $('#a-pass').value)) passwords(m) }

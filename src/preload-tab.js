@@ -9,6 +9,94 @@ if (location.protocol === 'lumen:') {
     onSettings: fn => { settingsListeners.add(fn) },
   })
 } else if (/^https?:$/.test(location.protocol)) {
+  // ------------------------------------------------------------ Google sign-in: look like Firefox, which Google allows
+  if (location.hostname === 'accounts.google.com') {
+    try {
+      const ua = ipcRenderer.sendSync('lumen:auth-ua')
+      if (ua) contextBridge.executeInMainWorld({
+        func: ua => {
+          const def = (o, k, v) => { try { Object.defineProperty(o, k, { get: () => v, configurable: true }) } catch {} }
+          const N = Navigator.prototype
+          def(N, 'userAgent', ua); def(N, 'appVersion', ua.replace(/^Mozilla\//, '')); def(N, 'vendor', ''); def(N, 'userAgentData', undefined)
+          def(N, 'productSub', '20100101'); def(N, 'oscpu', /Mac/.test(ua) ? 'Intel Mac OS X 10.15' : 'Windows NT 10.0; Win64; x64')
+          try { delete window.chrome } catch {}
+        },
+        args: [ua],
+      })
+    } catch {}
+  }
+
+  // ------------------------------------------------------------ passkeys (Lumen's own authenticator)
+  try {
+    contextBridge.exposeInMainWorld('__lumenPasskeys', {
+      create: req => ipcRenderer.invoke('pk:create', req),
+      get: req => ipcRenderer.invoke('pk:get', req),
+    })
+    contextBridge.executeInMainWorld({
+      func: () => {
+        const PK = window.__lumenPasskeys
+        if (!PK || !navigator.credentials || !window.PublicKeyCredential) return
+        const b2u = buf => {
+          const b = buf instanceof ArrayBuffer ? new Uint8Array(buf) : new Uint8Array(buf.buffer, buf.byteOffset, buf.byteLength)
+          let s = ''; for (let i = 0; i < b.length; i++) s += String.fromCharCode(b[i])
+          return btoa(s).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')
+        }
+        const u2b = s => { s = s.replace(/-/g, '+').replace(/_/g, '/'); while (s.length % 4) s += '='; const bin = atob(s), a = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) a[i] = bin.charCodeAt(i); return a.buffer }
+        const err = (name, msg) => new DOMException(msg || 'The operation either timed out or was not allowed.', name)
+        const def = (o, k, v) => Object.defineProperty(o, k, { value: v, enumerable: true })
+        function cred(r, kind) {
+          const resp = Object.create((kind === 'create' ? AuthenticatorAttestationResponse : AuthenticatorAssertionResponse).prototype)
+          def(resp, 'clientDataJSON', u2b(r.clientDataJSON))
+          if (kind === 'create') {
+            def(resp, 'attestationObject', u2b(r.attestationObject))
+            def(resp, 'getTransports', () => ['internal', 'hybrid'])
+            def(resp, 'getAuthenticatorData', () => u2b(r.authenticatorData))
+            def(resp, 'getPublicKey', () => u2b(r.publicKey))
+            def(resp, 'getPublicKeyAlgorithm', () => -7)
+          } else {
+            def(resp, 'authenticatorData', u2b(r.authenticatorData))
+            def(resp, 'signature', u2b(r.signature))
+            def(resp, 'userHandle', r.userHandle ? u2b(r.userHandle) : null)
+          }
+          const c = Object.create(PublicKeyCredential.prototype)
+          const ext = kind === 'create' ? { credProps: { rk: true } } : {}
+          def(c, 'id', r.id); def(c, 'rawId', u2b(r.id)); def(c, 'type', 'public-key'); def(c, 'authenticatorAttachment', 'platform'); def(c, 'response', resp)
+          def(c, 'getClientExtensionResults', () => ext)
+          def(c, 'toJSON', () => ({
+            id: r.id, rawId: r.id, type: 'public-key', authenticatorAttachment: 'platform', clientExtensionResults: ext,
+            response: kind === 'create'
+              ? { clientDataJSON: r.clientDataJSON, attestationObject: r.attestationObject, authenticatorData: r.authenticatorData, transports: ['internal', 'hybrid'], publicKey: r.publicKey, publicKeyAlgorithm: -7 }
+              : { clientDataJSON: r.clientDataJSON, authenticatorData: r.authenticatorData, signature: r.signature, userHandle: r.userHandle || null },
+          }))
+          return c
+        }
+        const C = navigator.credentials
+        const origCreate = C.create.bind(C), origGet = C.get.bind(C)
+        C.create = async function (opts) {
+          if (!opts || !opts.publicKey) return origCreate(opts)
+          const p = opts.publicKey
+          const r = await PK.create({
+            rp: { id: p.rp && p.rp.id, name: p.rp && p.rp.name },
+            user: { id: p.user ? b2u(p.user.id) : '', name: p.user && p.user.name, displayName: p.user && p.user.displayName },
+            challenge: b2u(p.challenge), algs: (p.pubKeyCredParams || []).map(x => x.alg), exclude: (p.excludeCredentials || []).map(x => b2u(x.id)),
+          })
+          if (r.error) throw err(r.error, r.message)
+          return cred(r, 'create')
+        }
+        C.get = async function (opts) {
+          if (!opts || !opts.publicKey) return origGet(opts)
+          if (opts.mediation === 'conditional') return new Promise((_, rej) => { if (opts.signal) opts.signal.addEventListener('abort', () => rej(err('AbortError', 'Aborted'))) })
+          const p = opts.publicKey
+          const r = await PK.get({ rpId: p.rpId, challenge: b2u(p.challenge), allow: (p.allowCredentials || []).map(x => b2u(x.id)) })
+          if (r.error) throw err(r.error, r.message)
+          return cred(r, 'get')
+        }
+        PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable = async () => true
+        PublicKeyCredential.isConditionalMediationAvailable = async () => false
+      },
+    })
+  } catch {}
+
   // ------------------------------------------------------------ password manager
   let creds = null
   const isVisible = el => { const r = el.getBoundingClientRect(); return r.width > 0 && r.height > 0 && getComputedStyle(el).visibility !== 'hidden' }

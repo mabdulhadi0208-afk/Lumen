@@ -5,6 +5,7 @@ const os = require('os')
 const path = require('path')
 const crypto = require('crypto')
 const D = require('./data')
+const Passkeys = require('./passkeys')
 
 const ICLOUD = path.join(os.homedir(), 'Library', 'Mobile Documents', 'com~apple~CloudDocs', 'Lumen')
 const SYNC_SETTINGS = ['searchEngine', 'motion', 'theme', 'accent', 'adblock', 'blockTrackers', 'httpsOnly', 'sleepTabsAfterMin', 'doNotTrack', 'showSuggestions', 'homeTiles']
@@ -47,6 +48,7 @@ function localSnapshot() {
   return {
     bookmarks: D.bookmarks.get(),
     passwords: D.passwords.get().map(p => ({ ...p, password: p.deleted ? '' : D.dec(p.password) })),
+    passkeys: Passkeys.store.get().map(p => ({ ...p, privateKey: p.deleted ? '' : D.dec(p.privateKey) })),
     settings: Object.fromEntries(SYNC_SETTINGS.map(k => [k, s[k]])),
     settingsAt: s.settingsAt || 0,
     savedAt: Date.now(),
@@ -70,6 +72,8 @@ async function syncNow() {
     D.bookmarks.replace(mergeLists(local.bookmarks, remote.bookmarks))
     const merged = mergeLists(local.passwords, remote.passwords)
     D.passwords.replace(merged.map(p => ({ ...p, password: p.deleted ? '' : D.enc(p.password) })))
+    const pks = mergeLists(local.passkeys, remote.passkeys || [])
+    Passkeys.store.replace(pks.map(p => ({ ...p, privateKey: p.deleted ? '' : D.enc(p.privateKey) })))
     if ((remote.settingsAt || 0) > (local.settingsAt || 0)) D.settings.set({ ...remote.settings, settingsAt: remote.settingsAt })
   }
   const out = localSnapshot()

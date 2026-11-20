@@ -9,6 +9,7 @@ const D = require('./data')
 const Sync = require('./sync')
 const Importer = require('./importer')
 const Updater = require('./updater')
+const Passkeys = require('./passkeys')
 
 const isMac = process.platform === 'darwin'
 const ROOT = path.join(__dirname, '..')
@@ -22,6 +23,14 @@ protocol.registerSchemesAsPrivileged([
 
 // Clean, plain-Chrome user agent so sites (and Google sign-in) treat Lumen like Chrome.
 function chromeUA(ua) { return ua.replace(/\sElectron\/\S+/, '').replace(/\s(Lumen|lumen)\/\S+/, '') }
+// Google blocks sign-in from browsers built on Electron ("This browser or app may not be secure"), but allows Firefox.
+// On Google's sign-in pages only, Lumen presents itself as the current Firefox release.
+function firefoxUA() {
+  const v = 128 + Math.floor((Date.now() - Date.UTC(2024, 6, 9)) / (28 * 864e5)) - 1
+  const os = isMac ? 'Macintosh; Intel Mac OS X 10.15' : 'Windows NT 10.0; Win64; x64'
+  return `Mozilla/5.0 (${os}; rv:${v}.0) Gecko/20100101 Firefox/${v}.0`
+}
+const isGoogleSignIn = url => /^https:\/\/accounts\.google\.com\//.test(url || '')
 
 // boot / error log (Logs folder), used by the release gate and for support
 function log(...a) { try { fs.mkdirSync(app.getPath('logs'), { recursive: true }); fs.appendFileSync(path.join(app.getPath('logs'), 'lumen.log'), `[${new Date().toISOString()}] ${a.join(' ')}\n`) } catch {} }
@@ -60,6 +69,10 @@ function setupSession(ses, { incognito = false } = {}) {
   ses.registerPreloadScript({ id: 'lumen-tab', type: 'frame', filePath: path.join(__dirname, 'preload-tab.js') })
   ses.webRequest.onBeforeSendHeaders((d, cb) => {
     const h = d.requestHeaders
+    if (isGoogleSignIn(d.url)) {
+      h['User-Agent'] = firefoxUA()
+      for (const k of Object.keys(h)) if (/^sec-ch-ua/i.test(k)) delete h[k]
+    }
     if (D.settings.get('doNotTrack')) { h['Sec-GPC'] = '1'; h['DNT'] = '1' }
     cb({ requestHeaders: h })
   })
@@ -883,6 +896,62 @@ ipcMain.on('pw:submit', (e, { username, password }) => {
   w.send('prompt', { id, kind: 'password', tabId: tab && tab.id, host: new URL(origin).host, text: (updating ? 'Update password for ' : 'Save password for ') + (username || 'this site') + '?' })
 })
 ipcMain.handle('pw:generate', () => genPassword())
+ipcMain.on('lumen:auth-ua', e => { e.returnValue = isGoogleSignIn(e.senderFrame && e.senderFrame.url) ? firefoxUA() : '' })
+
+// ---------------------------------------------------------------- passkeys
+function passkeyFrame(e) {
+  const f = e.senderFrame
+  if (!f) return null
+  let origin; try { origin = new URL(f.url).origin } catch { return null }
+  // only the top page, or a same-origin frame, may use passkeys
+  try { if (f.top && f.top !== f && new URL(f.top.url).origin !== origin) return null } catch { return null }
+  return origin
+}
+async function verifyUser(reason) {
+  if (isMac && systemPreferences.canPromptTouchID && systemPreferences.canPromptTouchID()) {
+    try { await systemPreferences.promptTouchID(reason); return true } catch { return false }
+  }
+  return true
+}
+function passkeyAsk(e) {
+  const w = winForWc(e.sender.id) || lastFocused()
+  const parent = w ? w.win : undefined
+  return {
+    async create({ rp, user }) {
+      if (w && w.incognito) {
+        const r = await dialog.showMessageBox(parent, { type: 'question', buttons: ['Save passkey', 'Cancel'], defaultId: 0, cancelId: 1, message: `Save a passkey for ${rp}?`, detail: 'You are in a private window. The passkey is still saved in Lumen.' })
+        if (r.response !== 0) return false
+      } else if (!(isMac && systemPreferences.canPromptTouchID && systemPreferences.canPromptTouchID())) {
+        const r = await dialog.showMessageBox(parent, { type: 'question', buttons: ['Save passkey', 'Cancel'], defaultId: 0, cancelId: 1, message: `Save a passkey for ${rp}?`, detail: `Account: ${user || 'this account'}. Lumen keeps it with your passwords and syncs it if Sync is on.` })
+        return r.response === 0
+      }
+      return verifyUser(`save a passkey for ${user || 'your account'} on ${rp}`)
+    },
+    async choose({ rp, accounts }) {
+      let i = 0
+      if (accounts.length > 1) {
+        const r = await dialog.showMessageBox(parent, { type: 'question', buttons: [...accounts.slice(0, 6), 'Cancel'], cancelId: Math.min(accounts.length, 6), message: `Sign in to ${rp} with a passkey`, detail: 'Choose an account.' })
+        if (r.response >= Math.min(accounts.length, 6)) return -1
+        i = r.response
+      } else if (!(isMac && systemPreferences.canPromptTouchID && systemPreferences.canPromptTouchID())) {
+        const r = await dialog.showMessageBox(parent, { type: 'question', buttons: ['Sign in', 'Cancel'], defaultId: 0, cancelId: 1, message: `Sign in to ${rp} as ${accounts[0]}?`, detail: 'Using a passkey saved in Lumen.' })
+        return r.response === 0 ? 0 : -1
+      }
+      return (await verifyUser(`sign in to ${rp} as ${accounts[i]}`)) ? i : -1
+    },
+    async none(rp) { if (w) w.send('toast', `No Lumen passkey for ${rp}`) },
+  }
+}
+ipcMain.handle('pk:create', async (e, req) => {
+  const origin = passkeyFrame(e); if (!origin) return { error: 'NotAllowedError', message: 'Not allowed in this frame.' }
+  try { const r = await Passkeys.create(origin, req || {}, passkeyAsk(e)); if (!r.error) { const w = winForWc(e.sender.id); if (w) w.send('toast', 'Passkey saved in Lumen'); Sync.syncNow().catch(() => {}) } return r }
+  catch (err) { log('passkey create failed', err.message); return { error: 'UnknownError', message: 'Lumen could not create the passkey.' } }
+})
+ipcMain.handle('pk:get', async (e, req) => {
+  const origin = passkeyFrame(e); if (!origin) return { error: 'NotAllowedError', message: 'Not allowed in this frame.' }
+  try { return await Passkeys.get(origin, req || {}, passkeyAsk(e)) }
+  catch (err) { log('passkey sign-in failed', err.message); return { error: 'UnknownError', message: 'Lumen could not use the passkey.' } }
+})
 
 // ---------------------------------------------------------------- IPC: lumen:// pages
 function internal(e) { try { const f = e.senderFrame; return !!f && f.url.startsWith('lumen://') && (!f.top || f.top.url.startsWith('lumen://')) } catch { return false } }
@@ -909,6 +978,8 @@ ipcMain.handle('lumen', async (e, action, ...a) => {
       case 'editBookmark': return D.editBookmark(a[0], a[1])
       case 'addBookmark': return D.addBookmark(a[0], a[1])
       case 'passwords': return D.listPasswords()
+      case 'passkeys': return Passkeys.list()
+      case 'deletePasskey': return Passkeys.remove(a[0])
       case 'revealPassword': {
         if (isMac && systemPreferences.canPromptTouchID && systemPreferences.canPromptTouchID()) {
           try { await systemPreferences.promptTouchID('show a saved password') } catch { return null }
@@ -1097,7 +1168,7 @@ app.on('second-instance', (e, argv) => {
 let quitting = false
 function flushAll() {
   saveSessionNow()
-  for (const s of [D.settings, D.bookmarks, D.passwords, D.permissions, D.session]) s.flush()
+  for (const s of [D.settings, D.bookmarks, D.passwords, D.permissions, D.session, Passkeys.store]) s.flush()
   D.historyStore.replace([...D.historyMap.values()].sort((a, b) => b.t - a.t)); D.historyStore.flush()
 }
 app.on('before-quit', () => {

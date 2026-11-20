@@ -56,6 +56,88 @@
   #intro .go{margin-top:34px;height:52px;padding:0 28px;border-radius:16px;border:0;background:#fff;color:#0b0e1c;font:600 16px var(--font);box-shadow:0 0 60px rgba(142,164,255,.55);cursor:default}
   `
   let skip = false, root, cv, cx, particles = [], orb = { r: 0, glow: 0, ring: 0, x: 0, y: 0 }, flash = 0, raf
+
+  // ------------------------------------------------------------ sound: all synthesized with Web Audio, no files
+  const SFX = (() => {
+    let ac, master, verb, muted = false
+    function init() {
+      if (ac) return
+      try { ac = new (window.AudioContext || window.webkitAudioContext)() } catch { return }
+      master = ac.createGain(); master.gain.value = 0; master.connect(ac.destination)
+      master.gain.linearRampToValueAtTime(0.9, ac.currentTime + 1.5)
+      verb = ac.createConvolver()
+      const len = ac.sampleRate * 3.2, ir = ac.createBuffer(2, len, ac.sampleRate)
+      for (let c = 0; c < 2; c++) { const d = ir.getChannelData(c); for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 2.6) }
+      verb.buffer = ir
+      const vg = ac.createGain(); vg.gain.value = 0.45; verb.connect(vg); vg.connect(master)
+    }
+    const out = (node, wet = 0.4) => { const d = ac.createGain(); d.gain.value = 1 - wet * .5; node.connect(d); d.connect(master); if (wet) { const w = ac.createGain(); w.gain.value = wet; node.connect(w); w.connect(verb) } }
+    function noise(sec) { const b = ac.createBuffer(1, ac.sampleRate * sec, ac.sampleRate), d = b.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1; const n = ac.createBufferSource(); n.buffer = b; return n }
+    function tone(freq, t0, dur, { type = 'sine', vol = .2, wet = .5, attack = .01, glide } = {}) {
+      const o = ac.createOscillator(), g = ac.createGain()
+      o.type = type; o.frequency.setValueAtTime(freq, t0); if (glide) o.frequency.exponentialRampToValueAtTime(glide, t0 + dur)
+      g.gain.setValueAtTime(0, t0); g.gain.linearRampToValueAtTime(vol, t0 + attack); g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur)
+      o.connect(g); out(g, wet); o.start(t0); o.stop(t0 + dur + .05)
+    }
+    let droneNodes = []
+    const api = {
+      init,
+      drone() {
+        if (!ac) return
+        const t = ac.currentTime, lp = ac.createBiquadFilter(), g = ac.createGain()
+        lp.type = 'lowpass'; lp.frequency.value = 420; lp.Q.value = 6
+        const lfo = ac.createOscillator(), lg = ac.createGain(); lfo.frequency.value = .08; lg.gain.value = 260; lfo.connect(lg); lg.connect(lp.frequency); lfo.start()
+        g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(.16, t + 4)
+        for (const [f, det] of [[55, 0], [55, 7], [82.4, -5], [110, 3]]) { const o = ac.createOscillator(); o.type = 'sawtooth'; o.frequency.value = f; o.detune.value = det; o.connect(lp); o.start(); droneNodes.push(o) }
+        lp.connect(g); out(g, .6); droneNodes.push(lfo); api._drone = g
+      },
+      riser(sec = 2.3) {
+        if (!ac) return
+        const t = ac.currentTime, n = noise(sec), bp = ac.createBiquadFilter(), g = ac.createGain()
+        bp.type = 'bandpass'; bp.Q.value = 4; bp.frequency.setValueAtTime(180, t); bp.frequency.exponentialRampToValueAtTime(4200, t + sec)
+        g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(.5, t + sec * .95); g.gain.linearRampToValueAtTime(0, t + sec)
+        n.connect(bp); bp.connect(g); out(g, .3); n.start(t)
+        tone(110, t, sec, { type: 'triangle', vol: .08, wet: .3, attack: sec * .9, glide: 440 })
+      },
+      impact() {
+        if (!ac) return
+        const t = ac.currentTime
+        tone(70, t, 2.4, { vol: .55, wet: .5, glide: 34 })
+        const n = noise(1.2), lp = ac.createBiquadFilter(), g = ac.createGain(); lp.type = 'lowpass'; lp.frequency.setValueAtTime(5000, t); lp.frequency.exponentialRampToValueAtTime(200, t + 1.1)
+        g.gain.setValueAtTime(.45, t); g.gain.exponentialRampToValueAtTime(.0001, t + 1.2); n.connect(lp); lp.connect(g); out(g, .7); n.start(t)
+        ;[523.25, 783.99, 1046.5, 1567.98].forEach((f, i) => tone(f, t + .02 + i * .03, 3.2, { vol: .07, wet: .85, attack: .02 }))
+      },
+      whoosh() {
+        if (!ac) return
+        const t = ac.currentTime, n = noise(.9), bp = ac.createBiquadFilter(), g = ac.createGain()
+        bp.type = 'bandpass'; bp.Q.value = 1.2; bp.frequency.setValueAtTime(400, t); bp.frequency.exponentialRampToValueAtTime(2600, t + .35); bp.frequency.exponentialRampToValueAtTime(500, t + .85)
+        g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(.32, t + .3); g.gain.exponentialRampToValueAtTime(.0001, t + .9)
+        n.connect(bp); bp.connect(g); out(g, .5); n.start(t)
+      },
+      pop(pitch = 1) { if (ac) tone(520 * pitch, ac.currentTime, .22, { vol: .12, wet: .35, glide: 780 * pitch }) },
+      key() {
+        if (!ac) return
+        const t = ac.currentTime, n = noise(.04), hp = ac.createBiquadFilter(), g = ac.createGain()
+        hp.type = 'highpass'; hp.frequency.value = 2400 + Math.random() * 1500; g.gain.setValueAtTime(.18, t); g.gain.exponentialRampToValueAtTime(.0001, t + .04)
+        n.connect(hp); hp.connect(g); out(g, .1); n.start(t)
+      },
+      tick(i) { if (ac) tone(1200 + (i % 5) * 60, ac.currentTime, .05, { vol: .05, wet: .2 }) },
+      shimmer() { if (!ac) return; const t = ac.currentTime; [1318.5, 1760, 2093, 2637].forEach((f, i) => tone(f, t + i * .07, 1.6, { vol: .05, wet: .9 })) },
+      chord() {
+        if (!ac) return
+        const t = ac.currentTime
+        ;[261.63, 329.63, 392, 493.88, 587.33].forEach((f, i) => { tone(f, t + i * .09, 4.5, { type: 'triangle', vol: .09, wet: .8, attack: .04 }); tone(f * 2, t + i * .09 + .02, 3, { vol: .03, wet: .9 }) })
+        tone(65.4, t, 4.5, { vol: .25, wet: .5, attack: .05 })
+      },
+      fadeOut(sec = 1.2) {
+        if (!ac) return
+        const t = ac.currentTime; master.gain.cancelScheduledValues(t); master.gain.setValueAtTime(master.gain.value, t); master.gain.linearRampToValueAtTime(0, t + sec)
+        setTimeout(() => { try { droneNodes.forEach(o => o.stop()); ac.close() } catch {} ac = null; droneNodes = [] }, sec * 1000 + 200)
+      },
+      toggleMute() { if (!ac) return muted; muted = !muted; master.gain.setTargetAtTime(muted ? 0 : .9, ac.currentTime, .1); return muted },
+    }
+    return api
+  })()
   const sleep = ms => new Promise(r => { const t0 = performance.now(); const tick = () => { if (skip || performance.now() - t0 >= ms) r(); else requestAnimationFrame(tick) }; tick() })
   const anim = (el, kf, o) => el.animate(kf, { fill: 'forwards', easing: 'cubic-bezier(.3,1.25,.5,1)', ...o })
   const words = (el, text, delay = 0, step = 70) => {
@@ -116,7 +198,7 @@
     return s
   }
   async function enter(s) {
-    s.classList.add('show')
+    s.classList.add('show'); if (!skip) SFX.whoosh()
     anim(s, [{ opacity: 0, transform: 'scale(1.08) translateY(20px)' }, { opacity: 1, transform: 'scale(1)' }], { duration: 1100 })
     // slow push-in, like a camera dolly
     s.firstElementChild && s.firstElementChild.animate([{ transform: 'scale(1)' }, { transform: 'scale(1.04)' }], { duration: 6000, easing: 'linear', fill: 'forwards' })
@@ -137,7 +219,7 @@
     if (!document.getElementById('intro-css')) { const st = document.createElement('style'); st.id = 'intro-css'; st.textContent = css; document.head.appendChild(st) }
     root = document.createElement('div'); root.id = 'intro'
     root.innerHTML = `<div class="neb"></div><canvas></canvas><div class="sweep"></div><div class="grain"></div><div class="vig"></div><div class="bar t"></div><div class="bar b"></div><div class="stage"></div>
-      <div class="cap"><h2></h2><p></p></div><button class="skip">Skip intro</button><div class="dots">${'<i></i>'.repeat(7)}</div>`
+      <div class="cap"><h2></h2><p></p></div><button class="skip">Skip intro</button><button class="skip mute" style="right:128px">Sound on</button><div class="dots">${'<i></i>'.repeat(7)}</div>`
     document.body.appendChild(root)
     cv = root.querySelector('canvas'); cx = cv.getContext('2d', { alpha: true })
     size(); addEventListener('resize', size)
@@ -150,6 +232,8 @@
     raf = requestAnimationFrame(draw)
     const finish = () => { skip = true }
     root.querySelector('.skip').onclick = finish
+    root.querySelector('.mute').onclick = () => { root.querySelector('.mute').textContent = SFX.toggleMute() ? 'Sound off' : 'Sound on' }
+    SFX.init(); SFX.drone()
     const onKey = e => { if (e.key === 'Escape') finish() }
     addEventListener('keydown', onKey)
     requestAnimationFrame(() => root.classList.add('on'))
@@ -159,8 +243,9 @@
     await sleep(500)
     particles.forEach(p => { const a = Math.random() * 6.283, d = Math.random() * 60; p.tx = w / 2 + Math.cos(a) * d; p.ty = h / 2 + Math.sin(a) * d })
     tween(orb, 'glow', 1, 2200); tween(orb, 'r', 26, 2400)
+    SFX.riser(2.3)
     await sleep(2300)
-    flash = .55; tween(orb, 'ring', 1, 1400)
+    flash = .55; tween(orb, 'ring', 1, 1400); SFX.impact()
     particles.forEach(p => { const a = Math.random() * 6.283, d = 120 + Math.random() * Math.max(w, h) * .7; p.tx = w / 2 + Math.cos(a) * d; p.ty = h / 2 + Math.sin(a) * d; p.k = .01 + Math.random() * .02; p.ta = Math.random() * .5 })
     tween(orb, 'y', -h * 0.16, 1600)
     let s = scene(`<div style="text-align:center;margin-top:12vh"><div class="logo">Lumen</div><div class="tag"></div></div>`)
@@ -168,6 +253,7 @@
     const logo = s.querySelector('.logo')
     anim(logo, [{ opacity: 0, transform: 'scale(1.35, 1.25)' }, { opacity: 1, transform: 'scale(1)' }], { duration: 1800, easing: 'cubic-bezier(.2,1,.3,1)' })
     words(s.querySelector('.tag'), "Chrome's engine. A lighter feel.", 900)
+    setTimeout(() => !skip && SFX.shimmer(), 900)
     await sleep(3600)
     tween(orb, 'glow', 0, 900); tween(orb, 'ring', 0, 700)
     await leave(s)
@@ -180,7 +266,7 @@
     const tb = s.querySelector('.tb'); const cols = ['#24292f', '#4285f4', '#ff8000', '#7c5cff']
     ;['GitHub', 'Flights', 'Markets', 'Release notes'].forEach((t, i) => setTimeout(() => {
       const m = document.createElement('div'); m.className = 'mt' + (i === 0 ? ' on' : ''); m.innerHTML = `<b style="background:${cols[i]}"></b>${t}`; tb.appendChild(m)
-      anim(m, [{ opacity: 0, transform: 'translateY(-14px) scale(.8)' }, { opacity: 1, transform: 'none' }], { duration: 800 })
+      anim(m, [{ opacity: 0, transform: 'translateY(-14px) scale(.8)' }, { opacity: 1, transform: 'none' }], { duration: 800 }); if (!skip) SFX.pop(1 + i * .12)
     }, 500 + i * 260))
     setTimeout(() => { const ms = tb.querySelectorAll('.mt'); if (ms[2]) { ms.forEach(m => m.classList.remove('on')); ms[2].classList.add('on'); anim(ms[2], [{ transform: 'scale(.95)' }, { transform: 'scale(1)' }], { duration: 500 }) } }, 2800)
     await sleep(4600); await leave(s)
@@ -191,7 +277,8 @@
     caption('One bar for everything.', 'Cmd T to search, jump to an open tab, find something you saw last week, or run any action.')
     enter(s)
     const q = 'flights to lisbon'; const qEl = s.querySelector('.q')
-    for (let i = 1; i <= q.length && !skip; i++) { qEl.textContent = q.slice(0, i); s.querySelector('.qq').textContent = q.slice(0, i); await sleep(65) }
+    for (let i = 1; i <= q.length && !skip; i++) { qEl.textContent = q.slice(0, i); s.querySelector('.qq').textContent = q.slice(0, i); SFX.key(); await sleep(65) }
+    if (!skip) SFX.shimmer()
     s.querySelectorAll('.r').forEach((r, i) => anim(r, [{ opacity: 0, transform: 'translateY(8px)' }, { opacity: 1, transform: 'none' }], { duration: 600, delay: i * 90 }))
     await sleep(2600); await leave(s)
 
@@ -206,10 +293,12 @@
       const ang = Math.random() * 6.283, d = 150 + Math.random() * 60
       a.style.left = 170 + Math.cos(ang) * d - 32 + 'px'; a.style.top = 170 + Math.sin(ang) * d - 20 + 'px'
       sh.appendChild(a)
+      if (!skip) SFX.pop(.6 + Math.random() * .5)
       anim(a, [{ opacity: 0, transform: 'scale(.4)' }, { opacity: .9, transform: 'scale(1)', offset: .35 }, { opacity: 0, transform: 'scale(0) rotate(40deg)' }], { duration: 1100 })
     }, 200 + i * 180)
     const t0 = performance.now()
-    while (!skip && performance.now() - t0 < 2600) { num.textContent = Math.round(124 * Math.min(1, (performance.now() - t0) / 2400)); await sleep(30) }
+    let ti = 0
+    while (!skip && performance.now() - t0 < 2600) { const n = Math.round(124 * Math.min(1, (performance.now() - t0) / 2400)); if (n !== +num.textContent && ti++ % 3 === 0) SFX.tick(ti); num.textContent = n; await sleep(30) }
     num.textContent = '124'
     await sleep(1600); await leave(s)
 
@@ -221,6 +310,7 @@
       <div class="card3"><div class="k">${ICONS.puzzle}</div><h4>Chrome extensions</h4><p>Straight from the Chrome Web Store.</p></div></div>`)
     caption('Everything Chrome has.', 'Bring your bookmarks, passwords and extensions over from Chrome in one click, from Settings.')
     enter(s)
+    s.querySelectorAll('.card3').forEach((c, i) => setTimeout(() => !skip && SFX.pop(.9 + i * .2), 250 + i * 180))
     s.querySelectorAll('.card3').forEach((c, i) => anim(c, [{ opacity: 0, transform: 'translateY(40px) rotateX(25deg) scale(.9)' }, { opacity: 1, transform: 'none' }], { duration: 1100, delay: 250 + i * 180 }))
     await sleep(4400); await leave(s)
 
@@ -237,6 +327,7 @@
     // ---- 6. finale
     setDot(6)
     root.querySelector('.cap h2').textContent = ''; root.querySelector('.cap p').textContent = ''
+    if (!skip) SFX.chord()
     orb.y = 0; orb.r = 0; tween(orb, 'glow', 1, 900); tween(orb, 'r', 22, 1100); tween(orb, 'ring', 1, 1500)
     particles.forEach(p => { p.ta = Math.random() * .7 + .1 })
     s = scene(`<div style="text-align:center;margin-top:26vh"><div class="logo" style="font-size:clamp(40px,6vw,76px)">You are all set.</div><button class="go">Start browsing</button></div>`)
@@ -247,6 +338,7 @@
     if (!skip) await new Promise(r => { go.onclick = r; root.querySelector('.skip').onclick = r; const k = e => { if (e.key === 'Enter' || e.key === 'Escape') { removeEventListener('keydown', k); r() } }; addEventListener('keydown', k) })
 
     // out: fade to the browser
+    SFX.fadeOut(skip ? .4 : 1.2)
     removeEventListener('keydown', onKey)
     root.classList.remove('on')
     await new Promise(r => { root.animate([{ opacity: 1, transform: 'scale(1)' }, { opacity: 0, transform: 'scale(1.04)' }], { duration: 800, easing: 'ease-in', fill: 'forwards' }).onfinish = r })

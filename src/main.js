@@ -458,6 +458,8 @@ class BrowserWin {
         shown.add(a)
       }
     }
+    // while the first-run intro plays, nothing renders behind it
+    if (this.introOn) shown.clear()
     for (const t of this.tabs.values()) {
       if (!t.view) continue
       if (shown.has(t)) { if (!this.win.contentView.children.includes(t.view)) this.win.contentView.addChildView(t.view); t.view.setVisible(true) }
@@ -756,6 +758,7 @@ ipcMain.handle('ui', async (e, action, ...a) => {
       case 'update': if (a[0] === 'check') return Updater.check(true); if (a[0] === 'install') return Updater.install(true); return Updater.getState()
       case 'trafficLights': if (isMac) { w.win.setWindowButtonVisibility(!!a[0]); if (a[1] && w.win.setWindowButtonPosition) { try { w.win.setWindowButtonPosition(a[1]) } catch {} } } return
       case 'focusUI': w.ui.webContents.focus(); return
+      case 'intro': w.introOn = !!a[0]; w.layout(); return
       case 'focusTab': if (wc && !w.overlay) wc.focus(); return
       case 'devtools': return wc && wc.toggleDevTools()
       case 'windowControl': {

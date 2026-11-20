@@ -792,6 +792,6 @@ addEventListener('keydown', e => {
   if (!init.settings.introSeen) playIntro()
 })()
 function playIntro() {
-  api.do('overlay', true)
-  Intro.play({ onDone: () => { api.do('setSetting', 'introSeen', true); if (!overlayOpen && !peeking) api.do('overlay', false) } })
+  api.do('overlay', true); api.do('intro', true)
+  Intro.play({ onDone: () => { api.do('intro', false); api.do('setSetting', 'introSeen', true); if (!overlayOpen && !peeking) api.do('overlay', false) } })
 }

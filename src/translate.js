@@ -10,7 +10,7 @@ const target = settings => { const v = settings.get('translateTo') || app.getLoc
 async function translateBatch(texts, to) {
   const body = new URLSearchParams()
   for (const t of texts) body.append('q', t)
-  const r = await net.fetch(`https://translate.googleapis.com/translate_a/t?client=gtx&sl=auto&tl=${encodeURIComponent(to)}&dt=t&format=text`, {
+  const r = await net.fetch(`${process.env.LUMEN_TR_API || 'https://translate.googleapis.com'}/translate_a/t?client=gtx&sl=auto&tl=${encodeURIComponent(to)}&dt=t&format=text`, {
     method: 'POST', headers: { 'content-type': 'application/x-www-form-urlencoded;charset=UTF-8' }, body: body.toString(),
   })
   if (!r.ok) throw new Error('Translate service answered ' + r.status)
@@ -18,17 +18,19 @@ async function translateBatch(texts, to) {
   const arr = Array.isArray(j) ? j : [j]
   return arr.map(x => Array.isArray(x) ? x[0] : x)
 }
-async function translateTexts(texts, to) {
+async function translateTexts(texts, to, onProgress, isCancelled) {
   const out = new Array(texts.length)
-  let batch = [], idx = [], chars = 0
+  let batch = [], idx = [], chars = 0, doneN = 0
   const flush = async () => {
     if (!batch.length) return
     const res = await translateBatch(batch, to)
     idx.forEach((k, i) => { out[k] = res[i] != null ? res[i] : texts[k] })
+    doneN += batch.length
     batch = []; idx = []; chars = 0
+    if (onProgress) onProgress(doneN, texts.length)
   }
   for (let i = 0; i < texts.length; i++) {
-    if (chars + texts[i].length > 4500 || batch.length >= 100) await flush()
+    if (chars + texts[i].length > 4500 || batch.length >= 100) { await flush(); if (isCancelled && isCancelled()) throw Object.assign(new Error('cancelled'), { cancelled: true }) }
     batch.push(texts[i]); idx.push(i); chars += texts[i].length
   }
   await flush()
@@ -45,14 +47,38 @@ const COLLECT = `(() => {
   window.__lumenTr = { nodes, orig: nodes.map(n => n.nodeValue) }
   return nodes.map(n => n.nodeValue.trim())
 })()`
-const APPLY = list => `(() => { const t = window.__lumenTr; if (!t) return 0; const L = ${JSON.stringify(list)}; t.nodes.forEach((n, i) => { if (L[i] == null) return; const o = t.orig[i]; const lead = o.match(/^\\s*/)[0], tail = o.match(/\\s*$/)[0]; n.nodeValue = lead + L[i] + tail }); document.documentElement.dataset.lumenTranslated = '1'; return t.nodes.length })()`
-const RESTORE = `(() => { const t = window.__lumenTr; if (!t) return false; t.nodes.forEach((n, i) => { n.nodeValue = t.orig[i] }); delete document.documentElement.dataset.lumenTranslated; return true })()`
+const RTL = new Set(['ar', 'he', 'iw', 'fa', 'ur', 'ps', 'yi', 'dv', 'sd', 'ug', 'ckb', 'ku'])
+const dirOf = lang => RTL.has(String(lang).split('-')[0].toLowerCase()) ? 'rtl' : 'ltr'
+// Swap the page's reading direction to match the new language (Arabic right-to-left becomes English left-to-right and back),
+// remembering every original dir and lang so Show Original puts it all back.
+const FLIP = dir => `(() => {
+  const t = window.__lumenTr; if (!t) return
+  const els = [document.documentElement, document.body, ...document.querySelectorAll('[dir]')]
+  t.dirs = t.dirs || els.map(e => [e, e.getAttribute('dir'), e.getAttribute('lang')])
+  const from = getComputedStyle(document.body).direction
+  if (from === '${dir}') return
+  for (const [e, d] of t.dirs) { if (e === document.documentElement || e === document.body || d === 'rtl' || d === 'ltr') e.setAttribute('dir', '${dir}') }
+  document.documentElement.classList.add('lumen-flipped')
+  if (!document.getElementById('lumen-flip-style')) {
+    const s = document.createElement('style'); s.id = 'lumen-flip-style'
+    s.textContent = 'html.lumen-flipped body { text-align: start; } html.lumen-flipped p, html.lumen-flipped li, html.lumen-flipped h1, html.lumen-flipped h2, html.lumen-flipped h3, html.lumen-flipped h4, html.lumen-flipped td, html.lumen-flipped th, html.lumen-flipped label { text-align: start; }'
+    document.head.appendChild(s)
+  }
+})()`
+const APPLY = (list, to) => `(() => { const t = window.__lumenTr; if (!t) return 0; const L = ${JSON.stringify(list)}; t.nodes.forEach((n, i) => { if (L[i] == null) return; const o = t.orig[i]; const lead = o.match(/^\\s*/)[0], tail = o.match(/\\s*$/)[0]; n.nodeValue = lead + L[i] + tail }); t.lang = t.lang === undefined ? document.documentElement.getAttribute('lang') : t.lang; document.documentElement.setAttribute('lang', ${JSON.stringify(to)}); document.documentElement.dataset.lumenTranslated = '1'; return t.nodes.length })()`
+const RESTORE = `(() => { const t = window.__lumenTr; if (!t) return false; t.nodes.forEach((n, i) => { n.nodeValue = t.orig[i] });
+  if (t.dirs) { for (const [e, d] of t.dirs) { if (d == null) e.removeAttribute('dir'); else e.setAttribute('dir', d) } t.dirs = null }
+  if (t.lang !== undefined) { if (t.lang == null) document.documentElement.removeAttribute('lang'); else document.documentElement.setAttribute('lang', t.lang); t.lang = undefined }
+  document.documentElement.classList.remove('lumen-flipped'); const s = document.getElementById('lumen-flip-style'); if (s) s.remove()
+  delete document.documentElement.dataset.lumenTranslated; return true })()`
 
-async function translatePage(wc, to) {
+async function translatePage(wc, to, { onProgress, isCancelled, flipDir = true } = {}) {
   const texts = await wc.executeJavaScriptInIsolatedWorld(WORLD, [{ code: COLLECT }])
   if (!texts || !texts.length) return { ok: false, error: 'Nothing to translate on this page' }
-  const done = await translateTexts(texts, to)
-  await wc.executeJavaScriptInIsolatedWorld(WORLD, [{ code: APPLY(done) }])
+  if (onProgress) onProgress(0, texts.length)
+  const done = await translateTexts(texts, to, onProgress, isCancelled)
+  await wc.executeJavaScriptInIsolatedWorld(WORLD, [{ code: APPLY(done, to) }])
+  if (flipDir) await wc.executeJavaScriptInIsolatedWorld(WORLD, [{ code: FLIP(dirOf(to)) }]).catch(() => {})
   return { ok: true, count: texts.length }
 }
 const showOriginal = wc => wc.executeJavaScriptInIsolatedWorld(WORLD, [{ code: RESTORE }])
@@ -76,4 +102,4 @@ async function bubble(wc, text, to) {
   await wc.executeJavaScriptInIsolatedWorld(WORLD, [{ code }])
 }
 
-module.exports = { translatePage, showOriginal, isTranslated, pageLang, bubble, target, langName, translateTexts }
+module.exports = { dirOf, translatePage, showOriginal, isTranslated, pageLang, bubble, target, langName, translateTexts }

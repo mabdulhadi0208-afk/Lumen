@@ -463,3 +463,45 @@ body.glass #aipanel { background: color-mix(in srgb, var(--bg-solid, #f4f5f8) 72
 .tab:hover .add { opacity: 1; }
 .tab .add:hover { background: var(--press); color: var(--accent); }
 .tab .add svg { width: 12px; height: 12px; }
+
+/* translating card */
+#trcard { position: fixed; inset: 0; z-index: 300; display: none; place-items: center; }
+#trcard.show { display: grid; }
+.tr-scrim { position: absolute; inset: 0; background: rgba(10, 12, 22, .28); backdrop-filter: blur(6px); opacity: 0; transition: opacity .35s; }
+#trcard.in .tr-scrim { opacity: 1; }
+.tr-box { position: relative; width: 340px; padding: 30px 28px 20px; border-radius: 22px; text-align: center; background: var(--bg-solid, #f6f7fa); box-shadow: 0 30px 80px rgba(0,0,0,.3), 0 0 0 1px var(--line); opacity: 0; transform: scale(.82) translateY(16px); transition: opacity .3s, transform .55s cubic-bezier(.3,1.5,.5,1); }
+#trcard.in .tr-box { opacity: 1; transform: none; }
+#trcard.out .tr-box { opacity: 0; transform: scale(.9) translateY(-10px); transition: opacity .25s, transform .3s ease-in; }
+#trcard.out .tr-scrim { opacity: 0; }
+.tr-logo { position: relative; width: 120px; height: 120px; margin: 0 auto 16px; }
+.tr-b { position: absolute; width: 58px; height: 52px; border-radius: 16px; display: grid; place-items: center; color: #fff; font: 700 26px/1 -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Geeza Pro', sans-serif; box-shadow: 0 10px 24px rgba(0,0,0,.18); }
+.tr-b::after { content: ''; position: absolute; width: 14px; height: 14px; background: inherit; bottom: -5px; transform: rotate(45deg); border-radius: 3px; }
+.b1 { left: 14px; top: 20px; background: linear-gradient(135deg, var(--accent), #8a63f2); animation: trbob1 1.6s cubic-bezier(.45,0,.3,1.4) infinite; }
+.b1::after { left: 12px; }
+.b2 { right: 14px; top: 46px; background: linear-gradient(135deg, #e9609c, #f08a3c); animation: trbob2 1.6s cubic-bezier(.45,0,.3,1.4) infinite; }
+.b2::after { right: 12px; }
+@keyframes trbob1 { 0%, 100% { transform: translate(0,0) rotate(-6deg) scale(1) } 50% { transform: translate(6px,-6px) rotate(3deg) scale(1.06, .95) } }
+@keyframes trbob2 { 0%, 100% { transform: translate(0,0) rotate(6deg) scale(1) } 50% { transform: translate(-6px,6px) rotate(-3deg) scale(.95, 1.06) } }
+.tr-g { display: inline-block; transition: transform .35s cubic-bezier(.3,1.6,.5,1), opacity .2s; }
+.tr-g.swap { transform: scale(.2) rotateY(90deg); opacity: 0; }
+.tr-arc { position: absolute; inset: 0; width: 120px; height: 120px; animation: trspin 1.4s linear infinite; }
+.tr-arc circle { fill: none; stroke: var(--accent); stroke-width: 3; stroke-linecap: round; stroke-dasharray: 80 260; opacity: .55; }
+@keyframes trspin { to { transform: rotate(360deg) } }
+.tr-check { position: absolute; left: 50%; top: 50%; width: 64px; height: 64px; margin: -32px 0 0 -32px; border-radius: 50%; background: #2fb36c; padding: 14px; opacity: 0; transform: scale(.3); box-shadow: 0 10px 30px rgba(47,179,108,.45); }
+.tr-check path { fill: none; stroke: #fff; stroke-width: 2.6; stroke-linecap: round; stroke-linejoin: round; stroke-dasharray: 24; stroke-dashoffset: 24; }
+#trcard.done .tr-check { opacity: 1; transform: scale(1); transition: transform .5s cubic-bezier(.3,1.7,.5,1), opacity .15s; }
+#trcard.done .tr-check path { stroke-dashoffset: 0; transition: stroke-dashoffset .35s .15s ease-out; }
+#trcard.done .tr-b, #trcard.done .tr-arc { opacity: 0; transform: scale(.5); transition: opacity .2s, transform .3s; animation: none; }
+.tr-title { font-size: 17px; font-weight: 700; letter-spacing: -.01em; }
+.tr-sub { font-size: 12.5px; color: var(--fg3); margin-top: 3px; min-height: 16px; }
+.tr-bar { position: relative; height: 8px; border-radius: 4px; background: var(--hover); margin: 18px 4px 8px; overflow: hidden; }
+.tr-bar i { position: absolute; left: 0; top: 0; bottom: 0; width: 0; border-radius: 4px; background: linear-gradient(90deg, var(--accent), #8a63f2, #e9609c); background-size: 200% 100%; animation: trflow 1.2s linear infinite; }
+.tr-bar b { position: absolute; top: 0; bottom: 0; width: 40%; background: linear-gradient(90deg, transparent, rgba(255,255,255,.55), transparent); animation: trshine 1.1s ease-in-out infinite; }
+@keyframes trflow { to { background-position: -200% 0 } }
+@keyframes trshine { from { left: -40% } to { left: 100% } }
+#trcard.done .tr-bar b { display: none; }
+.tr-count { font-size: 11.5px; color: var(--fg3); font-variant-numeric: tabular-nums; }
+.tr-cancel { margin-top: 14px; border: 0; background: var(--hover); color: var(--fg2); font: inherit; font-size: 12.5px; font-weight: 550; padding: 7px 16px; border-radius: 9px; }
+.tr-cancel:hover { background: var(--press); color: var(--fg); }
+#trcard.done .tr-cancel, #trcard.err .tr-cancel { visibility: hidden; }
+#trcard.err .tr-arc, #trcard.err .tr-b { animation: none; }

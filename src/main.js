@@ -885,10 +885,25 @@ async function translateTab(w, t) {
   const wc = t.view.webContents
   if (await Translate.isTranslated(wc)) { await Translate.showOriginal(wc); w.send('toast', 'Showing the original'); return }
   const to = Translate.target(D.settings)
-  w.send('toast', `Translating to ${Translate.langName(to)}...`)
-  try { const r = await Translate.translatePage(wc, to); w.send('toast', r.ok ? `Translated to ${Translate.langName(to)}` : r.error) }
-  catch (e) { log('translate failed', e.message); w.send('toast', 'Translation failed. Check your connection.') }
+  const from = await Translate.pageLang(wc)
+  const job = { cancelled: false }; trJobs.set(w, job)
+  const name = Translate.langName(to)
+  const info = { to: name, from: from ? Translate.langName(from) : '', rtl: Translate.dirOf(to) === 'rtl', flip: !!from && Translate.dirOf(from) !== Translate.dirOf(to) }
+  w.send('translating', { phase: 'start', ...info })
+  try {
+    const r = await Translate.translatePage(wc, to, {
+      flipDir: D.settings.get('translateFlipDir') !== false,
+      isCancelled: () => job.cancelled || wc.isDestroyed(),
+      onProgress: (n, total) => w.send('translating', { phase: 'progress', n, total }),
+    })
+    if (r.ok) w.send('translating', { phase: 'done', ...info, count: r.count })
+    else w.send('translating', { phase: 'error', text: r.error })
+  } catch (e) {
+    if (e.cancelled) { await Translate.showOriginal(wc).catch(() => {}); w.send('translating', { phase: 'cancelled' }) }
+    else { log('translate failed', e.message); w.send('translating', { phase: 'error', text: 'Translation failed. Check your connection.' }) }
+  } finally { if (trJobs.get(w) === job) trJobs.delete(w) }
 }
+const trJobs = new Map()
 const offered = new Set()
 async function offerTranslate(w, t) {
   if (!t.view || !D.settings.get('offerTranslate') || !/^https?:/.test(t.view.webContents.getURL())) return
@@ -1157,6 +1172,7 @@ ipcMain.handle('ui', async (e, action, ...a) => {
       case 'pasteGo': { const txt = String(await clipboard.readText() || '').trim().slice(0, 4000); if (txt) { const url = toURL(txt); if (url) w.createTab(url, { active: true }) } return }
       case 'copyText': clipboard.writeText(String(a[0] || '')); return
       case 'duplicateTab': { if (t) w.createTab(wc ? wc.getURL() : t.url, { active: true, index: w.order.indexOf(t.id) + 1 }); return }
+      case 'translateCancel': { const j = trJobs.get(w); if (j) j.cancelled = true; return }
       case 'siteAdblock': return toggleSiteAdblock(w, !!a[0])
       case 'resetSite': { if (!t) return; try { const o = new URL(t.url).origin; const all = D.permissions.get(); delete all[o]; D.permissions.set(all) } catch {} return }
       case 'update': if (a[0] === 'check') return Updater.check(true); if (a[0] === 'install') return Updater.install(true); return Updater.getState()
@@ -1254,7 +1270,7 @@ function downloadAction(id, what) {
   broadcast('downloads', listDownloads())
 }
 
-const PUBLIC_SETTINGS = ['searchShortcuts', 'rememberZoom', 'soundActiveOnly', 'linksBackground', 'confirmQuit', 'wheelTabs', 'adblockAllow', 'aiModel', 'aiTabGroups', 'browserTheme', 'themeCustom', 'compact', 'appIcon', 'cleanLinks', 'swipeNav', 'videoSpeedKeys', 'hideCookieBanners', 'blockNotifications', 'forceDark', 'translateTo', 'offerTranslate', 'autoPip', 'ntpShortcuts', 'ntpWallpaper', 'ntpClock', 'searchEngine', 'motion', 'theme', 'accent', 'adblock', 'blockTrackers', 'httpsOnly', 'sleepTabsAfterMin', 'restoreSession', 'sidebarCollapsed', 'sidebarWidth', 'tabLayout', 'introSeen', 'autoUpdate', 'askWhereToSave', 'doNotTrack', 'showSuggestions', 'homeTiles']
+const PUBLIC_SETTINGS = ['translateFlipDir', 'searchShortcuts', 'rememberZoom', 'soundActiveOnly', 'linksBackground', 'confirmQuit', 'wheelTabs', 'adblockAllow', 'aiModel', 'aiTabGroups', 'browserTheme', 'themeCustom', 'compact', 'appIcon', 'cleanLinks', 'swipeNav', 'videoSpeedKeys', 'hideCookieBanners', 'blockNotifications', 'forceDark', 'translateTo', 'offerTranslate', 'autoPip', 'ntpShortcuts', 'ntpWallpaper', 'ntpClock', 'searchEngine', 'motion', 'theme', 'accent', 'adblock', 'blockTrackers', 'httpsOnly', 'sleepTabsAfterMin', 'restoreSession', 'sidebarCollapsed', 'sidebarWidth', 'tabLayout', 'introSeen', 'autoUpdate', 'askWhereToSave', 'doNotTrack', 'showSuggestions', 'homeTiles']
 function publicSettings() { const s = D.settings.get(); return Object.fromEntries(PUBLIC_SETTINGS.map(k => [k, s[k]])) }
 function setSetting(k, v) {
   if (!PUBLIC_SETTINGS.includes(k)) return

@@ -141,6 +141,7 @@ async function general(m) {
     ${row('Show frequently visited on new tab', '', sw('homeTiles', S.homeTiles))}
     ${row('Translate pages into', 'Lumen offers to translate pages in other languages. Right-click selected text to translate just that.', `<select data-sel="translateTo">${[['', 'System language'], ['en', 'English'], ['ar', 'Arabic'], ['ur', 'Urdu'], ['hi', 'Hindi'], ['fr', 'French'], ['es', 'Spanish'], ['de', 'German'], ['tr', 'Turkish'], ['zh-CN', 'Chinese'], ['ja', 'Japanese'], ['ko', 'Korean'], ['ru', 'Russian'], ['pt', 'Portuguese'], ['it', 'Italian'], ['id', 'Indonesian']].map(([v, l]) => `<option value="${v}" ${v === (S.translateTo || '') ? 'selected' : ''}>${l}</option>`).join('')}</select>`)}
     ${row('Offer to translate', 'Ask when a page is in another language.', sw('offerTranslate', S.offerTranslate !== false))}
+    ${row('Flip the page direction', 'When Arabic turns into English (or the other way), the layout switches from right-to-left to left-to-right to match.', sw('translateFlipDir', S.translateFlipDir !== false))}
     ${row('Picture in picture when you switch tabs', 'A playing video pops out into a floating window when you leave its tab, and back in when you return.', sw('autoPip', S.autoPip !== false))}
   </div>
   <div class="card"><h3>QUALITY OF LIFE</h3>

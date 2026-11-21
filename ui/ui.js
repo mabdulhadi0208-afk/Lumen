@@ -1186,3 +1186,53 @@ $('#tablist').addEventListener('wheel', e => {
   const n = vis[Math.max(0, Math.min(vis.length - 1, i + (d > 0 ? 1 : -1)))]
   if (n && n.id !== S.activeId) api.do('switchTab', n.id)
 }, { passive: false })
+
+
+// ---------------------------------------------------------------- translating card
+const trCard = $('#trcard'), trFill = new Spring(0, 'jelly', v => { $('#tr-fill').style.width = Math.max(0, Math.min(100, v)) + '%' })
+const TR_GLYPHS = [['A', 'ع'], ['文', 'B'], ['Ж', 'あ'], ['א', 'é'], ['क', 'Ω']]
+let trTimer = null, trGlyph = 0, trHideT = null
+function trShow() {
+  clearTimeout(trHideT)
+  trCard.classList.remove('done', 'err', 'out'); trCard.classList.add('show')
+  api.do('overlay', true)
+  requestAnimationFrame(() => trCard.classList.add('in'))
+  clearInterval(trTimer)
+  trTimer = setInterval(() => {
+    trGlyph = (trGlyph + 1) % TR_GLYPHS.length
+    const [a, b] = TR_GLYPHS[trGlyph]
+    for (const [el, ch] of [[$('#trcard .g1'), a], [$('#trcard .g2'), b]]) { el.classList.add('swap'); setTimeout(() => { el.textContent = ch; el.classList.remove('swap') }, 180) }
+  }, 900)
+}
+function trHide(delay = 0) {
+  clearTimeout(trHideT)
+  trHideT = setTimeout(() => {
+    clearInterval(trTimer)
+    trCard.classList.add('out')
+    setTimeout(() => { trCard.classList.remove('show', 'in', 'out', 'done', 'err'); if (!overlayOpen && !peeking) api.do('overlay', false) }, 320)
+  }, delay)
+}
+api.on('translating', m => {
+  if (m.phase === 'start') {
+    trFill.set(0); trFill.to(6)
+    $('#tr-title').textContent = 'Translating to ' + m.to
+    $('#tr-sub').textContent = (m.from ? 'From ' + m.from : 'Detecting the language') + (m.flip ? (m.rtl ? ', switching to right-to-left' : ', switching to left-to-right') : '')
+    $('#tr-count').textContent = 'Reading the page'
+    trShow()
+  } else if (m.phase === 'progress') {
+    trFill.to(8 + 87 * (m.total ? m.n / m.total : 0))
+    $('#tr-count').textContent = m.n ? `${m.n.toLocaleString('en-US')} of ${m.total.toLocaleString('en-US')} phrases` : `${m.total.toLocaleString('en-US')} phrases found`
+  } else if (m.phase === 'done') {
+    trFill.to(100)
+    $('#tr-title').textContent = 'Translated to ' + m.to
+    $('#tr-count').textContent = 'Translate again to see the original'
+    trCard.classList.add('done'); clearInterval(trTimer)
+    trHide(1100)
+  } else if (m.phase === 'error') {
+    trCard.classList.add('err')
+    $('#tr-title').textContent = 'Could not translate'
+    $('#tr-count').textContent = m.text || ''
+    trHide(1800)
+  } else if (m.phase === 'cancelled') trHide(0)
+})
+$('#tr-cancel').onclick = () => { api.do('translateCancel'); trHide(0) }

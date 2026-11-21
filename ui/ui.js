@@ -88,6 +88,7 @@ function doLayout() {
   const ap = $('#aipanel')
   Object.assign(ap.style, { top: top + 'px', height: rect.height + 'px', width: (AI_W - GUT) + 'px', transform: `translateX(${AI_W - aiw}px)`, opacity: Math.min(1, aiw / (AI_W * 0.6)), visibility: aiw < 2 ? 'hidden' : 'visible' })
   const ds = document.documentElement.style
+  { const lb = $('#loadbar'); lb.style.left = (rect.x + 12) + 'px'; lb.style.width = Math.max(0, rect.width - 24) + 'px'; lb.style.top = (rect.y - 5) + 'px' }
   ds.setProperty('--cx', rect.x + 'px'); ds.setProperty('--cy', rect.y + 'px'); ds.setProperty('--cw', rect.width + 'px'); ds.setProperty('--ch', rect.height + 'px')
   // cut a hole the exact shape of the page (rounded corners included) so no dark corner shows through
   const tb = $('#themebg')
@@ -264,6 +265,7 @@ function tabInner(t) {
   return `<span class="icon">${favHTML(t)}${t.loading ? '<span class="spinner"></span>' : ''}</span>
     <span class="title">${esc(titleOf(t))}</span>
     <span class="split-badge">SPLIT</span>
+    <span class="eq"><i></i><i></i><i></i></span>
     <button class="audio" title="${t.muted ? 'Unmute' : 'Mute'}">${t.muted ? ICONS.muted : ICONS.speaker}</button>
     <button class="add" title="New tab next to this one">${ICONS.plus}</button>
     <button class="x" title="Close tab">${ICONS.close}</button>`
@@ -829,18 +831,18 @@ async function openMainMenu() {
     ${item('pip', 'pip', 'Picture in picture', `${K.sh} ${K.cmd} P`)}
     ${item('split', 'split', S.splitId ? 'Exit split view' : 'Split view', `${K.sh} ${K.cmd} \\`)}
     ${item('screenshot', 'camera', 'Take screenshot', `${K.sh} ${K.cmd} 2`)}
-    ${item('print', 'arrowRight', 'Print', `${K.cmd} P`)}
+    ${item('print', 'printer', 'Print', `${K.cmd} P`)}
     <div class="sep"></div>
     ${item('ai', 'bolt', 'Lumen AI', `${K.sh} ${K.cmd} A`)}
     ${item('autogroup', 'tabs', 'Sort tabs into groups', `${K.sh} ${K.cmd} G`)}
     ${(S.groups || []).length ? item('ungroup', 'close', 'Ungroup all tabs', '') : ''}
     <div class="sep"></div>
-    ${item('savesession', 'star', 'Save all tabs as a session', '')}
+    ${item('savesession', 'layers', 'Save all tabs as a session', '')}
     ${(info.sessions || []).map(x => `<div class="item mm" data-mm="restore" data-id="${esc(x.id)}"><span class="ri">${ICONS.tabs}</span><div class="grow">${esc(x.name)}<div class="small">${x.count} tabs</div></div><button class="ib sm" data-mm="delsession" data-id="${esc(x.id)}" title="Delete">${ICONS.close}</button></div>`).join('')}
     ${(info.closed || []).length ? `<div class="sep"></div><div class="mm-label">Recently closed</div>` + info.closed.map((c, i) => `<div class="item mm" data-mm="reopen" data-i="${i}"><span class="ri">${favHTML({ url: c.url })}</span><div class="grow" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(c.title)}</div></div>`).join('') : ''}
     <div class="sep"></div>
-    ${item('layout', 'tabs', info.tabLayout === 'top' ? 'Move tabs to the sidebar' : 'Move tabs to the top', `${K.opt} ${K.cmd} S`)}
-    ${item('intro', 'bolt', 'Replay intro', '')}`
+    ${item('layout', info.tabLayout === 'top' ? 'sidebarL' : 'tabsTop', info.tabLayout === 'top' ? 'Move tabs to the sidebar' : 'Move tabs to the top', `${K.opt} ${K.cmd} S`)}
+    ${item('intro', 'play', 'Replay intro', '')}`
   openPopover(html, $('#btn-menu'), { above: !TOP, wide: true })
   pop.onclick = async e => {
     const b = e.target.closest('[data-mm]'); if (!b) return
@@ -990,6 +992,8 @@ function toast(msg) {
 // ---------------------------------------------------------------- IPC
 api.on('state', s => {
   S = s
+  updateLoadbar()
+  if (document.body.classList.contains('winfs') !== !!s.winFull) { document.body.classList.toggle('winfs', !!s.winFull); queueLayout() }
   renderChrome(); renderTabs(); renderNowPlaying()
   $('#extbar').classList.toggle('has', !!document.querySelector('#actions') && ($('#actions').shadowRoot ? $('#actions').shadowRoot.querySelectorAll('.action, button').length > 0 : false))
 })
@@ -1386,3 +1390,72 @@ async function openTranslateMenu() {
   }
 }
 $('#btn-translate').onclick = openTranslateMenu
+
+
+// ---------------------------------------------------------------- page loading bar
+// a thin glowing bar above the page: jumps in, creeps toward the end while the page loads, then sweeps out
+let lbP = 0, lbOn = false, lbTab = null, lbRaf = 0, lbDoneT = 0
+const lbEl = $('#loadbar'), lbFill = $('#loadbar i')
+function lbFrame() {
+  if (lbOn) { lbP += (0.9 - lbP) * 0.018; lbRaf = requestAnimationFrame(lbFrame) }
+  lbFill.style.transform = `scaleX(${lbP})`
+}
+function updateLoadbar() {
+  const a = activeTab(), loading = !!(a && a.loading && !/^lumen:/.test(a.url || ''))
+  if (a && a.id !== lbTab) { lbTab = a.id; if (!loading) { lbOn = false; cancelAnimationFrame(lbRaf); lbEl.classList.remove('show'); lbP = 0; lbFill.style.transform = 'scaleX(0)'; return } }
+  if (loading && !lbOn) {
+    clearTimeout(lbDoneT); lbOn = true; lbP = Math.max(0.12, lbP > 0.95 ? 0.12 : lbP)
+    lbEl.classList.remove('done'); lbEl.classList.add('show')
+    cancelAnimationFrame(lbRaf); lbRaf = requestAnimationFrame(lbFrame)
+  } else if (!loading && lbOn) {
+    lbOn = false; cancelAnimationFrame(lbRaf)
+    lbP = 1; lbFill.style.transform = 'scaleX(1)'; lbEl.classList.add('done')
+    lbDoneT = setTimeout(() => { lbEl.classList.remove('show', 'done'); lbP = 0; lbFill.style.transform = 'scaleX(0)' }, 420)
+  }
+}
+
+// ---------------------------------------------------------------- tab hover preview
+const tcEl = $('#tabcard')
+const tcG = new SpringGroup({ o: 0, y: -6, s: 0.96 }, 'jelly', v => { tcEl.style.opacity = Math.max(0, Math.min(1, v.o)); tcEl.style.transform = `translateY(${v.y}px) scale(${v.s})` })
+let tcT = null, tcFor = null, tcShown = false, tcHideT = null
+function tcHide() {
+  clearTimeout(tcT); tcFor = null
+  if (!tcShown) return
+  tcShown = false
+  tcG.to({ o: 0, y: -6, s: 0.96 })
+  clearTimeout(tcHideT)
+  tcHideT = setTimeout(() => { if (!tcShown) { tcEl.classList.remove('show'); if (!overlayOpen && !peeking && !taCur && !trCard.classList.contains('show')) api.do('overlay', false) } }, 220)
+}
+async function tcShow(id, el) {
+  const t = S.tabs.find(x => x.id === id); if (!t || (drag && drag.active)) return
+  tcFor = id
+  tcEl.querySelector('.tc-title').textContent = titleOf(t)
+  let host = ''; try { host = new URL(t.url).hostname.replace(/^www\./, '') } catch { host = t.url }
+  tcEl.querySelector('.tc-host span').textContent = /^lumen:/.test(t.url || '') ? 'Lumen' : host
+  const fav = tcEl.querySelector('.tc-fav'); fav.onerror = () => { fav.style.display = 'none' }; fav.style.display = t.favicon ? '' : 'none'; if (t.favicon) fav.src = t.favicon
+  tcEl.querySelector('.tc-meta').textContent = t.asleep ? 'Sleeping to save memory' : t.audible && !t.muted ? 'Playing sound' : t.muted ? 'Muted' : t.loading ? 'Loading' : ''
+  const img = tcEl.querySelector('.tc-thumb img'); tcEl.classList.add('nothumb'); img.removeAttribute('src')
+  const r = el.getBoundingClientRect()
+  if (TOP) { tcEl.style.left = Math.max(8, Math.min(innerWidth - 268, r.left)) + 'px'; tcEl.style.top = (r.bottom + 8) + 'px' }
+  else { tcEl.style.left = (r.right + 10) + 'px'; tcEl.style.top = Math.max(8, Math.min(innerHeight - 220, r.top - 6)) + 'px' }
+  clearTimeout(tcHideT)
+  if (!overlayOpen && !peeking) api.do('overlay', true, true)
+  tcEl.classList.add('show'); tcShown = true
+  tcG.to({ o: 1, y: 0, s: 1 })
+  if (id !== S.activeId || true) {
+    const data = await api.do('tabThumb', id).catch(() => null)
+    if (tcFor === id && data) { img.src = data; tcEl.classList.remove('nothumb') }
+  }
+}
+tabsEl.addEventListener('pointerover', e => {
+  const el = e.target.closest('.tab'); if (!el || !el.dataset.id) return
+  const id = +el.dataset.id
+  if (tcFor === id) return
+  clearTimeout(tcT)
+  if (tcShown) { tcShow(id, el); return }
+  tcFor = null
+  tcT = setTimeout(() => { if (el.matches(':hover')) tcShow(id, el) }, 650)
+})
+tabsEl.addEventListener('pointerleave', tcHide)
+tabsEl.addEventListener('pointerdown', tcHide)
+window.addEventListener('blur', tcHide)

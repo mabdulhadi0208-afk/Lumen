@@ -394,7 +394,7 @@ class BrowserWin {
     const fit = () => { const [w, h] = this.win.getContentSize(); this.ui.setBounds({ x: 0, y: 0, width: w, height: h }); if (this.fullscreenTab) this.layout() }
     fit()
     this.win.on('resize', fit)
-    this.win.on('enter-full-screen', () => this.send('fullscreen', true))
+    this.win.on('enter-full-screen', () => { this.send('fullscreen', true); this.pushStateSoon() })
     this.win.on('leave-full-screen', () => { this.send('fullscreen', false); if (this.fullscreenTab) { this.fullscreenTab = false; this.layout() } })
     this.win.on('focus', () => { const t = this.active(); if (t && t.view && !this.overlay) t.view.webContents.focus() })
     this.win.on('close', () => { saveSessionNow() })
@@ -450,6 +450,7 @@ class BrowserWin {
     wc.on('did-stop-loading', () => { t.loading = false; upd() })
     wc.on('did-finish-load', () => { offerTranslate(this, t).catch(() => {}); darkPage(wc) })
     wc.on('did-navigate', () => darkKeys.delete(wc.id))
+    wc.on('did-stop-loading', () => setTimeout(() => { if (this.activeId === t.id) snapTab(t) }, 900))
     wc.once('destroyed', () => darkKeys.delete(wc.id))
     wc.on('dom-ready', () => darkPage(wc))
     wc.on('will-navigate', e => {
@@ -537,7 +538,7 @@ class BrowserWin {
       if (id === this.splitId) this.splitId = this.activeId
       else if (id !== this.activeId) this.splitId = null
     }
-    if (this.activeId && this.activeId !== id) this.lastTabId = this.activeId
+    if (this.activeId && this.activeId !== id) { this.lastTabId = this.activeId; snapTab(this.tabs.get(this.activeId)) }
     this.activeId = id
     t.lastActive = Date.now()
     if (t.offerLater) { t.offerLater = false; setTimeout(() => offerTranslate(this, t).catch(() => {}), 400) }
@@ -624,14 +625,16 @@ class BrowserWin {
     if (action === 'split') { const n = this.createTab(url, { active: false }); this.splitId = n.id; this.layout(); this.pushState() }
   }
 
-  setOverlay(on) {
+  // quiet: raise the UI above the page without taking keyboard focus (used for hover cards)
+  setOverlay(on, quiet = false) {
     if (this.overlay === on) return
     this.overlay = on
-    if (on) { this.win.contentView.addChildView(this.ui); this.ui.webContents.focus() }
+    if (on) { this.win.contentView.addChildView(this.ui); this.quietOverlay = quiet; if (!quiet) this.ui.webContents.focus() }
     else {
       this.win.contentView.addChildView(this.ui, 0)
       this.layout()
-      const a = this.active(); if (a && a.view) a.view.webContents.focus()
+      if (!this.quietOverlay) { const a = this.active(); if (a && a.view) a.view.webContents.focus() }
+      this.quietOverlay = false
     }
   }
 
@@ -735,7 +738,7 @@ class BrowserWin {
       }),
       activeId: this.activeId, splitId: this.splitId, incognito: this.incognito, groups: [...this.groups.values()],
       canBack: !!(awc && awc.navigationHistory.canGoBack()), canForward: !!(awc && awc.navigationHistory.canGoForward()),
-      url: a ? a.url : '', zoom: a ? Math.round(Math.pow(1.2, a.zoom || 0) * 100) : 100,
+      winFull: this.win.isFullScreen(), url: a ? a.url : '', zoom: a ? Math.round(Math.pow(1.2, a.zoom || 0) * 100) : 100,
       bookmarked: a ? D.isBookmarked(a.url) : false,
       blocked: awc ? (blockedByWc.get(awc.id) || 0) : 0,
       translated: !!(a && a.translated),
@@ -1110,7 +1113,8 @@ ipcMain.handle('ui', async (e, action, ...a) => {
       case 'reload': if (t && (t.crashed || !t.view)) { w.destroyView(t); w.makeView(t); w.layout(); return } return wc && (a[0] ? wc.reloadIgnoringCache() : wc.reload())
       case 'stop': return wc && wc.stop()
       case 'layout': w.rect = a[0]; return w.layout()
-      case 'overlay': return w.setOverlay(!!a[0])
+      case 'overlay': return w.setOverlay(!!a[0], !!a[1])
+      case 'tabThumb': { const x = w.tabs.get(a[0]); if (!x) return null; if (x.id === w.activeId || x.id === w.splitId) await snapTab(x); return x.thumb || null }
       case 'suggest': return suggest(w, a[0])
       case 'find': if (wc && a[0]) wc.findInPage(a[0], { forward: a[1] !== false, findNext: !!a[2] }); return
       case 'stopFind': if (wc) wc.stopFindInPage('clearSelection'); return
@@ -1611,6 +1615,16 @@ function buildMenu() {
     { role: 'windowMenu' },
   ]
   Menu.setApplicationMenu(Menu.buildFromTemplate(tpl))
+}
+
+// ---------------------------------------------------------------- tab thumbnails for the hover preview
+// only a tab that is on screen can be captured, so each tab keeps the last picture taken while it was visible
+async function snapTab(t) {
+  if (!t || !t.view || t.view.webContents.isDestroyed() || t.asleep) return
+  try {
+    const img = await Promise.race([t.view.webContents.capturePage(), new Promise(r => setTimeout(() => r(null), 600))])
+    if (img && !img.isEmpty()) t.thumb = img.resize({ width: 480, quality: 'good' }).toDataURL()
+  } catch {}
 }
 
 // ---------------------------------------------------------------- dark mode for websites

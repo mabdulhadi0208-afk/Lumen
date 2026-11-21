@@ -585,3 +585,36 @@ body.winfs.toplayout .topbar .spacer { width: 6px; }
 .tab .add { opacity: 1; color: var(--fg2); }
 .tab:hover .add, .tab.active .add { opacity: 1; }
 .tab .add:hover, .tab .x:hover { background: var(--press); }
+
+/* page loading bar */
+#loadbar { position: absolute; height: 3px; border-radius: 3px; pointer-events: none; opacity: 0; transition: opacity .25s; z-index: 5; overflow: visible; }
+#loadbar.show { opacity: 1; }
+#loadbar.done { opacity: 0; transition: opacity .35s .12s; }
+#loadbar i { display: block; height: 100%; border-radius: 3px; transform-origin: left; transform: scaleX(0); background: linear-gradient(90deg, var(--accent), #8a63f2, #e9609c); box-shadow: 0 0 10px color-mix(in srgb, var(--accent) 70%, transparent); transition: transform .18s ease-out; }
+body.fullscreen-tab #loadbar { display: none; }
+
+/* tab hover preview */
+#tabcard { position: fixed; z-index: 260; width: 260px; border-radius: 14px; overflow: hidden; display: none; pointer-events: none; background: var(--bg-solid, #f6f7fa); box-shadow: 0 18px 50px rgba(10,14,30,.28), 0 0 0 1px var(--line); transform-origin: 30px 0; will-change: transform, opacity; }
+#tabcard.show { display: block; }
+.tc-thumb { height: 146px; background: var(--hover); overflow: hidden; }
+.tc-thumb img { width: 100%; height: 100%; object-fit: cover; object-position: top; display: block; }
+#tabcard.nothumb .tc-thumb { height: 0; }
+.tc-body { padding: 10px 12px 11px; }
+.tc-title { font-size: 12.5px; font-weight: 650; line-height: 1.35; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.tc-host { display: flex; align-items: center; gap: 6px; margin-top: 4px; font-size: 11.5px; color: var(--fg3); }
+.tc-fav { width: 12px; height: 12px; border-radius: 3px; }
+.tc-meta { font-size: 11px; color: var(--accent); margin-top: 4px; font-weight: 600; }
+.tc-meta:empty { display: none; }
+
+/* playing tabs show a little live equalizer */
+.tab .eq { display: none; gap: 2px; align-items: flex-end; height: 12px; width: 14px; flex: none; }
+.tab.audible:not(.muted) .eq { display: flex; }
+.tab.audible:not(.muted) .audio { display: none; }
+.tab.audible:not(.muted):hover .eq { display: none; }
+.tab.audible:not(.muted):hover .audio { display: grid; }
+.tab .eq i { width: 3px; border-radius: 2px; background: var(--accent); animation: eqb 0.9s ease-in-out infinite; }
+.tab .eq i:nth-child(1) { animation-delay: -.3s } .tab .eq i:nth-child(2) { animation-delay: -.6s; animation-duration: .7s } .tab .eq i:nth-child(3) { animation-duration: 1.1s }
+@keyframes eqb { 0%, 100% { height: 3px } 50% { height: 12px } }
+
+/* toast: a floating pill with a soft spring */
+#toast { backdrop-filter: blur(18px) saturate(1.5); background: color-mix(in srgb, var(--card-solid) 88%, transparent); box-shadow: 0 10px 30px rgba(10,14,30,.18), 0 0 0 1px var(--line); font-size: 12.5px; }

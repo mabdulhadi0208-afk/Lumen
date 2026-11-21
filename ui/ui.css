@@ -618,3 +618,23 @@ body.fullscreen-tab #loadbar { display: none; }
 
 /* toast: a floating pill with a soft spring */
 #toast { backdrop-filter: blur(18px) saturate(1.5); background: color-mix(in srgb, var(--card-solid) 88%, transparent); box-shadow: 0 10px 30px rgba(10,14,30,.18), 0 0 0 1px var(--line); font-size: 12.5px; }
+
+/* translator card, round three */
+.tr-aurora { position: absolute; inset: -30%; pointer-events: none; filter: blur(28px); opacity: .55; }
+.tr-aurora i { position: absolute; width: 55%; height: 55%; border-radius: 50%; animation: traur 9s ease-in-out infinite alternate; }
+.tr-aurora i:nth-child(1) { left: 5%; top: 10%; background: #3a5bd9; }
+.tr-aurora i:nth-child(2) { right: 5%; top: 25%; background: #7b3fe4; animation-duration: 11s; animation-delay: -3s; }
+.tr-aurora i:nth-child(3) { left: 25%; bottom: 0; background: #c2407e; animation-duration: 13s; animation-delay: -6s; opacity: .7; }
+@keyframes traur { 0% { transform: translate(0, 0) scale(1); } 50% { transform: translate(18%, -12%) scale(1.15); } 100% { transform: translate(-14%, 10%) scale(.9); } }
+#trcard.done .tr-aurora i { background: #1f9e62; transition: background 1s; }
+.tr-box > *:not(.tr-aurora):not(.tr-border):not(.tr-sparks) { position: relative; }
+.tr-scan { position: absolute; left: 0; right: 0; height: 160px; top: -160px; background: linear-gradient(180deg, transparent, rgba(120,150,255,.16) 70%, rgba(170,190,255,.5) 98%, transparent); animation: trscan 2.4s cubic-bezier(.45,0,.55,1) infinite; }
+@keyframes trscan { to { transform: translateY(calc(100vh + 160px)); } }
+#trcard.done .tr-scan, #trcard.err .tr-scan { animation: none; opacity: 0; }
+.tr-prog { position: absolute; inset: 0; width: 150px; height: 150px; transform: rotate(-90deg); z-index: 1; }
+.tr-prog circle { fill: none; stroke-width: 3.5; stroke-linecap: round; }
+.tr-prog .bg { stroke: rgba(255,255,255,.08); }
+.tr-prog .fg { stroke: url(#trpg); stroke-dasharray: 352; stroke-dashoffset: 352; filter: drop-shadow(0 0 5px rgba(140,120,255,.9)); }
+#trcard.done .tr-prog .fg { stroke: #3fd08a; filter: drop-shadow(0 0 6px rgba(63,208,138,.9)); }
+.tr-conf { position: absolute; left: 50%; top: 50%; z-index: 5; font: 800 15px/1 -apple-system, BlinkMacSystemFont, 'Geeza Pro', 'PingFang SC', sans-serif; pointer-events: none; animation: trconf 1.2s cubic-bezier(.15,.7,.3,1) forwards; }
+@keyframes trconf { 0% { transform: translate(-50%, -50%) scale(.3); opacity: 1; } 70% { opacity: 1; } 100% { transform: translate(calc(-50% + var(--dx)), calc(-50% + var(--dy) + 40px)) rotate(var(--rot)) scale(1.1); opacity: 0; } }

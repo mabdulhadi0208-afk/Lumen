@@ -1212,6 +1212,7 @@ let trPct = 0
 const trFill = new Spring(0, 'jelly', v => {
   const p = Math.max(0, Math.min(100, v))
   $('#tr-fill').style.width = p + '%'
+  $('#tr-progc').style.strokeDashoffset = 352 - 352 * p / 100
   $('#tr-pct').textContent = Math.round(Math.min(trPct, p)) + '%'
 })
 let trHideT = null, trSparkT = null, trInfo = null, trHover = false
@@ -1309,7 +1310,7 @@ api.on('translating', m => {
     $('#tr-sub').textContent = `${m.count.toLocaleString('en-US')} phrases in ${(m.ms / 1000).toFixed(1)} seconds` + (m.flip ? (m.rtl ? ', now right-to-left' : ', now left-to-right') : '')
     $('#tr-count').textContent = ''
     const al = $('#tr-always'); al.textContent = m.always ? `Always translating ${m.from}` : `Always translate ${m.from}`; al.classList.toggle('on', !!m.always)
-    trCard.classList.add('done'); trSparks(false)
+    trCard.classList.add('done'); trSparks(false); trConfetti()
     trHide(2600)
   } else if (m.phase === 'error') {
     trCard.classList.add('err'); trSparks(false)
@@ -1459,3 +1460,18 @@ tabsEl.addEventListener('pointerover', e => {
 tabsEl.addEventListener('pointerleave', tcHide)
 tabsEl.addEventListener('pointerdown', tcHide)
 window.addEventListener('blur', tcHide)
+
+// glyph confetti bursting out of the check when a translation finishes
+function trConfetti() {
+  const st = $('#trcard .tr-stage')
+  for (let i = 0; i < 26; i++) {
+    const s = document.createElement('span'); s.className = 'tr-conf'
+    s.textContent = TR_GLYPHS[i % TR_GLYPHS.length]
+    const a = Math.random() * Math.PI * 2, d = 70 + Math.random() * 110
+    s.style.setProperty('--dx', Math.cos(a) * d + 'px'); s.style.setProperty('--dy', Math.sin(a) * d - 20 + 'px')
+    s.style.setProperty('--rot', (Math.random() * 300 - 150) + 'deg')
+    s.style.color = ['#5b8cff', '#8a63f2', '#e9609c', '#f0a03c', '#3fd08a'][i % 5]
+    s.style.animationDelay = (Math.random() * 0.12) + 's'
+    st.appendChild(s); setTimeout(() => s.remove(), 1400)
+  }
+}

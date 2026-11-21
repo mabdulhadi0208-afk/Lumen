@@ -1,0 +1,18 @@
+const fs = require('fs'); const { app } = require('electron')
+fs.rmSync('/tmp/lumen-c', { recursive: true, force: true }); app.setPath('userData', '/tmp/lumen-c')
+const L = require('../src/main.js'); const wait = ms => new Promise(r => setTimeout(r, ms))
+app.whenReady().then(async () => {
+  await wait(4000); const w = L.windows[0], ex = s => w.ui.webContents.executeJavaScript(s)
+  await ex(`document.querySelector('#intro .skip') && document.querySelector('#intro .skip').click()`); await wait(2500)
+  await ex(`document.querySelector('#intro .go') && document.querySelector('#intro .go').click()`); await wait(1000)
+  await ex(`api.do('setSetting','browserTheme','aurora')`); await wait(1200)
+  const img = await w.ui.webContents.capturePage()
+  const r = JSON.parse(await ex(`JSON.stringify(document.getElementById('content-shadow').getBoundingClientRect())`))
+  const bmp = img.toBitmap(), W = img.getSize().width, sf = W / (await ex('innerWidth'))
+  const px = (x, y) => { const i = (Math.round(y * sf) * W + Math.round(x * sf)) * 4; return [bmp[i + 2], bmp[i + 1], bmp[i], bmp[i + 3]] }
+  console.log('corner', px(r.x + 1, r.y + 1), 'inside', px(r.x + 40, r.y + 40), 'clip', (await ex(`document.getElementById('themebg').style.clipPath`)).slice(0, 60))
+  fs.writeFileSync('/tmp/lumen-shots/corner.png', img.toPNG())
+  w.send('fullscreen', true); await wait(800)
+  console.log('tabs left', await ex(`document.querySelector('.tab').getBoundingClientRect().left`))
+  fs.writeFileSync('/tmp/lumen-shots/fs.png', (await w.ui.webContents.capturePage()).toPNG()); app.exit(0)
+})

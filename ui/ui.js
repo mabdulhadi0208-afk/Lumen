@@ -89,6 +89,12 @@ function doLayout() {
   Object.assign(ap.style, { top: top + 'px', height: rect.height + 'px', width: (AI_W - GUT) + 'px', transform: `translateX(${AI_W - aiw}px)`, opacity: Math.min(1, aiw / (AI_W * 0.6)), visibility: aiw < 2 ? 'hidden' : 'visible' })
   const ds = document.documentElement.style
   ds.setProperty('--cx', rect.x + 'px'); ds.setProperty('--cy', rect.y + 'px'); ds.setProperty('--cw', rect.width + 'px'); ds.setProperty('--ch', rect.height + 'px')
+  // cut a hole the exact shape of the page (rounded corners included) so no dark corner shows through
+  const tb = $('#themebg')
+  if (tb && document.body.classList.contains('themed')) {
+    const { x, y, width: w, height: h } = rect, r = document.body.classList.contains('compact') ? 8 : 10
+    tb.style.clipPath = `path(evenodd, "M0 0H${innerWidth}V${innerHeight}H0Z M${x + r} ${y}H${x + w - r}A${r} ${r} 0 0 1 ${x + w} ${y + r}V${y + h - r}A${r} ${r} 0 0 1 ${x + w - r} ${y + h}H${x + r}A${r} ${r} 0 0 1 ${x} ${y + h - r}V${y + r}A${r} ${r} 0 0 1 ${x + r} ${y}Z")`
+  }
   const sh = $('#content-shadow')
   Object.assign(sh.style, { left: rect.x + 'px', top: rect.y + 'px', width: rect.width + 'px', height: rect.height + 'px' })
   const fb = $('#findbar')
@@ -994,7 +1000,7 @@ api.on('prompt', p => addPrompt(p))
 api.on('toast', m => toast(m))
 api.on('hover-url', u => { const h = $('#hoverurl'); if (u) h.textContent = u; h.classList.toggle('show', !!u) })
 api.on('update', u => { updateState = u; $('#btn-update').classList.toggle('show', u.status === 'ready') })
-api.on('fullscreen', f => { fullscreenWindow = f })
+api.on('fullscreen', f => { fullscreenWindow = f; document.body.classList.toggle('winfs', !!f); queueLayout() })
 let fullscreenWindow = false
 api.on('command', c => {
   if (c && typeof c === 'object' && c.ai) { openAI(); aiRun(c.ai, c.text); return }
@@ -1034,6 +1040,7 @@ function applyTheme() {
     if (!TOP && !collapsed) sideX.set(sidebarW - GUT)
     queueLayout()
   }
+  queueLayout()
 }
 
 function applySettings(s) {

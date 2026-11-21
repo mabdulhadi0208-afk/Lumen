@@ -8,11 +8,13 @@ app.whenReady().then(async () => {
   await ex(`document.querySelector('#intro .skip') && document.querySelector('#intro .skip').click()`); await wait(2500)
   await ex(`document.querySelector('#intro .go') && document.querySelector('#intro .go').click()`); await wait(1000)
   L.D.addHistory('https://example.com/a', 'Example page one'); L.D.addHistory('https://github.com/x', 'GitHub project'); L.D.addBookmark('https://example.com', 'Example'); L.D.addHistory('https://www.amazon.sa/dp/1', 'Wireless headphones'); L.D.addHistory('https://docs.google.com/x', 'Quarterly plan')
+  for (let i = 0; i < 5; i++) L.D.addBookmark('https://b' + i + '.example/', ['Docs', 'Mail', 'Design board', 'News', 'Music'][i]); w.createTab('lumen://history', { active: false }); w.createTab('lumen://settings', { active: false })
   const t = w.active()
   const page = async (url, name) => { t.view.webContents.loadURL(url); await wait(1800); fs.writeFileSync('/tmp/lumen-shots/glow-' + name + '.png', (await t.view.webContents.capturePage()).toPNG()) }
   for (const [u, n] of [['lumen://newtab', 'ntp'], ['lumen://settings/general', 'settings'], ['lumen://history', 'history'], ['lumen://settings/privacy', 'privacy'], ['lumen://downloads', 'downloads'], ['lumen://passwords', 'passwords'], ['lumen://error/?code=-105&desc=ERR_NAME_NOT_RESOLVED&url=https%3A%2F%2Fnope.example', 'error']]) await page(u, n)
   const ui = async n => fs.writeFileSync('/tmp/lumen-shots/glow-' + n + '.png', (await w.ui.webContents.capturePage()).toPNG())
   await ex(`openMainMenu()`); await wait(1200); await ui('menu'); await ex(`closePopover(true)`); await wait(400)
+  await ex(`openSiteInfo()`); await wait(1000); await ui('site'); await ex(`closePopover(true)`); await wait(300)
   await ex(`openCmd('newtab')`); await wait(500); await ex(`(() => { const i = document.querySelector('#cmdbar input'); i.value = 'ex'; i.dispatchEvent(new Event('input')) })()`); await wait(900); await ui('cmd'); await ex(`closeCmd(true)`); await wait(400)
   require('../src/ai').setKey('sk-ant-x'); await ex(`openAI()`); await wait(1000); await ex(`aiBubble('user','<p>Summarize this page</p>'); aiBubble('bot','<p>Here is a short summary of the page.</p><ul><li>Point one</li><li>Point two</li></ul>')`); await wait(700); await ui('ai')
   console.log('ERRORS', errors.join('|') || 'none'); app.exit(0)

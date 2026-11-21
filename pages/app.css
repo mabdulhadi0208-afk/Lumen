@@ -278,3 +278,61 @@ input[type=text], input[type=search], input[type=password], input[type=url], sel
 .nstats b { color: var(--fg); font-weight: 700; font-variant-numeric: tabular-nums; }
 .nstats i { width: 3px; height: 3px; border-radius: 50%; background: var(--fg3); margin: 0 3px; }
 .ns-i { color: var(--accent); display: grid; }
+
+
+/* =====================================================================
+   Appearance pass 2: color, shape and type
+   ===================================================================== */
+:root { --display: ui-rounded, "SF Pro Rounded", "Nunito", var(--font); }
+.clock, .main h2, .nav h1, .err h1, .rc-h, .card h3, .daylabel, .ntp-card h3, .drawer .dh b { font-family: var(--display); }
+
+/* side navigation: colored icon chips */
+.nav a svg, .nav a:hover svg, .nav a.on svg { width: 24px; height: 24px; padding: 5px; box-sizing: border-box; border-radius: 8px; background: var(--ic, var(--accent)); color: #fff; opacity: 1; box-shadow: 0 3px 8px color-mix(in srgb, var(--ic, var(--accent)) 35%, transparent); transition: transform .4s cubic-bezier(.3,1.6,.5,1), box-shadow .2s; }
+.nav a:hover svg { transform: scale(1.12) rotate(-5deg); }
+.nav a { height: 38px; gap: 11px; }
+.nav a.on { box-shadow: 0 6px 20px color-mix(in srgb, var(--ic, var(--accent)) 20%, transparent), inset 0 0 0 1px color-mix(in srgb, var(--ic, var(--accent)) 28%, transparent); }
+.nav a.on::before { background: var(--ic, var(--accent)); }
+.nav a:nth-of-type(7n+1) { --ic: #5b8cff; }
+.nav a:nth-of-type(7n+2) { --ic: #8a63f2; }
+.nav a:nth-of-type(7n+3) { --ic: #e9609c; }
+.nav a:nth-of-type(7n+4) { --ic: #f08a3c; }
+.nav a:nth-of-type(7n+5) { --ic: #22a6b3; }
+.nav a:nth-of-type(7n+6) { --ic: #3fb37f; }
+.nav a:nth-of-type(7n+7) { --ic: #dcae22; }
+
+/* headings */
+.main h2 { font-size: 36px; font-weight: 800; position: relative; padding-bottom: 12px; margin-bottom: 10px; }
+.main h2::after { content: ''; position: absolute; left: 2px; bottom: 0; width: 46px; height: 5px; border-radius: 5px; background: var(--grad); }
+.card h3 { font-weight: 700; }
+.card { border-radius: 20px; }
+.row .t { font-size: 14.5px; }
+.btn { border-radius: 11px; }
+.btn.primary { border-radius: 999px; padding: 0 18px; }
+.seg { background: color-mix(in srgb, var(--accent) 9%, var(--hover)); }
+.pill { font-family: var(--display); font-weight: 700; }
+
+/* new tab */
+@property --sa { syntax: '<angle>'; inherits: false; initial-value: 0deg; }
+.clock { font-size: 88px; font-weight: 800; letter-spacing: -.04em; }
+.date { font-size: 15px; font-weight: 600; letter-spacing: .01em; }
+.searchbox { position: relative; height: 60px; border-radius: 22px; }
+.searchbox::before { content: ''; position: absolute; inset: -1.5px; border-radius: inherit; padding: 1.5px; pointer-events: none; opacity: .5; transition: opacity .3s;
+  background: conic-gradient(from var(--sa), var(--accent), #8a63f2, #e9609c, #f0a03c, var(--accent)); animation: sbspin 5s linear infinite;
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor; mask-composite: exclude; }
+.searchbox:hover::before, .searchbox:focus-within::before { opacity: 1; }
+@keyframes sbspin { to { --sa: 360deg; } }
+body[data-motion="off"] .searchbox::before { animation: none; }
+.searchbox input { font-family: var(--display); font-weight: 500; }
+.tiles { gap: 18px; max-width: 520px; }
+.tile .ti { width: 60px; height: 60px; border-radius: 20px; background: linear-gradient(160deg, color-mix(in srgb, var(--bg2) 96%, transparent), color-mix(in srgb, var(--accent) 9%, var(--bg2))); }
+.tile .ti img, .tile .ti .fav { width: 28px; height: 28px; border-radius: 7px; font-size: 14px; }
+.tile span { font-size: 12px; font-weight: 600; }
+.rc { border-radius: 18px; }
+.rc-f { background: linear-gradient(160deg, var(--hover), color-mix(in srgb, var(--accent) 12%, transparent)); }
+.nstats { font-weight: 550; }
+.customize { font-family: var(--display); }
+
+/* lists */
+.list .row .t, .list .row b { font-weight: 600; }
+.toolbar input[type=search] { font-family: var(--display); }
+.err .ico { border-radius: 26px; }

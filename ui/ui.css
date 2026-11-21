@@ -579,3 +579,9 @@ body.glass #aipanel { background: color-mix(in srgb, var(--bg-solid, #f4f5f8) 72
 .trm-langs button small { display: block; font-size: 10.5px; opacity: .65; }
 /* in full screen the traffic lights are gone, so their empty slot goes too */
 body.winfs.toplayout .topbar .spacer { width: 6px; }
+/* tab buttons: always-visible +, and both icons dead center */
+.tab .add, .tab .x { padding: 0; border: 0; margin: 0; line-height: 0; align-self: center; background: none; }
+.tab .add svg, .tab .x svg { display: block; margin: auto; }
+.tab .add { opacity: 1; color: var(--fg2); }
+.tab:hover .add, .tab.active .add { opacity: 1; }
+.tab .add:hover, .tab .x:hover { background: var(--press); }

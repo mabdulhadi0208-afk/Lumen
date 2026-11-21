@@ -1,0 +1,12 @@
+const fs = require('fs'); const { app } = require('electron')
+fs.rmSync('/tmp/lumen-tb', { recursive: true, force: true }); app.setPath('userData', '/tmp/lumen-tb')
+const L = require('../src/main.js'); const wait = ms => new Promise(r => setTimeout(r, ms))
+app.whenReady().then(async () => {
+  await wait(4000); const w = L.windows[0], ex = s => w.ui.webContents.executeJavaScript(s)
+  await ex(`document.querySelector('#intro .skip') && document.querySelector('#intro .skip').click()`); await wait(2500)
+  await ex(`document.querySelector('#intro .go') && document.querySelector('#intro .go').click()`); await wait(1000)
+  w.createTab('lumen://settings/appearance', { active: true }); w.createTab('lumen://newtab', { active: false }); await wait(1500)
+  console.log(await ex(`JSON.stringify([...document.querySelectorAll('.tab')].map(t => { const r = t.getBoundingClientRect(), x = t.querySelector('.x svg').getBoundingClientRect(), a = t.querySelector('.add svg').getBoundingClientRect(); return { tabMid: r.top + r.height / 2, xMid: x.top + x.height / 2, addMid: a.top + a.height / 2, addVisible: getComputedStyle(t.querySelector('.add')).opacity } }))`))
+  const img = await w.ui.webContents.capturePage({ x: 0, y: 0, width: 900, height: 50 })
+  fs.writeFileSync('/tmp/lumen-shots/tabbtn.png', img.toPNG()); app.exit(0)
+})

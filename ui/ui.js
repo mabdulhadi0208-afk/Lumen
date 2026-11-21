@@ -538,6 +538,7 @@ const COMMANDS = [
   { t: 'Duplicate Tab', k: ['duplicate', 'copy tab', 'clone'], i: 'tabs', run: () => api.do('duplicateTab') },
   { t: 'Switch to Last Used Tab', k: ['last tab', 'previous tab', 'recent'], i: 'tabs', run: () => api.do('lastTab') },
   { t: 'Clear Data for This Site', k: ['clear', 'cookies', 'site data', 'sign out'], i: 'trash', run: () => api.do('clearSiteData') },
+  { t: 'Tab Overview', k: ['overview', 'all tabs', 'grid', 'expose', 'tabs'], i: 'tabs', run: () => setTimeout(openTabGrid, 80) },
   { t: 'Lumen AI', k: ['ai', 'ask', 'chat', 'assistant', 'claude'], i: 'bolt', run: () => openAI() },
   { t: 'Summarize Page', k: ['summarize', 'summary', 'tldr', 'ai'], i: 'book', run: () => { openAI(); aiRun('summarize') } },
   { t: 'Sort Tabs into Groups', k: ['group', 'sort tabs', 'organize', 'tidy'], i: 'tabs', run: () => api.do('autoGroup') },
@@ -833,6 +834,7 @@ async function openMainMenu() {
     ${item('screenshot', 'camera', 'Take screenshot', `${K.sh} ${K.cmd} 2`)}
     ${item('print', 'printer', 'Print', `${K.cmd} P`)}
     <div class="sep"></div>
+    ${item('tabgrid', 'layers', 'Tab overview', `${K.sh} ${K.cmd} O`)}
     ${item('ai', 'bolt', 'Lumen AI', `${K.sh} ${K.cmd} A`)}
     ${item('autogroup', 'tabs', 'Sort tabs into groups', `${K.sh} ${K.cmd} G`)}
     ${(S.groups || []).length ? item('ungroup', 'close', 'Ungroup all tabs', '') : ''}
@@ -862,7 +864,7 @@ async function openMainMenu() {
       find: () => openFind(), translate: () => api.do('translate'), reader: () => api.do('reader'), pip: () => api.do('pip').then(ok => { if (ok === false) toast('No video on this page') }),
       split: () => toggleSplit(), screenshot: () => api.do('screenshot'), print: () => api.do('print'),
       layout: () => api.do('setSetting', 'tabLayout', TOP ? 'side' : 'top'), intro: () => playIntro(),
-      ai: () => openAI(), autogroup: () => api.do('autoGroup'), ungroup: () => api.do('ungroupAll'),
+      tabgrid: () => setTimeout(openTabGrid, 80), ai: () => openAI(), autogroup: () => api.do('autoGroup'), ungroup: () => api.do('ungroupAll'),
     }[a]
     if (run) run()
   }
@@ -1010,6 +1012,7 @@ api.on('command', c => {
   if (c && typeof c === 'object' && c.ai) { openAI(); aiRun(c.ai, c.text); return }
   if (c && typeof c === 'object' && c.find) { findInput.value = c.find; openFind(); return }
   if (c === 'qr') { openQR(); return }
+  if (c === 'tabgrid') { tgOpen ? closeTabGrid() : openTabGrid(); return }
   if (c === 'ai') { toggleAI(); return }
   if (c === 'newtab') api.do('newTab')
   else if (c === 'palette') openCmd('newtab')
@@ -1475,3 +1478,49 @@ function trConfetti() {
     st.appendChild(s); setTimeout(() => s.remove(), 1400)
   }
 }
+
+
+// ---------------------------------------------------------------- nav width, so the address bar can sit beside the nav buttons while tabs use the full width
+new ResizeObserver(() => { document.documentElement.style.setProperty('--navw', $('.navbtns').offsetWidth + 'px'); queueLayout() }).observe($('.navbtns'))
+
+// ---------------------------------------------------------------- tab overview: every tab as a live card
+let tgOpen = false, tgThumbs = new Map()
+const tgEl = $('#tabgrid'), tgQ = $('#tg-q')
+$('#tg-ic').innerHTML = ICONS.search
+function tgRender() {
+  const q = tgQ.value.trim().toLowerCase()
+  const list = S.tabs.filter(t => !q || (titleOf(t) + ' ' + (t.url || '')).toLowerCase().includes(q))
+  $('#tg-count').textContent = `${list.length} ${list.length === 1 ? 'tab' : 'tabs'}`
+  $('#tg-list').innerHTML = list.map((t, i) => {
+    let host = ''; try { host = new URL(t.url).hostname.replace(/^www\./, '') } catch {}
+    const g = t.group && groupOf(t.group), th = tgThumbs.get(t.id)
+    return `<div class="tg-card ${t.id === S.activeId ? 'cur' : ''}" data-id="${t.id}" style="animation-delay:${Math.min(i, 14) * 22}ms">
+      <div class="tg-thumb">${th ? `<img src="${th}" alt="">` : `<div class="tg-ph">${favHTML(t)}</div>`}<button class="tg-x" title="Close tab">${ICONS.close}</button>${t.audible && !t.muted ? '<span class="tg-badge">Playing</span>' : t.asleep ? '<span class="tg-badge dim">Asleep</span>' : ''}</div>
+      <div class="tg-meta"><span class="tg-fav">${favHTML(t)}</span><div class="grow"><div class="tg-title">${esc(titleOf(t))}</div><div class="tg-host">${g ? `<i style="background:${GROUP_COLORS[g.color] || g.color}"></i>${esc(g.name)}  ` : ''}${esc(/^lumen:/.test(t.url || '') ? 'Lumen' : host)}</div></div></div></div>`
+  }).join('') || '<div class="tg-empty">No tabs match</div>'
+}
+async function openTabGrid() {
+  if (tgOpen) return
+  if (overlayOpen === 'cmd') closeCmd(true); else if (overlayOpen) closePopover(true)
+  tcHide(); tgOpen = true; tgQ.value = ''
+  tgRender(); tgEl.classList.add('show'); api.do('overlay', true)
+  requestAnimationFrame(() => { tgEl.classList.add('in'); tgQ.focus() })
+  for (const t of S.tabs) api.do('tabThumb', t.id).then(d => { if (!d || !tgOpen) return; tgThumbs.set(t.id, d); const c = tgEl.querySelector(`.tg-card[data-id="${t.id}"] .tg-thumb`); const ph = c && c.querySelector('.tg-ph'); if (ph) ph.outerHTML = `<img src="${d}" alt="">` }).catch(() => {})
+}
+function closeTabGrid() {
+  if (!tgOpen) return
+  tgOpen = false; tgEl.classList.remove('in')
+  setTimeout(() => { if (!tgOpen) { tgEl.classList.remove('show'); if (!overlayOpen && !peeking) api.do('overlay', false) } }, 200)
+}
+tgQ.addEventListener('input', tgRender)
+tgEl.addEventListener('keydown', e => { if (e.key === 'Escape') closeTabGrid(); else if (e.key === 'Enter') { const c = tgEl.querySelector('.tg-card'); if (c) c.click() } })
+$('#tg-close').onclick = closeTabGrid
+tgEl.querySelector('.tg-scrim').onclick = closeTabGrid
+$('#tg-list').addEventListener('click', e => {
+  if (e.target === e.currentTarget) return closeTabGrid()
+  const c = e.target.closest('.tg-card'); if (!c) return
+  const id = +c.dataset.id
+  if (e.target.closest('.tg-x')) { tgThumbs.delete(id); api.do('close', id); return }
+  api.do('switchTab', id); closeTabGrid()
+})
+api.on('state', () => { if (tgOpen) { if (!S.tabs.length) closeTabGrid(); else tgRender() } })

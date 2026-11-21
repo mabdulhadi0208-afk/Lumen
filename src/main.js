@@ -450,7 +450,7 @@ class BrowserWin {
     wc.on('did-stop-loading', () => { t.loading = false; upd() })
     wc.on('did-finish-load', () => { offerTranslate(this, t).catch(() => {}); darkPage(wc) })
     wc.on('did-navigate', () => darkKeys.delete(wc.id))
-    wc.on('did-stop-loading', () => setTimeout(() => { if (this.activeId === t.id) snapTab(t) }, 900))
+    wc.on('did-stop-loading', () => setTimeout(() => { if (this.activeId === t.id) snapTab(t) }, 350))
     wc.once('destroyed', () => darkKeys.delete(wc.id))
     wc.on('dom-ready', () => darkPage(wc))
     wc.on('will-navigate', e => {
@@ -1573,6 +1573,7 @@ function buildMenu() {
       { label: 'Switch to Last Used Tab', accelerator: 'Ctrl+`', click: focused(w => { if (w.lastTabId && w.tabs.has(w.lastTabId)) w.activate(w.lastTabId) }) },
       { label: 'Duplicate Tab', accelerator: 'CmdOrCtrl+Shift+K', click: focused((w, t) => { if (t) w.createTab(t.view ? t.view.webContents.getURL() : t.url, { active: true, index: w.order.indexOf(t.id) + 1 }) }) },
       { label: 'Send Page to Phone', accelerator: 'CmdOrCtrl+Shift+Y', click: focused(w => w.send('command', 'qr')) },
+      { label: 'Tab Overview', accelerator: 'CmdOrCtrl+Shift+O', click: focused(w => w.send('command', 'tabgrid')) },
       { label: 'Lumen AI', accelerator: 'CmdOrCtrl+Shift+A', click: focused(w => w.send('command', 'ai')) },
       { label: 'Sort Tabs into Groups', accelerator: 'CmdOrCtrl+Shift+G', click: focused(w => autoGroupWindow(w)) },
       { label: 'Reader Mode', accelerator: 'CmdOrCtrl+Shift+E', click: focused((w, t) => activeWc(w, t) && readerMode(activeWc(w, t))) },
@@ -1622,7 +1623,7 @@ function buildMenu() {
 async function snapTab(t) {
   if (!t || !t.view || t.view.webContents.isDestroyed() || t.asleep) return
   try {
-    const img = await Promise.race([t.view.webContents.capturePage(), new Promise(r => setTimeout(() => r(null), 600))])
+    const img = await Promise.race([t.view.webContents.capturePage(), new Promise(r => setTimeout(() => r(null), 1500))])
     if (img && !img.isEmpty()) t.thumb = img.resize({ width: 480, quality: 'good' }).toDataURL()
   } catch {}
 }

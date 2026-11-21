@@ -178,6 +178,7 @@ function renderChrome() {
   $('#btn-back').disabled = !S.canBack
   $('#btn-forward').disabled = !S.canForward
   $('#btn-reload').innerHTML = a && a.loading ? ICONS.stop : ICONS.reload
+  $('#btn-translate').classList.toggle('on', !!S.translated)
   $('#btn-star').innerHTML = S.bookmarked ? ICONS.starFill : ICONS.star
   $('#btn-star').classList.toggle('on', S.bookmarked)
   $('#btn-split').classList.toggle('on', !!S.splitId)
@@ -1189,50 +1190,190 @@ $('#tablist').addEventListener('wheel', e => {
 
 
 // ---------------------------------------------------------------- translating card
-const trCard = $('#trcard'), trFill = new Spring(0, 'jelly', v => { $('#tr-fill').style.width = Math.max(0, Math.min(100, v)) + '%' })
-const TR_GLYPHS = [['A', 'ع'], ['文', 'B'], ['Ж', 'あ'], ['א', 'é'], ['क', 'Ω']]
-let trTimer = null, trGlyph = 0, trHideT = null
+const TR_LANGS = ['en', 'ar', 'ur', 'hi', 'fr', 'es', 'de', 'tr', 'fa', 'zh-CN', 'ja', 'ko', 'ru', 'pt', 'it', 'id']
+const TR_GLYPHS = ['A', 'ع', '文', 'Ж', 'あ', 'א', 'क', 'Ω', '한', 'é', 'ก', 'ی']
+const native = c => { try { return new Intl.DisplayNames([c], { type: 'language' }).of(c) } catch { return c } }
+const english = c => { try { return new Intl.DisplayNames(['en'], { type: 'language' }).of(c) } catch { return c } }
+const trCard = $('#trcard')
+let trPct = 0
+const trFill = new Spring(0, 'jelly', v => {
+  const p = Math.max(0, Math.min(100, v))
+  $('#tr-fill').style.width = p + '%'
+  $('#tr-pct').textContent = Math.round(Math.min(trPct, p)) + '%'
+})
+let trHideT = null, trSparkT = null, trInfo = null, trHover = false
+$('#tr-ring').innerHTML = TR_GLYPHS.slice(0, 8).map(g => `<span><b>${g}</b></span>`).join('')
+// glyphs orbit the globe on a tilted ellipse: bigger and in front at the bottom, smaller and behind at the top
+let trOrbitRaf = 0
+function trOrbit(on) {
+  cancelAnimationFrame(trOrbitRaf)
+  if (!on) return
+  const els = [...document.querySelectorAll('#tr-ring span')], t0 = performance.now()
+  const step = now => {
+    const t = (now - t0) / 1000
+    els.forEach((el, i) => {
+      const a = t * 0.9 + i / els.length * Math.PI * 2, depth = (Math.sin(a) + 1) / 2
+      el.style.transform = `translate(${Math.cos(a) * 68}px, ${Math.sin(a) * 24 + Math.sin(t * 2 + i) * 3}px) scale(${0.62 + depth * 0.5})`
+      el.style.opacity = 0.35 + depth * 0.65
+      el.style.zIndex = depth > 0.5 ? 3 : 0
+    })
+    trOrbitRaf = requestAnimationFrame(step)
+  }
+  trOrbitRaf = requestAnimationFrame(step)
+}
+function trSparks(on) {
+  clearInterval(trSparkT)
+  if (!on) return
+  trSparkT = setInterval(() => {
+    const s = document.createElement('span')
+    s.textContent = TR_GLYPHS[Math.floor(Math.random() * TR_GLYPHS.length)]
+    s.style.left = (8 + Math.random() * 84) + '%'
+    s.style.setProperty('--r', (Math.random() * 40 - 20) + 'deg')
+    $('#tr-sparks').appendChild(s); setTimeout(() => s.remove(), 1700)
+  }, 160)
+}
+// letters scramble through other scripts before settling into the translation
+function decode(el, text) {
+  const pool = 'abcdefghijklmnopqrstuvwxyzابتعم文字ЖЯあか'
+  const n = Math.min(text.length, 90); let f = 0
+  clearInterval(el._t)
+  el._t = setInterval(() => {
+    f++
+    const done = Math.floor(f * n / 14)
+    el.textContent = text.slice(0, done) + Array.from({ length: Math.max(0, Math.min(n, done + 12) - done) }, () => pool[Math.floor(Math.random() * pool.length)]).join('')
+    if (done >= n) { clearInterval(el._t); el.textContent = text }
+  }, 32)
+}
+function trPreview(sample) {
+  if (!sample) return
+  const pv = $('#tr-preview'); pv.classList.remove('empty')
+  pv.classList.add('swap')
+  setTimeout(() => {
+    const o = $('#tr-orig'), n = $('#tr-new')
+    o.textContent = sample[0]; o.dir = 'auto'; n.dir = 'auto'
+    pv.classList.remove('swap'); decode(n, sample[1])
+  }, 220)
+}
 function trShow() {
   clearTimeout(trHideT)
   trCard.classList.remove('done', 'err', 'out'); trCard.classList.add('show')
   api.do('overlay', true)
-  requestAnimationFrame(() => trCard.classList.add('in'))
-  clearInterval(trTimer)
-  trTimer = setInterval(() => {
-    trGlyph = (trGlyph + 1) % TR_GLYPHS.length
-    const [a, b] = TR_GLYPHS[trGlyph]
-    for (const [el, ch] of [[$('#trcard .g1'), a], [$('#trcard .g2'), b]]) { el.classList.add('swap'); setTimeout(() => { el.textContent = ch; el.classList.remove('swap') }, 180) }
-  }, 900)
+  requestAnimationFrame(() => requestAnimationFrame(() => trCard.classList.add('in')))
+  trSparks(true); trOrbit(true)
 }
 function trHide(delay = 0) {
   clearTimeout(trHideT)
   trHideT = setTimeout(() => {
-    clearInterval(trTimer)
+    if (trHover && delay) return trHide(800)
+    trSparks(false); trOrbit(false)
     trCard.classList.add('out')
-    setTimeout(() => { trCard.classList.remove('show', 'in', 'out', 'done', 'err'); if (!overlayOpen && !peeking) api.do('overlay', false) }, 320)
+    setTimeout(() => { trCard.classList.remove('show', 'in', 'out', 'done', 'err'); if (!overlayOpen && !peeking) api.do('overlay', false) }, 380)
   }, delay)
 }
+trCard.querySelector('.tr-box').addEventListener('mouseenter', () => trHover = true)
+trCard.querySelector('.tr-box').addEventListener('mouseleave', () => trHover = false)
+trCard.querySelector('.tr-scrim').addEventListener('click', () => { if (trCard.classList.contains('done') || trCard.classList.contains('err')) trHide(0) })
 api.on('translating', m => {
+  $('#btn-translate').classList.toggle('busy', m.phase === 'start' || m.phase === 'progress')
   if (m.phase === 'start') {
-    trFill.set(0); trFill.to(6)
-    $('#tr-title').textContent = 'Translating to ' + m.to
-    $('#tr-sub').textContent = (m.from ? 'From ' + m.from : 'Detecting the language') + (m.flip ? (m.rtl ? ', switching to right-to-left' : ', switching to left-to-right') : '')
+    trInfo = m; trPct = 0
+    trFill.set(0); trFill.to(4)
+    $('#tr-from').innerHTML = m.fromCode ? `${esc(native(m.fromCode))}${native(m.fromCode) !== m.from ? `<small>${esc(m.from)}</small>` : ''}` : 'Detecting'
+    $('#tr-to').innerHTML = `${esc(native(m.toCode))}${native(m.toCode) !== m.to ? `<small>${esc(m.to)}</small>` : ''}`
+    $('#tr-title').textContent = 'Translating this page'
+    $('#tr-sub').textContent = m.flip ? (m.rtl ? 'The layout will switch to right-to-left' : 'The layout will switch to left-to-right') : 'Hang tight, this only takes a moment'
     $('#tr-count').textContent = 'Reading the page'
+    $('#tr-preview').classList.add('empty'); $('#tr-orig').textContent = ''; $('#tr-new').textContent = ''
+    const al = $('#tr-always'); al.classList.toggle('can', !!m.fromCode); al.classList.remove('on')
     trShow()
   } else if (m.phase === 'progress') {
-    trFill.to(8 + 87 * (m.total ? m.n / m.total : 0))
-    $('#tr-count').textContent = m.n ? `${m.n.toLocaleString('en-US')} of ${m.total.toLocaleString('en-US')} phrases` : `${m.total.toLocaleString('en-US')} phrases found`
+    const p = 6 + 88 * (m.total ? m.n / m.total : 0); trPct = p; trFill.to(p)
+    $('#tr-count').textContent = m.n ? `${m.n.toLocaleString('en-US')} of ${m.total.toLocaleString('en-US')} phrases` : `Found ${m.total.toLocaleString('en-US')} phrases`
+    trPreview(m.sample)
   } else if (m.phase === 'done') {
-    trFill.to(100)
+    trPct = 100; trFill.to(100)
     $('#tr-title').textContent = 'Translated to ' + m.to
-    $('#tr-count').textContent = 'Translate again to see the original'
-    trCard.classList.add('done'); clearInterval(trTimer)
-    trHide(1100)
+    $('#tr-sub').textContent = `${m.count.toLocaleString('en-US')} phrases in ${(m.ms / 1000).toFixed(1)} seconds` + (m.flip ? (m.rtl ? ', now right-to-left' : ', now left-to-right') : '')
+    $('#tr-count').textContent = ''
+    const al = $('#tr-always'); al.textContent = m.always ? `Always translating ${m.from}` : `Always translate ${m.from}`; al.classList.toggle('on', !!m.always)
+    trCard.classList.add('done'); trSparks(false)
+    trHide(2600)
   } else if (m.phase === 'error') {
-    trCard.classList.add('err')
+    trCard.classList.add('err'); trSparks(false)
     $('#tr-title').textContent = 'Could not translate'
-    $('#tr-count').textContent = m.text || ''
-    trHide(1800)
+    $('#tr-sub').textContent = m.text || ''
+    $('#tr-count').textContent = ''
+    trHide(2400)
   } else if (m.phase === 'cancelled') trHide(0)
+  else if (m.phase === 'original') toast('Showing the original page')
 })
 $('#tr-cancel').onclick = () => { api.do('translateCancel'); trHide(0) }
+$('#tr-orig-btn').onclick = () => { trHide(0); api.do('translate') }
+$('#tr-always').onclick = () => {
+  if (!trInfo || !trInfo.fromCode) return
+  const on = !$('#tr-always').classList.contains('on')
+  api.do('alwaysTranslate', trInfo.fromCode, on)
+  $('#tr-always').classList.toggle('on', on)
+  $('#tr-always').textContent = on ? `Always translating ${trInfo.from}` : `Always translate ${trInfo.from}`
+  trHide(1200)
+}
+
+// ---------------------------------------------------------------- "translate this page?" popup
+const taEl = $('#trask')
+let taCur = null, taTimerSpring = null, taT = null
+const taG = new SpringGroup({ y: -30, o: 0, s: 0.92 }, 'jelly', v => { taEl.style.transform = `translateY(${v.y}px) scale(${v.s})`; taEl.style.opacity = Math.max(0, Math.min(1, v.o)) })
+function taAnswer(ans) {
+  if (!taCur) return
+  api.do('prompt', taCur.id, ans)
+  taCur = null; clearTimeout(taT)
+  taG.to({ y: -24, o: 0, s: 0.94 })
+  taG.onRest(() => { if (!taCur) { taEl.classList.remove('show'); if (!overlayOpen && !peeking && !trCard.classList.contains('show')) api.do('overlay', false) } })
+}
+api.on('trask', p => {
+  if (taCur) taAnswer({ allow: false })
+  taCur = p
+  $('#ta-glyph').textContent = ({ ar: '\u0639', fa: '\u0641', ur: '\u0627\u0631', he: '\u05d0', ru: '\u0416', zh: '\u6587', ja: '\u3042', ko: '\ud55c', hi: '\u0915', el: '\u03a9', th: '\u0e01' })[String(p.from).split('-')[0]] || native(p.from).slice(0, 1).toUpperCase() || 'A'
+  $('#ta-title').textContent = `Translate this page to ${p.toName}?`
+  $('#ta-sub').innerHTML = `It looks like it is written in ${esc(p.fromName)}${native(p.from) !== p.fromName ? ` <span dir="auto">(${esc(native(p.from))})</span>` : ''}.`
+  $('#ta-always').checked = false
+  $('#ta-always-l').textContent = `Always translate ${p.fromName}`
+  $('#ta-never').textContent = `Never for ${p.fromName}`
+  const r = $('#content-shadow').getBoundingClientRect()
+  taEl.style.top = (r.top + 14) + 'px'
+  taEl.style.left = (r.left + r.width / 2) + 'px'; taEl.style.marginLeft = '-220px'
+  taEl.classList.add('show')
+  api.do('overlay', true)
+  taG.set({ y: -40, o: 0, s: 0.9 }); taG.to({ y: 0, o: 1, s: 1 })
+  // gives up on its own after 14 seconds, like Not now
+  const bar = $('#ta-timer'); bar.style.transition = 'none'; bar.style.transform = 'scaleX(1)'
+  requestAnimationFrame(() => requestAnimationFrame(() => { bar.style.transition = 'transform 14s linear'; bar.style.transform = 'scaleX(0)' }))
+  clearTimeout(taT); taT = setTimeout(() => taAnswer({ allow: false }), 14000)
+})
+taEl.addEventListener('mouseenter', () => { if (!taCur) return; clearTimeout(taT); const b = $('#ta-timer'); b.style.transition = 'transform .3s'; b.style.transform = 'scaleX(1)' })
+taEl.addEventListener('mouseleave', () => { if (!taCur) return; const b = $('#ta-timer'); b.style.transition = 'transform 8s linear'; b.style.transform = 'scaleX(0)'; clearTimeout(taT); taT = setTimeout(() => taAnswer({ allow: false }), 8000) })
+$('#ta-yes').onclick = () => taAnswer({ allow: true, always: $('#ta-always').checked })
+$('#ta-no').onclick = () => taAnswer({ allow: false })
+$('#ta-never').onclick = () => taAnswer({ allow: false, never: true })
+document.addEventListener('keydown', e => { if (taCur && e.key === 'Escape') taAnswer({ allow: false }); else if (taCur && e.key === 'Enter' && !e.target.closest('input[type=text], textarea')) $('#ta-yes').click() })
+
+// ---------------------------------------------------------------- translate button and menu
+setIcon('#btn-translate', 'translate')
+async function openTranslateMenu() {
+  const st = await api.do('translateLangs') || {}
+  if (!st.web) { toast('Open a web page to translate it'); return }
+  const cur = st.to
+  const fromName = st.from ? english(st.from) : ''
+  openPopover(`<div class="trm-head"><span class="ic">${ICONS.translate}</span><div class="grow"><div style="font-weight:650">Translate</div><div class="small">${st.from ? `This page is in ${esc(fromName)}` : 'Detecting the language'}</div></div></div>
+    ${st.translated ? `<button class="trm-go orig" data-tr="orig">Show the original</button>` : `<button class="trm-go" data-tr="go">Translate to ${esc(english(cur))}</button>`}
+    <div class="small" style="padding:4px 6px 2px">Or pick a language</div>
+    <div class="trm-langs">${TR_LANGS.map(c => `<button data-to="${c}" class="${c === cur ? 'cur' : ''}"><span dir="auto">${esc(native(c))}</span><small>${esc(english(c))}</small></button>`).join('')}</div>
+    ${st.from ? `<div class="sep"></div><div class="item" data-tr="always"><span class="ri">${ICONS.translate}</span><div class="grow">Always translate ${esc(fromName)}</div><label class="switch sm"><input type="checkbox" ${st.always ? 'checked' : ''} tabindex="-1"><span></span></label></div>` : ''}`, $('#btn-translate'))
+  pop.onclick = e => {
+    const b = e.target.closest('[data-tr], [data-to]'); if (!b) return
+    if (b.dataset.tr === 'always') { const cb = b.querySelector('input'); cb.checked = !cb.checked; api.do('alwaysTranslate', st.from, cb.checked); return }
+    closePopover(true)
+    if (b.dataset.tr === 'orig' || b.dataset.tr === 'go') api.do('translate')
+    else if (b.dataset.to) api.do('translateTo', b.dataset.to)
+  }
+}
+$('#btn-translate').onclick = openTranslateMenu

@@ -467,6 +467,7 @@ class BrowserWin {
       t.url = wc.getURL(); t.canBack = wc.navigationHistory.canGoBack(); t.canForward = wc.navigationHistory.canGoForward()
       if (!this.incognito) D.addHistory(t.url, wc.getTitle())
       applySiteZoom(t)
+      if (t.translated) t.translated = false
       upd(); saveSession()
     }
     wc.on('did-navigate', nav)
@@ -537,6 +538,7 @@ class BrowserWin {
     if (this.activeId && this.activeId !== id) this.lastTabId = this.activeId
     this.activeId = id
     t.lastActive = Date.now()
+    if (t.offerLater) { t.offerLater = false; setTimeout(() => offerTranslate(this, t).catch(() => {}), 400) }
     if (D.settings.get('soundActiveOnly')) for (const o of this.tabs.values()) if (o.view && o.id !== id && o.id !== this.splitId) { o.view.webContents.setAudioMuted(true); o.autoMuted = true }
     if (t.autoMuted && t.view) { t.view.webContents.setAudioMuted(!!t.muted); t.autoMuted = false }
     if (!t.view) this.makeView(t)
@@ -734,6 +736,7 @@ class BrowserWin {
       url: a ? a.url : '', zoom: a ? Math.round(Math.pow(1.2, a.zoom || 0) * 100) : 100,
       bookmarked: a ? D.isBookmarked(a.url) : false,
       blocked: awc ? (blockedByWc.get(awc.id) || 0) : 0,
+      translated: !!(a && a.translated),
       adOff: a ? adAllowed(awc ? awc.getURL() : a.url) : false,
       secure: a ? /^(https|lumen):/.test(a.url) : true,
       closedCount: closedTabs.length,
@@ -880,23 +883,29 @@ async function autoGroupWindow(w) {
 const AI = require('./ai')
 
 // ---------------------------------------------------------------- translator
-async function translateTab(w, t) {
+async function translateTab(w, t, toLang) {
   if (!t || !t.view) return
   const wc = t.view.webContents
-  if (await Translate.isTranslated(wc)) { await Translate.showOriginal(wc); w.send('toast', 'Showing the original'); return }
-  const to = Translate.target(D.settings)
+  if (trJobs.has(w)) return
+  if (await Translate.isTranslated(wc)) {
+    await Translate.showOriginal(wc); t.translated = false; w.pushState()
+    w.send('translating', { phase: 'original' })
+    if (!toLang) return
+  }
+  const to = toLang || Translate.target(D.settings)
+  const started = Date.now()
   const from = await Translate.pageLang(wc)
   const job = { cancelled: false }; trJobs.set(w, job)
   const name = Translate.langName(to)
-  const info = { to: name, from: from ? Translate.langName(from) : '', rtl: Translate.dirOf(to) === 'rtl', flip: !!from && Translate.dirOf(from) !== Translate.dirOf(to) }
+  const info = { to: name, toCode: to, fromCode: from || '', from: from ? Translate.langName(from) : '', rtl: Translate.dirOf(to) === 'rtl', flip: !!from && Translate.dirOf(from) !== Translate.dirOf(to) }
   w.send('translating', { phase: 'start', ...info })
   try {
     const r = await Translate.translatePage(wc, to, {
       flipDir: D.settings.get('translateFlipDir') !== false,
       isCancelled: () => job.cancelled || wc.isDestroyed(),
-      onProgress: (n, total) => w.send('translating', { phase: 'progress', n, total }),
+      onProgress: (n, total, sample) => w.send('translating', { phase: 'progress', n, total, sample }),
     })
-    if (r.ok) w.send('translating', { phase: 'done', ...info, count: r.count })
+    if (r.ok) { t.translated = true; t.trFrom = from; w.pushState(); w.send('translating', { phase: 'done', ...info, count: r.count, ms: Date.now() - started, always: (D.settings.get('alwaysTranslate') || []).includes(from) }) }
     else w.send('translating', { phase: 'error', text: r.error })
   } catch (e) {
     if (e.cancelled) { await Translate.showOriginal(wc).catch(() => {}); w.send('translating', { phase: 'cancelled' }) }
@@ -908,19 +917,22 @@ const offered = new Set()
 async function offerTranslate(w, t) {
   if (!t.view || !D.settings.get('offerTranslate') || !/^https?:/.test(t.view.webContents.getURL())) return
   const wc = t.view.webContents
+  if (t.translated || trJobs.has(w)) return
   const lang = await Translate.pageLang(wc)
   const to = Translate.target(D.settings)
-  if (!lang || lang === to || (D.settings.get('neverTranslate') || []).includes(lang)) return
+  const same = (a, b) => String(a).split('-')[0] === String(b).split('-')[0]
+  if (!lang || same(lang, to) || (D.settings.get('neverTranslate') || []).includes(lang)) return
   if ((D.settings.get('alwaysTranslate') || []).includes(lang)) return translateTab(w, t)
   const key = t.id + '|' + new URL(wc.getURL()).host
   if (offered.has(key)) return
+  if (w.activeId !== t.id) { t.offerLater = true; return }   // ask when the tab is actually in front
   offered.add(key)
   const id = ++promptSeq
   pendingPrompts.set(id, ans => {
-    if (ans.allow) { translateTab(w, t); if (ans.always) D.settings.set('alwaysTranslate', [...(D.settings.get('alwaysTranslate') || []), lang]) }
-    else if (ans.never) D.settings.set('neverTranslate', [...(D.settings.get('neverTranslate') || []), lang])
+    if (ans.allow) { translateTab(w, t, ans.to && ans.to !== to ? ans.to : undefined); if (ans.always) D.settings.set({ alwaysTranslate: [...new Set([...(D.settings.get('alwaysTranslate') || []), lang])] }) }
+    else if (ans.never) D.settings.set({ neverTranslate: [...new Set([...(D.settings.get('neverTranslate') || []), lang])] })
   })
-  w.send('prompt', { id, kind: 'translate', tabId: t.id, host: new URL(wc.getURL()).host, text: `This page is in ${Translate.langName(lang)}. Translate it to ${Translate.langName(to)}?`, lang: Translate.langName(lang) })
+  w.send('trask', { id, tabId: t.id, host: new URL(wc.getURL()).host, from: lang, fromName: Translate.langName(lang), to, toName: Translate.langName(to), rtl: Translate.dirOf(lang) === 'rtl' })
 }
 
 // ---------------------------------------------------------------- Lumen AI
@@ -1172,6 +1184,9 @@ ipcMain.handle('ui', async (e, action, ...a) => {
       case 'pasteGo': { const txt = String(await clipboard.readText() || '').trim().slice(0, 4000); if (txt) { const url = toURL(txt); if (url) w.createTab(url, { active: true }) } return }
       case 'copyText': clipboard.writeText(String(a[0] || '')); return
       case 'duplicateTab': { if (t) w.createTab(wc ? wc.getURL() : t.url, { active: true, index: w.order.indexOf(t.id) + 1 }); return }
+      case 'translateTo': return t && translateTab(w, t, String(a[0] || ''))
+      case 'translateLangs': { const from = t && t.translated && t.trFrom ? t.trFrom : wc && /^https?:/.test(wc.getURL()) ? await Translate.pageLang(wc) : ''; return { to: Translate.target(D.settings), from, translated: !!(t && t.translated), always: (D.settings.get('alwaysTranslate') || []).includes(from), busy: trJobs.has(w), web: !!(wc && /^https?:/.test(wc.getURL())) } }
+      case 'alwaysTranslate': { const l = String(a[0] || ''); if (l) { const s = new Set(D.settings.get('alwaysTranslate') || []); a[1] === false ? s.delete(l) : s.add(l); D.settings.set({ alwaysTranslate: [...s] }) } return }
       case 'translateCancel': { const j = trJobs.get(w); if (j) j.cancelled = true; return }
       case 'siteAdblock': return toggleSiteAdblock(w, !!a[0])
       case 'resetSite': { if (!t) return; try { const o = new URL(t.url).origin; const all = D.permissions.get(); delete all[o]; D.permissions.set(all) } catch {} return }

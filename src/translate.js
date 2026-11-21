@@ -25,9 +25,12 @@ async function translateTexts(texts, to, onProgress, isCancelled) {
     if (!batch.length) return
     const res = await translateBatch(batch, to)
     idx.forEach((k, i) => { out[k] = res[i] != null ? res[i] : texts[k] })
+    // a readable before/after pair from this batch for the live preview
+    let sample = null
+    for (const k of idx) { const o = texts[k]; if (o.length >= 18 && o.length <= 110 && out[k] && out[k] !== o) { sample = [o, out[k]]; if (o.length >= 30) break } }
     doneN += batch.length
     batch = []; idx = []; chars = 0
-    if (onProgress) onProgress(doneN, texts.length)
+    if (onProgress) onProgress(doneN, texts.length, sample)
   }
   for (let i = 0; i < texts.length; i++) {
     if (chars + texts[i].length > 4500 || batch.length >= 100) { await flush(); if (isCancelled && isCancelled()) throw Object.assign(new Error('cancelled'), { cancelled: true }) }
@@ -83,7 +86,32 @@ async function translatePage(wc, to, { onProgress, isCancelled, flipDir = true }
 }
 const showOriginal = wc => wc.executeJavaScriptInIsolatedWorld(WORLD, [{ code: RESTORE }])
 const isTranslated = wc => wc.executeJavaScriptInIsolatedWorld(WORLD, [{ code: `document.documentElement.dataset.lumenTranslated === '1'` }]).catch(() => false)
-const pageLang = wc => wc.executeJavaScriptInIsolatedWorld(WORLD, [{ code: `((document.documentElement.lang || (document.querySelector('meta[http-equiv="content-language" i]') || {}).content || '') + '').split(/[-_]/)[0].toLowerCase()` }]).catch(() => '')
+// The page's language: the script the text is actually written in wins (many sites have no lang tag,
+// or a wrong one), and the lang tag only decides between languages that share a script.
+const DETECT = `(() => {
+  const tag = ((document.documentElement.lang || (document.querySelector('meta[http-equiv="content-language" i]') || {}).content || '') + '').split(/[-_]/)[0].toLowerCase()
+  const el = document.querySelector('main') || document.querySelector('article') || document.body
+  const txt = ((document.title || '') + ' ' + ((el && el.innerText) || '')).slice(0, 6000)
+  const count = re => (txt.match(re) || []).length
+  const letters = count(/\\p{L}/gu) || 1
+  const S = { arab: count(/[\\u0600-\\u06FF\\u0750-\\u077F\\uFB50-\\uFDFF\\uFE70-\\uFEFF]/g), hebr: count(/[\\u0590-\\u05FF]/g), cyrl: count(/[\\u0400-\\u04FF]/g), hani: count(/[\\u4E00-\\u9FFF]/g), kana: count(/[\\u3040-\\u30FF]/g), hang: count(/[\\uAC00-\\uD7AF]/g), deva: count(/[\\u0900-\\u097F]/g), thai: count(/[\\u0E00-\\u0E7F]/g), grek: count(/[\\u0370-\\u03FF]/g), latn: count(/[A-Za-z\\u00C0-\\u024F]/g) }
+  const top = Object.entries(S).sort((a, b) => b[1] - a[1])[0]
+  if (!top || top[1] / letters < 0.3) return tag
+  const k = top[0]
+  if (k === 'arab') { if (['ar', 'fa', 'ur', 'ps', 'ku', 'ckb', 'sd', 'ug'].includes(tag)) return tag; if (/[\\u06D2\\u06BA\\u0679\\u0688\\u0691]/.test(txt)) return 'ur'; if (/[\\u067E\\u0686\\u0698\\u06AF]/.test(txt) && !/[\\u0629\\u0649]/.test(txt)) return 'fa'; return 'ar' }
+  if (k === 'hebr') return 'he'
+  if (k === 'cyrl') return ['ru', 'uk', 'bg', 'sr', 'mk', 'be', 'kk', 'mn'].includes(tag) ? tag : 'ru'
+  if (k === 'kana') return 'ja'
+  if (k === 'hani') return S.kana > S.hani * 0.15 ? 'ja' : (tag === 'ja' ? 'ja' : 'zh-CN')
+  if (k === 'hang') return 'ko'
+  if (k === 'deva') return ['hi', 'mr', 'ne'].includes(tag) ? tag : 'hi'
+  if (k === 'thai') return 'th'
+  if (k === 'grek') return 'el'
+  // Latin script: trust the tag unless it names a non-Latin language
+  if (tag && !['ar', 'fa', 'ur', 'he', 'ru', 'ja', 'zh', 'ko', 'hi', 'th', 'el', 'uk'].includes(tag)) return tag
+  return 'en'
+})()`
+const pageLang = wc => wc.executeJavaScriptInIsolatedWorld(WORLD, [{ code: DETECT }]).catch(() => '')
 
 async function bubble(wc, text, to) {
   const [res] = await translateTexts([text], to)

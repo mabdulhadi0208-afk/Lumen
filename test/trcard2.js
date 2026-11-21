@@ -1,0 +1,58 @@
+const http = require('http'), fs = require('fs'); const { app } = require('electron')
+let delay = 450
+http.createServer((q, r) => {
+  if (q.url.startsWith('/translate_a')) { const tl = new URL('http://x' + q.url).searchParams.get('tl'); let b = ''; q.on('data', d => b += d); q.on('end', () => { const qs = new URLSearchParams(b).getAll('q'); setTimeout(() => { r.setHeader('content-type', 'application/json'); r.end(JSON.stringify(qs.map(t => [`[${tl}] Translated line with ${t.length} characters of text`]))) }, delay) }); return }
+  r.setHeader('content-type', 'text/html; charset=utf-8')
+  // no lang attribute on purpose: detection must come from the text
+  r.end(`<html dir="rtl"><title>صفحة عربية</title><body><h1>مرحبا بكم في الموقع</h1>${Array.from({ length: 300 }, (_, i) => `<p>هذه فقرة رقم ${i} من النص العربي الطويل للتجربة</p>`).join('')}</body></html>`)
+}).listen(48160)
+process.env.LUMEN_TR_API = 'http://127.0.0.1:48160'
+fs.rmSync('/tmp/lumen-tr2', { recursive: true, force: true }); app.setPath('userData', '/tmp/lumen-tr2')
+const L = require('../src/main.js'); const wait = ms => new Promise(r => setTimeout(r, ms))
+let fails = 0; const ok = (c, m) => { console.log((c ? 'PASS ' : 'FAIL ') + m); if (!c) fails++ }
+const shot = async (w, n) => fs.writeFileSync('/tmp/lumen-shots/' + n + '.png', (await w.ui.webContents.capturePage()).toPNG())
+app.whenReady().then(async () => {
+  await wait(4000); const w = L.windows[0], ex = s => w.ui.webContents.executeJavaScript(s)
+  const errors = []; w.ui.webContents.on('console-message', e => { if (e.level === 'error' || e.level === 3) errors.push(e.message) })
+  await ex(`document.querySelector('#intro .skip') && document.querySelector('#intro .skip').click()`); await wait(2500)
+  await ex(`document.querySelector('#intro .go') && document.querySelector('#intro .go').click()`); await wait(1000)
+  L.D.settings.set({ translateTo: 'en', offerTranslate: true })
+  ok(await ex(`!!document.querySelector('#btn-translate svg')`), 'translate button next to reload')
+  const t = w.createTab('http://127.0.0.1:48160/', { active: true }); await wait(2500)
+  const pg = s => t.view.webContents.executeJavaScript(s)
+  // ask popup
+  ok(await ex(`document.getElementById('trask').classList.contains('show')`), 'ask popup shows for Arabic page without lang tag')
+  ok(/English/.test(await ex(`document.getElementById('ta-title').textContent`)) && /Arabic/.test(await ex(`document.getElementById('ta-sub').textContent`)), 'popup text: ' + await ex(`document.getElementById('ta-title').textContent + ' / ' + document.getElementById('ta-sub').textContent`))
+  await shot(w, 'tr2-01-ask')
+  await ex(`document.getElementById('ta-yes').click()`); await wait(900)
+  ok(await ex(`document.getElementById('trcard').classList.contains('show')`), 'card after Translate')
+  await wait(500); await shot(w, 'tr2-02-progress')
+  ok(await ex(`document.getElementById('tr-new').textContent.length > 0`), 'live preview shows a translated line')
+  ok(await ex(`parseInt(document.getElementById('tr-pct').textContent) > 5`), 'percentage counts ' + await ex(`document.getElementById('tr-pct').textContent`))
+  await wait(2600); await shot(w, 'tr2-03-done')
+  ok(await ex(`document.getElementById('trcard').classList.contains('done')`), 'done state')
+  ok(await pg(`getComputedStyle(document.body).direction`) === 'ltr', 'page flipped to ltr')
+  ok(await ex(`document.getElementById('btn-translate').classList.contains('on')`), 'button lit when translated')
+  await wait(3500)
+  ok(!(await ex(`document.getElementById('trcard').classList.contains('show')`)), 'card auto closes')
+  // button menu
+  await ex(`document.getElementById('btn-translate').click()`); await wait(1200); await shot(w, 'tr2-04-menu')
+  ok(await ex(`!!document.querySelector('[data-tr="orig"]') && document.querySelectorAll('.trm-langs button').length === 16`), 'menu with show original + 16 languages')
+  await ex(`document.querySelector('.trm-langs [data-to="fr"]').click()`); await wait(4500)
+  ok(/^\[fr\]/.test(await pg(`document.querySelector('h1').textContent`)), 'switch to French from menu: ' + await pg(`document.querySelector('h1').textContent`))
+  ok(await pg(`document.documentElement.lang`) === 'fr', 'lang fr')
+  await wait(3000)
+  await ex(`document.getElementById('btn-translate').click()`); await wait(900)
+  await ex(`document.querySelector('[data-tr="orig"]').click()`); await wait(1000)
+  ok(await pg(`getComputedStyle(document.body).direction`) === 'rtl', 'show original from button')
+  ok(/^م/.test(await pg(`document.querySelector('h1').textContent`)), 'Arabic text back')
+  // always translate from menu
+  await ex(`document.getElementById('btn-translate').click()`); await wait(900)
+  await ex(`document.querySelector('[data-tr="always"]').click()`); await wait(300)
+  ok((L.D.settings.get('alwaysTranslate') || []).includes('ar'), 'always translate Arabic saved')
+  await ex(`closePopover(true)`)
+  const t2 = w.createTab('http://127.0.0.1:48160/?2', { active: true }); await wait(5000)
+  ok(/^\[en\]/.test(await t2.view.webContents.executeJavaScript(`document.querySelector('h1').textContent`)), 'new Arabic page auto translated')
+  ok(!errors.length, 'no UI errors ' + errors.join('|'))
+  console.log(fails ? 'FAILED' : 'ALL PASS'); app.exit(fails ? 1 : 0)
+})

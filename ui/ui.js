@@ -16,7 +16,7 @@ let updateState = {}
 let ROW = 36
 let GUT = 8
 Jelly.init({
-  buttons: '.ib, .btn, .pin, .site, .update, .wincontrols button, .tab .x, .tab .audio, .popover .seg button, .mm-tile',
+  buttons: '.ib, .btn, .pin, .site, .update, .wincontrols button, .tab .x, .tab .add, .tab .audio, .popover .seg button, .mm-tile',
   cards: '.prompt, .newtab',
   press: '.popover .item',
 })
@@ -258,6 +258,7 @@ function tabInner(t) {
     <span class="title">${esc(titleOf(t))}</span>
     <span class="split-badge">SPLIT</span>
     <button class="audio" title="${t.muted ? 'Unmute' : 'Mute'}">${t.muted ? ICONS.muted : ICONS.speaker}</button>
+    <button class="add" title="New tab next to this one">${ICONS.plus}</button>
     <button class="x" title="Close tab">${ICONS.close}</button>`
 }
 function tabSig(t) { return [t.title, t.url, t.favicon, t.loading, t.muted, t.audible].join('|') }
@@ -416,7 +417,7 @@ function bindTab(v, id) {
   const coord = e => TOP ? e.clientX : e.clientY
   el.addEventListener('pointerdown', e => {
     if (e.button === 1) { e.preventDefault(); return }
-    if (e.button !== 0 || e.target.closest('.x, .audio')) return
+    if (e.button !== 0 || e.target.closest('.x, .audio, .add')) return
     drag = { id, active: false, start: coord(e), startPos: LAYOUT.pos.get(id) || 0, index: v.index }
     el.setPointerCapture(e.pointerId)
     // press squashes the tab a little
@@ -468,6 +469,7 @@ function bindTab(v, id) {
   el.addEventListener('auxclick', e => { if (e.button === 1) api.do('close', id) })
   el.addEventListener('click', e => {
     if (e.target.closest('.x')) { e.stopPropagation(); api.do('close', id) }
+    else if (e.target.closest('.add')) { e.stopPropagation(); api.do('newTabAfter', id) }
     else if (e.target.closest('.audio')) { e.stopPropagation(); api.do('mute', id) }
   })
   el.addEventListener('contextmenu', e => { e.preventDefault(); api.do('tabMenu', id) })

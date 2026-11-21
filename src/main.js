@@ -1065,6 +1065,7 @@ ipcMain.handle('ui', async (e, action, ...a) => {
     switch (action) {
       case 'ready': return { settings: publicSettings(), engines: Object.fromEntries(Object.entries(SEARCH).map(([k, v]) => [k, v.name])), version: app.getVersion(), platform: process.platform, update: Updater.getState(), downloads: listDownloads() }
       case 'newTab': return w.createTab(a[0] ? toURL(a[0]) : 'lumen://newtab').id
+      case 'newTabAfter': { const ref = w.tabs.get(a[0]); if (!ref) return; const n = w.createTab('lumen://newtab', { active: true, index: w.order.indexOf(ref.id) + 1 }); if (ref.group && !ref.pinned) { n.group = ref.group; w.layout(); w.pushState(); saveSession() } return n.id }
       case 'navigate': {
         const url = upgradeURL(toURL(a[0])); if (!url) return
         if (a[1] || !t) w.createTab(url)

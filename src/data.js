@@ -20,7 +20,7 @@ const settings = new Store('settings', {
   browserTheme: 'default',
   themeCustom: { a: '#5b8cff', b: '#8a63f2', angle: 135, glass: false },
   compact: false,
-  appIcon: 'default', aiModel: 'fast', aiTabGroups: true, adblockAllow: [], searchShortcuts: true, translateFlipDir: true, darkOffSites: [], darkStyle: 'balanced', uiSounds: false, rememberZoom: true, zoomBySite: {}, soundActiveOnly: false, linksBackground: false, confirmQuit: true, wheelTabs: true, aiKey: '',
+  appIcon: 'default', aiModel: 'fast', aiTabGroups: true, adblockAllow: [], searchShortcuts: true, translateFlipDir: true, darkOffSites: [], bookmarksBar: true, blockedTotal: 0, statsSince: 0, darkStyle: 'balanced', uiSounds: false, rememberZoom: true, zoomBySite: {}, soundActiveOnly: false, linksBackground: false, confirmQuit: true, wheelTabs: true, aiKey: '',
   cleanLinks: true,
   swipeNav: true,
   videoSpeedKeys: true,

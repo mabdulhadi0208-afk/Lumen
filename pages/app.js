@@ -55,6 +55,7 @@ async function newTab() {
   // jump back in: the last few pages you were on, one per site
   let recent = []
   if (S.ntpRecent !== false) { try { const seen = new Set(); for (const h of await L.invoke('history', '')) { const k = hostOf(h.url); if (!k || seen.has(k) || !/^https?:/.test(h.url)) continue; seen.add(k); recent.push(h); if (recent.length === 4) break } } catch {} }
+  let stats = null; if (S.ntpStats !== false) { try { stats = await L.invoke('stats') } catch {} }
   const ago = t => { const m = Math.round((Date.now() - t) / 60000); return m < 1 ? 'Just now' : m < 60 ? m + ' min ago' : m < 1440 ? Math.round(m / 60) + ' hr ago' : Math.round(m / 1440) + ' d ago' }
   const img = wp === 'custom' ? await L.invoke('wallpaper') : ''
   root.innerHTML = `<div class="ntp wp-${esc(wp)}" id="ntp">
@@ -62,6 +63,7 @@ async function newTab() {
     ${S.ntpClock !== false ? `<div class="clock rise" id="clock"></div><div class="date rise" style="animation-delay:.04s" id="date"></div>` : '<div style="height:40px"></div>'}
     <form class="searchbox rise" style="animation-delay:.08s" id="sf">${ICONS.search}<input id="q" autofocus placeholder="Search ${esc(ENGINES[S.searchEngine] || 'Google')} or type an address" spellcheck="false" autocomplete="off"></form>
     <div class="tiles" id="tiles">${sites.map((s, i) => `<div class="tile rise" style="animation-delay:${0.12 + i * 0.03}s" data-url="${esc(s.url)}" data-i="${i}"><div class="ti">${fav(s.url)}</div><span>${esc(s.title || hostOf(s.url))}</span><button class="tx" title="Remove">${ICONS.close}</button></div>`).join('')}${sites.length < 12 ? `<div class="tile add rise" style="animation-delay:${0.12 + sites.length * 0.03}s" id="addtile"><div class="ti">${ICONS.plus}</div><span>Add</span></div>` : ''}</div>
+    ${stats && stats.blocked > 0 ? `<div class="nstats rise" style="animation-delay:.26s"><span class="ns-i">${ICONS.shield}</span><b>${stats.blocked.toLocaleString('en-US')}</b> ads and trackers blocked${stats.blocked > 400 ? `<i></i>about <b>${stats.blocked * 0.05 < 90 ? Math.round(stats.blocked * 0.05) + ' sec' : Math.round(stats.blocked * 0.05 / 60) + ' min'}</b> saved` : ''}</div>` : ''}
     ${recent.length ? `<div class="recent rise" style="animation-delay:.3s"><div class="rc-h">Jump back in</div><div class="rc-list">${recent.map(h => `<a class="rc" href="${esc(h.url)}"><span class="rc-f">${fav(h.url)}</span><span class="rc-b"><b>${esc(h.title || hostOf(h.url))}</b><i>${esc(hostOf(h.url).replace(/^www\./, ''))}  ·  ${ago(h.t)}</i></span></a>`).join('')}</div></div>` : ''}
     <div class="foot"><a href="lumen://history">History</a><a href="lumen://bookmarks">Bookmarks</a><a href="lumen://passwords">Passwords</a><a href="lumen://settings">Settings</a></div>
     <button class="customize" id="cust">${ICONS.tune}<span>Customize</span></button>
@@ -204,6 +206,7 @@ function appearance(m) {
   <div class="card">
     ${row('Tabs', 'Down the side in a sidebar, or across the top like Chrome.', seg('tabLayout', [['side', 'Sidebar'], ['top', 'Top']], S.tabLayout || 'top'))}
     ${row('Compact mode', 'Thinner bars and tabs, more room for the page.', sw('compact', !!S.compact))}
+    ${row('Bookmarks bar', 'Shows your bookmarks under the address bar when tabs are on top.', sw('bookmarksBar', S.bookmarksBar !== false))}
     ${row('Interface sounds', 'Soft pops when you open, close and switch tabs.', sw('uiSounds', !!S.uiSounds))}
   </div>
   <div class="card"><h3>BROWSER THEME</h3>

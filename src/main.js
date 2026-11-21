@@ -101,7 +101,7 @@ function upgradeURL(u) {
 }
 
 // ---------------------------------------------------------------- sessions
-let mainSession, extensions = null, blocker = null, addingTab = false
+let mainSession, extensions = null, blocker = null, addingTab = false, blockedTotal = 0, blockedSaveT = null
 const blockedByWc = new Map()
 const sessionsReady = new Set()
 
@@ -147,10 +147,13 @@ async function setupAdblock() {
     if (old) for (const ses of sessionsReady) { try { if (old.isBlockingEnabled(ses)) old.disableBlockingInSession(ses) } catch {} }
     blocker = next
     allowSites(blocker)
+    if (!blockedTotal) blockedTotal = D.settings.get('blockedTotal') || 0
+    if (!D.settings.get('statsSince')) D.settings.set({ statsSince: Date.now() })
     blocker.on('request-blocked', req => {
       const id = req.tabId
       if (id == null) return
       blockedByWc.set(id, (blockedByWc.get(id) || 0) + 1)
+      blockedTotal++; if (!blockedSaveT) blockedSaveT = setTimeout(() => { blockedSaveT = null; D.settings.set({ blockedTotal }) }, 15000)
       const w = winForWc(id)
       if (w) w.pushStateSoon()
     })
@@ -1194,6 +1197,8 @@ ipcMain.handle('ui', async (e, action, ...a) => {
       case 'translateLangs': { const from = t && t.translated && t.trFrom ? t.trFrom : wc && /^https?:/.test(wc.getURL()) ? await Translate.pageLang(wc) : ''; return { to: Translate.target(D.settings), from, translated: !!(t && t.translated), always: (D.settings.get('alwaysTranslate') || []).includes(from), busy: trJobs.has(w), web: !!(wc && /^https?:/.test(wc.getURL())) } }
       case 'alwaysTranslate': { const l = String(a[0] || ''); if (l) { const s = new Set(D.settings.get('alwaysTranslate') || []); a[1] === false ? s.delete(l) : s.add(l); D.settings.set({ alwaysTranslate: [...s] }) } return }
       case 'translateCancel': { const j = trJobs.get(w); if (j) j.cancelled = true; return }
+      case 'bmList': return D.liveBookmarks().slice(0, 200).map(b => ({ url: b.url, title: b.title || '' }))
+      case 'bmRemove': D.removeBookmark(String(a[0])); w.pushState(); return
       case 'siteDark': return toggleSiteDark(w, !!a[0])
       case 'siteAdblock': return toggleSiteAdblock(w, !!a[0])
       case 'resetSite': { if (!t) return; try { const o = new URL(t.url).origin; const all = D.permissions.get(); delete all[o]; D.permissions.set(all) } catch {} return }
@@ -1250,6 +1255,8 @@ function tabMenu(w, id) {
     { type: 'separator' },
     { label: 'Close Tab', click: () => w.closeTab(id) },
     { label: 'Close Other Tabs', enabled: others.length > 0, click: () => others.filter(i => !w.tabs.get(i).pinned).forEach(i => w.closeTab(i)) },
+    { label: D.settings.get('tabLayout') === 'top' ? 'Close Tabs to the Left' : 'Close Tabs Above', click: () => w.order.slice(0, w.order.indexOf(id)).filter(i => !w.tabs.get(i).pinned).forEach(i => w.closeTab(i)) },
+    { label: 'Mute Other Tabs', enabled: others.length > 0, click: () => { for (const i of others) { const o = w.tabs.get(i); if (o && o.view && !o.muted) { o.muted = true; o.view.webContents.setAudioMuted(true) } } w.pushState() } },
     { label: D.settings.get('tabLayout') === 'top' ? 'Close Tabs to the Right' : 'Close Tabs Below', click: () => w.order.slice(w.order.indexOf(id) + 1).filter(i => !w.tabs.get(i).pinned).forEach(i => w.closeTab(i)) },
   ]).popup({ window: w.win })
 }
@@ -1292,7 +1299,7 @@ function downloadAction(id, what) {
   broadcast('downloads', listDownloads())
 }
 
-const PUBLIC_SETTINGS = ['ntpRecent', 'darkStyle', 'uiSounds', 'darkOffSites', 'translateFlipDir', 'searchShortcuts', 'rememberZoom', 'soundActiveOnly', 'linksBackground', 'confirmQuit', 'wheelTabs', 'adblockAllow', 'aiModel', 'aiTabGroups', 'browserTheme', 'themeCustom', 'compact', 'appIcon', 'cleanLinks', 'swipeNav', 'videoSpeedKeys', 'hideCookieBanners', 'blockNotifications', 'forceDark', 'translateTo', 'offerTranslate', 'autoPip', 'ntpShortcuts', 'ntpWallpaper', 'ntpClock', 'searchEngine', 'motion', 'theme', 'accent', 'adblock', 'blockTrackers', 'httpsOnly', 'sleepTabsAfterMin', 'restoreSession', 'sidebarCollapsed', 'sidebarWidth', 'tabLayout', 'introSeen', 'autoUpdate', 'askWhereToSave', 'doNotTrack', 'showSuggestions', 'homeTiles']
+const PUBLIC_SETTINGS = ['bookmarksBar', 'ntpStats', 'ntpRecent', 'darkStyle', 'uiSounds', 'darkOffSites', 'translateFlipDir', 'searchShortcuts', 'rememberZoom', 'soundActiveOnly', 'linksBackground', 'confirmQuit', 'wheelTabs', 'adblockAllow', 'aiModel', 'aiTabGroups', 'browserTheme', 'themeCustom', 'compact', 'appIcon', 'cleanLinks', 'swipeNav', 'videoSpeedKeys', 'hideCookieBanners', 'blockNotifications', 'forceDark', 'translateTo', 'offerTranslate', 'autoPip', 'ntpShortcuts', 'ntpWallpaper', 'ntpClock', 'searchEngine', 'motion', 'theme', 'accent', 'adblock', 'blockTrackers', 'httpsOnly', 'sleepTabsAfterMin', 'restoreSession', 'sidebarCollapsed', 'sidebarWidth', 'tabLayout', 'introSeen', 'autoUpdate', 'askWhereToSave', 'doNotTrack', 'showSuggestions', 'homeTiles']
 function publicSettings() { const s = D.settings.get(); return Object.fromEntries(PUBLIC_SETTINGS.map(k => [k, s[k]])) }
 function setSetting(k, v) {
   if (!PUBLIC_SETTINGS.includes(k)) return
@@ -1415,6 +1422,7 @@ ipcMain.handle('lumen', async (e, action, ...a) => {
       case 'settings': return { settings: publicSettings(), engines: Object.fromEntries(Object.entries(SEARCH).map(([k, v]) => [k, v.name])), version: app.getVersion(), platform: process.platform }
       case 'setSetting': return setSetting(a[0], a[1])
       case 'topSites': return D.topSites(8)
+      case 'stats': return { blocked: blockedTotal, since: D.settings.get('statsSince') || 0 }
       case 'wallpaper': {
         if (a[0] === undefined) return wallpaperStore.get('image') || ''
         const img = String(a[0] || '')
@@ -1574,6 +1582,7 @@ function buildMenu() {
       { label: 'Switch to Last Used Tab', accelerator: 'Ctrl+`', click: focused(w => { if (w.lastTabId && w.tabs.has(w.lastTabId)) w.activate(w.lastTabId) }) },
       { label: 'Duplicate Tab', accelerator: 'CmdOrCtrl+Shift+K', click: focused((w, t) => { if (t) w.createTab(t.view ? t.view.webContents.getURL() : t.url, { active: true, index: w.order.indexOf(t.id) + 1 }) }) },
       { label: 'Send Page to Phone', accelerator: 'CmdOrCtrl+Shift+Y', click: focused(w => w.send('command', 'qr')) },
+      { label: 'Bookmarks Bar', accelerator: 'CmdOrCtrl+Shift+B', click: () => setSetting('bookmarksBar', D.settings.get('bookmarksBar') === false) },
       { label: 'Tab Overview', accelerator: 'CmdOrCtrl+Shift+O', click: focused(w => w.send('command', 'tabgrid')) },
       { label: 'Lumen AI', accelerator: 'CmdOrCtrl+Shift+A', click: focused(w => w.send('command', 'ai')) },
       { label: 'Sort Tabs into Groups', accelerator: 'CmdOrCtrl+Shift+G', click: focused(w => autoGroupWindow(w)) },

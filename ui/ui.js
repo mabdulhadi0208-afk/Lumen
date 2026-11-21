@@ -1544,3 +1544,38 @@ api.on('state', s => {
   if (sfxPrev) { if (cur.n > sfxPrev.n) sfx('open'); else if (cur.n < sfxPrev.n) sfx('close'); else if (cur.a !== sfxPrev.a) sfx('switch') }
   sfxPrev = cur
 })
+
+
+// ---------------------------------------------------------------- bookmarks bar (tabs-on-top layout)
+let bmItems = [], bmT = 0
+function bmRender() {
+  const el = $('#bmbar'), on = settings.bookmarksBar !== false && TOP && bmItems.length > 0 && !INCOGNITO
+  el.classList.toggle('show', on)
+  if (!on) { el.innerHTML = ''; return }
+  el.innerHTML = bmItems.map((b, i) => `<button class="bm" data-i="${i}" title="${esc(b.url)}">${favHTML({ url: b.url, favicon: (() => { try { return new URL(b.url).origin + '/favicon.ico' } catch { return '' } })() })}<span>${esc(b.title || hostOf(b.url))}</span></button>`).join('') + `<button class="bm more" id="bm-more" title="All bookmarks">${ICONS.more}</button>`
+  // hide chips that do not fit; they stay reachable from the menu at the end
+  const more = $('#bm-more'), limit = el.clientWidth - 40; let hidden = 0
+  for (const c of el.querySelectorAll('.bm:not(.more)')) { const over = c.offsetLeft + c.offsetWidth > limit; c.style.display = over ? 'none' : ''; if (over) hidden++ }
+  more.style.display = hidden ? '' : 'none'
+}
+async function bmLoad() { try { bmItems = await api.do('bmList') || [] } catch { bmItems = [] } bmRender() }
+$('#bmbar').addEventListener('click', e => {
+  const c = e.target.closest('.bm'); if (!c) return
+  if (c.id === 'bm-more') {
+    openPopover(`<h3>Bookmarks</h3><div style="max-height:420px;overflow:auto">${bmItems.map((b, i) => `<div class="item" data-bm="${i}"><span class="ri">${ICONS.star}</span><div class="grow">${esc(b.title || hostOf(b.url))}<div class="small">${esc(hostOf(b.url))}</div></div></div>`).join('')}</div>`, c, { wide: true })
+    pop.onclick = ev => { const it = ev.target.closest('[data-bm]'); if (it) { closePopover(true); api.do('navigate', bmItems[+it.dataset.bm].url, ev.metaKey || ev.ctrlKey) } }
+    return
+  }
+  api.do('navigate', bmItems[+c.dataset.i].url, e.metaKey || e.ctrlKey)
+})
+$('#bmbar').addEventListener('auxclick', e => { const c = e.target.closest('.bm[data-i]'); if (c && e.button === 1) api.do('navigate', bmItems[+c.dataset.i].url, true) })
+$('#bmbar').addEventListener('contextmenu', e => {
+  const c = e.target.closest('.bm[data-i]'); if (!c) return
+  e.preventDefault(); const b = bmItems[+c.dataset.i]
+  openPopover(`<div class="item" data-a="open"><span class="ri">${ICONS.plus}</span><div class="grow">Open in new tab</div></div><div class="item" data-a="rm"><span class="ri">${ICONS.trash}</span><div class="grow">Remove bookmark</div></div>`, c)
+  pop.onclick = ev => { const it = ev.target.closest('[data-a]'); if (!it) return; closePopover(true); if (it.dataset.a === 'open') api.do('navigate', b.url, true); else api.do('bmRemove', b.url).then(bmLoad) }
+})
+api.on('state', () => { clearTimeout(bmT); bmT = setTimeout(bmLoad, 250) })
+api.on('settings', () => setTimeout(bmRender, 50))
+window.addEventListener('resize', () => { clearTimeout(bmT); bmT = setTimeout(bmRender, 120) })
+bmLoad()

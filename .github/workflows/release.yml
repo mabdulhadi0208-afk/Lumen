@@ -24,8 +24,30 @@ jobs:
         env:
           P12_BASE64: ${{ secrets.MAC_CERT_P12 }}
           P12_PASSWORD: ${{ secrets.MAC_CERT_PASSWORD }}
+          DEVID_P12: ${{ secrets.MAC_DEVID_P12 }}
+          DEVID_PASSWORD: ${{ secrets.MAC_DEVID_PASSWORD }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_APP_PASSWORD: ${{ secrets.APPLE_APP_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
         run: |
-          if [ -n "$P12_BASE64" ]; then
+          # Apple Developer ID: the real thing. Signed with the hardened runtime and notarized by Apple, so Lumen opens with no warnings.
+          if [ -n "$DEVID_P12" ] && [ -n "$APPLE_ID" ] && [ -n "$APPLE_APP_PASSWORD" ] && [ -n "$APPLE_TEAM_ID" ]; then
+            echo "$DEVID_P12" | base64 --decode > devid.p12
+            security create-keychain -p temp build.keychain
+            security default-keychain -s build.keychain
+            security list-keychains -d user -s build.keychain
+            security unlock-keychain -p temp build.keychain
+            security set-keychain-settings -t 7200 -u build.keychain
+            curl -fsSL https://www.apple.com/certificateauthority/DeveloperIDG2CA.cer -o g2.cer && security import g2.cer -k build.keychain || true
+            security import devid.p12 -k build.keychain -P "$DEVID_PASSWORD" -T /usr/bin/codesign -T /usr/bin/security
+            security set-key-partition-list -S apple-tool:,apple: -s -k temp build.keychain >/dev/null
+            ID=$(security find-identity -v -p codesigning build.keychain | grep "Developer ID Application" | head -1 | sed -E 's/.*"(.*)".*/\1/')
+            [ -n "$ID" ] || { echo "MAC_DEVID_P12 does not contain a Developer ID Application certificate"; security find-identity -v build.keychain; exit 1; }
+            echo "SIGN_ID=$ID" >> $GITHUB_ENV
+            echo "SIGN_MODE=devid" >> $GITHUB_ENV
+            echo "Developer ID certificate imported: $ID"
+            rm -f devid.p12
+          elif [ -n "$P12_BASE64" ]; then
             echo "$P12_BASE64" | base64 --decode > cert.p12
             security create-keychain -p temp build.keychain
             security default-keychain -s build.keychain
@@ -34,21 +56,39 @@ jobs:
             security set-key-partition-list -S apple-tool:,apple: -s -k temp build.keychain >/dev/null
             LEAF=$(security find-certificate -c "Lumen Dev" -Z build.keychain | awk '/SHA-1/{print $3}')
             echo "SIGN_ID=Lumen Dev" >> $GITHUB_ENV
+            echo "SIGN_MODE=selfsigned" >> $GITHUB_ENV
             echo "LEAF=$LEAF" >> $GITHUB_ENV
             echo "certificate imported, leaf $LEAF"
           else
             echo "SIGN_ID=-" >> $GITHUB_ENV
+            echo "SIGN_MODE=adhoc" >> $GITHUB_ENV
             echo "no MAC_CERT_P12 secret, using ad-hoc signing"
           fi
 
       - name: Package, sign, zip and DMG (Apple Silicon and Intel)
-        env: { CSC_IDENTITY_AUTO_DISCOVERY: 'false' }
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_APP_PASSWORD: ${{ secrets.APPLE_APP_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
         run: |
           npx electron-builder --mac dir --arm64 --x64 --publish never
+          notarize() {   # $1 = file to submit; fails the build unless Apple accepts it
+            xcrun notarytool submit "$1" --apple-id "$APPLE_ID" --password "$APPLE_APP_PASSWORD" --team-id "$APPLE_TEAM_ID" --wait --output-format json > notary.json || { cat notary.json; exit 1; }
+            cat notary.json; echo
+            grep -q '"status" *: *"Accepted"' notary.json || { ID=$(sed -E 's/.*"id" *: *"([^"]+)".*/\1/' notary.json); xcrun notarytool log "$ID" --apple-id "$APPLE_ID" --password "$APPLE_APP_PASSWORD" --team-id "$APPLE_TEAM_ID" || true; echo "Apple did not accept $1"; exit 1; }
+          }
           for ARCH in arm64 x64; do
             if [ "$ARCH" = "arm64" ]; then APP=dist/mac-arm64/Lumen.app; else APP=dist/mac/Lumen.app; fi
             test -d "$APP" || { echo "missing $APP"; ls dist; exit 1; }
-            if [ "$SIGN_ID" = "-" ]; then
+            if [ "$SIGN_MODE" = "devid" ]; then
+              xattr -cr "$APP"
+              node -e "require('@electron/osx-sign').signAsync({ app: process.argv[1], identity: process.env.SIGN_ID, keychain: 'build.keychain', optionsForFile: () => ({ hardenedRuntime: true, entitlements: 'build/entitlements.mac.plist' }) }).then(() => console.log('signed with Developer ID'), e => { console.error(e); process.exit(1) })" "$APP"
+              codesign --verify --deep --strict "$APP"
+              ditto -c -k --sequesterRsrc --keepParent "$APP" "notarize-$ARCH.zip"
+              notarize "notarize-$ARCH.zip"; rm -f "notarize-$ARCH.zip"
+              xcrun stapler staple "$APP"
+            elif [ "$SIGN_ID" = "-" ]; then
               codesign --force --deep --sign - "$APP"
             else
               # nested code first with its own identity; the pinned requirement goes on the main bundle only
@@ -58,8 +98,9 @@ jobs:
             # ZIP is what the in-app updater installs: keeps the cert signature, so the identity never changes
             ( cd "$(dirname "$APP")" && ditto -c -k --sequesterRsrc --keepParent Lumen.app "$GITHUB_WORKSPACE/dist/Lumen-mac-$ARCH.zip" )
             # DMG is for fresh downloads: re-signed ad-hoc, because Gatekeeper calls a self-signed app "damaged"
-            STAGE=$(mktemp -d); cp -R "$APP" "$STAGE/"
-            codesign --force --deep --sign - "$STAGE/Lumen.app"
+            STAGE=$(mktemp -d); ditto "$APP" "$STAGE/Lumen.app"
+            # (with a Developer ID the DMG carries the same notarized app, no re-signing)
+            if [ "$SIGN_MODE" != "devid" ]; then codesign --force --deep --sign - "$STAGE/Lumen.app"; fi
             ln -s /Applications "$STAGE/Applications"
             # hdiutil sometimes fails with "Resource busy" on GitHub's Macs: retry
             ok=0; for t in 1 2 3 4 5; do
@@ -67,8 +108,13 @@ jobs:
               echo "hdiutil attempt $t failed, retrying"; sleep $((t * 5)); hdiutil info | grep -i "/dev/disk" | awk '{print $1}' | xargs -I{} hdiutil detach -force {} 2>/dev/null || true
             done
             [ "$ok" = 1 ] || { echo "could not create the $ARCH DMG"; exit 1; }
+            if [ "$SIGN_MODE" = "devid" ]; then
+              codesign --force --timestamp --sign "$SIGN_ID" "dist/Lumen-mac-$ARCH.dmg"
+              notarize "dist/Lumen-mac-$ARCH.dmg"
+              xcrun stapler staple "dist/Lumen-mac-$ARCH.dmg"
+            fi
           done
-          if [ "$SIGN_ID" != "-" ]; then echo "Lumen Dev $LEAF" > dist/Lumen-identity.txt; fi
+          if [ "$SIGN_MODE" = "devid" ]; then echo "$SIGN_ID" > dist/Lumen-identity.txt; elif [ "$SIGN_ID" != "-" ]; then echo "Lumen Dev $LEAF" > dist/Lumen-identity.txt; fi
           ls -la dist/*.dmg dist/*.zip
 
       - name: Release gate (refuse to publish broken files)
@@ -79,9 +125,14 @@ jobs:
           echo "testing $APP on $(uname -m)"
           codesign --verify --deep --strict dist/mac-arm64/Lumen.app && echo "arm64 zip app signature valid"
           codesign --verify --deep --strict "$APP" && echo "zip app signature valid"
-          if [ "$SIGN_ID" != "-" ]; then codesign -d -r- "$APP" 2>&1 | grep -qi "certificate leaf = H\"$LEAF\"" && echo "zip app has the pinned identity" || { echo "zip app is not cert-signed"; exit 1; }; fi
+          if [ "$SIGN_MODE" = "selfsigned" ]; then codesign -d -r- "$APP" 2>&1 | grep -qi "certificate leaf = H\"$LEAF\"" && echo "zip app has the pinned identity" || { echo "zip app is not cert-signed"; exit 1; }; fi
           MNT=$(mktemp -d); hdiutil attach -nobrowse -quiet -mountpoint "$MNT" "$DMG"
-          codesign -dv "$MNT/Lumen.app" 2>&1 | grep -q 'Signature=adhoc' && echo "dmg app is ad-hoc (right-click, Open works)" || { echo "dmg app is not ad-hoc"; hdiutil detach -quiet "$MNT"; exit 1; }
+          if [ "$SIGN_MODE" = "devid" ]; then
+            spctl -a -t exec -vv "$MNT/Lumen.app" 2>&1 | tee spctl.txt; grep -q "accepted" spctl.txt && grep -qi "Notarized Developer ID" spctl.txt && echo "Gatekeeper accepts the app: notarized Developer ID" || { echo "Gatekeeper does not accept the app"; hdiutil detach -quiet "$MNT"; exit 1; }
+            xcrun stapler validate "$DMG" && echo "dmg has its notarization ticket"
+          else
+            codesign -dv "$MNT/Lumen.app" 2>&1 | grep -q 'Signature=adhoc' && echo "dmg app is ad-hoc (right-click, Open works)" || { echo "dmg app is not ad-hoc"; hdiutil detach -quiet "$MNT"; exit 1; }
+          fi
           codesign --verify --deep --strict "$MNT/Lumen.app" && echo "dmg app signature valid"
           test -L "$MNT/Applications" && echo "dmg has Applications shortcut"
           hdiutil detach -quiet "$MNT"

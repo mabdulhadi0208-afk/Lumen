@@ -156,7 +156,7 @@ async function general(m) {
     ${row('Only play sound from the tab you are on', 'Other tabs are muted while you look at something else.', sw('soundActiveOnly', !!S.soundActiveOnly))}
     ${row('Open new tabs from links in the background', 'Links that open a new tab stay behind the page you are reading.', sw('linksBackground', !!S.linksBackground))}
     ${row('Ask before quitting', 'Asks before Cmd Q closes a window with several tabs.', sw('confirmQuit', S.confirmQuit !== false))}
-    ${row('Dark mode for every website', 'Turns light sites dark. Takes effect after Lumen restarts.', sw('forceDark', !!S.forceDark) + '<button class="btn sm" id="restart">Restart</button>')}
+    ${row('Dark mode for every website', 'Turns light sites dark and leaves sites that are already dark alone. Turn it off for one site from the lock icon in the address bar.', sw('forceDark', !!S.forceDark))}
   </div>
   <div class="card"><h3>PERFORMANCE</h3>
     ${row('Sleep inactive tabs', 'Frees memory from tabs you have not looked at in a while. They wake up instantly when you click them.', seg('sleepTabsAfterMin', [[0, 'Never'], [15, '15 min'], [30, '30 min'], [60, '1 hour'], [240, '4 hours']], S.sleepTabsAfterMin))}
@@ -165,7 +165,7 @@ async function general(m) {
     ${row('Ask where to save each file', 'Otherwise files go straight to your Downloads folder.', sw('askWhereToSave', S.askWhereToSave))}
   </div>`
   bindSettings(m)
-  $('#restart').onclick = () => L.invoke('restart')
+  const rs = $('#restart'); if (rs) rs.onclick = () => L.invoke('restart')
   const b = $('#mkdef'); if (b) b.onclick = async () => { await L.invoke('defaultBrowser', 'set'); setTimeout(() => general(m), 1200) }
 }
 

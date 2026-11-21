@@ -22,7 +22,6 @@ const ICON = path.join(ROOT, 'build', 'icon.png')
 
 app.setName('Lumen')
 app.commandLine.appendSwitch('enable-smooth-scrolling')
-try { if (require('./data').settings.get('forceDark')) app.commandLine.appendSwitch('enable-features', 'WebContentsForceDark') } catch {}
 protocol.registerSchemesAsPrivileged([
   { scheme: 'lumen', privileges: { standard: true, secure: true, supportFetchAPI: true, corsEnabled: true, stream: true } },
 ])
@@ -449,7 +448,10 @@ class BrowserWin {
     wc.on('page-favicon-updated', (e, icons) => { t.favicon = icons[icons.length - 1] || icons[0] || ''; upd() })
     wc.on('did-start-loading', () => { t.loading = true; t.crashed = false; upd() })
     wc.on('did-stop-loading', () => { t.loading = false; upd() })
-    wc.on('did-finish-load', () => { offerTranslate(this, t).catch(() => {}) })
+    wc.on('did-finish-load', () => { offerTranslate(this, t).catch(() => {}); darkPage(wc) })
+    wc.on('did-navigate', () => darkKeys.delete(wc.id))
+    wc.once('destroyed', () => darkKeys.delete(wc.id))
+    wc.on('dom-ready', () => darkPage(wc))
     wc.on('will-navigate', e => {
       // web pages may not open Lumen's internal pages (same rule Chrome uses for chrome://)
       if (e.url.startsWith('lumen://') && !(wc.getURL() || '').startsWith('lumen://')) e.preventDefault()
@@ -1188,6 +1190,7 @@ ipcMain.handle('ui', async (e, action, ...a) => {
       case 'translateLangs': { const from = t && t.translated && t.trFrom ? t.trFrom : wc && /^https?:/.test(wc.getURL()) ? await Translate.pageLang(wc) : ''; return { to: Translate.target(D.settings), from, translated: !!(t && t.translated), always: (D.settings.get('alwaysTranslate') || []).includes(from), busy: trJobs.has(w), web: !!(wc && /^https?:/.test(wc.getURL())) } }
       case 'alwaysTranslate': { const l = String(a[0] || ''); if (l) { const s = new Set(D.settings.get('alwaysTranslate') || []); a[1] === false ? s.delete(l) : s.add(l); D.settings.set({ alwaysTranslate: [...s] }) } return }
       case 'translateCancel': { const j = trJobs.get(w); if (j) j.cancelled = true; return }
+      case 'siteDark': return toggleSiteDark(w, !!a[0])
       case 'siteAdblock': return toggleSiteAdblock(w, !!a[0])
       case 'resetSite': { if (!t) return; try { const o = new URL(t.url).origin; const all = D.permissions.get(); delete all[o]; D.permissions.set(all) } catch {} return }
       case 'update': if (a[0] === 'check') return Updater.check(true); if (a[0] === 'install') return Updater.install(true); return Updater.getState()
@@ -1207,7 +1210,7 @@ ipcMain.handle('ui', async (e, action, ...a) => {
 function siteInfo(w) {
   const t = w.active(); if (!t) return null
   let origin = ''; try { origin = new URL(t.url).origin } catch {}
-  return { url: t.url, host: origin ? new URL(origin).host : '', secure: /^https:/.test(t.url), permissions: D.permissions.get()[origin] || {}, blocked: t.view ? (blockedByWc.get(t.view.webContents.id) || 0) : 0, adblock: !!D.settings.get('adblock'), adOff: adAllowed(t.view ? t.view.webContents.getURL() : t.url) }
+  return { url: t.url, host: origin ? new URL(origin).host : '', secure: /^https:/.test(t.url), forceDark: !!D.settings.get('forceDark'), darkOff: siteDarkOff(t.view ? t.view.webContents.getURL() : t.url), permissions: D.permissions.get()[origin] || {}, blocked: t.view ? (blockedByWc.get(t.view.webContents.id) || 0) : 0, adblock: !!D.settings.get('adblock'), adOff: adAllowed(t.view ? t.view.webContents.getURL() : t.url) }
 }
 
 function reopenClosed(w) {
@@ -1285,7 +1288,7 @@ function downloadAction(id, what) {
   broadcast('downloads', listDownloads())
 }
 
-const PUBLIC_SETTINGS = ['translateFlipDir', 'searchShortcuts', 'rememberZoom', 'soundActiveOnly', 'linksBackground', 'confirmQuit', 'wheelTabs', 'adblockAllow', 'aiModel', 'aiTabGroups', 'browserTheme', 'themeCustom', 'compact', 'appIcon', 'cleanLinks', 'swipeNav', 'videoSpeedKeys', 'hideCookieBanners', 'blockNotifications', 'forceDark', 'translateTo', 'offerTranslate', 'autoPip', 'ntpShortcuts', 'ntpWallpaper', 'ntpClock', 'searchEngine', 'motion', 'theme', 'accent', 'adblock', 'blockTrackers', 'httpsOnly', 'sleepTabsAfterMin', 'restoreSession', 'sidebarCollapsed', 'sidebarWidth', 'tabLayout', 'introSeen', 'autoUpdate', 'askWhereToSave', 'doNotTrack', 'showSuggestions', 'homeTiles']
+const PUBLIC_SETTINGS = ['darkOffSites', 'translateFlipDir', 'searchShortcuts', 'rememberZoom', 'soundActiveOnly', 'linksBackground', 'confirmQuit', 'wheelTabs', 'adblockAllow', 'aiModel', 'aiTabGroups', 'browserTheme', 'themeCustom', 'compact', 'appIcon', 'cleanLinks', 'swipeNav', 'videoSpeedKeys', 'hideCookieBanners', 'blockNotifications', 'forceDark', 'translateTo', 'offerTranslate', 'autoPip', 'ntpShortcuts', 'ntpWallpaper', 'ntpClock', 'searchEngine', 'motion', 'theme', 'accent', 'adblock', 'blockTrackers', 'httpsOnly', 'sleepTabsAfterMin', 'restoreSession', 'sidebarCollapsed', 'sidebarWidth', 'tabLayout', 'introSeen', 'autoUpdate', 'askWhereToSave', 'doNotTrack', 'showSuggestions', 'homeTiles']
 function publicSettings() { const s = D.settings.get(); return Object.fromEntries(PUBLIC_SETTINGS.map(k => [k, s[k]])) }
 function setSetting(k, v) {
   if (!PUBLIC_SETTINGS.includes(k)) return
@@ -1293,6 +1296,7 @@ function setSetting(k, v) {
   if (k === 'adblockAllow') { if (!Array.isArray(v)) return; v = v.filter(x => typeof x === 'string' && /^[a-z0-9.-]+$/i.test(x)).slice(0, 500) }
   D.settings.set({ [k]: v, ...(!['sidebarCollapsed', 'sidebarWidth', 'introSeen'].includes(k) ? { settingsAt: Date.now() } : {}) })
   if (k === 'adblock') setAdblock(!!v)
+  if (k === 'forceDark' || k === 'darkOffSites') setTimeout(darkAll, 0)
   if (k === 'soundActiveOnly' && !v) for (const w of windows) for (const t of w.tabs.values()) if (t.autoMuted && t.view) { t.view.webContents.setAudioMuted(!!t.muted); t.autoMuted = false }
   if (k === 'hideCookieBanners') setupAdblock().then(() => setAdblock(!!D.settings.get('adblock')))
   if (k === 'theme') nativeTheme.themeSource = v
@@ -1607,6 +1611,52 @@ function buildMenu() {
     { role: 'windowMenu' },
   ]
   Menu.setApplicationMenu(Menu.buildFromTemplate(tpl))
+}
+
+// ---------------------------------------------------------------- dark mode for websites
+// Only pages that are actually light get turned dark, by inverting the page and flipping images and video back,
+// so text always stays readable. Sites that already have a dark design are left alone, and any site can opt out.
+const DARK_CSS = `html { filter: invert(.92) hue-rotate(180deg) !important; background: #fff !important; }
+img, video, picture, canvas, iframe, embed, object, svg image, [style*="background-image"], [data-lumen-keep] { filter: invert(1) hue-rotate(180deg) !important; }
+picture img, a img picture { filter: none !important; }`
+const DARK_DETECT = `(() => {
+  const lum = el => { for (let e = el; e && e.nodeType === 1; e = e.parentElement) { const m = (getComputedStyle(e).backgroundColor.match(/[\\d.]+/g) || []).map(Number); if (m.length >= 3 && (m[3] === undefined || m[3] > 0.5)) return (0.2126 * m[0] + 0.7152 * m[1] + 0.0722 * m[2]) / 255 } return null }
+  const meta = (document.querySelector('meta[name="color-scheme"]') || {}).content || ''
+  const pts = [[.5, .5], [.25, .35], [.75, .35], [.5, .85]].map(([x, y]) => lum(document.elementFromPoint(innerWidth * x, innerHeight * y)))
+  const base = lum(document.body) ?? lum(document.documentElement) ?? 1
+  const vals = pts.map(v => v ?? base)
+  const avg = vals.reduce((a, b) => a + b, 0) / vals.length
+  return { light: avg > 0.55 && !/^\\s*dark\\s*$/.test(meta), avg }
+})()`
+const darkKeys = new Map()
+const siteDarkOff = url => { const h = siteKey(url); return !!h && (D.settings.get('darkOffSites') || []).some(a => h === a || h.endsWith('.' + a)) }
+async function darkPage(wc) {
+  if (!wc || wc.isDestroyed()) return
+  const url = wc.getURL()
+  const want = D.settings.get('forceDark') && /^https?:/.test(url) && !siteDarkOff(url)
+  const had = darkKeys.get(wc.id)
+  if (!want) { if (had) { darkKeys.delete(wc.id); wc.removeInsertedCSS(had).catch(() => {}) } return }
+  if (had || darkBusy.has(wc.id)) return
+  darkBusy.add(wc.id)
+  try {
+    const r = await wc.executeJavaScriptInIsolatedWorld(1020, [{ code: DARK_DETECT }])
+    if (!r || !r.light || darkKeys.has(wc.id) || wc.isDestroyed()) return
+    const key = await wc.insertCSS(DARK_CSS, { cssOrigin: 'user' })
+    // the setting or the site may have changed while this was running
+    if (!D.settings.get('forceDark') || siteDarkOff(wc.getURL())) wc.removeInsertedCSS(key).catch(() => {})
+    else darkKeys.set(wc.id, key)
+  } catch {} finally { darkBusy.delete(wc.id) }
+}
+const darkBusy = new Set()
+function darkAll() { for (const w of windows) for (const t of w.tabs.values()) if (t.view && !t.view.webContents.isDestroyed()) { const wc = t.view.webContents, k = darkKeys.get(wc.id); if (k) { darkKeys.delete(wc.id); wc.removeInsertedCSS(k).catch(() => {}) } darkPage(wc) } }
+function toggleSiteDark(w, on) {
+  const t = w.active(); if (!t || !t.view) return
+  const h = siteKey(t.view.webContents.getURL()); if (!h) return
+  let list = (D.settings.get('darkOffSites') || []).filter(a => !(h === a || h.endsWith('.' + a)))
+  if (!on) list.push(h)
+  D.settings.set({ darkOffSites: list })
+  darkAll(); w.pushState()
+  w.send('toast', on ? `Dark mode on for ${h}` : `Dark mode off for ${h}`)
 }
 
 // ---------------------------------------------------------------- quit guard (only for Cmd+Q, never for updates or shutdown)

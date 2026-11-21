@@ -708,6 +708,7 @@ async function openSiteInfo() {
   const html = `
     <h3>${esc(info.host)}</h3>
     <div class="sub">${info.secure ? ICONS.lock + ' Connection is secure' : ICONS.unlock + ' Connection is not secure'}</div>
+    ${info.forceDark ? `<div class="item" data-act="dark"><span class="ri">${ICONS.moon}</span><div class="grow">Dark mode on this site<div class="small">${info.darkOff ? 'Off here, showing the site as designed' : 'Light pages are shown dark'}</div></div><label class="switch sm"><input type="checkbox" ${info.darkOff ? '' : 'checked'} tabindex="-1"><span></span></label></div>` : ''}
     ${info.adblock ? `<div class="item" data-act="adblock"><span class="ri">${ICONS.shield}</span><div class="grow">Ad blocker on this site<div class="small">${info.adOff ? 'Off here. Ads can show on this site.' : `${info.blocked} blocked on this page`}</div></div><label class="switch sm"><input type="checkbox" ${info.adOff ? '' : 'checked'} tabindex="-1"><span></span></label></div>` : ''}
     <div class="item"><span class="ri">${ICONS.search}</span><div class="grow">Zoom</div><div class="zoom"><button class="ib sm" data-z="-0.5">${ICONS.minus}</button><span id="zv">${S.zoom}%</span><button class="ib sm" data-z="0.5">${ICONS.plus}</button></div></div>
     ${perms.length ? '<div class="sep"></div>' + perms.map(([k, v]) => `<div class="item"><span class="ri">${ICONS.check}</span><div class="grow">${esc(PERM_NAMES[k] || k)}</div><div class="small">${v === 'allow' ? 'Allowed' : 'Blocked'}</div></div>`).join('') + `<div class="item" data-act="reset"><span class="ri">${ICONS.reload}</span><div class="grow">Reset permissions</div></div>` : ''}
@@ -725,6 +726,7 @@ async function openSiteInfo() {
     if (z) { await api.do('zoom', parseFloat(z.dataset.z)); setTimeout(() => { const zv = $('#zv'); if (zv) zv.textContent = S.zoom + '%' }, 60); return }
     const it = e.target.closest('[data-act]'); if (!it) return
     const act = it.dataset.act
+    if (act === 'dark') { e.preventDefault(); const cb = it.querySelector('input'); cb.checked = !cb.checked; setTimeout(() => closePopover(true), 260); api.do('siteDark', cb.checked); return }
     if (act === 'adblock') { e.preventDefault(); const cb = it.querySelector('input'); cb.checked = !cb.checked; setTimeout(() => closePopover(true), 260); api.do('siteAdblock', cb.checked); return }
     closePopover(true)
     if (act === 'reset') { await api.do('resetSite'); toast('Permissions reset') }

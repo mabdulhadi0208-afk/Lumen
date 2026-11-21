@@ -685,3 +685,81 @@ body.toplayout .pill { box-shadow: var(--shadow), inset 0 0 0 1px color-mix(in s
 .tg-host i { display: inline-block; width: 7px; height: 7px; border-radius: 50%; margin-right: 5px; }
 .tg-empty { grid-column: 1 / -1; text-align: center; color: var(--fg3); padding: 60px 0; }
 body.winfs.toplayout .tablist { margin-left: -14px; }
+
+
+/* =====================================================================
+   Glow-up: the browser chrome
+   ===================================================================== */
+:root { --grad: linear-gradient(135deg, var(--accent), #8a63f2 55%, #e9609c); }
+::selection { background: color-mix(in srgb, var(--accent) 30%, transparent); }
+.cmdresults::-webkit-scrollbar, .ai-log::-webkit-scrollbar, .tg-list::-webkit-scrollbar, .popover::-webkit-scrollbar { width: 9px; }
+.cmdresults::-webkit-scrollbar-thumb, .ai-log::-webkit-scrollbar-thumb, .tg-list::-webkit-scrollbar-thumb, .popover::-webkit-scrollbar-thumb { background: var(--press); border-radius: 9px; border: 3px solid transparent; background-clip: content-box; }
+
+/* toolbar */
+.ib { border-radius: 9px; transition: background .15s, color .15s; }
+.ib.on { color: var(--accent); background: color-mix(in srgb, var(--accent) 13%, transparent); }
+.urlbar { border-radius: 12px; }
+.site { transition: background .15s, color .15s; } .site:hover { color: var(--accent); }
+.shield { background: var(--grad); color: #fff; font-weight: 700; box-shadow: 0 3px 10px color-mix(in srgb, var(--accent) 40%, transparent); }
+.tab { transition: background .18s; }
+.tab .icon img, .tab .icon .fav { border-radius: 4px; }
+.pill { background-image: linear-gradient(180deg, transparent 40%, color-mix(in srgb, var(--accent) 9%, transparent)); }
+.pin { transition: background .18s, box-shadow .2s; } .pin.active { box-shadow: var(--shadow), inset 0 0 0 1px color-mix(in srgb, var(--accent) 30%, transparent); }
+.hoverurl { border-radius: 999px; }
+.update { background: var(--grad); background-size: 200% 100%; animation: updshine 3s linear infinite; box-shadow: 0 6px 18px color-mix(in srgb, var(--accent) 45%, transparent); color: #fff; }
+@keyframes updshine { 0% { background-position: 0 0 } 50% { background-position: 100% 0 } 100% { background-position: 0 0 } }
+.btn { border-radius: 10px; font-weight: 600; transition: background .15s, filter .15s, box-shadow .2s; }
+.btn.primary { background: var(--grad); box-shadow: 0 6px 18px color-mix(in srgb, var(--accent) 35%, transparent); }
+
+/* menus and popovers */
+.popover { border-radius: 18px; box-shadow: 0 30px 80px rgba(10,14,30,.30), 0 2px 8px rgba(10,14,30,.10), 0 0 0 1px var(--line); }
+.popover h3 { font-weight: 750; letter-spacing: -.01em; }
+.popover .item { border-radius: 10px; transition: background .14s, color .14s; }
+.popover .item:hover { background: color-mix(in srgb, var(--accent) 10%, transparent); }
+.popover .item .ri { transition: color .14s, transform .35s cubic-bezier(.3,1.6,.5,1); }
+.popover .item:hover .ri { color: var(--accent); transform: scale(1.14); }
+.popover .item.mm kbd { transition: color .14s; } .popover .item.mm:hover kbd { color: var(--accent); }
+.popover .sep { opacity: .7; }
+.mm-logo { box-shadow: 0 8px 22px color-mix(in srgb, var(--accent) 45%, transparent); }
+.mm-title { font-weight: 800; letter-spacing: -.01em; }
+.mm-tile { border-radius: 14px; background: linear-gradient(160deg, color-mix(in srgb, var(--accent) 9%, transparent), var(--hover)); transition: background .18s, box-shadow .2s, color .15s; }
+.mm-tile svg { color: var(--accent); }
+.mm-tile:hover { background: linear-gradient(160deg, color-mix(in srgb, var(--accent) 20%, transparent), color-mix(in srgb, var(--accent) 8%, transparent)); box-shadow: 0 8px 22px color-mix(in srgb, var(--accent) 22%, transparent); }
+.sc-row { border-radius: 9px; } .sc-row kbd { border-radius: 6px; }
+
+/* command bar */
+.scrim { background: radial-gradient(ellipse at 50% 20%, rgba(40,50,110,.20), rgba(10,12,20,.26)); }
+.cmdbar { border-radius: 22px; box-shadow: 0 40px 110px rgba(10,14,30,.40), 0 0 0 1px var(--line), 0 0 0 6px color-mix(in srgb, var(--accent) 9%, transparent); }
+.cmdinput input { font-size: 17px; }
+.cmdicon { color: var(--accent); }
+.cmdresults .sec { text-transform: uppercase; font-size: 10.5px; letter-spacing: .09em; font-weight: 700; }
+.res { border-radius: 12px; transition: background .12s; }
+.res.sel { background: linear-gradient(90deg, color-mix(in srgb, var(--accent) 17%, transparent), color-mix(in srgb, var(--accent) 6%, transparent)); box-shadow: inset 3px 0 0 var(--accent); }
+.res.sel .ri { color: var(--accent); }
+.res.sel .rk { background: var(--accent); color: #fff; border-radius: 6px; padding: 2px 7px; }
+
+/* prompts, find bar, now playing, peek */
+.prompt { border-radius: 14px; box-shadow: var(--shadow), inset 0 0 0 1px var(--line); }
+#findbar { border-radius: 13px; box-shadow: 0 12px 34px rgba(10,14,30,.18), 0 0 0 1px var(--line), 0 0 0 4px color-mix(in srgb, var(--accent) 10%, transparent); }
+.nowplaying { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 28%, transparent); }
+.np-ico { animation: npspin 6s linear infinite; } @keyframes npspin { to { transform: rotate(360deg); } }
+.peekbar { box-shadow: 0 10px 30px rgba(10,14,30,.22); }
+#btn-downloads.active { color: var(--accent); }
+
+/* Lumen AI panel */
+#aipanel { border-radius: 16px; }
+.ai-head { border-bottom: 1px solid var(--line); margin-bottom: 10px; }
+.ai-title { font-weight: 800; background: var(--grad); -webkit-background-clip: text; background-clip: text; color: transparent; width: fit-content; }
+.ai-chip { transition: background .15s, box-shadow .2s; box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 22%, transparent); }
+.ai-msg { border-radius: 16px; }
+.ai-msg.user { background: var(--grad); box-shadow: 0 8px 20px color-mix(in srgb, var(--accent) 30%, transparent); }
+.ai-msg.bot { box-shadow: var(--shadow), inset 0 0 0 1px var(--line); }
+.ai-input { border-radius: 15px; transition: box-shadow .2s; }
+.ai-input:focus-within { box-shadow: var(--shadow), 0 0 0 2px color-mix(in srgb, var(--accent) 55%, transparent), 0 0 0 6px color-mix(in srgb, var(--accent) 11%, transparent); }
+.ai-send { background: var(--grad); border-radius: 10px; box-shadow: 0 4px 12px color-mix(in srgb, var(--accent) 40%, transparent); }
+
+/* tab groups and cards */
+.ghead { transition: background .15s; }
+#tabcard { border-radius: 16px; }
+.tg-close { background: var(--grad); box-shadow: 0 6px 18px color-mix(in srgb, var(--accent) 35%, transparent); }
+.trm-go, .trm-head .ic { background: var(--grad); }

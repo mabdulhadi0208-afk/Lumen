@@ -35,7 +35,8 @@
     h1.t{font:700 38px/1.18 -apple-system,BlinkMacSystemFont,sans-serif;letter-spacing:-.02em;margin:0 0 36px}
     img,video,figure{max-width:100%;height:auto;border-radius:10px}
     a{color:var(--acc)} pre,code{font-size:15px;white-space:pre-wrap} blockquote{border-left:3px solid var(--acc);margin:0;padding-left:18px;color:var(--mut)}
-    h2,h3{font-family:-apple-system,BlinkMacSystemFont,sans-serif;letter-spacing:-.01em;margin-top:2em}`
+    h2,h3{font-family:-apple-system,BlinkMacSystemFont,sans-serif;letter-spacing:-.01em;margin-top:2em}
+    a{color:#5b8cff;text-decoration-thickness:1px;text-underline-offset:3px}blockquote{border-left:3px solid #5b8cff;margin-left:0;padding-left:18px;opacity:.85}::selection{background:rgba(91,140,255,.3)}img,video{box-shadow:0 12px 34px rgba(0,0,0,.14)}h1{font-family:-apple-system,BlinkMacSystemFont,sans-serif;font-weight:800;letter-spacing:-.03em;line-height:1.15}`
   document.head.appendChild(style)
   const wrap = document.createElement('div'); wrap.className = 'lr'
   const meta = document.createElement('div'); meta.className = 'meta'; meta.textContent = `${host}  ·  ${Math.max(1, Math.round(words / 230))} min read`

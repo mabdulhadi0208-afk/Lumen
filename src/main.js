@@ -1292,7 +1292,7 @@ function downloadAction(id, what) {
   broadcast('downloads', listDownloads())
 }
 
-const PUBLIC_SETTINGS = ['darkOffSites', 'translateFlipDir', 'searchShortcuts', 'rememberZoom', 'soundActiveOnly', 'linksBackground', 'confirmQuit', 'wheelTabs', 'adblockAllow', 'aiModel', 'aiTabGroups', 'browserTheme', 'themeCustom', 'compact', 'appIcon', 'cleanLinks', 'swipeNav', 'videoSpeedKeys', 'hideCookieBanners', 'blockNotifications', 'forceDark', 'translateTo', 'offerTranslate', 'autoPip', 'ntpShortcuts', 'ntpWallpaper', 'ntpClock', 'searchEngine', 'motion', 'theme', 'accent', 'adblock', 'blockTrackers', 'httpsOnly', 'sleepTabsAfterMin', 'restoreSession', 'sidebarCollapsed', 'sidebarWidth', 'tabLayout', 'introSeen', 'autoUpdate', 'askWhereToSave', 'doNotTrack', 'showSuggestions', 'homeTiles']
+const PUBLIC_SETTINGS = ['ntpRecent', 'darkStyle', 'uiSounds', 'darkOffSites', 'translateFlipDir', 'searchShortcuts', 'rememberZoom', 'soundActiveOnly', 'linksBackground', 'confirmQuit', 'wheelTabs', 'adblockAllow', 'aiModel', 'aiTabGroups', 'browserTheme', 'themeCustom', 'compact', 'appIcon', 'cleanLinks', 'swipeNav', 'videoSpeedKeys', 'hideCookieBanners', 'blockNotifications', 'forceDark', 'translateTo', 'offerTranslate', 'autoPip', 'ntpShortcuts', 'ntpWallpaper', 'ntpClock', 'searchEngine', 'motion', 'theme', 'accent', 'adblock', 'blockTrackers', 'httpsOnly', 'sleepTabsAfterMin', 'restoreSession', 'sidebarCollapsed', 'sidebarWidth', 'tabLayout', 'introSeen', 'autoUpdate', 'askWhereToSave', 'doNotTrack', 'showSuggestions', 'homeTiles']
 function publicSettings() { const s = D.settings.get(); return Object.fromEntries(PUBLIC_SETTINGS.map(k => [k, s[k]])) }
 function setSetting(k, v) {
   if (!PUBLIC_SETTINGS.includes(k)) return
@@ -1300,7 +1300,8 @@ function setSetting(k, v) {
   if (k === 'adblockAllow') { if (!Array.isArray(v)) return; v = v.filter(x => typeof x === 'string' && /^[a-z0-9.-]+$/i.test(x)).slice(0, 500) }
   D.settings.set({ [k]: v, ...(!['sidebarCollapsed', 'sidebarWidth', 'introSeen'].includes(k) ? { settingsAt: Date.now() } : {}) })
   if (k === 'adblock') setAdblock(!!v)
-  if (k === 'forceDark' || k === 'darkOffSites') setTimeout(darkAll, 0)
+  if (k === 'darkStyle' && !DARK_STYLES[v]) return
+  if (k === 'forceDark' || k === 'darkOffSites' || k === 'darkStyle') setTimeout(darkAll, 0)
   if (k === 'soundActiveOnly' && !v) for (const w of windows) for (const t of w.tabs.values()) if (t.autoMuted && t.view) { t.view.webContents.setAudioMuted(!!t.muted); t.autoMuted = false }
   if (k === 'hideCookieBanners') setupAdblock().then(() => setAdblock(!!D.settings.get('adblock')))
   if (k === 'theme') nativeTheme.themeSource = v
@@ -1631,10 +1632,9 @@ async function snapTab(t) {
 // ---------------------------------------------------------------- dark mode for websites
 // Only pages that are actually light get turned dark, by inverting the page and flipping images and video back,
 // so text always stays readable. Sites that already have a dark design are left alone, and any site can opt out.
-const DARK_CSS = `html { filter: invert(.92) hue-rotate(180deg) !important; background: #fff !important; }
-img, video, picture, canvas, iframe, embed, object, svg image, [style*="background-image"], [data-lumen-keep] { filter: invert(1) hue-rotate(180deg) !important; }
-picture img, a img picture { filter: none !important; }`
 const DARK_DETECT = `(() => {
+  const early = document.getElementById('lumen-dark-early'); if (early) early.disabled = true
+  try {
   const lum = el => { for (let e = el; e && e.nodeType === 1; e = e.parentElement) { const m = (getComputedStyle(e).backgroundColor.match(/[\\d.]+/g) || []).map(Number); if (m.length >= 3 && (m[3] === undefined || m[3] > 0.5)) return (0.2126 * m[0] + 0.7152 * m[1] + 0.0722 * m[2]) / 255 } return null }
   const meta = (document.querySelector('meta[name="color-scheme"]') || {}).content || ''
   const pts = [[.5, .5], [.25, .35], [.75, .35], [.5, .85]].map(([x, y]) => lum(document.elementFromPoint(innerWidth * x, innerHeight * y)))
@@ -1642,28 +1642,66 @@ const DARK_DETECT = `(() => {
   const vals = pts.map(v => v ?? base)
   const avg = vals.reduce((a, b) => a + b, 0) / vals.length
   return { light: avg > 0.55 && !/^\\s*dark\\s*$/.test(meta), avg }
+  } finally { if (early) early.disabled = false }
 })()`
-const darkKeys = new Map()
+// The dark theme itself is built by Dark Reader (MIT): it reads the page's own colors and writes a real dark
+// version of them, so logos, photos and brand colors stay right. Lumen decides when: only on pages that are light.
+const darkKeys = new Map()      // webContents id -> true while Dark Reader is on for the current document
+const darkHosts = new Set()     // hosts known to be light, so the next page there starts dark with no white flash
+const darkBusy = new Set()
+let DR_SRC = null
+const drSrc = () => DR_SRC || (DR_SRC = fs.readFileSync(require.resolve('darkreader'), 'utf8'))
+const DARK_STYLES = {
+  soft: { brightness: 104, contrast: 90, sepia: 10, darkSchemeBackgroundColor: '#23262d', darkSchemeTextColor: '#dcdfe6' },
+  balanced: { brightness: 100, contrast: 96, sepia: 0, darkSchemeBackgroundColor: '#17191d', darkSchemeTextColor: '#e6e8ee' },
+  deep: { brightness: 100, contrast: 102, sepia: 0, darkSchemeBackgroundColor: '#000000', darkSchemeTextColor: '#f1f3f6' },
+}
+const darkTheme = () => DARK_STYLES[D.settings.get('darkStyle')] || DARK_STYLES.balanced
+const DR_WORLD = 999   // the preload's world, where the fetch helper for cross-site stylesheets lives
+const darkOn = () => `(() => { const R = globalThis.DarkReader; if (!R) return false; if (globalThis.__lumenFetch) R.setFetchMethod(globalThis.__lumenFetch); if (globalThis.__lumenDRFetch) { try { R.Plugins = { fetch: globalThis.__lumenDRFetch } } catch {} } R.enable(${JSON.stringify(darkTheme())}); const e = document.getElementById('lumen-dark-early'); if (e) e.remove(); return true })()`
+const DARK_OFF = `(() => { try { globalThis.DarkReader && globalThis.DarkReader.disable() } catch {} const e = document.getElementById('lumen-dark-early'); if (e) e.remove(); return true })()`
 const siteDarkOff = url => { const h = siteKey(url); return !!h && (D.settings.get('darkOffSites') || []).some(a => h === a || h.endsWith('.' + a)) }
+const darkWanted = url => !!D.settings.get('forceDark') && /^https?:/.test(url) && !siteDarkOff(url)
 async function darkPage(wc) {
   if (!wc || wc.isDestroyed()) return
-  const url = wc.getURL()
-  const want = D.settings.get('forceDark') && /^https?:/.test(url) && !siteDarkOff(url)
-  const had = darkKeys.get(wc.id)
-  if (!want) { if (had) { darkKeys.delete(wc.id); wc.removeInsertedCSS(had).catch(() => {}) } return }
-  if (had || darkBusy.has(wc.id)) return
+  const url = wc.getURL(), run = code => wc.executeJavaScriptInIsolatedWorld(DR_WORLD, [{ code }])
+  if (!darkWanted(url)) { if (darkKeys.delete(wc.id)) run(DARK_OFF).catch(() => {}); return }
+  if (darkKeys.has(wc.id) || darkBusy.has(wc.id)) return
   darkBusy.add(wc.id)
   try {
     const r = await wc.executeJavaScriptInIsolatedWorld(1020, [{ code: DARK_DETECT }])
-    if (!r || !r.light || darkKeys.has(wc.id) || wc.isDestroyed()) return
-    const key = await wc.insertCSS(DARK_CSS, { cssOrigin: 'user' })
-    // the setting or the site may have changed while this was running
-    if (!D.settings.get('forceDark') || siteDarkOff(wc.getURL())) wc.removeInsertedCSS(key).catch(() => {})
-    else darkKeys.set(wc.id, key)
-  } catch {} finally { darkBusy.delete(wc.id) }
+    if (wc.isDestroyed()) return
+    if (!r || !r.light) { run(DARK_OFF).catch(() => {}); return }
+    await run(`if (!globalThis.DarkReader) { ${drSrc()}\n }; true`)
+    const ok = await run(darkOn())
+    if (!ok) return
+    if (!darkWanted(wc.getURL())) { run(DARK_OFF).catch(() => {}); return }
+    darkKeys.set(wc.id, true); darkHosts.add(siteKey(url))
+  } catch (e) { log('dark mode failed', e.message) } finally { darkBusy.delete(wc.id) }
 }
-const darkBusy = new Set()
-function darkAll() { for (const w of windows) for (const t of w.tabs.values()) if (t.view && !t.view.webContents.isDestroyed()) { const wc = t.view.webContents, k = darkKeys.get(wc.id); if (k) { darkKeys.delete(wc.id); wc.removeInsertedCSS(k).catch(() => {}) } darkPage(wc) } }
+function darkAll() {
+  for (const w of windows) for (const t of w.tabs.values()) {
+    if (!t.view || t.view.webContents.isDestroyed()) continue
+    const wc = t.view.webContents
+    if (darkKeys.has(wc.id) && darkWanted(wc.getURL())) wc.executeJavaScriptInIsolatedWorld(DR_WORLD, [{ code: DARK_OFF }, { code: darkOn() }]).catch(() => {})
+    else darkPage(wc)
+  }
+}
+// stylesheets and images on other domains cannot be read from inside the page, so the browser fetches them for the theme engine
+ipcMain.handle('lumen:css', async (e, url) => {
+  try {
+    if (!/^https?:\/\//i.test(String(url))) return { ok: false }
+    const r = await e.sender.session.fetch(String(url), { credentials: 'omit' })
+    if (!r.ok) return { ok: false }
+    const buf = Buffer.from(await r.arrayBuffer())
+    if (buf.length > 6 * 1024 * 1024) return { ok: false }
+    return { ok: true, type: r.headers.get('content-type') || '', b64: buf.toString('base64') }
+  } catch { return { ok: false } }
+})
+ipcMain.on('lumen:dark-early', e => {
+  let u = ''; try { u = e.senderFrame.url } catch {}
+  e.returnValue = darkWanted(u) && darkHosts.has(siteKey(u)) ? darkTheme().darkSchemeBackgroundColor : ''
+})
 function toggleSiteDark(w, on) {
   const t = w.active(); if (!t || !t.view) return
   const h = siteKey(t.view.webContents.getURL()); if (!h) return

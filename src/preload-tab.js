@@ -9,6 +9,33 @@ if (location.protocol === 'lumen:') {
     onSettings: fn => { settingsListeners.add(fn) },
   })
 } else if (/^https?:$/.test(location.protocol)) {
+  // ------------------------------------------------------------ dark mode helpers (see darkPage in main.js)
+  try {
+    globalThis.__lumenFetch = async url => {
+      const r = await ipcRenderer.invoke('lumen:css', String(url))
+      if (!r || !r.ok) throw new Error('fetch failed')
+      const bin = atob(r.b64), bytes = new Uint8Array(bin.length)
+      for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i)
+      return new Response(bytes, { status: 200, headers: { 'content-type': r.type || 'text/css' } })
+    }
+    globalThis.__lumenDRFetch = async req => {
+      const r = await ipcRenderer.invoke('lumen:css', String(req.url))
+      if (!r || !r.ok) throw new Error('fetch failed')
+      if (req.responseType === 'data-url') return `data:${(r.type || req.mimeType || 'application/octet-stream').split(';')[0]};base64,${r.b64}`
+      const bin = atob(r.b64), bytes = new Uint8Array(bin.length)
+      for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i)
+      return new TextDecoder().decode(bytes)
+    }
+    if (process.isMainFrame !== false && window === top) {
+      const c = ipcRenderer.sendSync('lumen:dark-early')
+      if (c) {
+        // this site is known to be light: start dark right away so there is no white flash while it loads
+        const put = () => { if (!document.documentElement || document.getElementById('lumen-dark-early')) return !!document.documentElement; const st = document.createElement('style'); st.id = 'lumen-dark-early'; st.textContent = `html, body { background: ${c} !important; } body { opacity: 0 !important; }`; document.documentElement.appendChild(st); return true }
+        if (!put()) { const mo = new MutationObserver(() => { if (put()) mo.disconnect() }); mo.observe(document, { childList: true }) }
+        setTimeout(() => { const e = document.getElementById('lumen-dark-early'); if (e) e.remove() }, 4000)
+      }
+    }
+  } catch {}
   // ------------------------------------------------------------ Google sign-in: look like Firefox, which Google allows
   if (location.hostname === 'accounts.google.com') {
     try {

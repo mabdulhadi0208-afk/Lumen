@@ -2,11 +2,12 @@ const fs = require('fs'); const { app } = require('electron')
 fs.rmSync('/tmp/lumen-glow', { recursive: true, force: true }); app.setPath('userData', '/tmp/lumen-glow')
 const L = require('../src/main.js'); const wait = ms => new Promise(r => setTimeout(r, ms))
 app.whenReady().then(async () => {
+  if (process.env.DARK) require('electron').nativeTheme.themeSource = 'dark'
   await wait(4000); const w = L.windows[0], ex = s => w.ui.webContents.executeJavaScript(s)
   const errors = []; w.ui.webContents.on('console-message', e => { if (e.level === 'error' || e.level === 3) errors.push(e.message) })
   await ex(`document.querySelector('#intro .skip') && document.querySelector('#intro .skip').click()`); await wait(2500)
   await ex(`document.querySelector('#intro .go') && document.querySelector('#intro .go').click()`); await wait(1000)
-  L.D.addHistory('https://example.com/a', 'Example page one'); L.D.addHistory('https://github.com/x', 'GitHub project'); L.D.addBookmark('https://example.com', 'Example')
+  L.D.addHistory('https://example.com/a', 'Example page one'); L.D.addHistory('https://github.com/x', 'GitHub project'); L.D.addBookmark('https://example.com', 'Example'); L.D.addHistory('https://www.amazon.sa/dp/1', 'Wireless headphones'); L.D.addHistory('https://docs.google.com/x', 'Quarterly plan')
   const t = w.active()
   const page = async (url, name) => { t.view.webContents.loadURL(url); await wait(1800); fs.writeFileSync('/tmp/lumen-shots/glow-' + name + '.png', (await t.view.webContents.capturePage()).toPNG()) }
   for (const [u, n] of [['lumen://newtab', 'ntp'], ['lumen://settings/general', 'settings'], ['lumen://history', 'history'], ['lumen://settings/privacy', 'privacy'], ['lumen://downloads', 'downloads'], ['lumen://passwords', 'passwords'], ['lumen://error/?code=-105&desc=ERR_NAME_NOT_RESOLVED&url=https%3A%2F%2Fnope.example', 'error']]) await page(u, n)

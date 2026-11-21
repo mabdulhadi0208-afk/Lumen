@@ -1524,3 +1524,23 @@ $('#tg-list').addEventListener('click', e => {
   api.do('switchTab', id); closeTabGrid()
 })
 api.on('state', () => { if (tgOpen) { if (!S.tabs.length) closeTabGrid(); else tgRender() } })
+
+
+// ---------------------------------------------------------------- interface sounds (off by default, Settings, Appearance)
+let sfxCtx = null, sfxPrev = null
+function sfx(kind) {
+  if (!settings.uiSounds) return
+  try {
+    sfxCtx = sfxCtx || new AudioContext()
+    const t = sfxCtx.currentTime, o = sfxCtx.createOscillator(), g = sfxCtx.createGain()
+    const [f0, f1, dur, vol] = kind === 'open' ? [420, 760, 0.11, 0.05] : kind === 'close' ? [520, 260, 0.12, 0.045] : [640, 700, 0.05, 0.025]
+    o.type = 'sine'; o.frequency.setValueAtTime(f0, t); o.frequency.exponentialRampToValueAtTime(f1, t + dur)
+    g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(vol, t + 0.012); g.gain.exponentialRampToValueAtTime(0.0001, t + dur + 0.05)
+    o.connect(g).connect(sfxCtx.destination); o.start(t); o.stop(t + dur + 0.08)
+  } catch {}
+}
+api.on('state', s => {
+  const cur = { n: s.tabs.length, a: s.activeId }
+  if (sfxPrev) { if (cur.n > sfxPrev.n) sfx('open'); else if (cur.n < sfxPrev.n) sfx('close'); else if (cur.a !== sfxPrev.a) sfx('switch') }
+  sfxPrev = cur
+})

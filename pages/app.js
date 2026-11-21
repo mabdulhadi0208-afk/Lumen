@@ -52,12 +52,17 @@ async function newTab() {
   const custom = Array.isArray(S.ntpShortcuts)
   const sites = custom ? S.ntpShortcuts : (S.homeTiles ? (await L.invoke('topSites')).map(s => ({ url: s.url, title: s.host.replace(/^www\./, '') })) : [])
   const wp = S.ntpWallpaper || 'aurora'
+  // jump back in: the last few pages you were on, one per site
+  let recent = []
+  if (S.ntpRecent !== false) { try { const seen = new Set(); for (const h of await L.invoke('history', '')) { const k = hostOf(h.url); if (!k || seen.has(k) || !/^https?:/.test(h.url)) continue; seen.add(k); recent.push(h); if (recent.length === 4) break } } catch {} }
+  const ago = t => { const m = Math.round((Date.now() - t) / 60000); return m < 1 ? 'Just now' : m < 60 ? m + ' min ago' : m < 1440 ? Math.round(m / 60) + ' hr ago' : Math.round(m / 1440) + ' d ago' }
   const img = wp === 'custom' ? await L.invoke('wallpaper') : ''
   root.innerHTML = `<div class="ntp wp-${esc(wp)}" id="ntp">
     <div class="ntp-bg" style="${wp === 'custom' && img ? `background-image:url('${img}')` : WALLPAPERS[wp] && WALLPAPERS[wp].css ? `background:${WALLPAPERS[wp].css}` : ''}"></div>
     ${S.ntpClock !== false ? `<div class="clock rise" id="clock"></div><div class="date rise" style="animation-delay:.04s" id="date"></div>` : '<div style="height:40px"></div>'}
     <form class="searchbox rise" style="animation-delay:.08s" id="sf">${ICONS.search}<input id="q" autofocus placeholder="Search ${esc(ENGINES[S.searchEngine] || 'Google')} or type an address" spellcheck="false" autocomplete="off"></form>
     <div class="tiles" id="tiles">${sites.map((s, i) => `<div class="tile rise" style="animation-delay:${0.12 + i * 0.03}s" data-url="${esc(s.url)}" data-i="${i}"><div class="ti">${fav(s.url)}</div><span>${esc(s.title || hostOf(s.url))}</span><button class="tx" title="Remove">${ICONS.close}</button></div>`).join('')}${sites.length < 12 ? `<div class="tile add rise" style="animation-delay:${0.12 + sites.length * 0.03}s" id="addtile"><div class="ti">${ICONS.plus}</div><span>Add</span></div>` : ''}</div>
+    ${recent.length ? `<div class="recent rise" style="animation-delay:.3s"><div class="rc-h">Jump back in</div><div class="rc-list">${recent.map(h => `<a class="rc" href="${esc(h.url)}"><span class="rc-f">${fav(h.url)}</span><span class="rc-b"><b>${esc(h.title || hostOf(h.url))}</b><i>${esc(hostOf(h.url).replace(/^www\./, ''))}  ·  ${ago(h.t)}</i></span></a>`).join('')}</div></div>` : ''}
     <div class="foot"><a href="lumen://history">History</a><a href="lumen://bookmarks">Bookmarks</a><a href="lumen://passwords">Passwords</a><a href="lumen://settings">Settings</a></div>
     <button class="customize" id="cust">${ICONS.tune}<span>Customize</span></button>
   </div>
@@ -68,6 +73,7 @@ async function newTab() {
       <label class="wpb ${wp === 'custom' ? 'on' : ''}" title="Your own image"><i class="wpup">${ICONS.plus}</i><span>Your image</span><input type="file" id="wpfile" accept="image/*" hidden></label></div>
     <div class="dl">Shortcuts</div>
     <div class="seg" id="scmode"><button data-v="auto" class="${custom ? '' : 'on'}">Most visited</button><button data-v="mine" class="${custom ? 'on' : ''}">My shortcuts</button></div>
+    <label class="drow"><span>Show Jump back in</span><span class="switch"><input type="checkbox" id="rcsw" ${S.ntpRecent !== false ? 'checked' : ''}><span></span></span></label>
     <label class="drow"><span>Show clock</span><span class="switch"><input type="checkbox" id="clk" ${S.ntpClock !== false ? 'checked' : ''}><span></span></span></label>
   </aside>`
   const tick = () => {
@@ -82,6 +88,7 @@ async function newTab() {
   $('#sf').onsubmit = e => { e.preventDefault(); const v = $('#q').value.trim(); if (v) L.invoke('navigate', v) }
   setTimeout(() => $('#q').focus(), 30)
   const save = list => { S.ntpShortcuts = list; L.invoke('setSetting', 'ntpShortcuts', list).then(newTab) }
+  $('#rcsw').onchange = async e => { S.ntpRecent = e.target.checked; await L.invoke('setSetting', 'ntpRecent', e.target.checked); newTab() }
   $('#tiles').onclick = e => {
     if (e.target.closest('#addtile')) return addShortcutDialog(sc => save([...sites, sc]))
     const t = e.target.closest('.tile'); if (!t) return
@@ -157,6 +164,7 @@ async function general(m) {
     ${row('Open new tabs from links in the background', 'Links that open a new tab stay behind the page you are reading.', sw('linksBackground', !!S.linksBackground))}
     ${row('Ask before quitting', 'Asks before Cmd Q closes a window with several tabs.', sw('confirmQuit', S.confirmQuit !== false))}
     ${row('Dark mode for every website', 'Turns light sites dark and leaves sites that are already dark alone. Turn it off for one site from the lock icon in the address bar.', sw('forceDark', !!S.forceDark))}
+    ${row('Dark mode style', 'Soft is easier on the eyes, Deep is true black.', seg('darkStyle', [['soft', 'Soft'], ['balanced', 'Balanced'], ['deep', 'Deep']], S.darkStyle || 'balanced'))}
   </div>
   <div class="card"><h3>PERFORMANCE</h3>
     ${row('Sleep inactive tabs', 'Frees memory from tabs you have not looked at in a while. They wake up instantly when you click them.', seg('sleepTabsAfterMin', [[0, 'Never'], [15, '15 min'], [30, '30 min'], [60, '1 hour'], [240, '4 hours']], S.sleepTabsAfterMin))}
@@ -196,6 +204,7 @@ function appearance(m) {
   <div class="card">
     ${row('Tabs', 'Down the side in a sidebar, or across the top like Chrome.', seg('tabLayout', [['side', 'Sidebar'], ['top', 'Top']], S.tabLayout || 'top'))}
     ${row('Compact mode', 'Thinner bars and tabs, more room for the page.', sw('compact', !!S.compact))}
+    ${row('Interface sounds', 'Soft pops when you open, close and switch tabs.', sw('uiSounds', !!S.uiSounds))}
   </div>
   <div class="card"><h3>BROWSER THEME</h3>
     <div class="themes">${Object.entries(LUMEN_THEMES).map(([k, v]) => `<button class="thb ${k === (S.browserTheme || 'default') ? 'on' : ''}" data-th="${k}"><i style="background:${v.bg || 'linear-gradient(135deg, #e9ecf2, #d9dde6)'}"><b class="${v.dark ? 'dk' : ''}"></b></i><span>${v.name}</span></button>`).join('')}

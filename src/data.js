@@ -41,6 +41,8 @@ const settings = new Store('settings', {
   showSuggestions: true,
   homeTiles: true,
   archiveTabsAfterH: 0,       // 0 = never
+  parcelsAuto: null,          // null = not asked yet
+  whatsNewSeen: '',           // last version whose what's-new film was shown
 })
 
 const bookmarks = new Store('bookmarks', [])

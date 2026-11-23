@@ -546,6 +546,8 @@ const COMMANDS = [
   { t: 'Sort Tabs into Groups', s: () => `${K.opt} ${K.cmd} G`, k: ['group', 'sort tabs', 'organize', 'tidy'], i: 'tabs', run: () => api.do('autoGroup') },
   { t: 'Ungroup All Tabs', k: ['ungroup', 'remove groups'], i: 'tabs', run: () => api.do('ungroupAll') },
   { t: 'Reader Mode', s: () => `${K.sh} ${K.cmd} E`, k: ['reader', 'read'], i: 'book', run: () => api.do('reader') },
+  { t: 'Parcels', s: () => `${K.opt} ${K.cmd} P`, k: ['parcels', 'packages', 'orders', 'delivery', 'shipping', 'tracking'], i: 'box', run: () => api.do('openPage', 'parcels') },
+  { t: 'Track a Parcel', k: ['track', 'tracking number', 'parcel', 'package', 'ups', 'fedex', 'dhl', 'aramex', 'smsa'], i: 'box', run: () => api.do('openPage', 'parcels') },
   { t: 'Focus Mode', s: () => `${K.sh} ${K.cmd} F`, k: ['focus', 'zen', 'distraction', 'hide tabs', 'full'], i: 'sidebar', run: () => api.do('focusMode') },
   { t: 'Archive Idle Tabs Now', k: ['archive', 'tidy', 'clean up', 'idle', 'old tabs'], i: 'tabs', run: () => api.do('archiveNow').then(n => { if (!n) toast('Turn on tab archiving in Settings, General first') }) },
   { t: 'Archived Tabs', k: ['archive', 'archived'], i: 'clock', run: () => api.do('openPage', 'history#archive') },
@@ -877,6 +879,7 @@ async function openMainMenu() {
     ${item('print', 'printer', 'Print', `${K.cmd} P`)}
     <div class="sep"></div>
     ${item('tabgrid', 'layers', 'Tab overview', `${K.sh} ${K.cmd} O`)}
+    ${item('parcels', 'box', 'Parcels', `${K.opt} ${K.cmd} P`, info.parcels ? `<span class="mm-count">${info.parcels}</span>` : '')}
     ${item('ai', 'bolt', 'Lumen AI', `${K.sh} ${K.cmd} A`)}
     ${item('focus', 'sidebar', 'Focus mode', `${K.sh} ${K.cmd} F`)}
     ${item('autogroup', 'tabs', 'Sort tabs into groups', `${K.opt} ${K.cmd} G`)}
@@ -911,7 +914,7 @@ async function openMainMenu() {
       find: () => openFind(), translate: () => api.do('translate'), reader: () => api.do('reader'), pip: () => api.do('pip').then(ok => { if (ok === false) toast('No video on this page') }),
       split: () => toggleSplit(), screenshot: () => api.do('screenshot'), print: () => api.do('print'),
       layout: () => api.do('setSetting', 'tabLayout', TOP ? 'side' : 'top'), intro: () => playIntro(),
-      tabgrid: () => setTimeout(openTabGrid, 80), ai: () => openAI(), focus: () => api.do('focusMode'), autogroup: () => api.do('autoGroup'), ungroup: () => api.do('ungroupAll'),
+      tabgrid: () => setTimeout(openTabGrid, 80), ai: () => openAI(), focus: () => api.do('focusMode'), parcels: () => api.do('openPage', 'parcels'), autogroup: () => api.do('autoGroup'), ungroup: () => api.do('ungroupAll'),
     }[a]
     if (run) run()
   }
@@ -1060,6 +1063,7 @@ api.on('download-started', () => { const b = $('#btn-downloads'); b.classList.ad
 api.on('prompt', p => addPrompt(p))
 api.on('toast', m => toast(m))
 api.on('undo-close', m => toast('Closed ' + (m.title.length > 26 ? m.title.slice(0, 26) + '...' : m.title), { label: 'Undo', run: () => api.do('reopen') }))
+api.on('parcel-saved', p => toast('Order saved to Parcels', { label: 'View', run: () => api.do('openPage', 'parcels') }))
 api.on('focus-mode', on => document.body.classList.toggle('focusmode', !!on))
 api.on('hover-url', u => { const h = $('#hoverurl'); if (u) h.textContent = u; h.classList.toggle('show', !!u) })
 api.on('update', u => { updateState = u; $('#btn-update').classList.toggle('show', u.status === 'ready') })
@@ -1141,7 +1145,7 @@ addEventListener('keydown', e => {
 
 ;(async () => {
   const init = await api.do('ready')
-  engines = init.engines
+  engines = init.engines; VERSION = init.version || ''
   downloads = init.downloads || []
   updateState = init.update || {}
   $('#btn-update').classList.toggle('show', updateState.status === 'ready')
@@ -1151,10 +1155,17 @@ addEventListener('keydown', e => {
   renderDownloadsButton()
   queueLayout()
   if (!init.settings.introSeen) playIntro()
+  // after an update: the short what's-new film, once per version that has one
+  else if (Intro.WHATS_NEW && String(init.version).startsWith(Intro.WHATS_NEW.version + '.') && init.settings.whatsNewSeen !== init.version) playIntro({ whatsNew: init.version, askParcels: init.settings.parcelsAuto == null })
 })()
-function playIntro() {
+let VERSION = ''
+function playIntro(opts = {}) {
   api.do('overlay', true); api.do('intro', true)
-  Intro.play({ onDone: () => { api.do('intro', false); api.do('setSetting', 'introSeen', true); if (!overlayOpen && !peeking) api.do('overlay', false) } })
+  Intro.play({ ...opts, onDone: res => {
+    api.do('intro', false); api.do('setSetting', 'introSeen', true); api.do('setSetting', 'whatsNewSeen', VERSION)
+    if (res && typeof res.parcels === 'boolean') { api.do('setSetting', 'parcelsAuto', res.parcels); if (res.parcels) setTimeout(() => toast('Orders you place will be saved to Parcels'), 900) }
+    if (!overlayOpen && !peeking) api.do('overlay', false)
+  } })
 }
 
 

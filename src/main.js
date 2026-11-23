@@ -1,7 +1,7 @@
 // Lumen — main process.
 const {
   app, BaseWindow, WebContentsView, session, ipcMain, Menu, nativeTheme, protocol, dialog, shell,
-  clipboard, webContents, systemPreferences, net, desktopCapturer, nativeImage, powerMonitor, screen,
+  clipboard, webContents, systemPreferences, net, desktopCapturer, nativeImage, powerMonitor, screen, BrowserWindow,
 } = require('electron')
 const fs = require('fs')
 const path = require('path')
@@ -238,7 +238,7 @@ async function setupExtensions() {
 }
 
 // ---------------------------------------------------------------- internal pages (lumen://)
-const PAGES = ['newtab', 'settings', 'history', 'downloads', 'bookmarks', 'passwords', 'extensions', 'error', 'crashed', 'about']
+const PAGES = ['newtab', 'settings', 'history', 'downloads', 'bookmarks', 'passwords', 'extensions', 'error', 'crashed', 'about', 'parcels']
 async function serveInternal(req) {
   const u = new URL(req.url)
   let file
@@ -452,7 +452,7 @@ class BrowserWin {
     wc.on('page-favicon-updated', (e, icons) => { t.favicon = icons[icons.length - 1] || icons[0] || ''; upd() })
     wc.on('did-start-loading', () => { t.loading = true; t.crashed = false; upd() })
     wc.on('did-stop-loading', () => { t.loading = false; upd() })
-    wc.on('did-finish-load', () => { offerTranslate(this, t).catch(() => {}); darkPage(wc); paintHighlights(wc); readingTime(this, t) })
+    wc.on('did-finish-load', () => { offerTranslate(this, t).catch(() => {}); darkPage(wc); paintHighlights(wc); readingTime(this, t); parcelPage(this, t) })
     wc.on('did-navigate', () => darkKeys.delete(wc.id))
     wc.on('did-stop-loading', () => setTimeout(() => { if (this.activeId === t.id) snapTab(t) }, 350))
     wc.once('destroyed', () => darkKeys.delete(wc.id))
@@ -911,6 +911,7 @@ async function autoGroupWindow(w) {
 }
 const AI = require('./ai')
 const HL = require('./highlights')
+const Parcels = require('./parcels')
 
 // ---------------------------------------------------------------- translator
 async function translateTab(w, t, toLang) {
@@ -997,6 +998,70 @@ function recolorHighlight(wc, id, color) {
   D.highlights.replace(D.highlights.get().map(h => h.id === id ? { ...h, color } : h))
   HL.recolor(wc, id, color)
 }
+
+// ---------------------------------------------------------------- parcels
+const PARCEL_WORLD = 1023
+const sameHost = (a, b) => { try { return new URL(a).host.replace(/^www\./, '') === new URL(b).host.replace(/^www\./, '') } catch { return false } }
+const stripHash = u => String(u || '').split('#')[0]
+// every page load: is this an order page to save, or a page about a parcel we already track?
+async function parcelPage(w, t) {
+  const wc = t.view && t.view.webContents
+  if (!wc || wc.isDestroyed() || w.incognito) return
+  const url = wc.getURL(); if (!/^https?:/.test(url)) return
+  const known = Parcels.active().filter(p => stripHash(p.url) === stripHash(url) || (p.number && stripHash(Parcels.trackURL(p)) === stripHash(url)))
+  const auto = D.settings.get('parcelsAuto') === true
+  if (!known.length && !auto) return
+  try {
+    await new Promise(r => setTimeout(r, 1200))   // order pages often fill in their details just after loading
+    if (wc.isDestroyed()) return
+    if (known.length) {
+      const text = await wc.executeJavaScriptInIsolatedWorld(PARCEL_WORLD, [{ code: `(document.body && document.body.innerText || '').slice(0, 20000)` }])
+      const st = Parcels.statusOf(text)
+      for (const p of known) if (Parcels.setStatus(p, st) && st.status === 'delivered') w.send('toast', `${p.name || 'Your parcel'} was delivered`)
+    }
+    if (!auto) return
+    const r = await wc.executeJavaScriptInIsolatedWorld(PARCEL_WORLD, [{ code: Parcels.ORDER_SCAN }])
+    if (!r) return
+    const shop = new URL(url).host.replace(/^www\./, '')
+    const before = Parcels.list().length
+    const p = Parcels.add({ url, orderNo: r.orderNo, number: r.tracking[0] || '', shop, name: 'Order from ' + Parcels.shopName(shop), source: 'auto' })
+    for (const n of r.tracking.slice(1)) Parcels.add({ number: n, url, shop, name: p ? p.name : '', source: 'auto' })
+    if (p) { Parcels.setStatus(p, Parcels.statusOf(r.text) || { status: p.status, text: p.statusText }); if (Parcels.list().length > before) w.send('parcel-saved', { id: p.id, name: p.name }) }
+  } catch (e) { log('parcel scan failed', e.message) }
+}
+// background check: open each parcel's page out of sight, read the status, close it
+let parcelBusy = false
+async function checkParcels(force = false) {
+  if (parcelBusy || !mainSession) return
+  parcelBusy = true
+  try {
+    Parcels.prune()
+    const due = Parcels.active().filter(p => Parcels.openURL(p) && (force || Date.now() - (p.checked || 0) > 2 * 3600000))
+    for (const p of due.slice(0, 8)) {
+      let win
+      try {
+        win = new BrowserWindow({ show: false, width: 1100, height: 900, webPreferences: { session: mainSession, sandbox: true, contextIsolation: true } })
+        win.webContents.setAudioMuted(true)
+        await Promise.race([win.loadURL(Parcels.openURL(p)), new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), 25000))])
+        await new Promise(r => setTimeout(r, 3500))
+        const text = await win.webContents.executeJavaScript(`(document.body && document.body.innerText || '').slice(0, 20000)`)
+        const st = Parcels.statusOf(text)
+        const was = p.status
+        if (st) Parcels.setStatus(p, st); else Parcels.update(p.id, { checked: Date.now() })
+        if (st && st.status !== was) {
+          const msg = st.status === 'delivered' ? `${p.name || 'Your parcel'} was delivered` : `${p.name || 'Your parcel'}: ${st.text}`
+          for (const w of windows) w.send('toast', msg)
+          try { const { Notification } = require('electron'); if (Notification.isSupported()) new Notification({ title: 'Lumen Parcels', body: msg, silent: false }).show() } catch {}
+        }
+      } catch (e) { Parcels.update(p.id, { checked: Date.now() }); log('parcel check failed', p.id, e.message) }
+      finally {   // close gently so the page can finish what it was doing, then make sure it is gone
+        try { if (win && !win.isDestroyed()) { win.webContents.stop(); win.close(); const ww = win; setTimeout(() => { try { if (!ww.isDestroyed()) ww.destroy() } catch {} }, 3000) } } catch {}
+      }
+    }
+  } finally { parcelBusy = false }
+}
+setInterval(() => checkParcels().catch(() => {}), 30 * 60000)
+const parcelView = p => ({ ...p, carrierName: p.carrier ? Parcels.carrierName(p.carrier) : '', open: Parcels.openURL(p), track: p.number ? Parcels.trackURL(p) : '' })
 
 // ---------------------------------------------------------------- reading time
 // "6 min read" in the address bar for pages that are mostly an article
@@ -1306,11 +1371,13 @@ ipcMain.handle('ui', async (e, action, ...a) => {
       case 'muteOthers': { for (const x of w.tabs.values()) if (x.id !== w.activeId && x.view) { x.muted = true; x.view.webContents.setAudioMuted(true) } w.pushState(); return }
       case 'restart': app.relaunch(); app.quit(); return
       case 'readLater': return toggleReadLater(w, t)
+      case 'parcelsAuto': setSetting('parcelsAuto', !!a[0]); return true
+      case 'parcelsCount': return Parcels.active().length
       case 'focusMode': return setFocusMode(w, a[0] === undefined ? !w.focusMode : a[0])
       case 'archiveNow': return archiveIdleTabs()
       case 'readLaterOpen': { const url = String(a[0] || ''); if (!D.isReadLater(url)) return; D.removeReadLater(url); w.createTab(url, { active: true }); return }
       case 'readLaterRemove': return D.removeReadLater(String(a[0] || ''))
-      case 'menuInfo': return { readLater: readLaterList(6), readLaterCount: D.readLater.get().length, saved: !!t && D.isReadLater(t.view ? t.view.webContents.getURL() : t.url), sessions: (D.settings.get('savedSessions') || []).map(s => ({ id: s.id, name: s.name, count: s.tabs.length })), closed: closedTabs.slice(-5).reverse().map(c => ({ title: c.title || c.url, url: c.url })), version: app.getVersion(), update: Updater.getState(), zoom: t ? Math.round(Math.pow(1.2, t.zoom || 0) * 100) : 100, incognito: w.incognito, tabLayout: D.settings.get('tabLayout'), fullscreen: w.win.isFullScreen(), passkeys: Passkeys.list().length, passwords: D.listPasswords().length }
+      case 'menuInfo': return { parcels: Parcels.active().length, readLater: readLaterList(6), readLaterCount: D.readLater.get().length, saved: !!t && D.isReadLater(t.view ? t.view.webContents.getURL() : t.url), sessions: (D.settings.get('savedSessions') || []).map(s => ({ id: s.id, name: s.name, count: s.tabs.length })), closed: closedTabs.slice(-5).reverse().map(c => ({ title: c.title || c.url, url: c.url })), version: app.getVersion(), update: Updater.getState(), zoom: t ? Math.round(Math.pow(1.2, t.zoom || 0) * 100) : 100, incognito: w.incognito, tabLayout: D.settings.get('tabLayout'), fullscreen: w.win.isFullScreen(), passkeys: Passkeys.list().length, passwords: D.listPasswords().length }
       case 'zoom': return t && w.zoom(t.id, a[0])
       case 'openPage': return w.createTab('lumen://' + a[0])
       case 'reader': return wc && readerMode(wc)
@@ -1437,7 +1504,7 @@ function downloadAction(id, what) {
   broadcast('downloads', listDownloads())
 }
 
-const PUBLIC_SETTINGS = ['archiveTabsAfterH', 'bookmarksBar', 'ntpStats', 'ntpRecent', 'ntpReadLater', 'darkStyle', 'uiSounds', 'darkOffSites', 'translateFlipDir', 'searchShortcuts', 'rememberZoom', 'soundActiveOnly', 'linksBackground', 'confirmQuit', 'wheelTabs', 'adblockAllow', 'aiModel', 'aiTabGroups', 'browserTheme', 'themeCustom', 'compact', 'appIcon', 'cleanLinks', 'swipeNav', 'videoSpeedKeys', 'hideCookieBanners', 'blockNotifications', 'forceDark', 'translateTo', 'offerTranslate', 'autoPip', 'ntpShortcuts', 'ntpWallpaper', 'ntpClock', 'searchEngine', 'motion', 'theme', 'accent', 'adblock', 'blockTrackers', 'httpsOnly', 'sleepTabsAfterMin', 'restoreSession', 'sidebarCollapsed', 'sidebarWidth', 'tabLayout', 'introSeen', 'autoUpdate', 'askWhereToSave', 'doNotTrack', 'showSuggestions', 'homeTiles']
+const PUBLIC_SETTINGS = ['ntpParcels', 'parcelsAuto', 'whatsNewSeen', 'archiveTabsAfterH', 'bookmarksBar', 'ntpStats', 'ntpRecent', 'ntpReadLater', 'darkStyle', 'uiSounds', 'darkOffSites', 'translateFlipDir', 'searchShortcuts', 'rememberZoom', 'soundActiveOnly', 'linksBackground', 'confirmQuit', 'wheelTabs', 'adblockAllow', 'aiModel', 'aiTabGroups', 'browserTheme', 'themeCustom', 'compact', 'appIcon', 'cleanLinks', 'swipeNav', 'videoSpeedKeys', 'hideCookieBanners', 'blockNotifications', 'forceDark', 'translateTo', 'offerTranslate', 'autoPip', 'ntpShortcuts', 'ntpWallpaper', 'ntpClock', 'searchEngine', 'motion', 'theme', 'accent', 'adblock', 'blockTrackers', 'httpsOnly', 'sleepTabsAfterMin', 'restoreSession', 'sidebarCollapsed', 'sidebarWidth', 'tabLayout', 'introSeen', 'autoUpdate', 'askWhereToSave', 'doNotTrack', 'showSuggestions', 'homeTiles']
 function publicSettings() { const s = D.settings.get(); return Object.fromEntries(PUBLIC_SETTINGS.map(k => [k, s[k]])) }
 function setSetting(k, v) {
   if (!PUBLIC_SETTINGS.includes(k)) return
@@ -1573,6 +1640,15 @@ ipcMain.handle('lumen', async (e, action, ...a) => {
       case 'history': return D.listHistory(a[0] || '', 500)
       case 'readLater': return readLaterList(a[0] || 300)
       case 'archive': return D.archive.get().slice(0, 500)
+      case 'parcels': Parcels.prune(); return Parcels.list().map(parcelView)
+      case 'parcelCarriers': return Object.entries(Parcels.CARRIERS).map(([k, c]) => ({ id: k, name: c.name }))
+      case 'parcelDetect': return Parcels.detect(a[0])
+      case 'parcelAdd': { const o = a[0] || {}; const url = /^https?:\/\//i.test(String(o.url || '')) ? String(o.url) : ''; const p = Parcels.add({ number: o.number, name: o.name, carrier: o.carrier, url, source: 'manual' }); if (p) setTimeout(() => checkParcels(true).catch(() => {}), 500); return p ? parcelView(p) : null }
+      case 'parcelRemove': return Parcels.remove(String(a[0]))
+      case 'parcelDelivered': { const p = Parcels.list().find(x => x.id === a[0]); if (p) Parcels.setStatus(p, a[1] === false ? { status: 'placed', text: 'Waiting for news' } : { status: 'delivered', text: 'Delivered' }); return true }
+      case 'parcelRename': return Parcels.update(String(a[0]), { name: String(a[1] || '').slice(0, 80) })
+      case 'parcelOpen': { const p = Parcels.list().find(x => x.id === a[0]); const u = p && Parcels.openURL(p); if (u) { if (a[1] && w) w.createTab(u, { active: false }); else e.sender.loadURL(u) } return }
+      case 'parcelRefresh': return checkParcels(true).then(() => Parcels.list().map(parcelView))
       case 'highlights': return D.highlights.get().map(h => ({ id: h.id, url: h.url, title: h.title, text: h.text, color: h.color, t: h.t }))
       case 'highlightRemove': return removeHighlight(String(a[0] || ''))
       case 'archiveRemove': return a[0] ? D.removeArchive(String(a[0])) : D.archive.replace([])
@@ -1756,6 +1832,7 @@ function buildMenu() {
     ] },
     { label: 'Bookmarks', submenu: [
       { label: 'Focus Mode', accelerator: 'CmdOrCtrl+Shift+F', click: focused(w => setFocusMode(w, !w.focusMode)) },
+      { label: 'Parcels', accelerator: 'CmdOrCtrl+Alt+P', click: focused(w => w.createTab('lumen://parcels')) },
       { label: 'Save to Read Later', accelerator: 'CmdOrCtrl+Shift+D', click: focused((w, t) => toggleReadLater(w, t)) },
       { label: 'Bookmark This Page', accelerator: 'CmdOrCtrl+D', click: focused((w, t) => { if (t) { if (D.isBookmarked(t.url)) D.removeBookmark(t.url); else D.addBookmark(t.url, t.title); w.pushState(); w.send('toast', D.isBookmarked(t.url) ? 'Bookmarked' : 'Bookmark removed') } }) },
       { label: 'Show All Bookmarks', accelerator: 'CmdOrCtrl+Alt+B', click: focused(w => w.createTab('lumen://bookmarks')) },
@@ -1970,7 +2047,7 @@ app.on('second-instance', (e, argv) => {
 let quitting = false
 function flushAll() {
   saveSessionNow()
-  for (const s of [D.settings, D.bookmarks, D.passwords, D.permissions, D.session, D.readLater, D.archive, D.highlights, Passkeys.store]) s.flush()
+  for (const s of [D.settings, D.bookmarks, D.passwords, D.permissions, D.session, D.readLater, D.archive, D.highlights, Parcels.store, Passkeys.store]) s.flush()
   D.historyStore.replace([...D.historyMap.values()].sort((a, b) => b.t - a.t)); D.historyStore.flush()
 }
 app.on('before-quit', () => {
@@ -2034,4 +2111,4 @@ app.whenReady().then(async () => {
   powerMonitor.on('resume', () => Sync.syncNow().catch(() => {}))
 })
 
-module.exports = { windows, createWindow, D, allowSites, toggleSiteAdblock, __hl_add: addHighlight, __hl_recolor: recolorHighlight, __addToNTP: addToNTP }
+module.exports = { windows, createWindow, D, allowSites, toggleSiteAdblock, __hl_add: addHighlight, __hl_recolor: recolorHighlight, __addToNTP: addToNTP, __checkParcels: checkParcels }

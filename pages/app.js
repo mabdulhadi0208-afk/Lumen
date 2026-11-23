@@ -61,6 +61,7 @@ async function newTab() {
   // jump back in: the last few pages you were on, one per site
   let recent = []
   if (S.ntpRecent !== false) { try { const seen = new Set(); for (const h of await L.invoke('history', '')) { const k = hostOf(h.url); if (!k || seen.has(k) || !/^https?:/.test(h.url)) continue; seen.add(k); recent.push(h); if (recent.length === 4) break } } catch {} }
+  let parcels = []; if (S.ntpParcels !== false) { try { parcels = ((await L.invoke('parcels')) || []).filter(p => p.status !== 'delivered' || Date.now() - p.delivered < 864e5).slice(0, 4) } catch {} }
   let later = []; if (S.ntpReadLater !== false) { try { later = (await L.invoke('readLater', 4)) || [] } catch {} }
   let stats = null; if (S.ntpStats !== false) { try { stats = await L.invoke('stats') } catch {} }
   const ago = t => { const m = Math.round((Date.now() - t) / 60000); return m < 1 ? 'Just now' : m < 60 ? m + ' min ago' : m < 1440 ? Math.round(m / 60) + ' hr ago' : Math.round(m / 1440) + ' d ago' }
@@ -72,6 +73,7 @@ async function newTab() {
     <div class="tiles" id="tiles">${sites.map((s, i) => `<div class="tile rise" style="animation-delay:${0.12 + i * 0.03}s" data-url="${esc(s.url)}" data-i="${i}"><div class="ti">${fav(s.url)}</div><span>${esc(s.title || hostOf(s.url))}</span><button class="tx" title="Remove">${ICONS.close}</button></div>`).join('')}${sites.length < 12 ? `<div class="tile add rise" style="animation-delay:${0.12 + sites.length * 0.03}s" id="addtile"><div class="ti">${ICONS.plus}</div><span>Add</span></div>` : ''}</div>
     ${stats && stats.blocked > 0 ? `<div class="nstats rise" style="animation-delay:.26s"><span class="ns-i">${ICONS.shield}</span><b>${stats.blocked.toLocaleString('en-US')}</b> ads and trackers blocked${stats.blocked > 400 ? `<i></i>about <b>${stats.blocked * 0.05 < 90 ? Math.round(stats.blocked * 0.05) + ' sec' : Math.round(stats.blocked * 0.05 / 60) + ' min'}</b> saved` : ''}</div>` : ''}
     ${recent.length ? `<div class="recent rise" style="animation-delay:.3s"><div class="rc-h">Jump back in</div><div class="rc-list">${recent.map(h => `<a class="rc" href="${esc(h.url)}"><span class="rc-f">${fav(h.url)}</span><span class="rc-b"><b>${esc(h.title || hostOf(h.url))}</b><i>${esc(hostOf(h.url).replace(/^www\./, ''))}  ·  ${ago(h.t)}</i></span></a>`).join('')}</div></div>` : ''}
+    ${S.ntpParcels !== false ? parcelsRow(parcels) : ''}
     ${later.length ? `<div class="recent later rise" style="animation-delay:.34s"><div class="rc-h">Read later</div><div class="rc-list" id="rl">${later.map(h => `<a class="rc" href="${esc(h.url)}" data-rl="${esc(h.url)}"><span class="rc-f">${fav(h.url)}</span><span class="rc-b"><b>${esc(h.title || hostOf(h.url))}</b><i>${esc(hostOf(h.url).replace(/^www\./, ''))}  ·  saved ${ago(h.t).toLowerCase()}</i></span><button class="tx rl-x" title="Remove">${ICONS.close}</button></a>`).join('')}</div></div>` : ''}
     <div class="foot"><a href="lumen://history">History</a><a href="lumen://bookmarks">Bookmarks</a><a href="lumen://passwords">Passwords</a><a href="lumen://settings">Settings</a></div>
     <button class="customize" id="cust">${ICONS.tune}<span>Customize</span></button>
@@ -84,6 +86,7 @@ async function newTab() {
     <div class="dl">Shortcuts</div>
     <div class="seg" id="scmode"><button data-v="auto" class="${custom ? '' : 'on'}">Most visited</button><button data-v="mine" class="${custom ? 'on' : ''}">My shortcuts</button></div>
     <label class="drow"><span>Show Jump back in</span><span class="switch"><input type="checkbox" id="rcsw" ${S.ntpRecent !== false ? 'checked' : ''}><span></span></span></label>
+    <label class="drow"><span>Show Parcels</span><span class="switch"><input type="checkbox" id="pcsw" ${S.ntpParcels !== false ? 'checked' : ''}><span></span></span></label>
     <label class="drow"><span>Show Read later</span><span class="switch"><input type="checkbox" id="rlsw" ${S.ntpReadLater !== false ? 'checked' : ''}><span></span></span></label>
     <label class="drow"><span>Show clock</span><span class="switch"><input type="checkbox" id="clk" ${S.ntpClock !== false ? 'checked' : ''}><span></span></span></label>
   </aside>`
@@ -99,6 +102,13 @@ async function newTab() {
   $('#sf').onsubmit = e => { e.preventDefault(); const v = $('#q').value.trim(); if (v) L.invoke('navigate', v) }
   setTimeout(() => $('#q').focus(), 30)
   const save = list => { S.ntpShortcuts = list; L.invoke('setSetting', 'ntpShortcuts', list).then(newTab) }
+  $('#pcsw').onchange = async e => { S.ntpParcels = e.target.checked; await L.invoke('setSetting', 'ntpParcels', e.target.checked); newTab().then(() => $('#drawer').classList.add('open')) }
+  if ($('#pc')) $('#pc').onclick = e => {
+    if (e.target.closest('[data-pcadd]')) { e.preventDefault(); return addParcelDialog(() => newTab()) }
+    if (e.target.closest('[data-pcauto]')) { e.preventDefault(); L.invoke('setSetting', 'parcelsAuto', true).then(() => { S.parcelsAuto = true; flash('Orders you place will be saved here'); newTab() }); return }
+    const a = e.target.closest('[data-pid]'); if (!a) return
+    e.preventDefault(); L.invoke('parcelOpen', a.dataset.pid, e.metaKey || e.ctrlKey)
+  }
   if ($('#rl')) $('#rl').onclick = async e => {
     const a = e.target.closest('[data-rl]'); if (!a) return
     e.preventDefault()
@@ -135,10 +145,10 @@ const SECTIONS = [
   ['general', 'General', 'gear'], ['appearance', 'Appearance', 'moon'], ['ai', 'Lumen AI', 'bolt'], ['privacy', 'Privacy and security', 'shield'],
   ['passwords', 'Passwords', 'key'], ['sync', 'Sync', 'reload'], ['import', 'Move from Chrome', 'arrowRight'],
   ['extensions', 'Extensions', 'puzzle'], ['history', 'History', 'clock'], ['bookmarks', 'Bookmarks', 'star'],
-  ['downloads', 'Downloads', 'download'], ['about', 'About Lumen', 'bolt'],
+  ['parcels', 'Parcels', 'box'], ['downloads', 'Downloads', 'download'], ['about', 'About Lumen', 'bolt'],
 ]
 function shell(active) {
-  root.innerHTML = `<div class="shell"><nav class="nav"><h1>Lumen</h1><div class="navsearch">${ICONS.search}<input type="search" id="setq" placeholder="Search settings" spellcheck="false" autocomplete="off"></div>${SECTIONS.map(([id, label, icon]) => `<a href="${id === 'history' || id === 'bookmarks' || id === 'downloads' || id === 'passwords' || id === 'extensions' ? 'lumen://' + id : 'lumen://settings/' + id}" class="${id === active ? 'on' : ''}">${ICONS[icon]}${label}</a>`).join('')}</nav><main class="main rise" id="main"></main></div>`
+  root.innerHTML = `<div class="shell"><nav class="nav"><h1>Lumen</h1><div class="navsearch">${ICONS.search}<input type="search" id="setq" placeholder="Search settings" spellcheck="false" autocomplete="off"></div>${SECTIONS.map(([id, label, icon]) => `<a href="${id === 'history' || id === 'bookmarks' || id === 'downloads' || id === 'passwords' || id === 'extensions' || id === 'parcels' ? 'lumen://' + id : 'lumen://settings/' + id}" class="${id === active ? 'on' : ''}">${ICONS[icon]}${label}</a>`).join('')}</nav><main class="main rise" id="main"></main></div>`
   document.title = active === 'general' ? 'Settings' : (SECTIONS.find(s => s[0] === active) || [, 'Settings'])[1]
   bindSettingsSearch(active)
   // arriving from a search result: scroll to that setting and make it glow
@@ -223,6 +233,9 @@ async function general(m) {
   </div>
   <div class="card"><h3>PERFORMANCE</h3>
     ${row('Sleep inactive tabs', 'Frees memory from tabs you have not looked at in a while. They wake up instantly when you click them.', seg('sleepTabsAfterMin', [[0, 'Never'], [15, '15 min'], [30, '30 min'], [60, '1 hour'], [240, '4 hours']], S.sleepTabsAfterMin))}
+  </div>
+  <div class="card"><h3>PARCELS</h3>
+    ${row('Save orders to Parcels automatically', 'When you place an order, the order page is saved so you can get back to it in one click, and it stays until it is delivered.', sw('parcelsAuto', S.parcelsAuto === true))}
   </div>
   <div class="card"><h3>TIDY TABS</h3>
     ${row('Archive tabs you have not used', 'Tabs you have not opened in this long close themselves. Pinned tabs and tabs playing sound stay. Find them again in History, Archived tabs.', seg('archiveTabsAfterH', [[0, 'Never'], [12, '12 hours'], [24, '1 day'], [168, '1 week']], S.archiveTabsAfterH || 0))}
@@ -474,6 +487,74 @@ async function historyPage(m) {
   draw('')
 }
 
+// ======================================================================= parcels
+const PSTAT = { placed: ['Order placed', 'st-placed'], transit: ['On the way', 'st-transit'], out: ['Out for delivery', 'st-out'], delivered: ['Delivered', 'st-done'] }
+const PSTEP = { placed: 0, transit: 1, out: 2, delivered: 3 }
+const pAgo = t => { if (!t) return 'not checked yet'; const m = Math.round((Date.now() - t) / 60000); return m < 1 ? 'just now' : m < 60 ? m + ' min ago' : m < 1440 ? Math.round(m / 60) + ' hr ago' : Math.round(m / 1440) + ' d ago' }
+function parcelsRow(list) {
+  const auto = S.parcelsAuto === true
+  return `<div class="recent parcels rise" style="animation-delay:.32s"><div class="rc-h">Parcels</div><div class="pc-list" id="pc">
+    ${list.map(p => `<a class="pcard ${PSTAT[p.status] ? PSTAT[p.status][1] : ''}" href="${esc(p.open)}" data-pid="${esc(p.id)}">
+      <span class="pc-ico">${ICONS.box}</span><span class="pc-b"><b>${esc(p.name || p.carrierName || 'Parcel')}</b><i>${esc(p.statusText || (PSTAT[p.status] || PSTAT.placed)[0])}${p.carrierName ? '  ·  ' + esc(p.carrierName) : p.shop ? '  ·  ' + esc(p.shop) : ''}</i>
+      <span class="pc-steps">${[0, 1, 2, 3].map(i => `<s class="${i <= (PSTEP[p.status] || 0) ? 'on' : ''}"></s>`).join('')}</span></span></a>`).join('')}
+    <a class="pcard add" href="#" data-pcadd><span class="pc-ico">${ICONS.plus}</span><span class="pc-b"><b>Track a parcel</b><i>${auto ? 'Orders you place show up here' : 'Paste a tracking number'}</i></span></a>
+    ${!auto && S.parcelsAuto !== false && !list.length ? `<a class="pcard auto" href="#" data-pcauto><span class="pc-ico">${ICONS.bolt}</span><span class="pc-b"><b>Save my orders</b><i>Lumen remembers orders you place</i></span></a>` : ''}
+  </div></div>`
+}
+async function addParcelDialog(done) {
+  const carriers = await L.invoke('parcelCarriers')
+  const d = document.createElement('div'); d.className = 'dialog-wrap'
+  d.innerHTML = `<form class="dialog pdialog"><div class="pd-ico">${ICONS.box}</div><h3>Track a parcel</h3><p class="sub">It stays here until it is delivered. Lumen checks on it for you.</p>
+    <label>Tracking number<input id="pn" required placeholder="1Z999AA10123456784" spellcheck="false" autocomplete="off"></label>
+    <div class="pd-row"><label>Name<input id="pname" placeholder="New headphones" autocomplete="off"></label>
+    <label>Carrier<select id="pcar"><option value="">Detect for me</option>${carriers.filter(c => c.id !== 'other').map(c => `<option value="${c.id}">${esc(c.name)}</option>`).join('')}<option value="other">Other (17track)</option></select></label></div>
+    <label>Order page <span class="opt">optional, opens when you click the parcel</span><input id="purl" placeholder="https://..." autocomplete="off"></label>
+    <div class="pd-detect" id="pdet"></div>
+    <div class="actions"><button type="button" class="btn" id="pcancel">Cancel</button><button class="btn primary">Start tracking</button></div></form>`
+  document.body.appendChild(d)
+  const f = d.querySelector('form'); d.querySelector('#pn').focus()
+  d.querySelector('#pn').oninput = async e => { const v = e.target.value.trim(); if (v.length < 8) { $('#pdet').textContent = ''; return } const c = await L.invoke('parcelDetect', v); const n = (carriers.find(x => x.id === c) || {}).name; $('#pdet').textContent = c === 'other' ? 'Carrier not recognized, Lumen will look it up on 17track.' : 'Looks like ' + n + '.' }
+  d.querySelector('#pcancel').onclick = () => d.remove()
+  d.onclick = e => { if (e.target === d) d.remove() }
+  f.onsubmit = async e => {
+    e.preventDefault()
+    const p = await L.invoke('parcelAdd', { number: $('#pn').value, name: $('#pname').value.trim(), carrier: $('#pcar').value, url: $('#purl').value.trim() })
+    d.remove(); if (p) { flash('Tracking ' + (p.name || p.number)); done && done(p) }
+  }
+}
+async function parcelsPage(m) {
+  document.title = 'Parcels'
+  let list = await L.invoke('parcels')
+  const draw = () => {
+    const act = list.filter(p => p.status !== 'delivered'), done = list.filter(p => p.status === 'delivered')
+    const row = p => `<div class="row prow ${PSTAT[p.status] ? PSTAT[p.status][1] : ''}" data-id="${esc(p.id)}"><span class="pc-ico">${ICONS.box}</span>
+      <div class="grow"><div class="t">${esc(p.name || p.carrierName || 'Parcel')}</div><div class="d">${esc(p.statusText || '')}${p.number ? '  ·  ' + esc(p.carrierName) + ' ' + esc(p.number) : ''}${p.orderNo ? '  ·  Order ' + esc(p.orderNo) : ''}${p.shop ? '  ·  ' + esc(p.shop) : ''}  ·  checked ${pAgo(p.checked)}</div>
+      <div class="psteps">${['Placed', 'On the way', 'Out for delivery', 'Delivered'].map((l, i) => `<div class="ps ${i <= (PSTEP[p.status] || 0) ? 'on' : ''}"><s></s><em>${l}</em></div>`).join('')}</div></div>
+      <button class="btn sm primary" data-act="open">${p.url ? 'Open order' : 'Track'}</button>
+      ${p.url && p.track ? '<button class="btn sm" data-act="track">Carrier page</button>' : ''}
+      <button class="btn sm" data-act="${p.status === 'delivered' ? 'undeliver' : 'deliver'}">${p.status === 'delivered' ? 'Not delivered' : 'Delivered'}</button>
+      <button class="ib" data-act="del" title="Remove">${ICONS.close}</button></div>`
+    m.innerHTML = `<h2>Parcels</h2><p class="lead">Everything on its way to you. Parcels stay here until they are delivered.</p>
+      <div class="toolbar"><button class="btn primary" id="padd">${ICONS.plus} Track a parcel</button><button class="btn" id="pref">Check all now</button><span class="grow"></span>
+      <label class="pauto">Save orders automatically ${'<label class="switch"><input type="checkbox" id="pautosw" ' + (S.parcelsAuto === true ? 'checked' : '') + '><span></span></label>'}</label></div>
+      ${act.length ? `<div class="daylabel">On the way</div><div class="card list">${act.map(row).join('')}</div>` : `<div class="empty big"><div class="pc-hero">${ICONS.box}</div>Nothing on the way. ${S.parcelsAuto === true ? 'Orders you place will show up here.' : 'Add a tracking number, or turn on saving orders automatically.'}</div>`}
+      ${done.length ? `<div class="daylabel">Delivered</div><div class="card list">${done.map(row).join('')}</div>` : ''}`
+    $('#padd').onclick = () => addParcelDialog(async () => { list = await L.invoke('parcels'); draw() })
+    $('#pref').onclick = async () => { $('#pref').disabled = true; $('#pref').textContent = 'Checking...'; list = await L.invoke('parcelRefresh'); draw(); flash('All parcels checked') }
+    $('#pautosw').onchange = e => { S.parcelsAuto = e.target.checked; L.invoke('setSetting', 'parcelsAuto', e.target.checked) }
+  }
+  m.onclick = async e => {
+    const b = e.target.closest('[data-act]'), r = e.target.closest('[data-id]'); if (!b || !r) return
+    const id = r.dataset.id, a = b.dataset.act, p = list.find(x => x.id === id)
+    if (a === 'open') return L.invoke('parcelOpen', id, e.metaKey || e.ctrlKey)
+    if (a === 'track') return L.invoke('navigate', p.track)
+    if (a === 'del') { await L.invoke('parcelRemove', id); flash('Parcel removed') }
+    if (a === 'deliver' || a === 'undeliver') await L.invoke('parcelDelivered', id, a === 'deliver')
+    list = await L.invoke('parcels'); draw()
+  }
+  draw()
+}
+
 async function highlightsPage(m) {
   let list = await L.invoke('highlights')
   m.innerHTML = `<h2>Highlights</h2><p class="lead">Select text on any page, right-click and pick Highlight. It stays there every time you come back.</p>
@@ -606,6 +687,7 @@ function errorPage() {
   L.onSettings(s => { S = s; applyLook(s) })
   const routes = {
     newtab: newTab, error: errorPage,
+    parcels: () => parcelsPage(shell('parcels')),
     history: () => historyPage(shell('history')), bookmarks: () => bookmarksPage(shell('bookmarks')), downloads: () => downloadsPage(shell('downloads')),
     passwords: () => passwords(shell('passwords')), extensions: () => extensionsPage(shell('extensions')), about: () => about(shell('about')),
     settings: () => {

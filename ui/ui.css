@@ -837,3 +837,7 @@ body.toplayout #toast.act { margin-left: -150px; min-width: 300px; justify-conte
 .toast-btn { flex: none; border: 0; border-radius: 999px; padding: 5px 12px; font: inherit; font-weight: 650; color: #fff; background: var(--accent); cursor: default; box-shadow: 0 4px 12px color-mix(in srgb, var(--accent) 40%, transparent); transition: filter .2s; }
 .toast-btn:hover { filter: brightness(1.08); }
 .toast-btn:active { filter: brightness(.94); }
+
+/* reading time pill in the address bar */
+.readpill { display: none; font-size: 10.5px; font-weight: 650; color: var(--fg2); background: var(--hover); border-radius: 6px; padding: 2px 7px; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.readpill.show { display: inline-block; }

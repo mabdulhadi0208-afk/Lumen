@@ -50,6 +50,7 @@ const session = new Store('session', { windows: [] })
 const historyStore = new Store('history', [])
 const readLater = new Store('readlater', [])
 const archive = new Store('archive', [])
+const highlights = new Store('highlights', [])   // { id, url, title, text, prefix, suffix, color, t }
 // tabs that closed themselves after sitting unused; newest first
 function addArchive(url, title, t) { archive.replace([{ url, title: String(title || url).slice(0, 300), t: t || Date.now(), at: Date.now() }, ...archive.get().filter(x => x.url !== url)].slice(0, 500)) }
 function removeArchive(url) { archive.replace(archive.get().filter(x => x.url !== url)) }
@@ -183,5 +184,5 @@ module.exports = {
   liveBookmarks, addBookmark, removeBookmark, editBookmark, isBookmarked,
   savePassword, hasPassword, credentialsFor, listPasswords, revealPassword, deletePassword, updatePassword,
   enc, dec, historyMap, flushHistory,
-  readLater, isReadLater, addReadLater, removeReadLater, archive, addArchive, removeArchive,
+  readLater, isReadLater, addReadLater, removeReadLater, archive, addArchive, removeArchive, highlights,
 }

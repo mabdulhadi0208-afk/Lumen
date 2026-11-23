@@ -445,8 +445,9 @@ function dayLabel(t) {
 }
 async function historyPage(m) {
   if (location.hash === '#archive') return archivePage(m)
-  m.innerHTML = `<h2>History</h2><p class="lead">Everything you have visited, searchable.</p><div class="seg big" id="hseg"><button class="on">History</button><button data-go="archive">Archived tabs</button></div><div class="toolbar"><input type="search" id="q" placeholder="Search history"><button class="btn" id="clr">Clear browsing data</button></div><div id="out"></div>`
-  $('#hseg').onclick = e => { if (e.target.closest('[data-go]')) { location.hash = 'archive'; historyPage(m) } }
+  if (location.hash === '#highlights') return highlightsPage(m)
+  m.innerHTML = `<h2>History</h2><p class="lead">Everything you have visited, searchable.</p><div class="seg big" id="hseg"><button class="on">History</button><button data-go="highlights">Highlights</button><button data-go="archive">Archived tabs</button></div><div class="toolbar"><input type="search" id="q" placeholder="Search history"><button class="btn" id="clr">Clear browsing data</button></div><div id="out"></div>`
+  $('#hseg').onclick = e => { const b = e.target.closest('[data-go]'); if (b) { location.hash = b.dataset.go; historyPage(m) } }
   const draw = async q => {
     const list = await L.invoke('history', q)
     if (!list.length) { $('#out').innerHTML = `<div class="empty">${q ? 'No matches' : 'Nothing here yet'}</div>`; return }
@@ -473,13 +474,38 @@ async function historyPage(m) {
   draw('')
 }
 
+async function highlightsPage(m) {
+  let list = await L.invoke('highlights')
+  m.innerHTML = `<h2>Highlights</h2><p class="lead">Select text on any page, right-click and pick Highlight. It stays there every time you come back.</p>
+    <div class="seg big" id="hseg"><button data-go="history">History</button><button class="on">Highlights</button><button data-go="archive">Archived tabs</button></div>
+    <div class="toolbar"><input type="search" id="q" placeholder="Search highlights"></div><div id="out"></div>`
+  $('#hseg').onclick = e => { const b = e.target.closest('[data-go]'); if (!b) return; if (b.dataset.go === 'history') history.replaceState(null, '', location.pathname); else location.hash = b.dataset.go; historyPage(m) }
+  const draw = q => {
+    const f = list.filter(h => !q || (h.text + ' ' + h.title + ' ' + h.url).toLowerCase().includes(q.toLowerCase()))
+    if (!f.length) { $('#out').innerHTML = `<div class="empty">${q ? 'No matches' : 'No highlights yet.'}</div>`; return }
+    const pages = new Map(); for (const h of f) { if (!pages.has(h.url)) pages.set(h.url, []); pages.get(h.url).push(h) }
+    $('#out').innerHTML = [...pages].map(([url, hs]) => `<div class="card hlcard"><a class="hlhead" data-go="${esc(url)}">${fav(url)}<div class="grow"><div class="t">${esc(hs[0].title || hostOf(url))}</div><div class="d">${esc(hostOf(url))}  ·  ${hs.length} highlight${hs.length > 1 ? 's' : ''}</div></div></a>${hs.map(h => `<div class="hl" data-id="${esc(h.id)}" data-url="${esc(url)}" data-text="${esc(h.text.slice(0, 120))}"><span class="hlbar hl-${esc(h.color)}"></span><q>${esc(h.text.length > 420 ? h.text.slice(0, 420) + '...' : h.text)}</q><button class="ib hov" data-copy title="Copy">${ICONS.link || ICONS.close}</button><button class="ib hov" data-del title="Remove">${ICONS.close}</button></div>`).join('')}</div>`).join('')
+  }
+  $('#q').oninput = e => draw(e.target.value)
+  $('#out').onclick = async e => {
+    const head = e.target.closest('[data-go]'); if (head) { L.invoke('navigate', head.dataset.go); return }
+    const r = e.target.closest('.hl'); if (!r) return
+    if (e.target.closest('[data-del]')) { await L.invoke('highlightRemove', r.dataset.id); list = list.filter(h => h.id !== r.dataset.id); draw($('#q').value); flash('Highlight removed'); return }
+    if (e.target.closest('[data-copy]')) { await navigator.clipboard.writeText(list.find(h => h.id === r.dataset.id).text); flash('Copied'); return }
+    // jump straight to the passage on the page
+    const words = r.dataset.text.trim().split(/\s+/), frag = (words.length > 8 ? [words.slice(0, 4).join(' '), words.slice(-4).join(' ')] : [words.join(' ')]).map(x => encodeURIComponent(x).replace(/-/g, '%2D')).join(',')
+    L.invoke('navigate', r.dataset.url + '#:~:text=' + frag)
+  }
+  draw('')
+}
+
 async function archivePage(m) {
   const list = await L.invoke('archive')
   const ago = t => { const mm = Math.round((Date.now() - t) / 60000); return mm < 1 ? 'just now' : mm < 60 ? mm + ' min ago' : mm < 1440 ? Math.round(mm / 60) + ' hr ago' : Math.round(mm / 1440) + ' d ago' }
   m.innerHTML = `<h2>Archived tabs</h2><p class="lead">Tabs that tidied themselves away after you stopped using them. ${S.archiveTabsAfterH ? '' : '<a href="lumen://settings/general#Archive%20tabs%20you%20have%20not%20used">Turn on tab archiving</a>'}</p>
-    <div class="seg big" id="hseg"><button data-go="history">History</button><button class="on">Archived tabs</button></div>
+    <div class="seg big" id="hseg"><button data-go="history">History</button><button data-go="highlights">Highlights</button><button class="on">Archived tabs</button></div>
     <div class="toolbar"><input type="search" id="q" placeholder="Search archived tabs">${list.length ? '<button class="btn" id="clrA">Clear archive</button>' : ''}</div><div id="out"></div>`
-  $('#hseg').onclick = e => { if (e.target.closest('[data-go]')) { history.replaceState(null, '', location.pathname); historyPage(m) } }
+  $('#hseg').onclick = e => { const b = e.target.closest('[data-go]'); if (!b) return; if (b.dataset.go === 'history') history.replaceState(null, '', location.pathname); else location.hash = b.dataset.go; historyPage(m) }
   const draw = q => {
     const f = list.filter(x => !q || (x.title + ' ' + x.url).toLowerCase().includes(q.toLowerCase()))
     $('#out').innerHTML = f.length ? `<div class="card list">${f.map(x => `<div class="row" data-url="${esc(x.url)}">${fav(x.url)}<div class="grow"><div class="t" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(x.title || x.url)}</div><div class="d">${esc(hostOf(x.url))}  ·  archived ${ago(x.at)}</div></div><button class="btn sm" data-open>Open</button><button class="ib" data-del title="Remove">${ICONS.close}</button></div>`).join('')}</div>`

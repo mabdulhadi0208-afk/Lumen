@@ -203,6 +203,8 @@ function renderChrome() {
   const site = $('#btn-site')
   site.innerHTML = url.startsWith('lumen://') || !url ? ICONS.search : (S.secure ? ICONS.tune : ICONS.unlock)
   site.classList.toggle('insecure', !S.secure && !!url && !url.startsWith('lumen://'))
+  const rp = $('#readpill'), rm = S.readMin || 0
+  if (rp.dataset.m !== String(rm)) { rp.dataset.m = rm; rp.textContent = rm ? rm + ' min read' : ''; rp.classList.toggle('show', !!rm); if (rm) requestAnimationFrame(() => Jelly.kick && Jelly.kick(rp, 0.6, 0.5)) }
   const sh = $('#shield')
   if (!sh.dataset.bound) { sh.dataset.bound = 1; sh.addEventListener('click', e => { e.stopPropagation(); openSiteInfo() }) }
   sh.textContent = S.blocked > 999 ? '999+' : S.blocked
@@ -590,6 +592,33 @@ function closeCmd(instant) {
   setTimeout(done, 140)
 }
 
+// how well a command matches what you typed: whole words, starts of words, initials (tso = Tab Overview... ),
+// letters in order, and one typo in a longer word all count, best first
+function editsWithin1(a, b) {
+  if (Math.abs(a.length - b.length) > 1) return false
+  let i = 0, j = 0, d = 0
+  while (i < a.length && j < b.length) {
+    if (a[i] === b[j]) { i++; j++; continue }
+    if (++d > 1) return false
+    if (a.length === b.length && a[i] === b[j + 1] && a[i + 1] === b[j]) { i += 2; j += 2; continue }   // two letters swapped
+    if (a.length > b.length) i++; else if (b.length > a.length) j++; else { i++; j++ }
+  }
+  return d + (a.length - i) + (b.length - j) <= 1
+}
+function cmdScore(c, q) {
+  const t = c.t.toLowerCase(), words = t.split(/\s+/), keys = c.k
+  if (t === q) return 100
+  if (t.startsWith(q)) return 90
+  if (keys.some(k => k === q)) return 85
+  if (t.includes(q)) return 70
+  if (keys.some(k => k.startsWith(q) || (q.length > 2 && q.startsWith(k)))) return 60
+  if (q.length >= 2 && words.map(w => w[0]).join('').startsWith(q)) return 50
+  const qw = q.split(/\s+/).filter(Boolean)
+  if (qw.length && qw.every(x => x.length >= 4 ? [...words, ...keys].some(w => w.startsWith(x) || editsWithin1(x, w.slice(0, x.length + 1)) || editsWithin1(x, w)) : [...words, ...keys].some(w => w.startsWith(x)))) return 40
+  let i = 0; for (const ch of t) if (ch === q[i]) i++
+  if (q.length >= 3 && i === q.length) return 20
+  return 0
+}
 function buildResults(q, data) {
   const out = []
   const eng = engines[settings.searchEngine] || 'Google'
@@ -602,7 +631,7 @@ function buildResults(q, data) {
   if (data.conv) out.unshift({ sec: '', icon: ICONS.bolt, title: data.conv.text, sub: '  Press Enter to copy', key: 'Copy', go: () => { api.do('copyText', String(data.conv.value)); closeCmd(true); toast('Copied ' + data.conv.value) } })
   if (data.shortcut) out.unshift({ sec: '', icon: ICONS.search, title: data.shortcut.query, sub: '  Search ' + data.shortcut.name, key: 'Search', go: () => go(qq) })
   const lq = qq.toLowerCase()
-  const cmds = lq ? COMMANDS.filter(c => c.t.toLowerCase().includes(lq) || c.k.some(k => k.startsWith(lq) || lq.startsWith(k))).slice(0, 3) : []
+  const cmds = lq ? COMMANDS.map(c => [c, cmdScore(c, lq)]).filter(x => x[1] > 0).sort((a, b) => b[1] - a[1]).slice(0, 4).map(x => x[0]) : []
   for (const c of cmds) out.push({ sec: 'Actions', icon: ICONS[c.i], title: c.t, sub: '', key: c.s ? c.s() : 'Run', go: () => { closeCmd(true); c.run() } })
   for (const t of (data.tabs || [])) out.push({ sec: 'Open tabs', icon: favHTML(t), title: titleOf(t), sub: hostOf(t.url), key: 'Switch', go: () => { closeCmd(true); api.do('switchTab', t.id, t.win) } })
   const seenUrls = new Set()

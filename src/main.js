@@ -452,7 +452,7 @@ class BrowserWin {
     wc.on('page-favicon-updated', (e, icons) => { t.favicon = icons[icons.length - 1] || icons[0] || ''; upd() })
     wc.on('did-start-loading', () => { t.loading = true; t.crashed = false; upd() })
     wc.on('did-stop-loading', () => { t.loading = false; upd() })
-    wc.on('did-finish-load', () => { offerTranslate(this, t).catch(() => {}); darkPage(wc) })
+    wc.on('did-finish-load', () => { offerTranslate(this, t).catch(() => {}); darkPage(wc); paintHighlights(wc); readingTime(this, t) })
     wc.on('did-navigate', () => darkKeys.delete(wc.id))
     wc.on('did-stop-loading', () => setTimeout(() => { if (this.activeId === t.id) snapTab(t) }, 350))
     wc.once('destroyed', () => darkKeys.delete(wc.id))
@@ -754,6 +754,8 @@ class BrowserWin {
       bookmarked: a ? D.isBookmarked(a.url) : false,
       blocked: awc ? (blockedByWc.get(awc.id) || 0) : 0,
       translated: !!(a && a.translated),
+      readMin: (a && a.readMin) || 0,
+      reloadEvery: (a && a.reloadEvery) || 0,
       adOff: a ? adAllowed(awc ? awc.getURL() : a.url) : false,
       secure: a ? /^(https|lumen):/.test(a.url) : true,
       closedCount: closedTabs.length,
@@ -762,9 +764,17 @@ class BrowserWin {
   pushState() { clearTimeout(this._pst); this._pst = null; this.send('state', this.serialize()) }
   pushStateSoon() { if (!this._pst) this._pst = setTimeout(() => this.pushState(), 50) }
 
-  contextMenu(t, p) {
+  async contextMenu(t, p) {
     const wc = t.view.webContents
     const items = []
+    const web = /^https?:/.test(wc.getURL()) && !this.incognito
+    // right-clicked on a highlight: offer to recolor or remove it
+    const hitId = web && D.highlights.get().length ? await HL.hit(wc, Math.round(p.x / (wc.getZoomFactor() || 1)), Math.round(p.y / (wc.getZoomFactor() || 1))) : null
+    if (wc.isDestroyed()) return
+    if (hitId) {
+      items.push({ label: 'Highlight Color', submenu: Object.keys(HL.COLORS).map(c => ({ label: c[0].toUpperCase() + c.slice(1), type: 'radio', checked: (D.highlights.get().find(h => h.id === hitId) || {}).color === c, click: () => recolorHighlight(wc, hitId, c) })) })
+      items.push({ label: 'Remove Highlight', click: () => removeHighlight(hitId, wc) }, { type: 'separator' })
+    }
     const sep = () => { if (items.length && items[items.length - 1].type !== 'separator') items.push({ type: 'separator' }) }
     if (p.misspelledWord) {
       for (const s of p.dictionarySuggestions.slice(0, 5)) items.push({ label: s, click: () => wc.replaceMisspelling(s) })
@@ -797,6 +807,7 @@ class BrowserWin {
     if (p.selectionText && !p.isEditable) {
       const q = p.selectionText.trim().slice(0, 80)
       items.push({ label: 'Copy', role: 'copy' })
+      if (web) items.push({ label: 'Highlight', submenu: Object.keys(HL.COLORS).map(c => ({ label: c[0].toUpperCase() + c.slice(1), click: () => addHighlight(this, t, c) })) })
       if (/^https?:/.test(wc.getURL()) && p.selectionText.trim().length < 300) items.push({ label: 'Copy Link to Highlight', click: () => { const u = cleanURL(wc.getURL()).split('#')[0]; const txt = p.selectionText.trim().replace(/\s+/g, ' '); const words = txt.split(' '); const frag = words.length > 8 ? encodeURIComponent(words.slice(0, 4).join(' ')).replace(/-/g, '%2D') + ',' + encodeURIComponent(words.slice(-4).join(' ')).replace(/-/g, '%2D') : encodeURIComponent(txt).replace(/-/g, '%2D'); clipboard.writeText(u + '#:~:text=' + frag); this.send('toast', 'Link to highlight copied') } })
       items.push({ label: 'Explain with Lumen AI', click: () => this.send('command', { ai: 'explain', text: p.selectionText.slice(0, 6000) }) })
       items.push({ label: `Translate to ${Translate.langName(Translate.target(D.settings))}`, click: () => Translate.bubble(wc, p.selectionText.slice(0, 4000), Translate.target(D.settings)).catch(e => this.send('toast', 'Translation failed')) })
@@ -899,6 +910,7 @@ async function autoGroupWindow(w) {
   return groups.length
 }
 const AI = require('./ai')
+const HL = require('./highlights')
 
 // ---------------------------------------------------------------- translator
 async function translateTab(w, t, toLang) {
@@ -951,6 +963,70 @@ async function offerTranslate(w, t) {
     else if (ans.never) D.settings.set({ neverTranslate: [...new Set([...(D.settings.get('neverTranslate') || []), lang])] })
   })
   w.send('trask', { id, tabId: t.id, host: new URL(wc.getURL()).host, from: lang, fromName: Translate.langName(lang), to, toName: Translate.langName(to), rtl: Translate.dirOf(lang) === 'rtl' })
+}
+
+// ---------------------------------------------------------------- highlights
+const hlFor = url => { const k = HL.pageKey(url); return k ? D.highlights.get().filter(h => h.url === k) : [] }
+async function paintHighlights(wc, tries = 0) {
+  if (!wc || wc.isDestroyed() || !/^https?:/.test(wc.getURL())) return
+  const list = hlFor(wc.getURL()); if (!list.length) return
+  try {
+    await wc.insertCSS(HL.CSS)
+    const n = await HL.restore(wc, list.map(h => ({ id: h.id, text: h.text, prefix: h.prefix || '', suffix: h.suffix || '', color: h.color })))
+    // pages that build their text after loading: look again a little later
+    if (n < list.length && tries < 3) setTimeout(() => paintHighlights(wc, tries + 1), 1500 * (tries + 1))
+  } catch {}
+}
+async function addHighlight(w, t, color) {
+  const wc = t.view && t.view.webContents; if (!wc || wc.isDestroyed()) return
+  const id = 'h' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6)
+  try {
+    await wc.insertCSS(HL.CSS)
+    const r = await HL.add(wc, id, color)
+    if (!r || !r.text) return
+    D.highlights.replace([{ id, url: HL.pageKey(wc.getURL()), title: wc.getTitle(), text: r.text, prefix: r.prefix, suffix: r.suffix, color, t: Date.now() }, ...D.highlights.get()].slice(0, 3000))
+    w.send('toast', 'Highlighted. Find it again in History, Highlights.')
+  } catch (e) { log('highlight failed', e.message) }
+}
+function removeHighlight(id, wc) {
+  D.highlights.replace(D.highlights.get().filter(h => h.id !== id))
+  const all = wc ? [wc] : windows.flatMap(w => [...w.tabs.values()].filter(t => t.view && !t.view.webContents.isDestroyed()).map(t => t.view.webContents))
+  for (const c of all) HL.remove(c, id)
+}
+function recolorHighlight(wc, id, color) {
+  D.highlights.replace(D.highlights.get().map(h => h.id === id ? { ...h, color } : h))
+  HL.recolor(wc, id, color)
+}
+
+// ---------------------------------------------------------------- reading time
+// "6 min read" in the address bar for pages that are mostly an article
+async function readingTime(w, t) {
+  const wc = t.view && t.view.webContents
+  t.readMin = 0
+  if (!wc || wc.isDestroyed() || !/^https?:/.test(wc.getURL())) return
+  try {
+    const words = await wc.executeJavaScriptInIsolatedWorld(1022, [{ code: `(() => { const a = document.querySelector('article') || document.querySelector('main [itemprop=articleBody], [role=main] article, main'); if (!a) return 0; const ps = [...a.querySelectorAll('p')].filter(p => p.innerText.length > 80); if (ps.length < 4) return 0; return ps.reduce((n, p) => n + p.innerText.split(/\\s+/).length, 0) })()` }])
+    t.readMin = words >= 350 ? Math.max(2, Math.round(words / 230)) : 0
+    if (w.activeId === t.id) w.pushStateSoon()
+  } catch {}
+}
+
+// ---------------------------------------------------------------- auto reload
+setInterval(() => {
+  const now = Date.now()
+  for (const w of windows) for (const t of w.tabs.values()) {
+    if (!t.reloadEvery || !t.view || t.view.webContents.isDestroyed()) continue
+    if (now >= (t.reloadAt || 0)) { t.reloadAt = now + t.reloadEvery * 1000; if (!t.view.webContents.isLoading()) t.view.webContents.reload() }
+  }
+}, 1000)
+
+function addToNTP(w, t) {
+  const url = t.view && !t.view.webContents.isDestroyed() ? t.view.webContents.getURL() : t.url
+  if (!/^https?:/.test(url)) return
+  let list = D.settings.get('ntpShortcuts')
+  if (!Array.isArray(list)) list = D.topSites(8).map(s => ({ url: s.url, title: (s.host || s.title || '').replace(/^www\./, '') }))
+  if (list.some(s => s.url === url)) { w.send('toast', 'Already on your new tab page'); return }
+  setSetting('ntpShortcuts', [...list, { url, title: (t.title || new URL(url).host).slice(0, 28) }].slice(0, 12)); w.send('toast', 'Added to your new tab page')
 }
 
 // ---------------------------------------------------------------- read later
@@ -1311,6 +1387,8 @@ function tabMenu(w, id) {
     { label: 'Bookmark', click: () => { D.addBookmark(t.url, t.title); w.pushState() } },
     { label: 'Move to New Window', enabled: w.order.length > 1, click: () => { const url = t.view ? t.view.webContents.getURL() : t.url; w.closeTab(id); createWindow({ urls: [url] }) } },
     { label: 'Put to Sleep', enabled: !!t.view && id !== w.activeId, click: () => w.sleep(t) },
+    { label: 'Reload Every', submenu: [[0, 'Off'], [30, '30 seconds'], [60, '1 minute'], [300, '5 minutes'], [900, '15 minutes']].map(([sec, l]) => ({ label: l, type: 'radio', checked: (t.reloadEvery || 0) === sec, click: () => { t.reloadEvery = sec; t.reloadAt = Date.now() + sec * 1000; w.pushState(); if (sec) w.send('toast', `Reloads every ${l}`) } })) },
+    { label: 'Add to New Tab Page', enabled: /^https?:/.test(t.url), click: () => addToNTP(w, t) },
     { type: 'separator' },
     { label: 'Close Tab', click: () => w.closeTab(id, { undo: true }) },
     { label: 'Close Other Tabs', enabled: others.length > 0, click: () => others.filter(i => !w.tabs.get(i).pinned).forEach(i => w.closeTab(i)) },
@@ -1495,6 +1573,8 @@ ipcMain.handle('lumen', async (e, action, ...a) => {
       case 'history': return D.listHistory(a[0] || '', 500)
       case 'readLater': return readLaterList(a[0] || 300)
       case 'archive': return D.archive.get().slice(0, 500)
+      case 'highlights': return D.highlights.get().map(h => ({ id: h.id, url: h.url, title: h.title, text: h.text, color: h.color, t: h.t }))
+      case 'highlightRemove': return removeHighlight(String(a[0] || ''))
       case 'archiveRemove': return a[0] ? D.removeArchive(String(a[0])) : D.archive.replace([])
       case 'readLaterDone': return D.removeReadLater(String(a[0] || ''))
       case 'deleteHistory': return D.deleteHistory(a[0])
@@ -1890,7 +1970,7 @@ app.on('second-instance', (e, argv) => {
 let quitting = false
 function flushAll() {
   saveSessionNow()
-  for (const s of [D.settings, D.bookmarks, D.passwords, D.permissions, D.session, D.readLater, D.archive, Passkeys.store]) s.flush()
+  for (const s of [D.settings, D.bookmarks, D.passwords, D.permissions, D.session, D.readLater, D.archive, D.highlights, Passkeys.store]) s.flush()
   D.historyStore.replace([...D.historyMap.values()].sort((a, b) => b.t - a.t)); D.historyStore.flush()
 }
 app.on('before-quit', () => {
@@ -1954,4 +2034,4 @@ app.whenReady().then(async () => {
   powerMonitor.on('resume', () => Sync.syncNow().catch(() => {}))
 })
 
-module.exports = { windows, createWindow, D, allowSites, toggleSiteAdblock }
+module.exports = { windows, createWindow, D, allowSites, toggleSiteAdblock, __hl_add: addHighlight, __hl_recolor: recolorHighlight, __addToNTP: addToNTP }

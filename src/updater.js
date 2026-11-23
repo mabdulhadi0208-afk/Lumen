@@ -42,7 +42,7 @@ const fmtMB = b => (b / 1048576).toFixed(1) + ' MB'
 const migratedFlag = () => path.join(app.getPath('userData'), 'migrated-' + app.getVersion())
 const log = (...a) => { try { fs.appendFileSync(path.join(app.getPath('logs'), 'lumen.log'), `[${new Date().toISOString()}] updater: ${a.join(' ')}\n`) } catch {} }
 const updDir = () => path.join(app.getPath('userData'), 'update')
-function clearStaged() { try { fs.rmSync(updDir(), { recursive: true, force: true }) } catch {} state.staged = null }
+function clearStaged() { try { fs.rmSync(updDir(), { recursive: true, force: true }) } catch {} state.staged = null; state.stagedTag = null }
 function snapshot() { return { ...state, current: app.getVersion(), lastCheck, version: app.getVersion() } }
 function push() {
   const s = snapshot()
@@ -70,7 +70,14 @@ function hideCard() { if (popup && !popup.isDestroyed()) popup.hide() }
 function showCardIfAllowed(manual) { if (manual || Date.now() > snoozedUntil) showCard() }
 
 // ------------------------------------------------------------ check / download / install
-async function check(manual) {
+// one check at a time: a manual check while the startup or wake check is still talking to GitHub joins it
+let inflight = null
+function check(manual) {
+  if (inflight) { if (manual) inflight.then(s => { if (s.status === 'uptodate') C.toast(`Lumen ${app.getVersion()} is up to date`) }).catch(() => {}); return inflight }
+  inflight = runCheck(manual).finally(() => { inflight = null })
+  return inflight
+}
+async function runCheck(manual) {
   if (['downloading', 'unpacking', 'installing'].includes(state.status)) return snapshot()
   set({ status: 'checking', error: null }); lastCheck = Date.now()
   try {
@@ -79,7 +86,7 @@ async function check(manual) {
     if (!newer(latest, cur) && adhoc && same(latest, cur) && !fs.existsSync(migratedFlag()) && (await probe(`https://github.com/${REPO}/releases/download/${latest}/Lumen-identity.txt`)).ok) { migrate = true; log('identity switch: fetching the cert-signed build of', latest) }
     else if (!newer(latest, cur)) { if (state.staged) clearStaged(); set({ status: 'uptodate', latest }); if (manual) C.toast(`Lumen ${cur} is up to date`); return snapshot() }
     if (!manual && !migrate && skipVersion === latest) { set({ status: 'uptodate', latest }); return snapshot() }
-    if (state.staged && !IS_WIN) { const sv = stagedVersion(state.staged); if (!sv || !same(sv, latest)) { log('discard stale staged', sv); clearStaged() } }
+    if (state.staged) { const sv = IS_WIN ? state.stagedTag : stagedVersion(state.staged); if (!sv || !same(sv, latest)) { log('discard stale staged', sv); clearStaged() } }
     if (state.staged) { set({ status: 'ready', latest }); if (!migrate) showCardIfAllowed(manual); return snapshot() }
     let url = `https://github.com/${REPO}/releases/download/${latest}/${IS_WIN ? EXE : ZIP}`, isZip = !IS_WIN, p = await probe(url)
     if (!p.ok && !IS_WIN) { url = `https://github.com/${REPO}/releases/download/${latest}/${DMG}`; isZip = false; p = await probe(url) }
@@ -96,11 +103,12 @@ async function check(manual) {
 async function download() {
   if (!state.url || ['downloading', 'unpacking', 'installing'].includes(state.status)) return
   if (state.staged && !IS_WIN) { const sv = stagedVersion(state.staged); if (sv && same(sv, state.latest)) { set({ status: 'ready' }); return } clearStaged() }
-  const dir = updDir(); fs.rmSync(dir, { recursive: true, force: true }); fs.mkdirSync(dir, { recursive: true })
+  const dir = updDir()
   const file = path.join(dir, IS_WIN ? EXE : state.isZip ? ZIP : DMG), mnt = path.join(dir, 'mnt')
   let prog = null
   try {
     set({ status: 'downloading', progress: 0, bytes: 0, speed: 0, eta: 0 })
+    fs.rmSync(dir, { recursive: true, force: true }); fs.mkdirSync(dir, { recursive: true })
     let lastB = 0, lastT = Date.now()
     prog = setInterval(() => {
       try {
@@ -119,7 +127,7 @@ async function download() {
     clearInterval(prog); prog = null
     if (state.size && fs.statSync(file).size !== state.size) throw new Error('download incomplete')
     set({ progress: 100, status: 'unpacking' })
-    if (IS_WIN) { set({ staged: file, status: 'ready' }); log('staged installer', state.latest); showCardIfAllowed(false); C.notify('Lumen update ready', `${state.latest} is downloaded. Restart to finish.`); return }
+    if (IS_WIN) { set({ staged: file, stagedTag: state.latest, status: 'ready' }); log('staged installer', state.latest); showCardIfAllowed(false); C.notify('Lumen update ready', `${state.latest} is downloaded. Restart to finish.`); return }
     if (state.isZip) {
       await sh('ditto', ['-x', '-k', file, dir])
       const a = fs.readdirSync(dir).find(f => f.endsWith('.app')); if (!a) throw new Error('No .app in zip')
@@ -129,7 +137,7 @@ async function download() {
       await sh('hdiutil', ['attach', '-nobrowse', '-quiet', '-mountpoint', mnt, file])
       const a = fs.readdirSync(mnt).find(f => f.endsWith('.app')); if (!a) throw new Error('No .app in DMG')
       await sh('ditto', [path.join(mnt, a), path.join(dir, 'Lumen.app')])
-      await sh('hdiutil', ['detach', '-quiet', mnt]).catch(() => {})
+      await sh('hdiutil', ['detach', '-quiet', mnt]).catch(e => log('detach failed:', e.message))
     }
     fs.rmSync(file, { force: true })
     const staged = path.join(dir, 'Lumen.app'), sv = stagedVersion(staged)
@@ -167,6 +175,9 @@ async function install(relaunch = true, { fromQuit = false } = {}) {
   const sv = stagedVersion(state.staged)
   if (!sv || !(newer(sv, app.getVersion()) || (migrate && same(sv, app.getVersion())))) { clearStaged(); set({ status: 'error', error: 'staged copy was not newer, fetching again' }); return fromQuit ? snapshot() : check(true) }
   const target = bundlePath(); if (!target) { set({ status: 'error', error: 'Not running from an .app bundle' }); return snapshot() }
+  // run from the DMG, App Translocation, or an admin-owned copy: Lumen cannot swap itself, so stay open and say why
+  try { fs.accessSync(path.dirname(target), fs.constants.W_OK); fs.accessSync(target, fs.constants.W_OK) }
+  catch { log('install blocked: no write access to', target); set({ status: 'error', error: 'Lumen cannot update itself from this location. Move Lumen to your Applications folder and open it from there.' }); return snapshot() }
   const logf = path.join(app.getPath('logs'), 'update.log'), script = path.join(updDir(), 'swap.sh')
   fs.writeFileSync(script, `#!/bin/bash
 exec >> "${logf}" 2>&1
@@ -176,7 +187,7 @@ NEW="${state.staged}"; APP="${target}"; OLDPID=${process.pid}; RELAUNCH=${relaun
 for i in $(seq 1 60); do kill -0 $OLDPID 2>/dev/null || break; sleep 0.1; done
 kill -0 $OLDPID 2>/dev/null && { echo "old pid $OLDPID still alive, SIGTERM"; kill -TERM $OLDPID 2>/dev/null; sleep 1; }
 kill -0 $OLDPID 2>/dev/null && { echo "old pid $OLDPID stuck, SIGKILL"; kill -KILL $OLDPID 2>/dev/null; sleep 0.5; }
-rm -rf "$APP.old"; mv "$APP" "$APP.old" || { echo "mv failed"; exit 1; }
+rm -rf "$APP.old"; mv "$APP" "$APP.old" || { echo "mv failed, reopening the current version"; [ "$RELAUNCH" = "1" ] && open -a "$APP"; exit 1; }
 if mv "$NEW" "$APP" 2>/dev/null || ditto "$NEW" "$APP"; then xattr -cr "$APP" 2>/dev/null; echo "swapped"; else echo "swap failed, rolling back"; rm -rf "$APP"; mv "$APP.old" "$APP"; fi
 touch "${marker}"
 if [ "$RELAUNCH" != "1" ]; then rm -rf "$APP.old"; echo "=== done (stays closed)"; exit 0; fi
@@ -231,10 +242,10 @@ function start(ctx) {
   }, 6000)
   const staged = path.join(updDir(), 'Lumen.app')
   if (!IS_WIN && fs.existsSync(staged)) { const sv = stagedVersion(staged); if (sv && newer(sv, app.getVersion())) { state.staged = staged; state.status = 'ready'; state.latest = 'v' + sv } else clearStaged() }
+  powerMonitor.on('resume', () => setTimeout(() => { if (enabled) check(false) }, 8000))
   if (!enabled) return
   setTimeout(() => check(false), 4000)
   timer = setInterval(poll, 10000)
-  powerMonitor.on('resume', () => setTimeout(() => check(false), 8000))
 }
 function setEnabled(on) {
   enabled = !!on

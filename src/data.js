@@ -47,6 +47,17 @@ const passwords = new Store('passwords', [])
 const permissions = new Store('permissions', {}) // { origin: { permission: 'allow'|'deny' } }
 const session = new Store('session', { windows: [] })
 const historyStore = new Store('history', [])
+const readLater = new Store('readlater', [])
+
+// ---------- read later ----------
+// Pages saved to read later, newest first. Opening one from the list takes it off.
+const isReadLater = url => readLater.get().some(x => x.url === url)
+function addReadLater(url, title) {
+  if (!/^https?:/.test(url)) return false
+  readLater.replace([{ url, title: String(title || url).slice(0, 300), t: Date.now() }, ...readLater.get().filter(x => x.url !== url)].slice(0, 300))
+  return true
+}
+function removeReadLater(url) { readLater.replace(readLater.get().filter(x => x.url !== url)) }
 
 // ---------- history ----------
 const historyMap = new Map()
@@ -160,4 +171,5 @@ module.exports = {
   liveBookmarks, addBookmark, removeBookmark, editBookmark, isBookmarked,
   savePassword, hasPassword, credentialsFor, listPasswords, revealPassword, deletePassword, updatePassword,
   enc, dec, historyMap, flushHistory,
+  readLater, isReadLater, addReadLater, removeReadLater,
 }

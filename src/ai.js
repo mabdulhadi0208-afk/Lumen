@@ -26,13 +26,19 @@ function errText(status, body) {
   return `AI request failed (${status})${msg ? ': ' + msg : ''}`
 }
 
+// A failed connection (offline, captive portal, blocked) reads as a plain sentence, not a net:: code.
+async function post(body, signal) {
+  try { return await net.fetch(API, { method: 'POST', headers: headers(), signal, body: JSON.stringify(body) }) }
+  catch (e) {
+    if (e.name === 'AbortError') throw e
+    throw new Error("Could not reach the AI service. Check your internet connection and try again.")
+  }
+}
+
 // Streams a reply. onDelta(textChunk) is called as text arrives. Returns the whole text.
 async function stream({ system, messages, maxTokens = 1500 }, onDelta, signal) {
   if (!ready()) throw new Error('Add your Claude API key in Settings, AI to use Lumen AI.')
-  const res = await net.fetch(API, {
-    method: 'POST', headers: headers(), signal,
-    body: JSON.stringify({ model: model(), max_tokens: maxTokens, system, messages, stream: true }),
-  })
+  const res = await post({ model: model(), max_tokens: maxTokens, system, messages, stream: true }, signal)
   if (!res.ok) throw new Error(errText(res.status, await res.text().catch(() => '')))
   const reader = res.body.getReader()
   const dec = new TextDecoder()
@@ -56,7 +62,7 @@ async function stream({ system, messages, maxTokens = 1500 }, onDelta, signal) {
 
 async function once({ system, messages, maxTokens = 1000 }) {
   if (!ready()) throw new Error('No API key')
-  const res = await net.fetch(API, { method: 'POST', headers: headers(), body: JSON.stringify({ model: model(), max_tokens: maxTokens, system, messages }) })
+  const res = await post({ model: model(), max_tokens: maxTokens, system, messages })
   const body = await res.text()
   if (!res.ok) throw new Error(errText(res.status, body))
   const j = JSON.parse(body)

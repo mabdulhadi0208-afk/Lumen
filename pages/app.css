@@ -335,3 +335,12 @@ body[data-motion="off"] .searchbox::before { animation: none; }
 .list .row .t, .list .row b { font-weight: 600; }
 .toolbar input[type=search] { font-family: var(--display); }
 .err .ico { border-radius: 26px; }
+
+/* read later cards: a small remove button that shows on hover */
+.later .rc { position: relative; }
+.later .rl-x { position: absolute; top: 6px; right: 6px; width: 22px; height: 22px; border: 0; border-radius: 8px; display: grid; place-items: center; background: var(--hover); color: var(--fg2); opacity: 0; transform: scale(.8); transition: opacity .2s, transform .35s cubic-bezier(.3,1.5,.5,1); cursor: default; }
+.later .rl-x svg { width: 12px; height: 12px; }
+.later .rc:hover .rl-x { opacity: 1; transform: scale(1); }
+.later .rc-b { padding-right: 18px; }
+.recent.later { margin-top: 18px; }
+.ntp:not(.wp-aurora):not(.wp-plain) .later .rc-h { color: rgba(255,255,255,.85); text-shadow: 0 1px 8px rgba(0,0,0,.4); }

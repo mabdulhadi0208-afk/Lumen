@@ -55,6 +55,7 @@ async function newTab() {
   // jump back in: the last few pages you were on, one per site
   let recent = []
   if (S.ntpRecent !== false) { try { const seen = new Set(); for (const h of await L.invoke('history', '')) { const k = hostOf(h.url); if (!k || seen.has(k) || !/^https?:/.test(h.url)) continue; seen.add(k); recent.push(h); if (recent.length === 4) break } } catch {} }
+  let later = []; if (S.ntpReadLater !== false) { try { later = (await L.invoke('readLater', 4)) || [] } catch {} }
   let stats = null; if (S.ntpStats !== false) { try { stats = await L.invoke('stats') } catch {} }
   const ago = t => { const m = Math.round((Date.now() - t) / 60000); return m < 1 ? 'Just now' : m < 60 ? m + ' min ago' : m < 1440 ? Math.round(m / 60) + ' hr ago' : Math.round(m / 1440) + ' d ago' }
   const img = wp === 'custom' ? await L.invoke('wallpaper') : ''
@@ -65,6 +66,7 @@ async function newTab() {
     <div class="tiles" id="tiles">${sites.map((s, i) => `<div class="tile rise" style="animation-delay:${0.12 + i * 0.03}s" data-url="${esc(s.url)}" data-i="${i}"><div class="ti">${fav(s.url)}</div><span>${esc(s.title || hostOf(s.url))}</span><button class="tx" title="Remove">${ICONS.close}</button></div>`).join('')}${sites.length < 12 ? `<div class="tile add rise" style="animation-delay:${0.12 + sites.length * 0.03}s" id="addtile"><div class="ti">${ICONS.plus}</div><span>Add</span></div>` : ''}</div>
     ${stats && stats.blocked > 0 ? `<div class="nstats rise" style="animation-delay:.26s"><span class="ns-i">${ICONS.shield}</span><b>${stats.blocked.toLocaleString('en-US')}</b> ads and trackers blocked${stats.blocked > 400 ? `<i></i>about <b>${stats.blocked * 0.05 < 90 ? Math.round(stats.blocked * 0.05) + ' sec' : Math.round(stats.blocked * 0.05 / 60) + ' min'}</b> saved` : ''}</div>` : ''}
     ${recent.length ? `<div class="recent rise" style="animation-delay:.3s"><div class="rc-h">Jump back in</div><div class="rc-list">${recent.map(h => `<a class="rc" href="${esc(h.url)}"><span class="rc-f">${fav(h.url)}</span><span class="rc-b"><b>${esc(h.title || hostOf(h.url))}</b><i>${esc(hostOf(h.url).replace(/^www\./, ''))}  ·  ${ago(h.t)}</i></span></a>`).join('')}</div></div>` : ''}
+    ${later.length ? `<div class="recent later rise" style="animation-delay:.34s"><div class="rc-h">Read later</div><div class="rc-list" id="rl">${later.map(h => `<a class="rc" href="${esc(h.url)}" data-rl="${esc(h.url)}"><span class="rc-f">${fav(h.url)}</span><span class="rc-b"><b>${esc(h.title || hostOf(h.url))}</b><i>${esc(hostOf(h.url).replace(/^www\./, ''))}  ·  saved ${ago(h.t).toLowerCase()}</i></span><button class="tx rl-x" title="Remove">${ICONS.close}</button></a>`).join('')}</div></div>` : ''}
     <div class="foot"><a href="lumen://history">History</a><a href="lumen://bookmarks">Bookmarks</a><a href="lumen://passwords">Passwords</a><a href="lumen://settings">Settings</a></div>
     <button class="customize" id="cust">${ICONS.tune}<span>Customize</span></button>
   </div>
@@ -76,6 +78,7 @@ async function newTab() {
     <div class="dl">Shortcuts</div>
     <div class="seg" id="scmode"><button data-v="auto" class="${custom ? '' : 'on'}">Most visited</button><button data-v="mine" class="${custom ? 'on' : ''}">My shortcuts</button></div>
     <label class="drow"><span>Show Jump back in</span><span class="switch"><input type="checkbox" id="rcsw" ${S.ntpRecent !== false ? 'checked' : ''}><span></span></span></label>
+    <label class="drow"><span>Show Read later</span><span class="switch"><input type="checkbox" id="rlsw" ${S.ntpReadLater !== false ? 'checked' : ''}><span></span></span></label>
     <label class="drow"><span>Show clock</span><span class="switch"><input type="checkbox" id="clk" ${S.ntpClock !== false ? 'checked' : ''}><span></span></span></label>
   </aside>`
   const tick = () => {
@@ -90,6 +93,14 @@ async function newTab() {
   $('#sf').onsubmit = e => { e.preventDefault(); const v = $('#q').value.trim(); if (v) L.invoke('navigate', v) }
   setTimeout(() => $('#q').focus(), 30)
   const save = list => { S.ntpShortcuts = list; L.invoke('setSetting', 'ntpShortcuts', list).then(newTab) }
+  if ($('#rl')) $('#rl').onclick = async e => {
+    const a = e.target.closest('[data-rl]'); if (!a) return
+    e.preventDefault()
+    await L.invoke('readLaterDone', a.dataset.rl)
+    if (e.target.closest('.rl-x')) { a.style.transition = 'opacity .25s, transform .35s cubic-bezier(.3,1.4,.5,1)'; a.style.opacity = '0'; a.style.transform = 'scale(.92)'; setTimeout(newTab, 260); return }
+    if (e.metaKey || e.ctrlKey) { L.invoke('open', a.dataset.rl, true); newTab() } else L.invoke('navigate', a.dataset.rl)
+  }
+  $('#rlsw').onchange = async e => { S.ntpReadLater = e.target.checked; await L.invoke('setSetting', 'ntpReadLater', e.target.checked); newTab().then(() => $('#drawer').classList.add('open')) }
   $('#rcsw').onchange = async e => { S.ntpRecent = e.target.checked; await L.invoke('setSetting', 'ntpRecent', e.target.checked); newTab() }
   $('#tiles').onclick = e => {
     if (e.target.closest('#addtile')) return addShortcutDialog(sc => save([...sites, sc]))
@@ -451,7 +462,7 @@ async function downloadsPage(m) {
 
 async function about(m) {
   const st = await L.invoke('update', 'state')
-  const desc = s => !s ? '' : s.status === 'checking' ? 'Checking for updates...' : s.status === 'downloading' ? `Downloading update... ${Math.round((s.progress || 0) * 100)}%` : s.status === 'ready' ? `Version ${esc(s.latest)} is ready. Restart to finish updating.` : s.status === 'available' ? (s.reason || `Version ${esc(s.latest)} is available.`) : s.status === 'uptodate' ? 'Lumen is up to date.' : s.status === 'unpacking' ? 'Unpacking the update...' : s.status === 'installing' ? 'Restarting...' : s.status === 'error' ? 'Could not check for updates. ' + esc(s.error || '') : ''
+  const desc = s => !s ? '' : s.status === 'checking' ? 'Checking for updates...' : s.status === 'downloading' ? `Downloading update... ${Math.round(s.progress || 0)}%` : s.status === 'ready' ? `Version ${esc(s.latest)} is ready. Restart to finish updating.` : s.status === 'available' ? (s.reason || `Version ${esc(s.latest)} is available.`) : s.status === 'uptodate' ? 'Lumen is up to date.' : s.status === 'unpacking' ? 'Unpacking the update...' : s.status === 'installing' ? 'Restarting...' : s.status === 'error' ? 'Could not check for updates. ' + esc(s.error || '') : ''
   m.innerHTML = `<h2>About Lumen</h2><p class="lead">A fast, private browser with Chrome's engine and a calmer feel.</p>
   <div class="card">
     ${row('Version ' + esc(VERSION), `<span id="ud">${desc(st)}</span>`, `<button class="btn" id="chk">Check for updates</button><button class="btn primary ${st && st.status === 'ready' ? '' : 'hidden'}" id="rst">Restart</button>`)}

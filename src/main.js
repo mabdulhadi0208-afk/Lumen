@@ -402,6 +402,7 @@ class BrowserWin {
     this.win.on('focus', () => { const t = this.active(); if (t && t.view && !this.overlay) t.view.webContents.focus() })
     this.win.on('close', () => { saveSessionNow() })
     this.win.on('closed', () => {
+      if (this.peek && !this.peek.webContents.isDestroyed()) this.peek.webContents.close()   // a peeked video must not keep playing
       for (const t of this.tabs.values()) this.destroyView(t)
       if (!this.ui.webContents.isDestroyed()) this.ui.webContents.close()
       windows.splice(windows.indexOf(this), 1)
@@ -496,12 +497,17 @@ class BrowserWin {
     wc.on('leave-html-full-screen', () => { this.fullscreenTab = false; this.layout() })
     wc.on('context-menu', (e, params) => this.contextMenu(t, params))
     wc.on('before-input-event', (e, input) => this.handleKeys(e, input))
-    wc.on('did-create-window', () => {})
+    // a site's popup window gets the same rule as its tab: it can never open Lumen's internal pages
+    wc.on('did-create-window', win => {
+      const guard = (e, u) => { if (String(u).startsWith('lumen://')) e.preventDefault() }
+      win.webContents.on('will-navigate', guard); win.webContents.on('will-redirect', guard)
+      win.webContents.setWindowOpenHandler(d => d.url.startsWith('lumen://') ? { action: 'deny' } : { action: 'allow' })
+    })
     wc.setWindowOpenHandler(d => {
+      if (d.url.startsWith('lumen://') && !wc.getURL().startsWith('lumen://')) return { action: 'deny' }
       if (d.disposition === 'new-window' && d.features) {
         return { action: 'allow', overrideBrowserWindowOptions: { width: 520, height: 680, autoHideMenuBar: true, webPreferences: { session: this.ses } } }
       }
-      if (d.url.startsWith('lumen://') && !wc.getURL().startsWith('lumen://')) return { action: 'deny' }
       const bg = d.disposition === 'background-tab' || (D.settings.get('linksBackground') && d.disposition === 'foreground-tab')
       this.createTab(d.url, { active: !bg, openerId: t.id })
       return { action: 'deny' }
@@ -874,7 +880,8 @@ function saveSessionNow() {
       tabs: w.order.map(id => { const t = w.tabs.get(id); return { url: (t.view && !t.view.webContents.isDestroyed() ? t.view.webContents.getURL() : t.url) || t.url, title: t.title, pinned: t.pinned, favicon: t.favicon, group: t.group || null } }),
     })),
   }
-  if (data.windows.length || quitting) D.session.replace(data)
+  // once the last window has closed (the normal way to quit on Windows) keep the tabs it saved on close
+  if (data.windows.length || (quitting && windows.length)) D.session.replace(data)
 }
 
 // ---------------------------------------------------------------- smart grouping
@@ -942,6 +949,16 @@ async function offerTranslate(w, t) {
   })
   w.send('trask', { id, tabId: t.id, host: new URL(wc.getURL()).host, from: lang, fromName: Translate.langName(lang), to, toName: Translate.langName(to), rtl: Translate.dirOf(lang) === 'rtl' })
 }
+
+// ---------------------------------------------------------------- read later
+function toggleReadLater(w, t) {
+  if (!t) return
+  const url = t.view && !t.view.webContents.isDestroyed() ? t.view.webContents.getURL() : t.url
+  if (!/^https?:/.test(url)) { w.send('toast', 'Only web pages can be saved for later'); return }
+  if (D.isReadLater(url)) { D.removeReadLater(url); w.send('toast', 'Removed from Read later') }
+  else { D.addReadLater(url, t.view ? t.view.webContents.getTitle() : t.title); w.send('toast', 'Saved to Read later') }
+}
+const readLaterList = n => D.readLater.get().slice(0, n).map(x => ({ url: x.url, title: x.title, t: x.t }))
 
 // ---------------------------------------------------------------- Lumen AI
 const PAGE_TEXT_JS = `(() => {
@@ -1175,7 +1192,10 @@ ipcMain.handle('ui', async (e, action, ...a) => {
       case 'closeOthers': { for (const id of [...w.order]) if (id !== w.activeId && !w.tabs.get(id).pinned) w.closeTab(id); return }
       case 'muteOthers': { for (const x of w.tabs.values()) if (x.id !== w.activeId && x.view) { x.muted = true; x.view.webContents.setAudioMuted(true) } w.pushState(); return }
       case 'restart': app.relaunch(); app.quit(); return
-      case 'menuInfo': return { sessions: (D.settings.get('savedSessions') || []).map(s => ({ id: s.id, name: s.name, count: s.tabs.length })), closed: closedTabs.slice(-5).reverse().map(c => ({ title: c.title || c.url, url: c.url })), version: app.getVersion(), update: Updater.getState(), zoom: t ? Math.round(Math.pow(1.2, t.zoom || 0) * 100) : 100, incognito: w.incognito, tabLayout: D.settings.get('tabLayout'), fullscreen: w.win.isFullScreen(), passkeys: Passkeys.list().length, passwords: D.listPasswords().length }
+      case 'readLater': return toggleReadLater(w, t)
+      case 'readLaterOpen': { const url = String(a[0] || ''); if (!D.isReadLater(url)) return; D.removeReadLater(url); w.createTab(url, { active: true }); return }
+      case 'readLaterRemove': return D.removeReadLater(String(a[0] || ''))
+      case 'menuInfo': return { readLater: readLaterList(6), readLaterCount: D.readLater.get().length, saved: !!t && D.isReadLater(t.view ? t.view.webContents.getURL() : t.url), sessions: (D.settings.get('savedSessions') || []).map(s => ({ id: s.id, name: s.name, count: s.tabs.length })), closed: closedTabs.slice(-5).reverse().map(c => ({ title: c.title || c.url, url: c.url })), version: app.getVersion(), update: Updater.getState(), zoom: t ? Math.round(Math.pow(1.2, t.zoom || 0) * 100) : 100, incognito: w.incognito, tabLayout: D.settings.get('tabLayout'), fullscreen: w.win.isFullScreen(), passkeys: Passkeys.list().length, passwords: D.listPasswords().length }
       case 'zoom': return t && w.zoom(t.id, a[0])
       case 'openPage': return w.createTab('lumen://' + a[0])
       case 'reader': return wc && readerMode(wc)
@@ -1299,7 +1319,7 @@ function downloadAction(id, what) {
   broadcast('downloads', listDownloads())
 }
 
-const PUBLIC_SETTINGS = ['bookmarksBar', 'ntpStats', 'ntpRecent', 'darkStyle', 'uiSounds', 'darkOffSites', 'translateFlipDir', 'searchShortcuts', 'rememberZoom', 'soundActiveOnly', 'linksBackground', 'confirmQuit', 'wheelTabs', 'adblockAllow', 'aiModel', 'aiTabGroups', 'browserTheme', 'themeCustom', 'compact', 'appIcon', 'cleanLinks', 'swipeNav', 'videoSpeedKeys', 'hideCookieBanners', 'blockNotifications', 'forceDark', 'translateTo', 'offerTranslate', 'autoPip', 'ntpShortcuts', 'ntpWallpaper', 'ntpClock', 'searchEngine', 'motion', 'theme', 'accent', 'adblock', 'blockTrackers', 'httpsOnly', 'sleepTabsAfterMin', 'restoreSession', 'sidebarCollapsed', 'sidebarWidth', 'tabLayout', 'introSeen', 'autoUpdate', 'askWhereToSave', 'doNotTrack', 'showSuggestions', 'homeTiles']
+const PUBLIC_SETTINGS = ['bookmarksBar', 'ntpStats', 'ntpRecent', 'ntpReadLater', 'darkStyle', 'uiSounds', 'darkOffSites', 'translateFlipDir', 'searchShortcuts', 'rememberZoom', 'soundActiveOnly', 'linksBackground', 'confirmQuit', 'wheelTabs', 'adblockAllow', 'aiModel', 'aiTabGroups', 'browserTheme', 'themeCustom', 'compact', 'appIcon', 'cleanLinks', 'swipeNav', 'videoSpeedKeys', 'hideCookieBanners', 'blockNotifications', 'forceDark', 'translateTo', 'offerTranslate', 'autoPip', 'ntpShortcuts', 'ntpWallpaper', 'ntpClock', 'searchEngine', 'motion', 'theme', 'accent', 'adblock', 'blockTrackers', 'httpsOnly', 'sleepTabsAfterMin', 'restoreSession', 'sidebarCollapsed', 'sidebarWidth', 'tabLayout', 'introSeen', 'autoUpdate', 'askWhereToSave', 'doNotTrack', 'showSuggestions', 'homeTiles']
 function publicSettings() { const s = D.settings.get(); return Object.fromEntries(PUBLIC_SETTINGS.map(k => [k, s[k]])) }
 function setSetting(k, v) {
   if (!PUBLIC_SETTINGS.includes(k)) return
@@ -1433,6 +1453,8 @@ ipcMain.handle('lumen', async (e, action, ...a) => {
       case 'navigate': { const url = toURL(a[0]); if (url) e.sender.loadURL(url); return }
       case 'open': { const url = toURL(a[0]); if (url && w) w.createTab(url, { active: !a[1] }); return }
       case 'history': return D.listHistory(a[0] || '', 500)
+      case 'readLater': return readLaterList(a[0] || 300)
+      case 'readLaterDone': return D.removeReadLater(String(a[0] || ''))
       case 'deleteHistory': return D.deleteHistory(a[0])
       case 'clearHistory': {
         D.clearHistory(a[0] || 0)
@@ -1517,7 +1539,7 @@ ipcMain.handle('lumen', async (e, action, ...a) => {
         return app.isDefaultProtocolClient('https')
       }
       case 'restart': app.relaunch(); app.quit(); return
-      case 'retry': { const u = a[0]; if (u) e.sender.loadURL(u); return }
+      case 'retry': { const u = String(a[0] || ''); if (/^(https?|lumen):\/\//i.test(u)) e.sender.loadURL(u); return }
     }
   } catch (err) { console.error('lumen action failed', action, err); return { ok: false, error: String(err.message || err) } }
 })
@@ -1585,7 +1607,7 @@ function buildMenu() {
       { label: 'Bookmarks Bar', accelerator: 'CmdOrCtrl+Shift+B', click: () => setSetting('bookmarksBar', D.settings.get('bookmarksBar') === false) },
       { label: 'Tab Overview', accelerator: 'CmdOrCtrl+Shift+O', click: focused(w => w.send('command', 'tabgrid')) },
       { label: 'Lumen AI', accelerator: 'CmdOrCtrl+Shift+A', click: focused(w => w.send('command', 'ai')) },
-      { label: 'Sort Tabs into Groups', accelerator: 'CmdOrCtrl+Shift+G', click: focused(w => autoGroupWindow(w)) },
+      { label: 'Sort Tabs into Groups', accelerator: 'CmdOrCtrl+Alt+G', click: focused(w => autoGroupWindow(w)) },
       { label: 'Reader Mode', accelerator: 'CmdOrCtrl+Shift+E', click: focused((w, t) => activeWc(w, t) && readerMode(activeWc(w, t))) },
       { label: 'Picture in Picture', accelerator: 'CmdOrCtrl+Shift+P', click: focused(w => w.send('command', 'pip')) },
       { label: 'Take Screenshot', accelerator: 'CmdOrCtrl+Shift+2', click: focused((w, t) => activeWc(w, t) && screenshot(activeWc(w, t))) },
@@ -1610,6 +1632,7 @@ function buildMenu() {
       { label: 'Downloads', accelerator: 'CmdOrCtrl+Shift+J', click: focused(w => w.createTab('lumen://downloads')) },
     ] },
     { label: 'Bookmarks', submenu: [
+      { label: 'Save to Read Later', accelerator: 'CmdOrCtrl+Shift+D', click: focused((w, t) => toggleReadLater(w, t)) },
       { label: 'Bookmark This Page', accelerator: 'CmdOrCtrl+D', click: focused((w, t) => { if (t) { if (D.isBookmarked(t.url)) D.removeBookmark(t.url); else D.addBookmark(t.url, t.title); w.pushState(); w.send('toast', D.isBookmarked(t.url) ? 'Bookmarked' : 'Bookmark removed') } }) },
       { label: 'Show All Bookmarks', accelerator: 'CmdOrCtrl+Alt+B', click: focused(w => w.createTab('lumen://bookmarks')) },
       { label: 'Passwords', click: focused(w => w.createTab('lumen://passwords')) },
@@ -1650,7 +1673,19 @@ const DARK_DETECT = `(() => {
   const base = lum(document.body) ?? lum(document.documentElement) ?? 1
   const vals = pts.map(v => v ?? base)
   const avg = vals.reduce((a, b) => a + b, 0) / vals.length
-  return { light: avg > 0.55 && !/^\\s*dark\\s*$/.test(meta), avg }
+  // A dark hero banner over a white page (pub.dev, many landing pages) fools the paint samples, so also read
+  // the text: on a light page most of the words, down the whole document, are written in dark ink.
+  let ink = 0, all = 0
+  const w = document.createTreeWalker(document.body || document.documentElement, NodeFilter.SHOW_TEXT)
+  for (let n, seen = 0; (n = w.nextNode()) && seen < 1500; seen++) {
+    const len = n.nodeValue.trim().length, el = n.parentElement
+    if (len < 3 || !el || /^(SCRIPT|STYLE|NOSCRIPT|TEMPLATE)$/.test(el.tagName) || (el.checkVisibility && !el.checkVisibility())) continue
+    const m = (getComputedStyle(el).color.match(/[\\d.]+/g) || []).map(Number)
+    if (m.length < 3 || m[3] === 0) continue
+    all += len; if ((0.2126 * m[0] + 0.7152 * m[1] + 0.0722 * m[2]) / 255 < 0.4) ink += len
+  }
+  const inky = all > 400 && ink / all > 0.7
+  return { light: (avg > 0.55 || inky) && !/^\\s*dark\\s*$/.test(meta), avg, ink: all ? ink / all : 0 }
   } finally { if (early) early.disabled = false }
 })()`
 // The dark theme itself is built by Dark Reader (MIT): it reads the page's own colors and writes a real dark
@@ -1768,7 +1803,7 @@ app.on('second-instance', (e, argv) => {
 let quitting = false
 function flushAll() {
   saveSessionNow()
-  for (const s of [D.settings, D.bookmarks, D.passwords, D.permissions, D.session, Passkeys.store]) s.flush()
+  for (const s of [D.settings, D.bookmarks, D.passwords, D.permissions, D.session, D.readLater, Passkeys.store]) s.flush()
   D.historyStore.replace([...D.historyMap.values()].sort((a, b) => b.t - a.t)); D.historyStore.flush()
 }
 app.on('before-quit', () => {

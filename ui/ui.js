@@ -544,6 +544,8 @@ const COMMANDS = [
   { t: 'Sort Tabs into Groups', k: ['group', 'sort tabs', 'organize', 'tidy'], i: 'tabs', run: () => api.do('autoGroup') },
   { t: 'Ungroup All Tabs', k: ['ungroup', 'remove groups'], i: 'tabs', run: () => api.do('ungroupAll') },
   { t: 'Reader Mode', k: ['reader', 'read'], i: 'book', run: () => api.do('reader') },
+  { t: 'Save to Read Later', k: ['read later', 'save for later', 'reading list', 'later'], i: 'book', run: () => api.do('readLater') },
+  { t: 'Read Later List', k: ['read later', 'reading list', 'saved pages', 'later'], i: 'book', run: () => setTimeout(openMainMenu, 80) },
   { t: 'Picture in Picture', k: ['pip', 'picture', 'video'], i: 'pip', run: () => api.do('pip') },
   { t: 'Take Screenshot', k: ['screenshot', 'capture'], i: 'camera', run: () => api.do('screenshot') },
   { t: 'Reopen Closed Tab', k: ['reopen', 'undo close', 'restore'], i: 'reload', run: () => api.do('reopen') },
@@ -688,7 +690,12 @@ function openPopover(html, anchor, { above = false, wide = false } = {}) {
   const r = anchor.getBoundingClientRect()
   overlay.classList.add('show')   // the overlay must be visible to measure the popover
   pop.classList.add('show')
-  const h = pop.offsetHeight, pw = pop.offsetWidth || 300
+  pop.style.maxHeight = ''
+  const pw = pop.offsetWidth || 300
+  // never taller than the room between the anchor and the window edge, so the last rows stay reachable by scrolling
+  const room = Math.max(160, above ? r.top - 16 : innerHeight - r.bottom - 16)
+  if (pop.offsetHeight > room) { pop.style.maxHeight = room + 'px'; pop.style.overflowY = 'auto' } else pop.style.overflowY = ''
+  const h = pop.offsetHeight
   pop.style.left = Math.max(8, Math.min(innerWidth - pw - 8, wide ? r.right - pw : r.left)) + 'px'
   pop.style.top = (above ? Math.max(8, r.top - h - 8) : r.bottom + 8) + 'px'
   pop.style.transformOrigin = above ? '20px 100%' : '20px 0'
@@ -785,13 +792,14 @@ function openShortcuts() {
   const groups = [
     ['Tabs', [['New tab', `${K.cmd} T`], ['Close tab', `${K.cmd} W`], ['Reopen closed tab', `${K.sh} ${K.cmd} T`], ['Next / previous tab', `Ctrl Tab`], ['Go to tab 1 to 8', `${K.cmd} 1-8`], ['Pin or unpin', 'Double-click tab']]],
     ['Navigate', [['Command bar', `${K.cmd} K`], ['Edit address', `${K.cmd} L`], ['Back / forward', `${K.cmd} [  ]`], ['Peek a link', 'Shift click'], ['Swipe back / forward', 'Two fingers']]],
-    ['Page', [['Find', `${K.cmd} F`], ['Translate', `${K.opt} ${K.cmd} T`], ['Reader mode', `${K.sh} ${K.cmd} E`], ['Picture in picture', `${K.sh} ${K.cmd} P`], ['Video speed', 'Shift  >  <'], ['Screenshot', `${K.sh} ${K.cmd} 2`], ['Zoom', `${K.cmd} +  -  0`]]],
+    ['Page', [['Find', `${K.cmd} F`], ['Translate', `${K.opt} ${K.cmd} T`], ['Reader mode', `${K.sh} ${K.cmd} E`], ['Save to Read later', `${K.sh} ${K.cmd} D`], ['Picture in picture', `${K.sh} ${K.cmd} P`], ['Video speed', 'Shift  >  <'], ['Screenshot', `${K.sh} ${K.cmd} 2`], ['Zoom', `${K.cmd} +  -  0`]]],
     ['Lumen', [['Split view', `${K.sh} ${K.cmd} \\`], ['Toggle sidebar', `${K.sh} ${K.cmd} S`], ['Tabs on top / side', `${K.opt} ${K.cmd} S`], ['Copy clean link', `${K.sh} ${K.cmd} C`], ['Private window', `${K.sh} ${K.cmd} N`], ['This sheet', `${K.cmd} /`]]],
   ]
   const html = `<div class="sc-head"><b>Keyboard shortcuts</b><button class="ib sm" data-sc="close">${ICONS.close}</button></div><div class="sc-grid">${groups.map(([g, rows]) => `<div><div class="mm-label">${g}</div>${rows.map(([l, k]) => `<div class="sc-row"><span>${esc(l)}</span><kbd>${esc(k)}</kbd></div>`).join('')}</div>`).join('')}</div>`
   if (overlayOpen === 'cmd') closeCmd(true)
   pop.innerHTML = html
   pop.classList.add('wide', 'sheet')
+  pop.style.maxHeight = ''; pop.style.overflowY = ''   // a menu opened before may have left a height limit
   overlay.classList.add('show'); pop.classList.add('show')
   pop.style.left = Math.max(8, (innerWidth - pop.offsetWidth) / 2) + 'px'
   pop.style.top = Math.max(20, (innerHeight - pop.offsetHeight) / 2.4) + 'px'
@@ -823,6 +831,7 @@ async function openMainMenu() {
     ${item('history', 'clock', 'History', `${K.cmd} Y`)}
     ${item('downloads', 'download', 'Downloads', `${K.sh} ${K.cmd} J`)}
     ${item('bookmarks', 'star', 'Bookmarks', `${K.opt} ${K.cmd} B`)}
+    ${item('readlater', 'book', info.saved ? 'Remove from Read later' : 'Save to Read later', `${K.sh} ${K.cmd} D`, info.readLaterCount ? `<span class="mm-count">${info.readLaterCount}</span>` : '')}
     ${item('passwords', 'key', 'Passwords and passkeys', '', `<span class="mm-count">${(info.passwords || 0) + (info.passkeys || 0) || ''}</span>`)}
     ${item('extensions', 'puzzle', 'Extensions', '')}
     <div class="sep"></div>
@@ -836,11 +845,12 @@ async function openMainMenu() {
     <div class="sep"></div>
     ${item('tabgrid', 'layers', 'Tab overview', `${K.sh} ${K.cmd} O`)}
     ${item('ai', 'bolt', 'Lumen AI', `${K.sh} ${K.cmd} A`)}
-    ${item('autogroup', 'tabs', 'Sort tabs into groups', `${K.sh} ${K.cmd} G`)}
+    ${item('autogroup', 'tabs', 'Sort tabs into groups', `${K.opt} ${K.cmd} G`)}
     ${(S.groups || []).length ? item('ungroup', 'close', 'Ungroup all tabs', '') : ''}
     <div class="sep"></div>
     ${item('savesession', 'layers', 'Save all tabs as a session', '')}
     ${(info.sessions || []).map(x => `<div class="item mm" data-mm="restore" data-id="${esc(x.id)}"><span class="ri">${ICONS.tabs}</span><div class="grow">${esc(x.name)}<div class="small">${x.count} tabs</div></div><button class="ib sm" data-mm="delsession" data-id="${esc(x.id)}" title="Delete">${ICONS.close}</button></div>`).join('')}
+    ${(info.readLater || []).length ? `<div class="sep"></div><div class="mm-label">Read later</div>` + info.readLater.map(r => `<div class="item mm" data-mm="rlopen" data-url="${esc(r.url)}"><span class="ri">${favHTML({ url: r.url })}</span><div class="grow" style="min-width:0"><div style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(r.title || hostOf(r.url))}</div><div class="small">${esc(hostOf(r.url).replace(/^www\./, ''))}</div></div><button class="ib sm" data-mm="rldel" data-url="${esc(r.url)}" title="Remove">${ICONS.close}</button></div>`).join('') : ''}
     ${(info.closed || []).length ? `<div class="sep"></div><div class="mm-label">Recently closed</div>` + info.closed.map((c, i) => `<div class="item mm" data-mm="reopen" data-i="${i}"><span class="ri">${favHTML({ url: c.url })}</span><div class="grow" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(c.title)}</div></div>`).join('') : ''}
     <div class="sep"></div>
     ${item('layout', info.tabLayout === 'top' ? 'sidebarL' : 'tabsTop', info.tabLayout === 'top' ? 'Move tabs to the sidebar' : 'Move tabs to the top', `${K.opt} ${K.cmd} S`)}
@@ -855,6 +865,9 @@ async function openMainMenu() {
     if (a === 'restore') return api.do('restoreSession', b.dataset.id)
     if (a === 'delsession') return api.do('deleteSession', b.dataset.id)
     if (a === 'savesession') return api.do('saveSession')
+    if (a === 'rlopen') return api.do('readLaterOpen', b.dataset.url)
+    if (a === 'rldel') return api.do('readLaterRemove', b.dataset.url).then(() => toast('Removed from Read later'))
+    if (a === 'readlater') return api.do('readLater')
     const run = {
       settings: () => api.do('openPage', 'settings'), install: () => api.do('update', 'install'),
       newtab: () => api.do('newTab'), newwindow: () => api.do('newWindow', false), private: () => api.do('newWindow', true),
@@ -985,7 +998,7 @@ const toastG = new SpringGroup({ y: 10, o: 0 }, 'calm', v => { toastEl.style.tra
 let toastT
 function toast(msg) {
   toastEl.textContent = msg
-  toastEl.style.left = (collapsed && !peeking ? 16 : 14) + 'px'
+  toastEl.style.left = TOP ? '' : (collapsed && !peeking ? 16 : 14) + 'px'   // tabs on top: the stylesheet centers it
   toastG.to({ y: 0, o: 1 })
   clearTimeout(toastT)
   toastT = setTimeout(() => toastG.to({ y: 10, o: 0 }), 2000)

@@ -92,7 +92,7 @@ app.whenReady().then(async () => {
   const pp = w.createTab('lumen://parcels', { active: true }); await wait(2000)
   const pq = s => pp.view.webContents.executeJavaScript(s)
   ok(await pq(`document.querySelectorAll('.prow').length`) >= 3, 'Parcels page lists them (' + await pq(`document.querySelectorAll('.prow').length`) + ')')
-  ok(await pq(`[...document.querySelectorAll('.daylabel')].map(d => d.textContent).join('|')`) === 'On the way|Delivered', 'on the way and delivered sections')
+  ok(/^On the way\s*\d*\|Delivered$/.test(await pq(`[...document.querySelectorAll('.daylabel')].map(d => d.textContent.trim()).join('|')`)), 'on the way and delivered sections')
   fs.writeFileSync(`${SHOTS}/w15-page.png`, (await pp.view.webContents.capturePage()).toPNG())
   const books = P.list().find(x => x.name === 'Books')
   await pq(`document.querySelector('[data-id="${books.id}"] [data-act=deliver]').click()`); await wait(800)

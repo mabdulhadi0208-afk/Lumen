@@ -8,6 +8,12 @@ const letterFav = host => `<span class="fav" style="background:hsl(${hue(host)} 
 const fav = url => { const h = hostOf(url); if (!h) return letterFav('?'); return `<img class="fav" src="${esc(new URL(url).origin)}/favicon.ico" data-h="${esc(h)}">` }
 document.addEventListener('error', e => { if (e.target.tagName === 'IMG' && e.target.dataset.h !== undefined) e.target.outerHTML = letterFav(e.target.dataset.h) }, true)
 const $ = s => document.querySelector(s)
+// a small message that springs up at the bottom of an internal page
+function flash(msg) {
+  let el = document.getElementById('pflash'); if (!el) { el = document.createElement('div'); el.id = 'pflash'; document.body.appendChild(el) }
+  el.textContent = msg; el.classList.remove('show'); void el.offsetWidth; el.classList.add('show')
+  clearTimeout(flash.t); flash.t = setTimeout(() => el.classList.remove('show'), 2600)
+}
 const $$ = s => [...document.querySelectorAll(s)]
 
 let S = {}, ENGINES = {}, VERSION = '', PLATFORM = ''
@@ -132,9 +138,45 @@ const SECTIONS = [
   ['downloads', 'Downloads', 'download'], ['about', 'About Lumen', 'bolt'],
 ]
 function shell(active) {
-  root.innerHTML = `<div class="shell"><nav class="nav"><h1>Lumen</h1>${SECTIONS.map(([id, label, icon]) => `<a href="${id === 'history' || id === 'bookmarks' || id === 'downloads' || id === 'passwords' || id === 'extensions' ? 'lumen://' + id : 'lumen://settings/' + id}" class="${id === active ? 'on' : ''}">${ICONS[icon]}${label}</a>`).join('')}</nav><main class="main rise" id="main"></main></div>`
+  root.innerHTML = `<div class="shell"><nav class="nav"><h1>Lumen</h1><div class="navsearch">${ICONS.search}<input type="search" id="setq" placeholder="Search settings" spellcheck="false" autocomplete="off"></div>${SECTIONS.map(([id, label, icon]) => `<a href="${id === 'history' || id === 'bookmarks' || id === 'downloads' || id === 'passwords' || id === 'extensions' ? 'lumen://' + id : 'lumen://settings/' + id}" class="${id === active ? 'on' : ''}">${ICONS[icon]}${label}</a>`).join('')}</nav><main class="main rise" id="main"></main></div>`
   document.title = active === 'general' ? 'Settings' : (SECTIONS.find(s => s[0] === active) || [, 'Settings'])[1]
+  bindSettingsSearch(active)
+  // arriving from a search result: scroll to that setting and make it glow
+  if (location.hash.length > 1) setTimeout(() => {
+    const want = decodeURIComponent(location.hash.slice(1)).toLowerCase()
+    const r = [...document.querySelectorAll('#main .row')].find(x => (x.querySelector('.t') || {}).textContent?.trim().toLowerCase() === want)
+    if (r) { r.scrollIntoView({ block: 'center', behavior: 'smooth' }); r.classList.add('flash'); setTimeout(() => r.classList.remove('flash'), 2400) }
+  }, 350)
   return $('#main')
+}
+// ---- settings search: every row of every settings page, found by its name or description
+let SET_INDEX = null
+async function settingsIndex() {
+  if (SET_INDEX) return SET_INDEX
+  const out = []
+  for (const [id, fn] of [['general', general], ['appearance', appearance], ['ai', aiPage], ['privacy', privacy], ['sync', sync], ['import', importPage]]) {
+    const d = document.createElement('div')
+    try { await fn(d) } catch {}
+    const label = (SECTIONS.find(s => s[0] === id) || [, id])[1]
+    d.querySelectorAll('.row').forEach(r => { const t = r.querySelector('.t'); if (t && t.textContent.trim()) out.push({ id, label, t: t.textContent.trim(), d: ((r.querySelector('.d') || {}).textContent || '').trim() }) })
+  }
+  return (SET_INDEX = out)
+}
+function bindSettingsSearch(active) {
+  const q = $('#setq'); if (!q) return
+  let saved = null
+  q.oninput = async () => {
+    const v = q.value.trim().toLowerCase(), m = $('#main')
+    if (v.length < 2) { if (saved !== null) { m.innerHTML = ''; saved = null; const r = location.href; location.replace(r.split('#')[0]) } return }
+    if (saved === null) saved = true
+    const idx = await settingsIndex()
+    if (q.value.trim().toLowerCase() !== v) return
+    const words = v.split(/\s+/)
+    const hits = idx.filter(x => words.every(w => (x.t + ' ' + x.d + ' ' + x.label).toLowerCase().includes(w))).slice(0, 40)
+    const mark = s => esc(s).replace(new RegExp('(' + words.map(w => w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|') + ')', 'gi'), '<mark>$1</mark>')
+    m.innerHTML = `<h2>Search</h2><p class="lead">${hits.length ? hits.length + ' setting' + (hits.length > 1 ? 's' : '') + ' found' : 'Nothing matches that. Try another word.'}</p>` + (hits.length ? `<div class="card list">${hits.map(x => `<a class="row hit" href="lumen://settings/${x.id}#${encodeURIComponent(x.t)}"><div class="grow"><div class="t">${mark(x.t)}</div>${x.d ? `<div class="d">${mark(x.d)}</div>` : ''}</div><span class="pill">${esc(x.label)}</span></a>`).join('')}</div>` : '')
+  }
+  q.onkeydown = e => { if (e.key === 'Enter') { const a = document.querySelector('#main a.hit'); if (a) location.href = a.href } else if (e.key === 'Escape') { q.value = ''; q.oninput() } }
 }
 const sw = (key, on) => `<label class="switch"><input type="checkbox" data-set="${key}" ${on ? 'checked' : ''}><span></span></label>`
 const row = (t, d, ctl) => `<div class="row"><div class="grow"><div class="t">${t}</div>${d ? `<div class="d">${d}</div>` : ''}</div>${ctl || ''}</div>`
@@ -181,6 +223,9 @@ async function general(m) {
   </div>
   <div class="card"><h3>PERFORMANCE</h3>
     ${row('Sleep inactive tabs', 'Frees memory from tabs you have not looked at in a while. They wake up instantly when you click them.', seg('sleepTabsAfterMin', [[0, 'Never'], [15, '15 min'], [30, '30 min'], [60, '1 hour'], [240, '4 hours']], S.sleepTabsAfterMin))}
+  </div>
+  <div class="card"><h3>TIDY TABS</h3>
+    ${row('Archive tabs you have not used', 'Tabs you have not opened in this long close themselves. Pinned tabs and tabs playing sound stay. Find them again in History, Archived tabs.', seg('archiveTabsAfterH', [[0, 'Never'], [12, '12 hours'], [24, '1 day'], [168, '1 week']], S.archiveTabsAfterH || 0))}
   </div>
   <div class="card"><h3>DOWNLOADS</h3>
     ${row('Ask where to save each file', 'Otherwise files go straight to your Downloads folder.', sw('askWhereToSave', S.askWhereToSave))}
@@ -399,7 +444,9 @@ function dayLabel(t) {
   return diff === 0 ? 'Today' : diff === 1 ? 'Yesterday' : d.toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric' })
 }
 async function historyPage(m) {
-  m.innerHTML = `<h2>History</h2><p class="lead">Everything you have visited, searchable.</p><div class="toolbar"><input type="search" id="q" placeholder="Search history"><button class="btn" id="clr">Clear browsing data</button></div><div id="out"></div>`
+  if (location.hash === '#archive') return archivePage(m)
+  m.innerHTML = `<h2>History</h2><p class="lead">Everything you have visited, searchable.</p><div class="seg big" id="hseg"><button class="on">History</button><button data-go="archive">Archived tabs</button></div><div class="toolbar"><input type="search" id="q" placeholder="Search history"><button class="btn" id="clr">Clear browsing data</button></div><div id="out"></div>`
+  $('#hseg').onclick = e => { if (e.target.closest('[data-go]')) { location.hash = 'archive'; historyPage(m) } }
   const draw = async q => {
     const list = await L.invoke('history', q)
     if (!list.length) { $('#out').innerHTML = `<div class="empty">${q ? 'No matches' : 'Nothing here yet'}</div>`; return }
@@ -407,7 +454,7 @@ async function historyPage(m) {
     for (const h of list) {
       const lab = dayLabel(h.t)
       if (lab !== cur) { if (cur) html += '</div>'; html += `<div class="daylabel">${esc(lab)}</div><div class="card list">`; cur = lab }
-      html += `<div class="row" data-url="${esc(h.url)}"><span style="width:64px;color:var(--fg3);font-size:12.5px;flex:none">${new Date(h.t).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}</span>${fav(h.url)}<div class="grow"><div class="t" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(h.title || h.url)}</div><div class="d">${esc(hostOf(h.url))}</div></div><button class="ib" data-del title="Remove">${ICONS.close}</button></div>`
+      html += `<div class="row" data-url="${esc(h.url)}"><span style="width:64px;color:var(--fg3);font-size:12.5px;flex:none">${new Date(h.t).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}</span>${fav(h.url)}<div class="grow"><div class="t" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(h.title || h.url)}</div><div class="d">${esc(hostOf(h.url))}</div></div><button class="ib hov" data-forget title="Forget everything from ${esc(hostOf(h.url))}">${ICONS.trash || ICONS.close}</button><button class="ib" data-del title="Remove">${ICONS.close}</button></div>`
     }
     $('#out').innerHTML = html + '</div>'
   }
@@ -416,7 +463,35 @@ async function historyPage(m) {
   $('#out').onclick = async e => {
     const r = e.target.closest('[data-url]'); if (!r) return
     if (e.target.closest('[data-del]')) { await L.invoke('deleteHistory', r.dataset.url); r.remove(); return }
+    if (e.target.closest('[data-forget]')) {
+      const host = hostOf(r.dataset.url)
+      if (!confirm(`Remove every page from ${host} from your history?`)) return
+      const n = await L.invoke('deleteHistoryHost', host); draw($('#q').value); flash(`Forgot ${n} page${n === 1 ? '' : 's'} from ${host}`); return
+    }
     if (e.metaKey || e.ctrlKey) L.invoke('open', r.dataset.url, true); else L.invoke('navigate', r.dataset.url)
+  }
+  draw('')
+}
+
+async function archivePage(m) {
+  const list = await L.invoke('archive')
+  const ago = t => { const mm = Math.round((Date.now() - t) / 60000); return mm < 1 ? 'just now' : mm < 60 ? mm + ' min ago' : mm < 1440 ? Math.round(mm / 60) + ' hr ago' : Math.round(mm / 1440) + ' d ago' }
+  m.innerHTML = `<h2>Archived tabs</h2><p class="lead">Tabs that tidied themselves away after you stopped using them. ${S.archiveTabsAfterH ? '' : '<a href="lumen://settings/general#Archive%20tabs%20you%20have%20not%20used">Turn on tab archiving</a>'}</p>
+    <div class="seg big" id="hseg"><button data-go="history">History</button><button class="on">Archived tabs</button></div>
+    <div class="toolbar"><input type="search" id="q" placeholder="Search archived tabs">${list.length ? '<button class="btn" id="clrA">Clear archive</button>' : ''}</div><div id="out"></div>`
+  $('#hseg').onclick = e => { if (e.target.closest('[data-go]')) { history.replaceState(null, '', location.pathname); historyPage(m) } }
+  const draw = q => {
+    const f = list.filter(x => !q || (x.title + ' ' + x.url).toLowerCase().includes(q.toLowerCase()))
+    $('#out').innerHTML = f.length ? `<div class="card list">${f.map(x => `<div class="row" data-url="${esc(x.url)}">${fav(x.url)}<div class="grow"><div class="t" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(x.title || x.url)}</div><div class="d">${esc(hostOf(x.url))}  ·  archived ${ago(x.at)}</div></div><button class="btn sm" data-open>Open</button><button class="ib" data-del title="Remove">${ICONS.close}</button></div>`).join('')}</div>`
+      : `<div class="empty">${q ? 'No matches' : 'No archived tabs yet. Idle tabs land here when tab archiving is on.'}</div>`
+  }
+  $('#q').oninput = e => draw(e.target.value)
+  if ($('#clrA')) $('#clrA').onclick = async () => { await L.invoke('archiveRemove'); archivePage(m) }
+  $('#out').onclick = async e => {
+    const r = e.target.closest('[data-url]'); if (!r) return
+    if (e.target.closest('[data-del]')) { await L.invoke('archiveRemove', r.dataset.url); list.splice(list.findIndex(x => x.url === r.dataset.url), 1); r.remove(); return }
+    await L.invoke('archiveRemove', r.dataset.url)
+    if (e.target.closest('[data-open]') || true) { if (e.metaKey || e.ctrlKey) { L.invoke('open', r.dataset.url, true); r.remove() } else L.invoke('navigate', r.dataset.url) }
   }
   draw('')
 }

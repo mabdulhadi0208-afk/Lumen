@@ -1,7 +1,7 @@
 // Lumen — main process.
 const {
   app, BaseWindow, WebContentsView, session, ipcMain, Menu, nativeTheme, protocol, dialog, shell,
-  clipboard, webContents, systemPreferences, net, desktopCapturer, nativeImage, powerMonitor,
+  clipboard, webContents, systemPreferences, net, desktopCapturer, nativeImage, powerMonitor, screen,
 } = require('electron')
 const fs = require('fs')
 const path = require('path')
@@ -570,7 +570,8 @@ class BrowserWin {
     if (this.fullscreenTab) {
       a.view.setBorderRadius(0); a.view.setBounds({ x: 0, y: 0, width: W, height: H }); shown.add(a)
     } else {
-      const r = this.rect
+      const [cw, ch] = this.win.getContentSize()
+      const r = this.focusMode && !this.focusPeek ? { x: 0, y: 0, width: cw, height: ch } : this.rect
       const split = this.splitId && this.tabs.get(this.splitId)
       if (split && split.id !== a.id) {
         if (!split.view) this.makeView(split)
@@ -582,7 +583,7 @@ class BrowserWin {
         right.view.setBounds({ x: r.x + half + gap, y: r.y, width: r.width - half - gap, height: r.height })
         shown.add(left); shown.add(right)
       } else {
-        a.view.setBorderRadius(10)
+        a.view.setBorderRadius(r === this.rect ? 10 : 0)
         a.view.setBounds({ x: r.x, y: r.y, width: Math.max(1, r.width), height: Math.max(1, r.height) })
         shown.add(a)
       }
@@ -647,7 +648,7 @@ class BrowserWin {
     }
   }
 
-  closeTab(id) {
+  closeTab(id, { undo = false } = {}) {
     const t = this.tabs.get(id)
     if (!t) return
     const url = t.view ? t.view.webContents.getURL() : t.url
@@ -668,6 +669,8 @@ class BrowserWin {
     this.pruneGroups()
     if (!this.order.length) { this.win.close(); return }
     this.pushState(); saveSession()
+    // a tab you closed yourself can come right back from the toast
+    if (undo && !this.incognito && url && url !== 'lumen://newtab/') this.send('undo-close', { title: t.title || url })
   }
 
   moveTab(id, toIndex) {
@@ -1069,11 +1072,45 @@ function calcOf(q) {
   try { const v = expr(); if (i !== s.length || !isFinite(v)) return null; return +v.toPrecision(12) } catch { return null }
 }
 
+// unit converter for the address bar and command bar: "5 km in mi", "72f to c", "3.5 lb kg", "1 gb in mb"
+const UNITS = (() => {
+  const U = {}, add = (kind, names, f) => { for (const n of names) U[n] = { kind, f, name: names[0] } }
+  add('len', ['mm', 'millimeter', 'millimeters', 'millimetre'], 0.001); add('len', ['cm', 'centimeter', 'centimeters', 'centimetre'], 0.01)
+  add('len', ['m', 'meter', 'meters', 'metre', 'metres'], 1); add('len', ['km', 'kilometer', 'kilometers', 'kilometre', 'kilometres'], 1000)
+  add('len', ['in', 'inch', 'inches'], 0.0254); add('len', ['ft', 'foot', 'feet'], 0.3048); add('len', ['yd', 'yard', 'yards'], 0.9144); add('len', ['mi', 'mile', 'miles'], 1609.344)
+  add('mass', ['mg', 'milligram', 'milligrams'], 0.001); add('mass', ['g', 'gram', 'grams'], 1); add('mass', ['kg', 'kilo', 'kilos', 'kilogram', 'kilograms'], 1000)
+  add('mass', ['oz', 'ounce', 'ounces'], 28.349523125); add('mass', ['lb', 'lbs', 'pound', 'pounds'], 453.59237); add('mass', ['st', 'stone', 'stones'], 6350.29318); add('mass', ['t', 'ton', 'tons', 'tonne', 'tonnes'], 1e6)
+  add('vol', ['ml', 'milliliter', 'milliliters', 'millilitre'], 0.001); add('vol', ['l', 'liter', 'liters', 'litre', 'litres'], 1)
+  add('vol', ['tsp', 'teaspoon', 'teaspoons'], 0.00492892); add('vol', ['tbsp', 'tablespoon', 'tablespoons'], 0.0147868); add('vol', ['floz'], 0.0295735)
+  add('vol', ['cup', 'cups'], 0.236588); add('vol', ['pt', 'pint', 'pints'], 0.473176); add('vol', ['qt', 'quart', 'quarts'], 0.946353); add('vol', ['gal', 'gallon', 'gallons'], 3.78541)
+  add('speed', ['kmh', 'km/h', 'kph'], 1 / 3.6); add('speed', ['mph'], 0.44704); add('speed', ['m/s', 'mps'], 1); add('speed', ['knot', 'knots', 'kn'], 0.514444)
+  add('data', ['b', 'byte', 'bytes'], 1); add('data', ['kb', 'kilobyte', 'kilobytes'], 1024); add('data', ['mb', 'megabyte', 'megabytes'], 1048576)
+  add('data', ['gb', 'gigabyte', 'gigabytes'], 1073741824); add('data', ['tb', 'terabyte', 'terabytes'], 1099511627776)
+  add('time', ['ms', 'millisecond', 'milliseconds'], 0.001); add('time', ['s', 'sec', 'secs', 'second', 'seconds'], 1); add('time', ['min', 'mins', 'minute', 'minutes'], 60)
+  add('time', ['h', 'hr', 'hrs', 'hour', 'hours'], 3600); add('time', ['d', 'day', 'days'], 86400); add('time', ['wk', 'week', 'weeks'], 604800); add('time', ['yr', 'year', 'years'], 31557600)
+  add('area', ['m2', 'sqm'], 1); add('area', ['km2', 'sqkm'], 1e6); add('area', ['ft2', 'sqft'], 0.09290304); add('area', ['acre', 'acres'], 4046.8564224); add('area', ['ha', 'hectare', 'hectares'], 10000)
+  for (const [n, k] of [['c', 'C'], ['celsius', 'C'], ['°c', 'C'], ['f', 'F'], ['fahrenheit', 'F'], ['°f', 'F'], ['k', 'K'], ['kelvin', 'K']]) U[n] = { kind: 'temp', t: k, name: k === 'C' ? '°C' : k === 'F' ? '°F' : 'K' }
+  return U
+})()
+function convOf(q) {
+  const m = String(q || '').trim().toLowerCase().replace(/,/g, '').match(/^(-?\d*\.?\d+)\s*([a-z°/0-9]+?)\s+(?:(?:in|to|as|into|=)\s+)?([a-z°/0-9]+)$/)
+  if (!m) return null
+  const v = parseFloat(m[1]), a = UNITS[m[2]], b = UNITS[m[3]]
+  if (!a || !b || a.kind !== b.kind || a === b || !isFinite(v)) return null
+  let r
+  if (a.kind === 'temp') { const c = a.t === 'C' ? v : a.t === 'F' ? (v - 32) * 5 / 9 : v - 273.15; r = b.t === 'C' ? c : b.t === 'F' ? c * 9 / 5 + 32 : c + 273.15 }
+  else r = v * a.f / b.f
+  r = +r.toPrecision(Math.abs(r) >= 1 ? 8 : 6)
+  const nm = (u, raw) => u.kind === 'temp' ? u.name : raw
+  return { value: r, text: `${v.toLocaleString('en-US', { maximumFractionDigits: 10 })} ${nm(a, m[2])} = ${r.toLocaleString('en-US', { maximumFractionDigits: 8 })} ${nm(b, m[3])}` }
+}
+
 async function suggest(w, text) {
   const q = (text || '').trim()
   const out = { query: q, tabs: [], history: [], bookmarks: [], search: [] }
   const sc = shortcutFor(q); if (sc) out.shortcut = { name: sc.name, query: sc.query }
   const calc = calcOf(q); if (calc !== null) out.calc = calc
+  const conv = calc === null && convOf(q); if (conv) out.conv = conv
   if (!q) {
     out.history = D.topSites(6).map(s => ({ url: s.url, title: s.title }))
     return out
@@ -1126,7 +1163,7 @@ ipcMain.handle('ui', async (e, action, ...a) => {
       }
       case 'switchTab': { const ww = windows[a[1]] || w; ww.activate(a[0]); ww.win.focus(); return }
       case 'activate': return w.activate(a[0])
-      case 'close': return w.closeTab(a[0])
+      case 'close': return w.closeTab(a[0], { undo: true })
       case 'move': return w.moveTab(a[0], a[1])
       case 'back': return wc && wc.navigationHistory.goBack()
       case 'forward': return wc && wc.navigationHistory.goForward()
@@ -1193,6 +1230,8 @@ ipcMain.handle('ui', async (e, action, ...a) => {
       case 'muteOthers': { for (const x of w.tabs.values()) if (x.id !== w.activeId && x.view) { x.muted = true; x.view.webContents.setAudioMuted(true) } w.pushState(); return }
       case 'restart': app.relaunch(); app.quit(); return
       case 'readLater': return toggleReadLater(w, t)
+      case 'focusMode': return setFocusMode(w, a[0] === undefined ? !w.focusMode : a[0])
+      case 'archiveNow': return archiveIdleTabs()
       case 'readLaterOpen': { const url = String(a[0] || ''); if (!D.isReadLater(url)) return; D.removeReadLater(url); w.createTab(url, { active: true }); return }
       case 'readLaterRemove': return D.removeReadLater(String(a[0] || ''))
       case 'menuInfo': return { readLater: readLaterList(6), readLaterCount: D.readLater.get().length, saved: !!t && D.isReadLater(t.view ? t.view.webContents.getURL() : t.url), sessions: (D.settings.get('savedSessions') || []).map(s => ({ id: s.id, name: s.name, count: s.tabs.length })), closed: closedTabs.slice(-5).reverse().map(c => ({ title: c.title || c.url, url: c.url })), version: app.getVersion(), update: Updater.getState(), zoom: t ? Math.round(Math.pow(1.2, t.zoom || 0) * 100) : 100, incognito: w.incognito, tabLayout: D.settings.get('tabLayout'), fullscreen: w.win.isFullScreen(), passkeys: Passkeys.list().length, passwords: D.listPasswords().length }
@@ -1273,11 +1312,12 @@ function tabMenu(w, id) {
     { label: 'Move to New Window', enabled: w.order.length > 1, click: () => { const url = t.view ? t.view.webContents.getURL() : t.url; w.closeTab(id); createWindow({ urls: [url] }) } },
     { label: 'Put to Sleep', enabled: !!t.view && id !== w.activeId, click: () => w.sleep(t) },
     { type: 'separator' },
-    { label: 'Close Tab', click: () => w.closeTab(id) },
+    { label: 'Close Tab', click: () => w.closeTab(id, { undo: true }) },
     { label: 'Close Other Tabs', enabled: others.length > 0, click: () => others.filter(i => !w.tabs.get(i).pinned).forEach(i => w.closeTab(i)) },
     { label: D.settings.get('tabLayout') === 'top' ? 'Close Tabs to the Left' : 'Close Tabs Above', click: () => w.order.slice(0, w.order.indexOf(id)).filter(i => !w.tabs.get(i).pinned).forEach(i => w.closeTab(i)) },
-    { label: 'Mute Other Tabs', enabled: others.length > 0, click: () => { for (const i of others) { const o = w.tabs.get(i); if (o && o.view && !o.muted) { o.muted = true; o.view.webContents.setAudioMuted(true) } } w.pushState() } },
     { label: D.settings.get('tabLayout') === 'top' ? 'Close Tabs to the Right' : 'Close Tabs Below', click: () => w.order.slice(w.order.indexOf(id) + 1).filter(i => !w.tabs.get(i).pinned).forEach(i => w.closeTab(i)) },
+    { type: 'separator' },
+    { label: 'Mute Other Tabs', enabled: others.length > 0, click: () => { for (const i of others) { const o = w.tabs.get(i); if (o && o.view && !o.muted) { o.muted = true; o.view.webContents.setAudioMuted(true) } } w.pushState() } },
   ]).popup({ window: w.win })
 }
 function appMenuPopup(w) {
@@ -1319,7 +1359,7 @@ function downloadAction(id, what) {
   broadcast('downloads', listDownloads())
 }
 
-const PUBLIC_SETTINGS = ['bookmarksBar', 'ntpStats', 'ntpRecent', 'ntpReadLater', 'darkStyle', 'uiSounds', 'darkOffSites', 'translateFlipDir', 'searchShortcuts', 'rememberZoom', 'soundActiveOnly', 'linksBackground', 'confirmQuit', 'wheelTabs', 'adblockAllow', 'aiModel', 'aiTabGroups', 'browserTheme', 'themeCustom', 'compact', 'appIcon', 'cleanLinks', 'swipeNav', 'videoSpeedKeys', 'hideCookieBanners', 'blockNotifications', 'forceDark', 'translateTo', 'offerTranslate', 'autoPip', 'ntpShortcuts', 'ntpWallpaper', 'ntpClock', 'searchEngine', 'motion', 'theme', 'accent', 'adblock', 'blockTrackers', 'httpsOnly', 'sleepTabsAfterMin', 'restoreSession', 'sidebarCollapsed', 'sidebarWidth', 'tabLayout', 'introSeen', 'autoUpdate', 'askWhereToSave', 'doNotTrack', 'showSuggestions', 'homeTiles']
+const PUBLIC_SETTINGS = ['archiveTabsAfterH', 'bookmarksBar', 'ntpStats', 'ntpRecent', 'ntpReadLater', 'darkStyle', 'uiSounds', 'darkOffSites', 'translateFlipDir', 'searchShortcuts', 'rememberZoom', 'soundActiveOnly', 'linksBackground', 'confirmQuit', 'wheelTabs', 'adblockAllow', 'aiModel', 'aiTabGroups', 'browserTheme', 'themeCustom', 'compact', 'appIcon', 'cleanLinks', 'swipeNav', 'videoSpeedKeys', 'hideCookieBanners', 'blockNotifications', 'forceDark', 'translateTo', 'offerTranslate', 'autoPip', 'ntpShortcuts', 'ntpWallpaper', 'ntpClock', 'searchEngine', 'motion', 'theme', 'accent', 'adblock', 'blockTrackers', 'httpsOnly', 'sleepTabsAfterMin', 'restoreSession', 'sidebarCollapsed', 'sidebarWidth', 'tabLayout', 'introSeen', 'autoUpdate', 'askWhereToSave', 'doNotTrack', 'showSuggestions', 'homeTiles']
 function publicSettings() { const s = D.settings.get(); return Object.fromEntries(PUBLIC_SETTINGS.map(k => [k, s[k]])) }
 function setSetting(k, v) {
   if (!PUBLIC_SETTINGS.includes(k)) return
@@ -1454,8 +1494,11 @@ ipcMain.handle('lumen', async (e, action, ...a) => {
       case 'open': { const url = toURL(a[0]); if (url && w) w.createTab(url, { active: !a[1] }); return }
       case 'history': return D.listHistory(a[0] || '', 500)
       case 'readLater': return readLaterList(a[0] || 300)
+      case 'archive': return D.archive.get().slice(0, 500)
+      case 'archiveRemove': return a[0] ? D.removeArchive(String(a[0])) : D.archive.replace([])
       case 'readLaterDone': return D.removeReadLater(String(a[0] || ''))
       case 'deleteHistory': return D.deleteHistory(a[0])
+      case 'deleteHistoryHost': return D.deleteHistoryHost(a[0])
       case 'clearHistory': {
         D.clearHistory(a[0] || 0)
         if (a[1]) await mainSession.clearStorageData()
@@ -1573,7 +1616,7 @@ function buildMenu() {
       { label: 'Reopen Closed Tab', accelerator: 'CmdOrCtrl+Shift+T', click: focused(w => reopenClosed(w)) },
       { label: 'Open Location...', accelerator: 'CmdOrCtrl+L', click: focused(w => w.send('command', 'location')) },
       { type: 'separator' },
-      { label: 'Close Tab', accelerator: 'CmdOrCtrl+W', click: focused((w, t) => t ? w.closeTab(t.id) : w.win.close()) },
+      { label: 'Close Tab', accelerator: 'CmdOrCtrl+W', click: focused((w, t) => t ? w.closeTab(t.id, { undo: true }) : w.win.close()) },
       { label: 'Close Window', accelerator: 'CmdOrCtrl+Shift+W', click: focused(w => w.win.close()) },
       { type: 'separator' },
       { label: 'Save Page As...', accelerator: 'CmdOrCtrl+S', click: focused((w, t) => activeWc(w, t) && savePage(activeWc(w, t))) },
@@ -1632,6 +1675,7 @@ function buildMenu() {
       { label: 'Downloads', accelerator: 'CmdOrCtrl+Shift+J', click: focused(w => w.createTab('lumen://downloads')) },
     ] },
     { label: 'Bookmarks', submenu: [
+      { label: 'Focus Mode', accelerator: 'CmdOrCtrl+Shift+F', click: focused(w => setFocusMode(w, !w.focusMode)) },
       { label: 'Save to Read Later', accelerator: 'CmdOrCtrl+Shift+D', click: focused((w, t) => toggleReadLater(w, t)) },
       { label: 'Bookmark This Page', accelerator: 'CmdOrCtrl+D', click: focused((w, t) => { if (t) { if (D.isBookmarked(t.url)) D.removeBookmark(t.url); else D.addBookmark(t.url, t.title); w.pushState(); w.send('toast', D.isBookmarked(t.url) ? 'Bookmarked' : 'Bookmark removed') } }) },
       { label: 'Show All Bookmarks', accelerator: 'CmdOrCtrl+Alt+B', click: focused(w => w.createTab('lumen://bookmarks')) },
@@ -1784,6 +1828,49 @@ setInterval(() => {
   for (const w of windows) for (const t of w.tabs.values()) if (t.view && t.lastActive < cutoff) w.sleep(t)
 }, 60000)
 
+// ---------------------------------------------------------------- tab archive
+// Tabs you have not opened for a long time close themselves into the archive (lumen://history), so the strip stays tidy.
+// Pinned tabs, tabs playing sound, tabs in split view and the tab in front are never archived.
+function archiveIdleTabs(now = Date.now()) {
+  const hours = +D.settings.get('archiveTabsAfterH') || 0
+  if (!hours) return 0
+  const cutoff = now - hours * 3600000
+  let n = 0
+  for (const w of windows) {
+    if (w.incognito) continue
+    const idle = [...w.tabs.values()].filter(t => !t.pinned && !t.audible && !t.playing && t.id !== w.activeId && t.id !== w.splitId && t.lastActive < cutoff)
+    for (const t of idle) {
+      if (w.order.length <= 1) break
+      const url = t.view && !t.view.webContents.isDestroyed() ? t.view.webContents.getURL() : t.url
+      if (/^https?:/.test(url)) D.addArchive(url, t.title, t.lastActive)
+      w.closeTab(t.id); n++
+    }
+    if (n) w.send('toast', `Archived ${n} idle tab${n > 1 ? 's' : ''}`)
+  }
+  return n
+}
+setInterval(() => { try { archiveIdleTabs() } catch (e) { log('archive failed', e.message) } }, 5 * 60000)
+
+// ---------------------------------------------------------------- focus mode
+// The page fills the whole window. Touch the top edge with the mouse and the tabs and toolbar come back.
+function setFocusMode(w, on) {
+  w.focusMode = !!on; w.focusPeek = !!on   // start revealed for a moment so you can see what happened
+  clearInterval(w.focusTimer); w.focusTimer = null
+  w.layout(); w.send('focus-mode', w.focusMode)
+  if (!on) return
+  w.send('toast', `Focus mode. Point at the top edge for tabs. ${isMac ? 'Shift Cmd' : 'Shift Ctrl'} F to leave.`)
+  let hideAt = Date.now() + 2200
+  w.focusTimer = setInterval(() => {
+    if (w.win.isDestroyed() || !w.focusMode) { clearInterval(w.focusTimer); return }
+    if (!w.win.isFocused() && !w.focusPeek) return
+    const p = screen.getCursorScreenPoint(), b = w.win.getContentBounds()
+    const inside = p.x >= b.x && p.x <= b.x + b.width && p.y >= b.y - 4 && p.y <= b.y + b.height
+    const y = p.y - b.y
+    if (!w.focusPeek && inside && y <= 3) { w.focusPeek = true; hideAt = 0; w.layout() }
+    else if (w.focusPeek && !w.overlay && Date.now() > hideAt && (!inside || y > w.rect.y + 24)) { w.focusPeek = false; w.layout() }
+  }, 90)
+}
+
 // ---------------------------------------------------------------- open URLs from the OS
 const pendingOpen = []
 function openExternalURL(url) {
@@ -1803,7 +1890,7 @@ app.on('second-instance', (e, argv) => {
 let quitting = false
 function flushAll() {
   saveSessionNow()
-  for (const s of [D.settings, D.bookmarks, D.passwords, D.permissions, D.session, D.readLater, Passkeys.store]) s.flush()
+  for (const s of [D.settings, D.bookmarks, D.passwords, D.permissions, D.session, D.readLater, D.archive, Passkeys.store]) s.flush()
   D.historyStore.replace([...D.historyMap.values()].sort((a, b) => b.t - a.t)); D.historyStore.flush()
 }
 app.on('before-quit', () => {

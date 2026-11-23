@@ -517,42 +517,45 @@ let cmdMode = 'newtab', results = [], sel = 0, suggestSeq = 0, lastTyped = ''
 const COMMANDS = [
   { t: 'New Private Window', k: ['private', 'incognito'], i: 'mask', run: () => api.do('newWindow', true) },
   { t: 'New Window', k: ['window'], i: 'tabs', run: () => api.do('newWindow', false) },
-  { t: 'Settings', k: ['settings', 'preferences', 'options'], i: 'gear', run: () => api.do('openPage', 'settings') },
-  { t: 'History', k: ['history'], i: 'clock', run: () => api.do('openPage', 'history') },
-  { t: 'Downloads', k: ['downloads'], i: 'download', run: () => api.do('openPage', 'downloads') },
-  { t: 'Bookmarks', k: ['bookmarks'], i: 'star', run: () => api.do('openPage', 'bookmarks') },
+  { t: 'Settings', s: () => `${K.cmd} ,`, k: ['settings', 'preferences', 'options'], i: 'gear', run: () => api.do('openPage', 'settings') },
+  { t: 'History', s: () => `${K.cmd} Y`, k: ['history'], i: 'clock', run: () => api.do('openPage', 'history') },
+  { t: 'Downloads', s: () => `${K.sh} ${K.cmd} J`, k: ['downloads'], i: 'download', run: () => api.do('openPage', 'downloads') },
+  { t: 'Bookmarks', s: () => `${K.opt} ${K.cmd} B`, k: ['bookmarks'], i: 'star', run: () => api.do('openPage', 'bookmarks') },
   { t: 'Passwords', k: ['passwords', 'logins', 'keys'], i: 'key', run: () => api.do('openPage', 'passwords') },
   { t: 'Extensions', k: ['extensions', 'addons', 'plugins'], i: 'puzzle', run: () => api.do('openPage', 'extensions') },
   { t: 'Chrome Web Store', k: ['web store', 'chrome store', 'extensions store'], i: 'puzzle', run: () => api.do('newTab', 'https://chromewebstore.google.com/') },
-  { t: 'Split View', k: ['split', 'side by side'], i: 'split', run: () => toggleSplit() },
-  { t: 'Keyboard Shortcuts', k: ['shortcuts', 'keys', 'hotkeys', 'help'], i: 'bolt', run: () => openShortcuts() },
+  { t: 'Split View', s: () => `${K.sh} ${K.cmd} \\`, k: ['split', 'side by side'], i: 'split', run: () => toggleSplit() },
+  { t: 'Keyboard Shortcuts', s: () => `${K.cmd} /`, k: ['shortcuts', 'keys', 'hotkeys', 'help'], i: 'bolt', run: () => openShortcuts() },
   { t: 'Save All Tabs as a Session', k: ['save tabs', 'session', 'save all'], i: 'star', run: () => api.do('saveSession') },
   { t: 'Copy All Tab Links', k: ['copy all', 'links', 'share tabs'], i: 'arrowRight', run: () => api.do('copyAllLinks') },
   { t: 'Close Duplicate Tabs', k: ['duplicate', 'dupes', 'clean up tabs'], i: 'tabs', run: () => api.do('closeDuplicates') },
   { t: 'Close Other Tabs', k: ['close other', 'close all'], i: 'close', run: () => api.do('closeOthers') },
   { t: 'Mute Other Tabs', k: ['mute', 'silence', 'quiet'], i: 'muted', run: () => api.do('muteOthers') },
-  { t: 'Copy Clean Link', k: ['copy link', 'share', 'clean link'], i: 'arrowRight', run: () => navigator.clipboard.writeText(S.url).then(() => toast('Link copied')) },
-  { t: 'Translate Page', k: ['translate', 'translation', 'language'], i: 'globe', run: () => api.do('translate') },
-  { t: 'Send Page to Phone', k: ['qr', 'phone', 'share', 'send'], i: 'phone', run: () => openQR() },
-  { t: 'Paste and Go', k: ['paste', 'clipboard'], i: 'link', run: () => api.do('pasteGo') },
-  { t: 'Duplicate Tab', k: ['duplicate', 'copy tab', 'clone'], i: 'tabs', run: () => api.do('duplicateTab') },
+  { t: 'Copy Clean Link', s: () => `${K.sh} ${K.cmd} C`, k: ['copy link', 'share', 'clean link'], i: 'arrowRight', run: () => navigator.clipboard.writeText(S.url).then(() => toast('Link copied')) },
+  { t: 'Translate Page', s: () => `${K.opt} ${K.cmd} T`, k: ['translate', 'translation', 'language'], i: 'globe', run: () => api.do('translate') },
+  { t: 'Send Page to Phone', s: () => `${K.sh} ${K.cmd} Y`, k: ['qr', 'phone', 'share', 'send'], i: 'phone', run: () => openQR() },
+  { t: 'Paste and Go', s: () => `${K.sh} ${K.cmd} V`, k: ['paste', 'clipboard'], i: 'link', run: () => api.do('pasteGo') },
+  { t: 'Duplicate Tab', s: () => `${K.sh} ${K.cmd} K`, k: ['duplicate', 'copy tab', 'clone'], i: 'tabs', run: () => api.do('duplicateTab') },
   { t: 'Switch to Last Used Tab', k: ['last tab', 'previous tab', 'recent'], i: 'tabs', run: () => api.do('lastTab') },
   { t: 'Clear Data for This Site', k: ['clear', 'cookies', 'site data', 'sign out'], i: 'trash', run: () => api.do('clearSiteData') },
-  { t: 'Tab Overview', k: ['overview', 'all tabs', 'grid', 'expose', 'tabs'], i: 'tabs', run: () => setTimeout(openTabGrid, 80) },
-  { t: 'Lumen AI', k: ['ai', 'ask', 'chat', 'assistant', 'claude'], i: 'bolt', run: () => openAI() },
+  { t: 'Tab Overview', s: () => `${K.sh} ${K.cmd} O`, k: ['overview', 'all tabs', 'grid', 'expose', 'tabs'], i: 'tabs', run: () => setTimeout(openTabGrid, 80) },
+  { t: 'Lumen AI', s: () => `${K.sh} ${K.cmd} A`, k: ['ai', 'ask', 'chat', 'assistant', 'claude'], i: 'bolt', run: () => openAI() },
   { t: 'Summarize Page', k: ['summarize', 'summary', 'tldr', 'ai'], i: 'book', run: () => { openAI(); aiRun('summarize') } },
-  { t: 'Sort Tabs into Groups', k: ['group', 'sort tabs', 'organize', 'tidy'], i: 'tabs', run: () => api.do('autoGroup') },
+  { t: 'Sort Tabs into Groups', s: () => `${K.opt} ${K.cmd} G`, k: ['group', 'sort tabs', 'organize', 'tidy'], i: 'tabs', run: () => api.do('autoGroup') },
   { t: 'Ungroup All Tabs', k: ['ungroup', 'remove groups'], i: 'tabs', run: () => api.do('ungroupAll') },
-  { t: 'Reader Mode', k: ['reader', 'read'], i: 'book', run: () => api.do('reader') },
-  { t: 'Save to Read Later', k: ['read later', 'save for later', 'reading list', 'later'], i: 'book', run: () => api.do('readLater') },
+  { t: 'Reader Mode', s: () => `${K.sh} ${K.cmd} E`, k: ['reader', 'read'], i: 'book', run: () => api.do('reader') },
+  { t: 'Focus Mode', s: () => `${K.sh} ${K.cmd} F`, k: ['focus', 'zen', 'distraction', 'hide tabs', 'full'], i: 'sidebar', run: () => api.do('focusMode') },
+  { t: 'Archive Idle Tabs Now', k: ['archive', 'tidy', 'clean up', 'idle', 'old tabs'], i: 'tabs', run: () => api.do('archiveNow').then(n => { if (!n) toast('Turn on tab archiving in Settings, General first') }) },
+  { t: 'Archived Tabs', k: ['archive', 'archived'], i: 'clock', run: () => api.do('openPage', 'history#archive') },
+  { t: 'Save to Read Later', s: () => `${K.sh} ${K.cmd} D`, k: ['read later', 'save for later', 'reading list', 'later'], i: 'book', run: () => api.do('readLater') },
   { t: 'Read Later List', k: ['read later', 'reading list', 'saved pages', 'later'], i: 'book', run: () => setTimeout(openMainMenu, 80) },
-  { t: 'Picture in Picture', k: ['pip', 'picture', 'video'], i: 'pip', run: () => api.do('pip') },
-  { t: 'Take Screenshot', k: ['screenshot', 'capture'], i: 'camera', run: () => api.do('screenshot') },
-  { t: 'Reopen Closed Tab', k: ['reopen', 'undo close', 'restore'], i: 'reload', run: () => api.do('reopen') },
+  { t: 'Picture in Picture', s: () => `${K.sh} ${K.cmd} P`, k: ['pip', 'picture', 'video'], i: 'pip', run: () => api.do('pip') },
+  { t: 'Take Screenshot', s: () => `${K.sh} ${K.cmd} 2`, k: ['screenshot', 'capture'], i: 'camera', run: () => api.do('screenshot') },
+  { t: 'Reopen Closed Tab', s: () => `${K.sh} ${K.cmd} T`, k: ['reopen', 'undo close', 'restore'], i: 'reload', run: () => api.do('reopen') },
   { t: 'Toggle Sidebar', k: ['sidebar', 'hide sidebar', 'focus'], i: 'sidebar', run: () => { if (!TOP) setCollapsed(!collapsed) } },
   { t: 'Tabs on Top', k: ['top', 'tabs on top', 'horizontal', 'layout', 'sidebar up'], i: 'tabs', run: () => api.do('setSetting', 'tabLayout', 'top') },
   { t: 'Tabs in Sidebar', k: ['side', 'tabs in sidebar', 'vertical', 'layout', 'sidebar left'], i: 'sidebar', run: () => api.do('setSetting', 'tabLayout', 'side') },
-  { t: 'Developer Tools', k: ['devtools', 'inspect', 'console'], i: 'bolt', run: () => api.do('devtools') },
+  { t: 'Developer Tools', s: () => IS_MAC ? `${K.opt} ${K.cmd} I` : 'Ctrl Shift I', k: ['devtools', 'inspect', 'console'], i: 'bolt', run: () => api.do('devtools') },
   { t: 'Clear Browsing Data', k: ['clear', 'delete history', 'cookies'], i: 'close', run: () => api.do('openPage', 'settings/privacy') },
   { t: 'Replay Intro', k: ['intro', 'tutorial', 'tour', 'welcome'], i: 'bolt', run: () => playIntro() },
   { t: 'Check for Updates', k: ['update', 'version'], i: 'download', run: () => api.do('openPage', 'settings/about') },
@@ -596,10 +599,11 @@ function buildResults(q, data) {
     else out.push({ sec: '', icon: ICONS.search, title: qq, sub: '  ' + eng, key: 'Search', go: () => go(qq) })
   }
   if (data.calc !== undefined && data.calc !== null) out.unshift({ sec: '', icon: ICONS.bolt, title: '= ' + data.calc.toLocaleString('en-US', { maximumFractionDigits: 10 }), sub: '  Press Enter to copy', key: 'Copy', go: () => { api.do('copyText', String(data.calc)); closeCmd(true); toast('Copied ' + data.calc) } })
+  if (data.conv) out.unshift({ sec: '', icon: ICONS.bolt, title: data.conv.text, sub: '  Press Enter to copy', key: 'Copy', go: () => { api.do('copyText', String(data.conv.value)); closeCmd(true); toast('Copied ' + data.conv.value) } })
   if (data.shortcut) out.unshift({ sec: '', icon: ICONS.search, title: data.shortcut.query, sub: '  Search ' + data.shortcut.name, key: 'Search', go: () => go(qq) })
   const lq = qq.toLowerCase()
   const cmds = lq ? COMMANDS.filter(c => c.t.toLowerCase().includes(lq) || c.k.some(k => k.startsWith(lq) || lq.startsWith(k))).slice(0, 3) : []
-  for (const c of cmds) out.push({ sec: 'Actions', icon: ICONS[c.i], title: c.t, sub: '', key: 'Run', go: () => { closeCmd(true); c.run() } })
+  for (const c of cmds) out.push({ sec: 'Actions', icon: ICONS[c.i], title: c.t, sub: '', key: c.s ? c.s() : 'Run', go: () => { closeCmd(true); c.run() } })
   for (const t of (data.tabs || [])) out.push({ sec: 'Open tabs', icon: favHTML(t), title: titleOf(t), sub: hostOf(t.url), key: 'Switch', go: () => { closeCmd(true); api.do('switchTab', t.id, t.win) } })
   const seenUrls = new Set()
   for (const b of (data.bookmarks || [])) { seenUrls.add(b.url); out.push({ sec: 'Bookmarks', icon: ICONS.starFill, title: b.title || b.url, sub: hostOf(b.url), key: '', go: () => go(b.url) }) }
@@ -793,7 +797,7 @@ function openShortcuts() {
     ['Tabs', [['New tab', `${K.cmd} T`], ['Close tab', `${K.cmd} W`], ['Reopen closed tab', `${K.sh} ${K.cmd} T`], ['Next / previous tab', `Ctrl Tab`], ['Go to tab 1 to 8', `${K.cmd} 1-8`], ['Pin or unpin', 'Double-click tab']]],
     ['Navigate', [['Command bar', `${K.cmd} K`], ['Edit address', `${K.cmd} L`], ['Back / forward', `${K.cmd} [  ]`], ['Peek a link', 'Shift click'], ['Swipe back / forward', 'Two fingers']]],
     ['Page', [['Find', `${K.cmd} F`], ['Translate', `${K.opt} ${K.cmd} T`], ['Reader mode', `${K.sh} ${K.cmd} E`], ['Save to Read later', `${K.sh} ${K.cmd} D`], ['Picture in picture', `${K.sh} ${K.cmd} P`], ['Video speed', 'Shift  >  <'], ['Screenshot', `${K.sh} ${K.cmd} 2`], ['Zoom', `${K.cmd} +  -  0`]]],
-    ['Lumen', [['Split view', `${K.sh} ${K.cmd} \\`], ['Toggle sidebar', `${K.sh} ${K.cmd} S`], ['Tabs on top / side', `${K.opt} ${K.cmd} S`], ['Copy clean link', `${K.sh} ${K.cmd} C`], ['Private window', `${K.sh} ${K.cmd} N`], ['This sheet', `${K.cmd} /`]]],
+    ['Lumen', [['Split view', `${K.sh} ${K.cmd} \\`], ['Toggle sidebar', `${K.sh} ${K.cmd} S`], ['Focus mode', `${K.sh} ${K.cmd} F`], ['Tabs on top / side', `${K.opt} ${K.cmd} S`], ['Copy clean link', `${K.sh} ${K.cmd} C`], ['Private window', `${K.sh} ${K.cmd} N`], ['This sheet', `${K.cmd} /`]]],
   ]
   const html = `<div class="sc-head"><b>Keyboard shortcuts</b><button class="ib sm" data-sc="close">${ICONS.close}</button></div><div class="sc-grid">${groups.map(([g, rows]) => `<div><div class="mm-label">${g}</div>${rows.map(([l, k]) => `<div class="sc-row"><span>${esc(l)}</span><kbd>${esc(k)}</kbd></div>`).join('')}</div>`).join('')}</div>`
   if (overlayOpen === 'cmd') closeCmd(true)
@@ -845,6 +849,7 @@ async function openMainMenu() {
     <div class="sep"></div>
     ${item('tabgrid', 'layers', 'Tab overview', `${K.sh} ${K.cmd} O`)}
     ${item('ai', 'bolt', 'Lumen AI', `${K.sh} ${K.cmd} A`)}
+    ${item('focus', 'sidebar', 'Focus mode', `${K.sh} ${K.cmd} F`)}
     ${item('autogroup', 'tabs', 'Sort tabs into groups', `${K.opt} ${K.cmd} G`)}
     ${(S.groups || []).length ? item('ungroup', 'close', 'Ungroup all tabs', '') : ''}
     <div class="sep"></div>
@@ -877,7 +882,7 @@ async function openMainMenu() {
       find: () => openFind(), translate: () => api.do('translate'), reader: () => api.do('reader'), pip: () => api.do('pip').then(ok => { if (ok === false) toast('No video on this page') }),
       split: () => toggleSplit(), screenshot: () => api.do('screenshot'), print: () => api.do('print'),
       layout: () => api.do('setSetting', 'tabLayout', TOP ? 'side' : 'top'), intro: () => playIntro(),
-      tabgrid: () => setTimeout(openTabGrid, 80), ai: () => openAI(), autogroup: () => api.do('autoGroup'), ungroup: () => api.do('ungroupAll'),
+      tabgrid: () => setTimeout(openTabGrid, 80), ai: () => openAI(), focus: () => api.do('focusMode'), autogroup: () => api.do('autoGroup'), ungroup: () => api.do('ungroupAll'),
     }[a]
     if (run) run()
   }
@@ -996,12 +1001,20 @@ function addPrompt(p) {
 const toastEl = $('#toast')
 const toastG = new SpringGroup({ y: 10, o: 0 }, 'calm', v => { toastEl.style.transform = `translateY(${v.y}px)`; toastEl.style.opacity = Math.max(0, Math.min(1, v.o)) })
 let toastT
-function toast(msg) {
+// toast(message) or toast(message, { label: 'Undo', run }) for one action button
+function toast(msg, action) {
   toastEl.textContent = msg
+  toastEl.classList.toggle('act', !!action)
+  if (action) {
+    const b = document.createElement('button'); b.className = 'toast-btn'; b.textContent = action.label
+    b.onclick = () => { clearTimeout(toastT); toastG.to({ y: 10, o: 0 }); toastEl.classList.remove('act'); action.run() }
+    toastEl.appendChild(b)
+    requestAnimationFrame(() => Jelly.kick && Jelly.kick(b, 0.7, 0.6))
+  }
   toastEl.style.left = TOP ? '' : (collapsed && !peeking ? 16 : 14) + 'px'   // tabs on top: the stylesheet centers it
   toastG.to({ y: 0, o: 1 })
   clearTimeout(toastT)
-  toastT = setTimeout(() => toastG.to({ y: 10, o: 0 }), 2000)
+  toastT = setTimeout(() => { toastG.to({ y: 10, o: 0 }); toastEl.classList.remove('act') }, action ? 5000 : 2000)
 }
 
 // ---------------------------------------------------------------- IPC
@@ -1017,6 +1030,8 @@ api.on('downloads', d => { downloads = d; renderDownloadsButton() })
 api.on('download-started', () => { const b = $('#btn-downloads'); b.classList.add('show', 'done'); requestAnimationFrame(() => Jelly.kick(b, 1.2, 1)) })
 api.on('prompt', p => addPrompt(p))
 api.on('toast', m => toast(m))
+api.on('undo-close', m => toast('Closed ' + (m.title.length > 26 ? m.title.slice(0, 26) + '...' : m.title), { label: 'Undo', run: () => api.do('reopen') }))
+api.on('focus-mode', on => document.body.classList.toggle('focusmode', !!on))
 api.on('hover-url', u => { const h = $('#hoverurl'); if (u) h.textContent = u; h.classList.toggle('show', !!u) })
 api.on('update', u => { updateState = u; $('#btn-update').classList.toggle('show', u.status === 'ready') })
 api.on('fullscreen', f => { fullscreenWindow = f; document.body.classList.toggle('winfs', !!f); queueLayout() })

@@ -344,3 +344,27 @@ body[data-motion="off"] .searchbox::before { animation: none; }
 .later .rc-b { padding-right: 18px; }
 .recent.later { margin-top: 18px; }
 .ntp:not(.wp-aurora):not(.wp-plain) .later .rc-h { color: rgba(255,255,255,.85); text-shadow: 0 1px 8px rgba(0,0,0,.4); }
+
+/* ---------- 1.13: settings search, dropdowns, history tools */
+.navsearch { position: relative; margin: 0 4px 14px; }
+.navsearch svg { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); width: 14px; height: 14px; color: var(--fg3); pointer-events: none; }
+.navsearch input { width: 100%; height: 34px; padding-left: 31px; border-radius: 11px; background: color-mix(in srgb, var(--bg2) 80%, transparent); }
+.navsearch input::-webkit-search-cancel-button { filter: grayscale(1); opacity: .6; }
+mark { background: color-mix(in srgb, var(--accent) 26%, transparent); color: inherit; border-radius: 4px; padding: 0 2px; }
+a.row.hit { color: var(--fg); transition: background .18s; }
+a.row.hit:hover { background: var(--hover); }
+.row.flash { animation: rowflash 2.4s ease-out; }
+@keyframes rowflash { 0%, 30% { background: color-mix(in srgb, var(--accent) 18%, transparent); box-shadow: inset 3px 0 0 var(--accent); } 100% { background: transparent; box-shadow: inset 3px 0 0 transparent; } }
+select { -webkit-appearance: none; appearance: none; padding-right: 34px; cursor: default; font-weight: 500;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath d='M3 4.5 6 7.5 9 4.5' fill='none' stroke='%23888' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat; background-position: right 12px center; box-shadow: 0 1px 2px rgba(0,0,0,.05); transition: border-color .15s, box-shadow .15s, transform .35s cubic-bezier(.3,1.5,.5,1); }
+select:hover { border-color: color-mix(in srgb, var(--accent) 35%, var(--line)); }
+select:active { transform: scale(.98); }
+.seg.big { display: inline-flex; margin: 0 0 14px; padding: 3px; border-radius: 12px; }
+.seg.big button { padding: 6px 14px; font-size: 13px; border-radius: 9px; }
+.ib.hov { opacity: 0; transition: opacity .18s; }
+.row:hover .ib.hov { opacity: 1; }
+#pflash { position: fixed; left: 50%; bottom: 26px; transform: translate(-50%, 20px) scale(.96); opacity: 0; padding: 10px 18px; border-radius: 999px; font-weight: 600; font-size: 13px;
+  background: var(--card-solid, var(--bg2)); box-shadow: 0 12px 34px rgba(10,14,30,.2), 0 0 0 1px var(--line); pointer-events: none; z-index: 99;
+  transition: opacity .25s, transform .5s cubic-bezier(.3,1.45,.5,1); }
+#pflash.show { opacity: 1; transform: translate(-50%, 0) scale(1); }

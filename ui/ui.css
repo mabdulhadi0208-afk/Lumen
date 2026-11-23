@@ -830,3 +830,10 @@ body:not(.toplayout) .pill::after { left: 0; right: auto; top: 9px; bottom: 9px;
 .prompt { background-image: linear-gradient(90deg, color-mix(in srgb, var(--accent) 8%, transparent), transparent 60%); }
 #toast { font-family: var(--display); font-weight: 600; }
 .tg-title, .tc-title { font-family: var(--display); }
+
+/* toast with an action button (Undo) */
+#toast.act { pointer-events: auto; max-width: 340px; display: flex; align-items: center; gap: 12px; padding: 6px 6px 6px 16px; }
+body.toplayout #toast.act { margin-left: -150px; min-width: 300px; justify-content: space-between; }
+.toast-btn { flex: none; border: 0; border-radius: 999px; padding: 5px 12px; font: inherit; font-weight: 650; color: #fff; background: var(--accent); cursor: default; box-shadow: 0 4px 12px color-mix(in srgb, var(--accent) 40%, transparent); transition: filter .2s; }
+.toast-btn:hover { filter: brightness(1.08); }
+.toast-btn:active { filter: brightness(.94); }

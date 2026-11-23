@@ -40,6 +40,7 @@ const settings = new Store('settings', {
   doNotTrack: true,
   showSuggestions: true,
   homeTiles: true,
+  archiveTabsAfterH: 0,       // 0 = never
 })
 
 const bookmarks = new Store('bookmarks', [])
@@ -48,6 +49,10 @@ const permissions = new Store('permissions', {}) // { origin: { permission: 'all
 const session = new Store('session', { windows: [] })
 const historyStore = new Store('history', [])
 const readLater = new Store('readlater', [])
+const archive = new Store('archive', [])
+// tabs that closed themselves after sitting unused; newest first
+function addArchive(url, title, t) { archive.replace([{ url, title: String(title || url).slice(0, 300), t: t || Date.now(), at: Date.now() }, ...archive.get().filter(x => x.url !== url)].slice(0, 500)) }
+function removeArchive(url) { archive.replace(archive.get().filter(x => x.url !== url)) }
 
 // ---------- read later ----------
 // Pages saved to read later, newest first. Opening one from the list takes it off.
@@ -92,6 +97,13 @@ function listHistory(q = '', limit = 300) {
   return arr.filter(h => h.url.toLowerCase().includes(s) || (h.title || '').toLowerCase().includes(s)).slice(0, limit)
 }
 function deleteHistory(url) { historyMap.delete(url); flushHistory() }
+// forget a whole site: every page on that host and its subdomains
+function deleteHistoryHost(host) {
+  host = String(host || '').replace(/^www\./, ''); if (!host) return 0
+  let n = 0
+  for (const k of [...historyMap.keys()]) { let h = ''; try { h = new URL(k).hostname.replace(/^www\./, '') } catch {} if (h === host || h.endsWith('.' + host)) { historyMap.delete(k); n++ } }
+  flushHistory(); return n
+}
 function clearHistory(sinceMs = 0) {
   if (!sinceMs) historyMap.clear()
   else for (const [k, h] of historyMap) if (h.t >= Date.now() - sinceMs) historyMap.delete(k)
@@ -167,9 +179,9 @@ function updatePassword(id, username, password) {
 
 module.exports = {
   settings, bookmarks, passwords, permissions, session, historyStore,
-  addHistory, updateHistoryTitle, listHistory, deleteHistory, clearHistory, topSites,
+  addHistory, updateHistoryTitle, listHistory, deleteHistory, deleteHistoryHost, clearHistory, topSites,
   liveBookmarks, addBookmark, removeBookmark, editBookmark, isBookmarked,
   savePassword, hasPassword, credentialsFor, listPasswords, revealPassword, deletePassword, updatePassword,
   enc, dec, historyMap, flushHistory,
-  readLater, isReadLater, addReadLater, removeReadLater,
+  readLater, isReadLater, addReadLater, removeReadLater, archive, addArchive, removeArchive,
 }

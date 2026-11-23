@@ -8,7 +8,8 @@ const uid = () => 'p' + Date.now().toString(36) + Math.random().toString(36).sli
 
 const clean = n => String(n || '').toUpperCase().replace(/[\s-]/g, '')
 // ------------------------------------------------------------ carriers
-// [id, name, region, tracking page ({n} = the number), or '' to look it up on 17track, which covers every carrier here]
+// [id, name, region, tracking page ({n} = the number)]. With no page listed, Lumen goes straight to that carrier's own
+// tracking site: the first result for "<carrier> tracking <number>". 17track is only for Any carrier.
 const T17 = 'https://t.17track.net/en#nums={n}'
 const LIST = [
   // Global express
@@ -473,7 +474,8 @@ const LIST = [
   ['pil', 'Pacific International Lines', 'Freight and ocean', ''],
 ]
 const CARRIERS = {}
-for (const [id, name, region, url] of LIST) CARRIERS[id] = { name, region, url: n => (url || T17).replace('{n}', n) }
+const ownSite = (name, n) => 'https://duckduckgo.com/?q=' + encodeURIComponent('!ducky ' + name + ' tracking ' + decodeURIComponent(n))
+for (const [id, name, region, url] of LIST) CARRIERS[id] = { name, region, direct: !!url, url: n => url ? url.replace('{n}', n) : ownSite(name, n) }
 CARRIERS.other = { name: 'Any carrier (17track)', region: 'Other', url: n => T17.replace('{n}', n) }
 // the international mail format RR123456789XX ends in the country of the post office that sent it
 const UPU = { US: 'usps', GB: 'royalmail', CA: 'canadapost', SA: 'saudipost', CN: 'chinapost', AU: 'auspost', DE: 'deutschepost', FR: 'laposte', NL: 'postnl', JP: 'japanpost', IN: 'indiapost', AE: 'emiratespost', PK: 'pakistanpost', TR: 'ptt', IT: 'posteitaliane', ES: 'correos', BE: 'bpost', CH: 'swisspost', AT: 'austrianpost', SE: 'postnord', DK: 'postnord', NO: 'bring', FI: 'posti', PL: 'pocztapolska', RU: 'russianpost', UA: 'ukrposhta', BR: 'correiosbr', MX: 'correosmx', AR: 'correoar', KR: 'koreapost', HK: 'hkpost', SG: 'singpost', MY: 'posmalaysia', TH: 'thaipost', VN: 'vnpost', PH: 'phlpost', ID: 'posindonesia', NZ: 'nzpost', ZA: 'sapost', EG: 'egyptpost', QA: 'qatarpost', KW: 'kuwaitpost', OM: 'omanpost', BH: 'bahrainpost', JO: 'jordanpost', IL: 'israelpost', IE: 'anpost', PT: 'ctt', GR: 'elta', CZ: 'ceskaposta', HU: 'magyarposta', TW: 'chunghwapost', LK: 'slpost', BD: 'bdpost', NG: 'nipost', KE: 'postakenya', MA: 'baridmaghrib', DZ: 'algerieposte', TN: 'tunisiepost', AL: 'postashqiptare', IS: 'icelandpost', LU: 'postlu', MT: 'maltapost', CY: 'cypruspost', GE: 'georgianpost', AM: 'haypost', AZ: 'azerpost', KZ: 'kazpost', BY: 'belpost', MD: 'moldovaposta', ME: 'postacg', MK: 'postamk', BA: 'bhposta', EE: 'omniva', LV: 'latvijaspasts', LT: 'lietuvospastas', SI: 'postaslovenije', SK: 'slovenskaposta', HR: 'hrvatskaposta', RS: 'postasrbije', RO: 'postaromana', BG: 'bgpost', JM: 'jamaicapost', TT: 'ttpost', VE: 'ipostel', PE: 'serpost', CL: 'correoschile', UY: 'correouy', PY: 'correopy', CR: 'correocr', LB: 'libanpost', IR: 'iranpost', NP: 'nepalpost', KH: 'cambodiapost', MN: 'mongolpost', MO: 'macaupost', FJ: 'fijipost', GH: 'ghanapost', ET: 'ethiopost', TZ: 'tzpost', UG: 'ugandapost', ZW: 'zimpost', BW: 'botswanapost', NA: 'nampost', MU: 'mauritiuspost', CM: 'campost', CO: '472' }
@@ -573,6 +575,7 @@ function shopName(host) {
   const n = parts[Math.max(0, i)]
   return n.charAt(0).toUpperCase() + n.slice(1)
 }
+// a link you typed in always comes first, then the carrier you picked (or that the number belongs to)
 const openURL = p => p.url || (p.number ? trackURL(p) : '')
 
 module.exports = { etaOf, shopName, store, LIST, looksLikeTracking, CARRIERS, detect, trackURL, carrierName, statusOf, ORDER_SCAN, list, active, add, update, remove, setStatus, prune, openURL, clean }

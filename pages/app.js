@@ -514,17 +514,17 @@ async function addParcelDialog(done, edit) {
     <label><span>Tracking number${edit && !edit.number ? ' <span class="opt">optional for saved orders</span>' : ''}</span><input id="pn" ${edit && !edit.number ? '' : 'required'} placeholder="1Z999AA10123456784" spellcheck="false" autocomplete="off" value="${esc(edit ? edit.number || '' : '')}"></label>
     <div class="pd-row"><label>Name<input id="pname" placeholder="New headphones" autocomplete="off" value="${esc(edit ? edit.name || '' : '')}"></label>
     <label>Expected<input id="pexp" type="date" value="${esc(edit ? edit.expected || '' : '')}"></label></div>
-    <label><span>Carrier <span class="opt">${carriers.length - 1} to choose from</span></span><div class="pd-car"><input id="pcq" placeholder="Search carriers" autocomplete="off"><select id="pcar" size="1"><option value="">Detect for me</option>${opts('')}<option value="other">Other (17track)</option></select></div></label>
-    <label><span>Order page <span class="opt">optional, opens when you click the parcel</span></span><input id="purl" placeholder="https://..." autocomplete="off" value="${esc(edit ? edit.url || '' : '')}"></label>
+    <label><span>Carrier <span class="opt">${carriers.length - 1} to choose from</span></span><div class="pd-car"><input id="pcq" placeholder="Search carriers" autocomplete="off"><select id="pcar" size="1"><option value="">Detect for me</option>${opts('')}<option value="other">Any carrier (17track)</option></select></div></label>
+    <label><span>Tracking or order link <span class="opt">optional, always opens first</span></span><input id="purl" placeholder="https://..." autocomplete="off" value="${esc(edit ? edit.url || '' : '')}"></label>
     <div class="pd-detect" id="pdet"></div>
     <div class="actions"><button type="button" class="btn" id="pcancel">Cancel</button><button class="btn primary">${edit ? 'Save' : 'Start tracking'}</button></div></form>`
   document.body.appendChild(d)
   const f = d.querySelector('form'), pn = d.querySelector('#pn'), car = d.querySelector('#pcar')
   if (edit && edit.carrier) car.value = edit.carrier
   pn.focus()
-  const detect = async () => { const v = pn.value.trim(); if (v.length < 8) { $('#pdet').textContent = ''; return } const c = await L.invoke('parcelDetect', v); const n = (carriers.find(x => x.id === c) || {}).name; $('#pdet').textContent = car.value ? '' : c === 'other' ? 'Carrier not recognized, so Lumen will look it up on 17track. Or pick it below.' : 'Looks like ' + n + '.' }
+  const detect = async () => { const v = pn.value.trim(); if (v.length < 8) { $('#pdet').textContent = ''; return } const c = await L.invoke('parcelDetect', v); const n = (carriers.find(x => x.id === c) || {}).name; $('#pdet').textContent = car.value ? '' : c === 'other' ? 'Carrier not recognized yet. Pick it below, or paste the tracking link.' : 'Looks like ' + n + '. Opens on ' + n + '.' }
   pn.oninput = detect; car.onchange = detect
-  d.querySelector('#pcq').oninput = e => { const keep = car.value; const q = e.target.value.trim().toLowerCase(); car.innerHTML = `<option value="">Detect for me</option>${opts(q)}<option value="other">Other (17track)</option>`; if (keep && [...car.options].some(o => o.value === keep)) car.value = keep; else if (q && car.options.length > 1) car.selectedIndex = 1; detect() }
+  d.querySelector('#pcq').oninput = e => { const keep = car.value; const q = e.target.value.trim().toLowerCase(); car.innerHTML = `<option value="">Detect for me</option>${opts(q)}<option value="other">Any carrier (17track)</option>`; if (keep && [...car.options].some(o => o.value === keep)) car.value = keep; else if (q && car.options.length > 1) car.selectedIndex = 1; detect() }
   if (clip) d.querySelector('#pclip').onclick = () => { pn.value = clip.number; d.querySelector('#pclip').remove(); detect(); d.querySelector('#pname').focus() }
   d.querySelector('#pcancel').onclick = () => d.remove()
   d.onclick = e => { if (e.target === d) d.remove() }

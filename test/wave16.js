@@ -23,6 +23,13 @@ ok(P.looksLikeTracking('1Z999AA10123456784') && P.looksLikeTracking('RR123456789
 ok(P.etaOf('Estimated delivery: Friday, November 28') === 'Friday, November 28', 'eta: ' + P.etaOf('Estimated delivery: Friday, November 28'))
 ok(P.etaOf('Arriving tomorrow by 9pm') === 'Tomorrow', 'eta tomorrow: ' + P.etaOf('Arriving tomorrow by 9pm'))
 ok(P.etaOf('Hello') === '', 'no eta on unrelated text')
+// the carrier you pick, or the link you type, always wins over 17track
+ok(P.CARRIERS.evri.url('H00AB12345678901').startsWith('https://www.evri.com/'), 'a carrier with a known page opens it')
+ok(/duckduckgo\.com.*Naqel.*tracking.*NQ12345678/.test(decodeURIComponent(P.CARRIERS.naqel.url('NQ12345678'))) && !/17track/.test(P.CARRIERS.naqel.url('NQ12345678')), 'a carrier without a known page goes to its own site, not 17track')
+ok(P.LIST.every(([id]) => !/17track/.test(P.CARRIERS[id].url('X1'))), 'no listed carrier ever opens 17track')
+ok(/17track/.test(P.CARRIERS.other.url('X1')), 'only Any carrier uses 17track')
+{ const p = P.add({ number: '123456789012', carrier: 'smsa', name: 'Pick test' }); ok(p.carrier === 'smsa' && /smsaexpress/.test(P.trackURL(p)), 'the carrier you pick beats the guess from the number (' + p.carrier + ')')
+  P.update(p.id, { url: 'https://myshop.example/orders/9' }); ok(P.openURL(P.list().find(x => x.id === p.id)) === 'https://myshop.example/orders/9', 'a link you typed opens first'); P.remove(p.id) }
 
 app.whenReady().then(async () => {
   await wait(3500); const w = L.windows[0], ex = s => w.ui.webContents.executeJavaScript(s)

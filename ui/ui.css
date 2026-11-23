@@ -841,3 +841,42 @@ body.toplayout #toast.act { margin-left: -150px; min-width: 300px; justify-conte
 /* reading time pill in the address bar */
 .readpill { display: none; font-size: 10.5px; font-weight: 650; color: var(--fg2); background: var(--hover); border-radius: 6px; padding: 2px 7px; white-space: nowrap; font-variant-numeric: tabular-nums; }
 .readpill.show { display: inline-block; }
+
+/* ================================================================ 1.16 design pass: chrome */
+/* tabs on top: quiet inactive tabs, a floating active tab, extras only where you look */
+body.toplayout .tab:not(.active):not(:hover) .add { opacity: 0; }
+body.toplayout .tab { border-radius: 10px; transition: background .2s, box-shadow .25s; }
+body.toplayout .tab:not(.active):hover { background: color-mix(in srgb, var(--pill) 55%, transparent); box-shadow: inset 0 0 0 1px var(--line); }
+body.toplayout .tab:not(.active) .title { color: color-mix(in srgb, var(--fg) 58%, transparent); }
+body.toplayout .pill { border-radius: 10px; background: var(--pill); box-shadow: 0 1px 1px rgba(15,20,40,.06), 0 6px 18px rgba(15,20,40,.08), 0 10px 30px color-mix(in srgb, var(--accent) 16%, transparent), inset 0 0 0 1px color-mix(in srgb, var(--accent) 18%, var(--line)), inset 0 1px 0 rgba(255,255,255,.7); }
+body.toplayout .pill::after { left: 50%; right: auto; width: 26px; margin-left: -13px; top: auto; bottom: -1px; height: 3px; border-radius: 3px 3px 0 0; }
+body.toplayout .tab.active .title { color: var(--fg); }
+/* address bar: a lit field when you are in it */
+.urlbar { transition: box-shadow .3s, background .3s; }
+.urlbar:hover { box-shadow: var(--shadow), inset 0 0 0 1px color-mix(in srgb, var(--accent) 22%, var(--line)); }
+/* main menu header uses the real app icon */
+.mm-logo.img { background: none; object-fit: cover; border-radius: 10px; box-shadow: 0 8px 22px color-mix(in srgb, var(--accent) 40%, transparent), 0 0 0 1px var(--line); }
+.mm-count { min-width: 20px; height: 20px; padding: 0 6px; border-radius: 10px; display: inline-grid; place-items: center; font-size: 11px; font-weight: 700; color: var(--accent); background: color-mix(in srgb, var(--accent) 13%, transparent); margin-right: 8px; }
+/* command bar: quick actions when empty, a hint row at the bottom */
+.cmdquick { display: none; flex-wrap: wrap; gap: 8px; padding: 2px 16px 12px; }
+.cmdquick.show { display: flex; }
+.qa { display: inline-flex; align-items: center; gap: 7px; height: 32px; padding: 0 12px 0 8px; border: 0; border-radius: 10px; font: 500 13px var(--font); color: var(--fg); background: var(--hover); cursor: default; transition: background .18s, transform .4s cubic-bezier(.3,1.6,.5,1), box-shadow .2s; }
+.qa span { width: 20px; height: 20px; border-radius: 6px; display: grid; place-items: center; color: var(--accent); background: color-mix(in srgb, var(--accent) 14%, transparent); }
+.qa span svg { width: 12px; height: 12px; }
+.qa:hover { background: color-mix(in srgb, var(--accent) 12%, var(--hover)); transform: translateY(-1px); box-shadow: 0 6px 16px color-mix(in srgb, var(--accent) 18%, transparent); }
+.qa:active { transform: scale(.96); }
+.cmdfoot { display: flex; align-items: center; gap: 14px; height: 36px; padding: 0 16px; border-top: 1px solid var(--line); font-size: 11.5px; color: var(--fg3); }
+.cmdfoot kbd { display: inline-grid; place-items: center; min-width: 18px; height: 18px; padding: 0 5px; margin-right: 3px; border-radius: 5px; font: 600 10.5px var(--font); color: var(--fg2); background: var(--hover); box-shadow: inset 0 -1px 0 var(--line); }
+.cmdfoot .grow { flex: 1; }
+.cmdbrand { font-weight: 700; letter-spacing: .04em; background: var(--grad); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.cmdresults .sec { font-weight: 700; text-transform: uppercase; letter-spacing: .08em; font-size: 10.5px; }
+/* AI panel: a lit header */
+#aipanel .ai-head, #aipanel header { backdrop-filter: blur(20px) saturate(1.4); }
+/* toasts: a little brand glow */
+#toast { box-shadow: 0 10px 30px rgba(10,14,30,.18), 0 0 0 1px var(--line), 0 0 0 4px color-mix(in srgb, var(--accent) 7%, transparent); }
+
+.mm-count:empty { display: none; }
+/* dark: dark logos (GitHub, X, Apple) get a small light tile so they stay visible */
+@media (prefers-color-scheme: dark) { #bmbar img, .bm img, .tab .icon img, .res .ri img { background: rgba(255,255,255,.9); border-radius: 4px; padding: 1px; } }
+.res .rk:empty { display: none; }
+body.toplayout #toast { max-width: 460px; }

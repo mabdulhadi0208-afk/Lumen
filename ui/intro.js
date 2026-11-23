@@ -5,14 +5,14 @@
 ;(function () {
   // ---- edit this list every release: it is the "New in Lumen" act of the film
   const WHATS_NEW = {
-    version: '1.15',
+    version: '1.16',
     items: [
-      { icon: 'box', title: 'Parcels', text: 'Track any delivery, and orders you place are saved for you.' },
-      { icon: 'star', title: 'Highlights', text: 'Mark text on any page. It is still there next time.' },
-      { icon: 'sidebar', title: 'Focus mode', text: 'The page fills the screen. Tabs wait at the top edge.' },
-      { icon: 'tabs', title: 'Tidy tabs', text: 'Idle tabs archive themselves, and come back in one click.' },
-      { icon: 'book', title: 'Read later', text: 'Save pages for later with Shift Cmd D.' },
-      { icon: 'bolt', title: 'Converter', text: 'Type 5 km in mi or 72f to c in the address bar.' },
+      { icon: 'play', title: 'A friendlier intro', text: 'A tour that shows what every feature does, with a brighter, softer sound.' },
+      { icon: 'box', title: '160 carriers', text: 'Parcels knows carriers worldwide and finds most of them from the number alone.' },
+      { icon: 'search', title: 'Track from anywhere', text: 'Paste a tracking number in the address bar, or right-click one on any page.' },
+      { icon: 'clock', title: 'Arrival dates', text: 'Parcels show when they arrive. Edit names, carriers and dates any time.' },
+      { icon: 'sparkle', title: 'A fresh coat of paint', text: 'Calmer tabs, a richer command bar, nicer menus and dark mode fixes.' },
+      { icon: 'globe', title: 'Helpful error pages', text: 'Clear reasons, the next step, and an automatic reload when you are back online.' },
     ],
   }
   const FEATURES = [
@@ -57,6 +57,49 @@
   #intro .fcard .k svg{width:22px;height:22px}
   #intro .fcard h4{margin:18px 0 8px;font:700 21px/1.15 "SF Pro Display",-apple-system,system-ui,sans-serif;letter-spacing:-.01em}
   #intro .fcard p{margin:0;color:#b4bbe0;font-size:14px;line-height:1.45}
+  #intro .mw{position:relative;width:min(700px,74vw);height:min(400px,46vh);border-radius:18px;overflow:hidden;color:#1c1d21;font:13px -apple-system,system-ui,sans-serif;
+    background:#eef0f6;box-shadow:0 50px 120px rgba(0,0,0,.55),0 0 0 1px rgba(255,255,255,.1),0 0 90px rgba(111,139,255,.18);transform-style:preserve-3d}
+  #intro .mw .tb{height:40px;display:flex;align-items:center;gap:5px;padding:0 12px}
+  #intro .mw .lt{display:flex;gap:6px;margin-right:12px}#intro .mw .lt i{width:11px;height:11px;border-radius:50%;background:#ff5f57}#intro .mw .lt i:nth-child(2){background:#febc2e}#intro .mw .lt i:nth-child(3){background:#28c840}
+  #intro .mw .t{height:28px;border-radius:8px;padding:0 10px;display:flex;align-items:center;gap:7px;color:#666;width:132px;white-space:nowrap;overflow:hidden;font-size:12px}
+  #intro .mw .t b{width:12px;height:12px;border-radius:4px;flex:none}
+  #intro .mw .t.on{background:#fff;color:#111;font-weight:600;box-shadow:0 2px 10px rgba(0,0,0,.08)}
+  #intro .mw .ub{margin:0 12px 8px;height:30px;border-radius:9px;background:#fff;display:flex;align-items:center;padding:0 12px;color:#888;box-shadow:0 2px 8px rgba(0,0,0,.05);font-size:12px;gap:8px}
+  #intro .mw .pg{position:absolute;left:8px;right:8px;top:86px;bottom:8px;border-radius:11px;background:#fff;padding:22px 26px;overflow:hidden;transition:background 1.2s,color 1.2s}
+  #intro .mw .ln{height:9px;border-radius:5px;background:#e9ecf3;margin:9px 0;transition:background 1.2s}
+  #intro .mw .h{height:16px;width:55%;border-radius:6px;background:#d9def0;margin-bottom:14px;transition:background 1.2s}
+  #intro .mw .ad{position:absolute;border-radius:10px;background:linear-gradient(135deg,#ff8787,#ffc078);color:#fff;font:700 11px/1 system-ui;display:grid;place-items:center;letter-spacing:.08em}
+  #intro .mw .cnt{position:absolute;right:16px;top:12px;padding:5px 10px;border-radius:999px;background:linear-gradient(135deg,#5b8cff,#8a63f2);color:#fff;font:700 12px system-ui;box-shadow:0 6px 18px rgba(91,140,255,.45)}
+  #intro .mw .cmdp{position:absolute;left:50%;top:70px;width:76%;margin-left:-38%;border-radius:14px;background:#fff;box-shadow:0 30px 70px rgba(0,0,0,.25),0 0 0 1px rgba(0,0,0,.05);overflow:hidden}
+  #intro .mw .cmdp .in{height:48px;display:flex;align-items:center;gap:10px;padding:0 16px;font-size:16px}
+  #intro .mw .cmdp .caret{width:2px;height:20px;background:#5b8cff;animation:blink 1s steps(2) infinite}
+  @keyframes blink{50%{opacity:0}}
+  #intro .mw .cmdp .r{height:36px;display:flex;align-items:center;gap:10px;padding:0 16px;color:#444;opacity:0}
+  #intro .mw .cmdp .r.sel{background:rgba(91,140,255,.12);color:#111}
+  #intro .mw .cmdp .r em{margin-left:auto;font-style:normal;color:#999;font-size:11px}
+  #intro .mw .side{position:absolute;top:86px;right:8px;bottom:8px;width:38%;border-radius:11px;background:#f6f4ff;padding:16px;transform:translateX(110%);box-shadow:-10px 0 30px rgba(0,0,0,.06)}
+  #intro .mw .side .ah{display:flex;align-items:center;gap:8px;font-weight:700;color:#6b4ff0;margin-bottom:12px}
+  #intro .mw .side .ah i{width:18px;height:18px;border-radius:6px;background:linear-gradient(135deg,#5b8cff,#e9609c)}
+  #intro .mw .side p{margin:0 0 8px;line-height:1.5;color:#333;font-size:12px}
+  #intro .mw .tr{font-size:15px;line-height:1.7;color:#222;transition:opacity .3s}
+  #intro .mw .split{position:absolute;inset:86px 8px 8px;display:flex;gap:8px}
+  #intro .mw .split .pp{flex:1;border-radius:11px;background:#fff;padding:18px}
+  #intro .mw .pcard{position:absolute;left:50%;top:50%;width:62%;margin:-58px 0 0 -31%;padding:18px;border-radius:16px;background:#fff;box-shadow:0 20px 50px rgba(0,0,0,.12),0 0 0 1px rgba(0,0,0,.04);display:flex;gap:14px;align-items:center}
+  #intro .mw .pcard .k{width:44px;height:44px;border-radius:14px;flex:none;display:grid;place-items:center;color:#fff;background:linear-gradient(135deg,#ff9f43,#ff6b6b);transition:background .6s}
+  #intro .mw .pcard .k svg{width:22px;height:22px}
+  #intro .mw .pcard b{display:block;font-size:15px;margin-bottom:3px}
+  #intro .mw .pcard span{color:#888;font-size:12px}
+  #intro .mw .steps{display:flex;gap:4px;margin-top:10px}
+  #intro .mw .steps s{flex:1;height:4px;border-radius:2px;background:#e9ecf3;text-decoration:none;transition:background .4s}
+  #intro .mw .steps s.on{background:#5b8cff}
+  #intro .mw.dark{background:#1d1f26;color:#eee}
+  #intro .mw.dark .pg{background:#121318;color:#eee}#intro .mw.dark .ln{background:#2a2d36}#intro .mw.dark .h{background:#3a3f52}
+  #intro .mw.dark .ub{background:#2a2c33;color:#aaa}#intro .mw.dark .t.on{background:#2f3139;color:#fff}
+  #intro .tourcap{position:absolute;left:0;right:0;bottom:calc(10.5vh + 30px);text-align:center;z-index:7}
+  #intro .tourcap .n{display:inline-block;font:700 11px/1 var(--font);letter-spacing:.22em;color:#9fb3ff;margin-bottom:10px}
+  #intro .tourcap h2{font:750 clamp(24px,3vw,38px)/1.1 "SF Pro Display",-apple-system,system-ui,sans-serif;letter-spacing:-.03em;margin:0 0 8px}
+  #intro .tourcap p{margin:0 auto;max-width:600px;color:#b3bade;font-size:15px;line-height:1.5}
+  #intro .tourcap kbd{font:600 12px var(--font);padding:2px 7px;border-radius:6px;background:rgba(255,255,255,.12);color:#fff;box-shadow:inset 0 -1px 0 rgba(255,255,255,.15)}
   #intro .cap{position:absolute;left:0;right:0;bottom:calc(10.5vh + 34px);text-align:center;z-index:7}
   #intro .cap h2{font:700 clamp(24px,3vw,40px)/1.1 "SF Pro Display",-apple-system,system-ui,sans-serif;letter-spacing:-.03em;margin:0 0 10px;min-height:1.1em}
   #intro .cap p{margin:0 auto;max-width:560px;color:#a9b0d6;font-size:15px;line-height:1.5;min-height:1.5em}
@@ -90,84 +133,114 @@
   #intro .meter i{display:block;height:100%;width:0;background:linear-gradient(90deg,#8ea4ff,#c9a8ff)}
   #intro .credit{position:absolute;left:28px;top:calc(10.5vh + 22px);z-index:9;font:600 10.5px var(--font);letter-spacing:.3em;text-transform:uppercase;color:rgba(220,226,255,.35)}
   `
-  // ------------------------------------------------------------ sound: all synthesized with Web Audio, no files
+  // ------------------------------------------------------------ sound: friendly, bright and crisp, all synthesized (no files)
+  // A warm major pad, bell chimes, bubbly pops and soft air. Nothing low, buzzy or ominous.
   const SFX = (() => {
-    let ac, master, verb, muted = false
+    let ac, master, verb, comp, muted = false, padNodes = []
+    const NOTE = n => 440 * Math.pow(2, (n - 69) / 12)        // MIDI note to Hz
     function init() {
       if (ac) return
       try { ac = new (window.AudioContext || window.webkitAudioContext)() } catch { return }
-      master = ac.createGain(); master.gain.value = 0; master.connect(ac.destination)
-      master.gain.linearRampToValueAtTime(0.9, ac.currentTime + 1.5)
+      comp = ac.createDynamicsCompressor(); comp.threshold.value = -18; comp.ratio.value = 3; comp.connect(ac.destination)
+      master = ac.createGain(); master.gain.value = 0; master.connect(comp)
+      master.gain.linearRampToValueAtTime(.8, ac.currentTime + 1.2)
+      // a short, bright room: sparkle without a cave
       verb = ac.createConvolver()
-      const len = ac.sampleRate * 3.2, ir = ac.createBuffer(2, len, ac.sampleRate)
-      for (let c = 0; c < 2; c++) { const d = ir.getChannelData(c); for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 2.6) }
+      const len = ac.sampleRate * 1.8, ir = ac.createBuffer(2, len, ac.sampleRate)
+      for (let c = 0; c < 2; c++) { const d = ir.getChannelData(c); for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 3.2) }
       verb.buffer = ir
-      const vg = ac.createGain(); vg.gain.value = 0.45; verb.connect(vg); vg.connect(master)
+      const vg = ac.createGain(); vg.gain.value = .32; const hp = ac.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 300
+      verb.connect(hp); hp.connect(vg); vg.connect(master)
     }
-    const out = (node, wet = 0.4) => { const d = ac.createGain(); d.gain.value = 1 - wet * .5; node.connect(d); d.connect(master); if (wet) { const w = ac.createGain(); w.gain.value = wet; node.connect(w); w.connect(verb) } }
-    function noise(sec) { const b = ac.createBuffer(1, ac.sampleRate * sec, ac.sampleRate), d = b.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1; const n = ac.createBufferSource(); n.buffer = b; return n }
-    function tone(freq, t0, dur, { type = 'sine', vol = .2, wet = .5, attack = .01, glide } = {}) {
-      const o = ac.createOscillator(), g = ac.createGain()
-      o.type = type; o.frequency.setValueAtTime(freq, t0); if (glide) o.frequency.exponentialRampToValueAtTime(glide, t0 + dur)
-      g.gain.setValueAtTime(0, t0); g.gain.linearRampToValueAtTime(vol, t0 + attack); g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur)
-      o.connect(g); out(g, wet); o.start(t0); o.stop(t0 + dur + .05)
+    const out = (node, wet = .3) => { const d = ac.createGain(); d.gain.value = 1; node.connect(d); d.connect(master); if (wet) { const w = ac.createGain(); w.gain.value = wet; node.connect(w); w.connect(verb) } }
+    // a bell: sine plus a quiet octave and a fifth above, fast attack, gentle ring
+    function bell(freq, t, { vol = .12, dur = 1.4, wet = .35 } = {}) {
+      for (const [m, v] of [[1, 1], [2, .28], [3, .08]]) {
+        const o = ac.createOscillator(), g = ac.createGain()
+        o.type = 'sine'; o.frequency.value = freq * m
+        g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(vol * v, t + .006); g.gain.exponentialRampToValueAtTime(.0001, t + dur / m)
+        o.connect(g); out(g, wet); o.start(t); o.stop(t + dur + .05)
+      }
     }
-    let droneNodes = []
+    // a soft pluck, like a marimba
+    function pluck(freq, t, vol = .1) {
+      const o = ac.createOscillator(), g = ac.createGain(), lp = ac.createBiquadFilter()
+      o.type = 'triangle'; o.frequency.value = freq; lp.type = 'lowpass'; lp.frequency.setValueAtTime(freq * 6, t); lp.frequency.exponentialRampToValueAtTime(freq * 1.5, t + .25)
+      g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(vol, t + .004); g.gain.exponentialRampToValueAtTime(.0001, t + .45)
+      o.connect(lp); lp.connect(g); out(g, .25); o.start(t); o.stop(t + .5)
+    }
+    function air(t, dur, { from = 1200, to = 4200, vol = .05, q = .8 } = {}) {
+      const b = ac.createBuffer(1, ac.sampleRate * dur, ac.sampleRate), d = b.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1
+      const n = ac.createBufferSource(); n.buffer = b
+      const bp = ac.createBiquadFilter(); bp.type = 'bandpass'; bp.Q.value = q; bp.frequency.setValueAtTime(from, t); bp.frequency.exponentialRampToValueAtTime(to, t + dur * .6)
+      const g = ac.createGain(); g.gain.setValueAtTime(.0001, t); g.gain.exponentialRampToValueAtTime(vol, t + dur * .4); g.gain.exponentialRampToValueAtTime(.0001, t + dur)
+      n.connect(bp); bp.connect(g); out(g, .2); n.start(t)
+    }
+    const C = [60, 64, 67, 71, 74]          // C major 9: warm and open
+    const PENTA = [72, 74, 76, 79, 81, 84, 86, 88, 91]
     const api = {
       init,
+      // a warm bed under the film: soft sines, slowly breathing, never low or buzzy
       drone() {
         if (!ac) return
-        const t = ac.currentTime, lp = ac.createBiquadFilter(), g = ac.createGain()
-        lp.type = 'lowpass'; lp.frequency.value = 420; lp.Q.value = 6
-        const lfo = ac.createOscillator(), lg = ac.createGain(); lfo.frequency.value = .08; lg.gain.value = 260; lfo.connect(lg); lg.connect(lp.frequency); lfo.start()
-        g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(.16, t + 4)
-        for (const [f, det] of [[55, 0], [55, 7], [82.4, -5], [110, 3]]) { const o = ac.createOscillator(); o.type = 'sawtooth'; o.frequency.value = f; o.detune.value = det; o.connect(lp); o.start(); droneNodes.push(o) }
-        lp.connect(g); out(g, .6); droneNodes.push(lfo); api._drone = g
+        const t = ac.currentTime, g = ac.createGain(), lp = ac.createBiquadFilter()
+        lp.type = 'lowpass'; lp.frequency.value = 1400
+        g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(.05, t + 3)
+        for (const [n, det] of [[48, 0], [55, 4], [60, -3], [64, 5], [71, -4]]) {
+          const o = ac.createOscillator(); o.type = 'sine'; o.frequency.value = NOTE(n); o.detune.value = det
+          const og = ac.createGain(); og.gain.value = n < 50 ? .6 : 1
+          const lfo = ac.createOscillator(), lg = ac.createGain(); lfo.frequency.value = .1 + Math.random() * .15; lg.gain.value = .35; lfo.connect(lg); lg.connect(og.gain); lfo.start()
+          o.connect(og); og.connect(lp); o.start(); padNodes.push(o, lfo)
+        }
+        lp.connect(g); out(g, .4)
       },
+      // building up: a gentle rising arpeggio with a breath of air
       riser(sec = 2.3) {
         if (!ac) return
-        const t = ac.currentTime, n = noise(sec), bp = ac.createBiquadFilter(), g = ac.createGain()
-        bp.type = 'bandpass'; bp.Q.value = 4; bp.frequency.setValueAtTime(180, t); bp.frequency.exponentialRampToValueAtTime(4200, t + sec)
-        g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(.5, t + sec * .95); g.gain.linearRampToValueAtTime(0, t + sec)
-        n.connect(bp); bp.connect(g); out(g, .3); n.start(t)
-        tone(110, t, sec, { type: 'triangle', vol: .08, wet: .3, attack: sec * .9, glide: 440 })
+        const t = ac.currentTime
+        PENTA.forEach((n, i) => pluck(NOTE(n - 12), t + i * (sec / PENTA.length), .05 + i * .006))
+        air(t, sec, { from: 600, to: 5200, vol: .035 })
       },
+      // the reveal: a bright bloom of bells, no boom
       impact() {
         if (!ac) return
         const t = ac.currentTime
-        tone(70, t, 2.4, { vol: .55, wet: .5, glide: 34 })
-        const n = noise(1.2), lp = ac.createBiquadFilter(), g = ac.createGain(); lp.type = 'lowpass'; lp.frequency.setValueAtTime(5000, t); lp.frequency.exponentialRampToValueAtTime(200, t + 1.1)
-        g.gain.setValueAtTime(.45, t); g.gain.exponentialRampToValueAtTime(.0001, t + 1.2); n.connect(lp); lp.connect(g); out(g, .7); n.start(t)
-        ;[523.25, 783.99, 1046.5, 1567.98].forEach((f, i) => tone(f, t + .02 + i * .03, 3.2, { vol: .07, wet: .85, attack: .02 }))
+        C.forEach((n, i) => bell(NOTE(n + 12), t + i * .035, { vol: .09, dur: 2.6, wet: .45 }))
+        bell(NOTE(48), t, { vol: .1, dur: 2, wet: .2 })
+        air(t, .7, { from: 6000, to: 2500, vol: .03 })
       },
-      whoosh() {
+      whoosh() { if (ac) air(ac.currentTime, .55, { from: 900, to: 3800, vol: .04, q: 1.1 }) },
+      pop(pitch = 1) {
         if (!ac) return
-        const t = ac.currentTime, n = noise(.9), bp = ac.createBiquadFilter(), g = ac.createGain()
-        bp.type = 'bandpass'; bp.Q.value = 1.2; bp.frequency.setValueAtTime(400, t); bp.frequency.exponentialRampToValueAtTime(2600, t + .35); bp.frequency.exponentialRampToValueAtTime(500, t + .85)
-        g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(.32, t + .3); g.gain.exponentialRampToValueAtTime(.0001, t + .9)
-        n.connect(bp); bp.connect(g); out(g, .5); n.start(t)
+        const t = ac.currentTime, o = ac.createOscillator(), g = ac.createGain()
+        o.type = 'sine'; o.frequency.setValueAtTime(520 * pitch, t); o.frequency.exponentialRampToValueAtTime(980 * pitch, t + .07)
+        g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(.09, t + .005); g.gain.exponentialRampToValueAtTime(.0001, t + .16)
+        o.connect(g); out(g, .15); o.start(t); o.stop(t + .2)
       },
-      pop(pitch = 1) { if (ac) tone(520 * pitch, ac.currentTime, .22, { vol: .12, wet: .35, glide: 780 * pitch }) },
+      // a crisp little keyboard click
       key() {
         if (!ac) return
-        const t = ac.currentTime, n = noise(.04), hp = ac.createBiquadFilter(), g = ac.createGain()
-        hp.type = 'highpass'; hp.frequency.value = 2400 + Math.random() * 1500; g.gain.setValueAtTime(.18, t); g.gain.exponentialRampToValueAtTime(.0001, t + .04)
-        n.connect(hp); hp.connect(g); out(g, .1); n.start(t)
+        const t = ac.currentTime, o = ac.createOscillator(), g = ac.createGain(), hp = ac.createBiquadFilter()
+        o.type = 'square'; o.frequency.value = 2400 + Math.random() * 600; hp.type = 'highpass'; hp.frequency.value = 2000
+        g.gain.setValueAtTime(.025, t); g.gain.exponentialRampToValueAtTime(.0001, t + .022)
+        o.connect(hp); hp.connect(g); out(g, 0); o.start(t); o.stop(t + .03)
       },
-      tick(i) { if (ac) tone(1200 + (i % 5) * 60, ac.currentTime, .05, { vol: .05, wet: .2 }) },
-      shimmer() { if (!ac) return; const t = ac.currentTime; [1318.5, 1760, 2093, 2637].forEach((f, i) => tone(f, t + i * .07, 1.6, { vol: .05, wet: .9 })) },
+      tick(i) { if (ac) pluck(NOTE(PENTA[i % PENTA.length]), ac.currentTime, .035) },
+      shimmer() { if (!ac) return; const t = ac.currentTime; [84, 88, 91, 96].forEach((n, i) => bell(NOTE(n), t + i * .06, { vol: .035, dur: 1.2, wet: .5 })) },
+      // the ending: a happy resolved chord
       chord() {
         if (!ac) return
         const t = ac.currentTime
-        ;[261.63, 329.63, 392, 493.88, 587.33].forEach((f, i) => { tone(f, t + i * .09, 4.5, { type: 'triangle', vol: .09, wet: .8, attack: .04 }); tone(f * 2, t + i * .09 + .02, 3, { vol: .03, wet: .9 }) })
-        tone(65.4, t, 4.5, { vol: .25, wet: .5, attack: .05 })
+        ;[60, 64, 67, 72, 76].forEach((n, i) => { bell(NOTE(n), t + i * .07, { vol: .08, dur: 3, wet: .45 }); pluck(NOTE(n + 12), t + i * .07 + .02, .04) })
       },
+      // a gentle "ding" for good news (delivered, saved)
+      ding() { if (ac) { const t = ac.currentTime; bell(NOTE(84), t, { vol: .07, dur: 1 }); bell(NOTE(91), t + .09, { vol: .06, dur: 1.2 }) } },
       fadeOut(sec = 1.2) {
         if (!ac) return
         const t = ac.currentTime; master.gain.cancelScheduledValues(t); master.gain.setValueAtTime(master.gain.value, t); master.gain.linearRampToValueAtTime(0, t + sec)
-        setTimeout(() => { try { droneNodes.forEach(o => o.stop()); ac.close() } catch {} ac = null; droneNodes = [] }, sec * 1000 + 200)
+        setTimeout(() => { try { padNodes.forEach(o => o.stop()); ac.close() } catch {} ac = null; padNodes = [] }, sec * 1000 + 200)
       },
-      toggleMute() { if (!ac) return muted; muted = !muted; master.gain.setTargetAtTime(muted ? 0 : .9, ac.currentTime, .1); return muted },
+      toggleMute() { if (!ac) return muted; muted = !muted; master.gain.setTargetAtTime(muted ? 0 : .8, ac.currentTime, .1); return muted },
     }
     return api
   })()
@@ -256,7 +329,7 @@
     const f = root.querySelector('.flare')
     f.animate([{ opacity: 0, transform: 'scaleX(.2)' }, { opacity: strength, transform: 'scaleX(1)', offset: .15 }, { opacity: 0, transform: 'scaleX(1.3)' }], { duration: 1800, easing: 'cubic-bezier(.2,.8,.3,1)' })
   }
-  function boom() { sky.flash = .7; sky.shake = 26; sky.shock.push({ r: 10, a: .9 }); setTimeout(() => sky.shock.push({ r: 10, a: .5 }), 140); flare(1); if (!skip) SFX.impact() }
+  function boom() { sky.flash = .35; sky.shake = 7; sky.shock.push({ r: 10, a: .9 }); setTimeout(() => sky.shock.push({ r: 10, a: .5 }), 140); flare(1); if (!skip) SFX.impact() }
   function scene(html) { const s = document.createElement('div'); s.className = 'scene'; s.innerHTML = html; root.querySelector('.stage').appendChild(s); return s }
   async function leave(s, ms = 700) {
     anim(s, [{ opacity: 1, filter: 'blur(0)', transform: 'scale(1)' }, { opacity: 0, filter: 'blur(14px)', transform: 'scale(1.06)' }], { duration: ms, easing: 'cubic-bezier(.5,0,.7,.4)' })
@@ -309,6 +382,64 @@
     await sleep(short ? 2600 : 3800)
     tween(sky, 'orb', 0, 900); tween(sky, 'ring', 0, 700)
     await leave(s)
+  }
+  // ------------------------------------------------------------ the tour: every feature shown doing its thing
+  const MW = (inner, tabs = ['GitHub', 'Lisbon trip', 'Recipes']) => `<div class="mw"><div class="tb"><div class="lt"><i></i><i></i><i></i></div>${tabs.map((t, i) => `<div class="t${i === 0 ? ' on' : ''}"><b style="background:${['#24292f', '#5b8cff', '#ff8a3d', '#2fb67c'][i % 4]}"></b>${t}</div>`).join('')}</div><div class="ub">${ICONS.search || ''}<span>lumen.app</span></div>${inner}</div>`
+  const LINES = n => '<div class="h"></div>' + Array.from({ length: n }, (_, i) => `<div class="ln" style="width:${[92, 80, 96, 70, 88, 60, 84][i % 7]}%"></div>`).join('')
+  const TOUR = [
+    { title: 'Tabs, right where you expect them.', text: 'Press <kbd>Cmd T</kbd> for a new tab. Drag tabs to reorder, and they spring into place.', build: () => MW(`<div class="pg">${LINES(7)}</div>`, ['GitHub']), play: async s => {
+      const tb = s.querySelector('.tb')
+      for (const [i, t] of ['Lisbon trip', 'Recipes', 'New Tab'].entries()) { await sleep(420); const el = document.createElement('div'); el.className = 't'; el.innerHTML = `<b style="background:${['#5b8cff', '#ff8a3d', '#2fb67c'][i]}"></b>${t}`; tb.appendChild(el); anim(el, [{ opacity: 0, transform: 'translateY(-10px) scale(.7)' }, { opacity: 1, transform: 'none' }], { duration: 700 }); if (!skip) SFX.pop(1 + i * .12) }
+      await sleep(500); const ts = tb.querySelectorAll('.t'); ts.forEach(t => t.classList.remove('on')); ts[2].classList.add('on'); anim(ts[2], [{ transform: 'scale(.92)' }, { transform: 'none' }], { duration: 600 }); if (!skip) SFX.key()
+    } },
+    { title: 'One bar does everything.', text: '<kbd>Cmd K</kbd> searches the web, finds open tabs and history, converts units and runs any action.', build: () => MW(`<div class="pg">${LINES(7)}</div><div class="cmdp"><div class="in"><span class="q"></span><span class="caret"></span></div><div class="r sel">Search for <b class="qq" style="margin-left:4px"></b><em>Search</em></div><div class="r">Lisbon trip<em>Switch to tab</em></div><div class="r">Flights to Lisbon, last week<em>History</em></div><div class="r">Focus mode<em>Shift Cmd F</em></div></div>`), play: async s => {
+      const q = 'flights to lisbon', qe = s.querySelector('.q'), qq = s.querySelector('.qq')
+      for (let i = 1; i <= q.length && !skip; i++) { qe.textContent = qq.textContent = q.slice(0, i); SFX.key(); await sleep(55) }
+      s.querySelectorAll('.cmdp .r').forEach((r, i) => anim(r, [{ opacity: 0, transform: 'translateY(8px)' }, { opacity: 1, transform: 'none' }], { duration: 550, delay: i * 80 }))
+      if (!skip) SFX.shimmer()
+    } },
+    { title: 'Ads and trackers, gone.', text: 'Blocked before they load, on every site. Pages get faster and nobody follows you around.', build: () => MW(`<div class="pg">${LINES(7)}<div class="ad" style="left:58%;top:18px;width:150px;height:70px">AD</div><div class="ad" style="left:6%;top:120px;width:200px;height:46px">AD</div><div class="ad" style="left:52%;top:150px;width:120px;height:90px">AD</div><span class="cnt">0 blocked</span></div>`), play: async s => {
+      const ads = s.querySelectorAll('.ad'), c = s.querySelector('.cnt'); let n = 0
+      for (const a of ads) { await sleep(520); anim(a, [{ transform: 'scale(1)', opacity: 1 }, { transform: 'scale(1.12)', opacity: 1, offset: .3 }, { transform: 'scale(0) rotate(12deg)', opacity: 0 }], { duration: 600 }); if (!skip) SFX.pop(.8 + n * .15); n += 8; c.textContent = n + ' blocked'; anim(c, [{ transform: 'scale(1.25)' }, { transform: 'none' }], { duration: 500 }) }
+    } },
+    { title: 'Ask Lumen AI about any page.', text: 'Open the side panel for a summary, key points or an explanation of what you selected.', build: () => MW(`<div class="pg">${LINES(7)}</div><div class="side"><div class="ah"><i></i>Lumen AI</div><p class="ai"></p></div>`), play: async s => {
+      anim(s.querySelector('.side'), [{ transform: 'translateX(110%)' }, { transform: 'none' }], { duration: 800 }); if (!skip) SFX.whoosh()
+      await sleep(600); const p = s.querySelector('.ai'), txt = 'This page compares three ways to get to Lisbon. The train is cheapest, the flight is fastest, and booking two weeks ahead saves the most.'
+      for (const w of txt.split(' ')) { if (skip) break; p.textContent += w + ' '; await sleep(45) }
+    } },
+    { title: 'Translate the whole page.', text: 'Any language into yours in a moment. Arabic and Hebrew even flip from right-to-left.', build: () => MW(`<div class="pg"><div class="tr" dir="rtl" style="text-align:right">مرحبا بكم في لشبونة. المدينة جميلة في الربيع، والقطارات سريعة ومريحة.</div><br>${LINES(4)}</div>`), play: async s => {
+      await sleep(900); const tr = s.querySelector('.tr'); tr.style.opacity = 0; await sleep(300)
+      tr.dir = 'ltr'; tr.style.textAlign = 'left'; tr.textContent = 'Welcome to Lisbon. The city is beautiful in spring, and the trains are fast and comfortable.'; tr.style.opacity = 1
+      anim(tr, [{ transform: 'translateX(30px)', filter: 'blur(6px)' }, { transform: 'none', filter: 'blur(0)' }], { duration: 700 }); if (!skip) SFX.shimmer()
+    } },
+    { title: 'Dark mode for every website.', text: 'One switch turns light sites dark, and sites that are already dark are left alone.', build: () => MW(`<div class="pg">${LINES(7)}</div>`), play: async s => {
+      await sleep(900); s.querySelector('.mw').classList.add('dark'); if (!skip) SFX.whoosh()
+    } },
+    { title: 'Two pages, side by side.', text: '<kbd>Shift Cmd \\</kbd> opens split view. Reader mode, picture in picture and screenshots are one shortcut away too.', build: () => MW(`<div class="split"><div class="pp">${LINES(5)}</div><div class="pp">${LINES(5)}</div></div>`), play: async s => {
+      const ps = s.querySelectorAll('.pp'); anim(ps[0], [{ transform: 'translateX(50%)' }, { transform: 'none' }], { duration: 900 }); anim(ps[1], [{ transform: 'translateX(-50%)', opacity: 0 }, { transform: 'none', opacity: 1 }], { duration: 900 }); if (!skip) SFX.whoosh()
+    } },
+    { title: 'Every parcel, until it arrives.', text: 'Track any delivery, and the orders you place are saved. One click takes you straight back to your order.', build: () => MW(`<div class="pg" style="background:#f4f5fa"><div class="pcard"><div class="k">${ICONS.box || ''}</div><div style="flex:1"><b>New headphones</b><span class="st">Order placed  ·  UPS</span><div class="steps"><s class="on"></s><s></s><s></s><s></s></div></div></div></div>`), play: async s => {
+      const st = s.querySelector('.st'), steps = s.querySelectorAll('.steps s'), k = s.querySelector('.pcard .k')
+      for (const [i, t] of ['On the way', 'Out for delivery', 'Delivered'].entries()) { await sleep(620); steps[i + 1].classList.add('on'); st.textContent = t + '  ·  UPS'; if (!skip) SFX.tick(i * 2) }
+      k.style.background = 'linear-gradient(135deg,#34c759,#30b04f)'; anim(s.querySelector('.pcard'), [{ transform: 'scale(1)' }, { transform: 'scale(1.05)' }, { transform: 'scale(1)' }], { duration: 600 }); if (!skip) SFX.ding()
+    } },
+  ]
+  async function tour() {
+    const cap = document.createElement('div'); cap.className = 'tourcap'; cap.innerHTML = '<span class="n"></span><h2></h2><p></p>'; root.appendChild(cap)
+    for (let i = 0; i < TOUR.length && !skip; i++) {
+      const f = TOUR[i], s = scene(f.build())
+      const mw = s.querySelector('.mw')
+      mw.animate([{ opacity: 0, transform: 'perspective(1400px) translateY(40px) rotateX(14deg) scale(.92)', filter: 'blur(10px)' }, { opacity: 1, transform: 'perspective(1400px) translateY(-6vh) rotateX(4deg) scale(1)', filter: 'blur(0)' }], { duration: 1000, easing: 'cubic-bezier(.16,1,.3,1)', fill: 'forwards' })
+      cap.querySelector('.n').textContent = String(i + 1).padStart(2, '0') + '  /  ' + String(TOUR.length).padStart(2, '0')
+      words(cap.querySelector('h2'), f.title, 60, 45)
+      cap.querySelector('p').innerHTML = f.text; anim(cap.querySelector('p'), [{ opacity: 0, transform: 'translateY(10px)' }, { opacity: 1, transform: 'none' }], { duration: 900, delay: 250 })
+      if (!skip) SFX.whoosh()
+      await sleep(650)
+      await f.play(s)
+      await sleep(1500)
+      await leave(s, 550)
+    }
+    cap.remove()
   }
   async function carousel() {
     const n = FEATURES.length, R = Math.round(Math.max(380, Math.min(560, W * .36)))
@@ -379,7 +510,7 @@
     root.querySelector('.grain').style.background = `url(${grainURL()})`
     root.querySelector('.grain').animate([{ transform: 'translate(0,0)' }, { transform: 'translate(-3%,2%)' }, { transform: 'translate(2%,-3%)' }, { transform: 'translate(0,0)' }], { duration: 600, iterations: Infinity, easing: 'steps(4)' })
     stars = Array.from({ length: Math.round(Math.min(900, W * H / 1600)) }, () => newStar())
-    t0 = performance.now(); total = wn ? 12500 : 28500
+    t0 = performance.now(); total = wn ? 12500 : 52000
     raf = requestAnimationFrame(draw)
     root.querySelector('.skip').onclick = () => { skip = true }
     root.querySelector('.mute').onclick = () => { root.querySelector('.mute').textContent = SFX.toggleMute() ? 'Sound off' : 'Sound on' }
@@ -394,7 +525,7 @@
       removeEventListener('keydown', onKey)
       if (!skip || askParcels) { skip = false; answer = await finale({ short: true, ask: askParcels }) }
     } else {
-      await sleep(600); await coldOpen(); await warp(); await ignite(); await carousel(); await whatsNew()
+      await sleep(600); await coldOpen(); await warp(); await ignite(); await tour(); await whatsNew()
       removeEventListener('keydown', onKey)
       clearCaption()
       // the last scene asks one question, even when the film itself was skipped

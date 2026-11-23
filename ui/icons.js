@@ -34,6 +34,8 @@ window.ICONS = {
   puzzle: I('<path d="M3 5.5h2.5a1.5 1.5 0 1 1 3 0H11v2.5a1.5 1.5 0 1 1 0 3V13H8.5a1.5 1.5 0 1 0-3 0H3z"/>'),
   pip: I('<rect x="2" y="3" width="12" height="10" rx="2"/><rect x="8" y="8" width="4.5" height="3.5" rx="1" fill="currentColor" stroke="none"/>'),
   folder: I('<path d="M2.5 4.5a1 1 0 0 1 1-1h3l1.5 1.5h4.5a1 1 0 0 1 1 1v6.5a1 1 0 0 1-1 1h-9a1 1 0 0 1-1-1z"/>'),
+  info: I('<circle cx="8" cy="8" r="6"/><path d="M8 7.2v3.8M8 5v.1"/>'),
+  sparkle: I('<path d="M8 1.5 9.4 6.6 14.5 8 9.4 9.4 8 14.5 6.6 9.4 1.5 8 6.6 6.6z"/>'),
   check: I('<path d="m3.5 8.5 3 3 6-7"/>'),
   minus: I('<path d="M3.5 8h9"/>'),
   winMin: I('<path d="M4 8h8"/>', 'stroke-width="1"'),

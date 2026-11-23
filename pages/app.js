@@ -145,7 +145,7 @@ const SECTIONS = [
   ['general', 'General', 'gear'], ['appearance', 'Appearance', 'moon'], ['ai', 'Lumen AI', 'bolt'], ['privacy', 'Privacy and security', 'shield'],
   ['passwords', 'Passwords', 'key'], ['sync', 'Sync', 'reload'], ['import', 'Move from Chrome', 'arrowRight'],
   ['extensions', 'Extensions', 'puzzle'], ['history', 'History', 'clock'], ['bookmarks', 'Bookmarks', 'star'],
-  ['parcels', 'Parcels', 'box'], ['downloads', 'Downloads', 'download'], ['about', 'About Lumen', 'bolt'],
+  ['parcels', 'Parcels', 'box'], ['downloads', 'Downloads', 'download'], ['about', 'About Lumen', 'info'],
 ]
 function shell(active) {
   root.innerHTML = `<div class="shell"><nav class="nav"><h1>Lumen</h1><div class="navsearch">${ICONS.search}<input type="search" id="setq" placeholder="Search settings" spellcheck="false" autocomplete="off"></div>${SECTIONS.map(([id, label, icon]) => `<a href="${id === 'history' || id === 'bookmarks' || id === 'downloads' || id === 'passwords' || id === 'extensions' || id === 'parcels' ? 'lumen://' + id : 'lumen://settings/' + id}" class="${id === active ? 'on' : ''}">${ICONS[icon]}${label}</a>`).join('')}</nav><main class="main rise" id="main"></main></div>`
@@ -495,61 +495,81 @@ function parcelsRow(list) {
   const auto = S.parcelsAuto === true
   return `<div class="recent parcels rise" style="animation-delay:.32s"><div class="rc-h">Parcels</div><div class="pc-list" id="pc">
     ${list.map(p => `<a class="pcard ${PSTAT[p.status] ? PSTAT[p.status][1] : ''}" href="${esc(p.open)}" data-pid="${esc(p.id)}">
-      <span class="pc-ico">${ICONS.box}</span><span class="pc-b"><b>${esc(p.name || p.carrierName || 'Parcel')}</b><i>${esc(p.statusText || (PSTAT[p.status] || PSTAT.placed)[0])}${p.carrierName ? '  ·  ' + esc(p.carrierName) : p.shop ? '  ·  ' + esc(p.shop) : ''}</i>
+      <span class="pc-ico">${ICONS.box}</span><span class="pc-b"><b>${esc(p.name || p.carrierName || 'Parcel')}</b><i>${esc(ARRIVE(p) || p.statusText || (PSTAT[p.status] || PSTAT.placed)[0])}${p.carrierName ? '  ·  ' + esc(p.carrierName) : p.shop ? '  ·  ' + esc(p.shop) : ''}</i>
       <span class="pc-steps">${[0, 1, 2, 3].map(i => `<s class="${i <= (PSTEP[p.status] || 0) ? 'on' : ''}"></s>`).join('')}</span></span></a>`).join('')}
     <a class="pcard add" href="#" data-pcadd><span class="pc-ico">${ICONS.plus}</span><span class="pc-b"><b>Track a parcel</b><i>${auto ? 'Orders you place show up here' : 'Paste a tracking number'}</i></span></a>
     ${!auto && S.parcelsAuto !== false && !list.length ? `<a class="pcard auto" href="#" data-pcauto><span class="pc-ico">${ICONS.bolt}</span><span class="pc-b"><b>Save my orders</b><i>Lumen remembers orders you place</i></span></a>` : ''}
   </div></div>`
 }
-async function addParcelDialog(done) {
+const ARRIVE = p => { if (p.status === 'delivered') return ''; if (p.expected) { const d = new Date(p.expected + 'T00:00'); const days = Math.round((d - new Date(new Date().toDateString())) / 864e5); return days === 0 ? 'Arrives today' : days === 1 ? 'Arrives tomorrow' : days > 1 && days < 7 ? 'Arrives ' + d.toLocaleDateString([], { weekday: 'long' }) : days < 0 ? 'Was due ' + d.toLocaleDateString([], { month: 'short', day: 'numeric' }) : 'Arrives ' + d.toLocaleDateString([], { month: 'short', day: 'numeric' }) } return p.eta ? 'Arrives ' + p.eta : '' }
+// add a parcel, or edit one (pass it in)
+async function addParcelDialog(done, edit) {
   const carriers = await L.invoke('parcelCarriers')
+  const clip = edit ? null : await L.invoke('parcelClipboard').catch(() => null)
+  const regions = [...new Set(carriers.map(c => c.region))]
+  const opts = q => regions.map(r => { const cs = carriers.filter(c => c.region === r && (!q || c.name.toLowerCase().includes(q))); return cs.length ? `<optgroup label="${esc(r)}">${cs.map(c => `<option value="${c.id}">${esc(c.name)}</option>`).join('')}</optgroup>` : '' }).join('')
   const d = document.createElement('div'); d.className = 'dialog-wrap'
-  d.innerHTML = `<form class="dialog pdialog"><div class="pd-ico">${ICONS.box}</div><h3>Track a parcel</h3><p class="sub">It stays here until it is delivered. Lumen checks on it for you.</p>
-    <label>Tracking number<input id="pn" required placeholder="1Z999AA10123456784" spellcheck="false" autocomplete="off"></label>
-    <div class="pd-row"><label>Name<input id="pname" placeholder="New headphones" autocomplete="off"></label>
-    <label>Carrier<select id="pcar"><option value="">Detect for me</option>${carriers.filter(c => c.id !== 'other').map(c => `<option value="${c.id}">${esc(c.name)}</option>`).join('')}<option value="other">Other (17track)</option></select></label></div>
-    <label>Order page <span class="opt">optional, opens when you click the parcel</span><input id="purl" placeholder="https://..." autocomplete="off"></label>
+  d.innerHTML = `<form class="dialog pdialog"><div class="pd-ico">${ICONS.box}</div><h3>${edit ? 'Edit parcel' : 'Track a parcel'}</h3><p class="sub">${edit ? 'Change the name, carrier or when you expect it.' : 'It stays here until it is delivered. Lumen checks on it for you.'}</p>
+    ${clip ? `<button type="button" class="pd-clip" id="pclip">${ICONS.link || ''}<span>Use <b>${esc(clip.number)}</b> from your clipboard</span></button>` : ''}
+    <label><span>Tracking number${edit && !edit.number ? ' <span class="opt">optional for saved orders</span>' : ''}</span><input id="pn" ${edit && !edit.number ? '' : 'required'} placeholder="1Z999AA10123456784" spellcheck="false" autocomplete="off" value="${esc(edit ? edit.number || '' : '')}"></label>
+    <div class="pd-row"><label>Name<input id="pname" placeholder="New headphones" autocomplete="off" value="${esc(edit ? edit.name || '' : '')}"></label>
+    <label>Expected<input id="pexp" type="date" value="${esc(edit ? edit.expected || '' : '')}"></label></div>
+    <label><span>Carrier <span class="opt">${carriers.length - 1} to choose from</span></span><div class="pd-car"><input id="pcq" placeholder="Search carriers" autocomplete="off"><select id="pcar" size="1"><option value="">Detect for me</option>${opts('')}<option value="other">Other (17track)</option></select></div></label>
+    <label><span>Order page <span class="opt">optional, opens when you click the parcel</span></span><input id="purl" placeholder="https://..." autocomplete="off" value="${esc(edit ? edit.url || '' : '')}"></label>
     <div class="pd-detect" id="pdet"></div>
-    <div class="actions"><button type="button" class="btn" id="pcancel">Cancel</button><button class="btn primary">Start tracking</button></div></form>`
+    <div class="actions"><button type="button" class="btn" id="pcancel">Cancel</button><button class="btn primary">${edit ? 'Save' : 'Start tracking'}</button></div></form>`
   document.body.appendChild(d)
-  const f = d.querySelector('form'); d.querySelector('#pn').focus()
-  d.querySelector('#pn').oninput = async e => { const v = e.target.value.trim(); if (v.length < 8) { $('#pdet').textContent = ''; return } const c = await L.invoke('parcelDetect', v); const n = (carriers.find(x => x.id === c) || {}).name; $('#pdet').textContent = c === 'other' ? 'Carrier not recognized, Lumen will look it up on 17track.' : 'Looks like ' + n + '.' }
+  const f = d.querySelector('form'), pn = d.querySelector('#pn'), car = d.querySelector('#pcar')
+  if (edit && edit.carrier) car.value = edit.carrier
+  pn.focus()
+  const detect = async () => { const v = pn.value.trim(); if (v.length < 8) { $('#pdet').textContent = ''; return } const c = await L.invoke('parcelDetect', v); const n = (carriers.find(x => x.id === c) || {}).name; $('#pdet').textContent = car.value ? '' : c === 'other' ? 'Carrier not recognized, so Lumen will look it up on 17track. Or pick it below.' : 'Looks like ' + n + '.' }
+  pn.oninput = detect; car.onchange = detect
+  d.querySelector('#pcq').oninput = e => { const keep = car.value; const q = e.target.value.trim().toLowerCase(); car.innerHTML = `<option value="">Detect for me</option>${opts(q)}<option value="other">Other (17track)</option>`; if (keep && [...car.options].some(o => o.value === keep)) car.value = keep; else if (q && car.options.length > 1) car.selectedIndex = 1; detect() }
+  if (clip) d.querySelector('#pclip').onclick = () => { pn.value = clip.number; d.querySelector('#pclip').remove(); detect(); d.querySelector('#pname').focus() }
   d.querySelector('#pcancel').onclick = () => d.remove()
   d.onclick = e => { if (e.target === d) d.remove() }
+  d.onkeydown = e => { if (e.key === 'Escape') d.remove() }
   f.onsubmit = async e => {
     e.preventDefault()
-    const p = await L.invoke('parcelAdd', { number: $('#pn').value, name: $('#pname').value.trim(), carrier: $('#pcar').value, url: $('#purl').value.trim() })
-    d.remove(); if (p) { flash('Tracking ' + (p.name || p.number)); done && done(p) }
+    const o = { number: pn.value, name: $('#pname').value.trim(), carrier: car.value, url: $('#purl').value.trim(), expected: $('#pexp').value }
+    const p = edit ? await L.invoke('parcelEdit', edit.id, o) : await L.invoke('parcelAdd', o)
+    if (!edit && p && o.expected) await L.invoke('parcelEdit', p.id, { ...o, number: undefined, url: undefined })
+    d.remove(); if (p) { flash(edit ? 'Saved' : 'Tracking ' + (p.name || p.number)); done && done(p) }
   }
 }
 async function parcelsPage(m) {
   document.title = 'Parcels'
-  let list = await L.invoke('parcels')
+  let list = await L.invoke('parcels'), q = ''
+  const RANK = { out: 0, transit: 1, placed: 2, delivered: 3 }
   const draw = () => {
-    const act = list.filter(p => p.status !== 'delivered'), done = list.filter(p => p.status === 'delivered')
-    const row = p => `<div class="row prow ${PSTAT[p.status] ? PSTAT[p.status][1] : ''}" data-id="${esc(p.id)}"><span class="pc-ico">${ICONS.box}</span>
-      <div class="grow"><div class="t">${esc(p.name || p.carrierName || 'Parcel')}</div><div class="d">${esc(p.statusText || '')}${p.number ? '  ·  ' + esc(p.carrierName) + ' ' + esc(p.number) : ''}${p.orderNo ? '  ·  Order ' + esc(p.orderNo) : ''}${p.shop ? '  ·  ' + esc(p.shop) : ''}  ·  checked ${pAgo(p.checked)}</div>
+    const f = list.filter(p => !q || [p.name, p.number, p.orderNo, p.shop, p.carrierName, p.statusText].join(' ').toLowerCase().includes(q))
+      .sort((a, b) => (RANK[a.status] - RANK[b.status]) || (b.added - a.added))
+    const act = f.filter(p => p.status !== 'delivered'), done = f.filter(p => p.status === 'delivered')
+    const row = p => { const arr = ARRIVE(p); return `<div class="row prow ${PSTAT[p.status] ? PSTAT[p.status][1] : ''}" data-id="${esc(p.id)}"><span class="pc-ico">${ICONS.box}</span>
+      <div class="grow"><div class="t"><span class="pname" data-act="edit" title="Edit">${esc(p.name || p.carrierName || 'Parcel')}</span>${arr ? `<span class="eta">${esc(arr)}</span>` : ''}</div>
+      <div class="d">${esc(p.statusText || '')}${p.number ? `  ·  ${esc(p.carrierName)} <span class="pnum" data-act="copy" title="Copy">${esc(p.number)}</span>` : ''}${p.orderNo ? '  ·  Order ' + esc(p.orderNo) : ''}${p.shop ? '  ·  ' + esc(p.shop) : ''}${p.checked ? '  ·  checked ' + pAgo(p.checked) : ''}</div>
       <div class="psteps">${['Placed', 'On the way', 'Out for delivery', 'Delivered'].map((l, i) => `<div class="ps ${i <= (PSTEP[p.status] || 0) ? 'on' : ''}"><s></s><em>${l}</em></div>`).join('')}</div></div>
       <button class="btn sm primary" data-act="open">${p.url ? 'Open order' : 'Track'}</button>
-      ${p.url && p.track ? '<button class="btn sm" data-act="track">Carrier page</button>' : ''}
-      <button class="btn sm" data-act="${p.status === 'delivered' ? 'undeliver' : 'deliver'}">${p.status === 'delivered' ? 'Not delivered' : 'Delivered'}</button>
-      <button class="ib" data-act="del" title="Remove">${ICONS.close}</button></div>`
-    m.innerHTML = `<h2>Parcels</h2><p class="lead">Everything on its way to you. Parcels stay here until they are delivered.</p>
-      <div class="toolbar"><button class="btn primary" id="padd">${ICONS.plus} Track a parcel</button><button class="btn" id="pref">Check all now</button><span class="grow"></span>
-      <label class="pauto">Save orders automatically ${'<label class="switch"><input type="checkbox" id="pautosw" ' + (S.parcelsAuto === true ? 'checked' : '') + '><span></span></label>'}</label></div>
-      ${act.length ? `<div class="daylabel">On the way</div><div class="card list">${act.map(row).join('')}</div>` : `<div class="empty big"><div class="pc-hero">${ICONS.box}</div>Nothing on the way. ${S.parcelsAuto === true ? 'Orders you place will show up here.' : 'Add a tracking number, or turn on saving orders automatically.'}</div>`}
-      ${done.length ? `<div class="daylabel">Delivered</div><div class="card list">${done.map(row).join('')}</div>` : ''}`
-    $('#padd').onclick = () => addParcelDialog(async () => { list = await L.invoke('parcels'); draw() })
-    $('#pref').onclick = async () => { $('#pref').disabled = true; $('#pref').textContent = 'Checking...'; list = await L.invoke('parcelRefresh'); draw(); flash('All parcels checked') }
-    $('#pautosw').onchange = e => { S.parcelsAuto = e.target.checked; L.invoke('setSetting', 'parcelsAuto', e.target.checked) }
+      <div class="pmore"><button class="ib" data-act="edit" title="Edit">${ICONS.tune || ICONS.gear}</button>${p.number ? `<button class="ib" data-act="copy" title="Copy tracking number">${ICONS.link || ''}</button>` : ''}${p.url && p.track ? `<button class="ib" data-act="track" title="Carrier page">${ICONS.globe}</button>` : ''}<button class="ib" data-act="${p.status === 'delivered' ? 'undeliver' : 'deliver'}" title="${p.status === 'delivered' ? 'Not delivered yet' : 'Mark delivered'}">${p.status === 'delivered' ? ICONS.reload : ICONS.check || ICONS.starFill}</button><button class="ib" data-act="del" title="Remove">${ICONS.close}</button></div></div>` }
+    $('#plist').innerHTML = list.length ? (act.length ? `<div class="daylabel">On the way  <b>${act.length}</b></div><div class="card list">${act.map(row).join('')}</div>` : (q ? '' : `<div class="empty">Nothing on the way right now.</div>`)) + (done.length ? `<div class="daylabel">Delivered</div><div class="card list">${done.map(row).join('')}</div>` : '') + (q && !f.length ? '<div class="empty">No parcels match that.</div>' : '')
+      : `<div class="empty big"><div class="pc-hero">${ICONS.box}</div>Nothing on the way. ${S.parcelsAuto === true ? 'Orders you place will show up here.' : 'Add a tracking number, or turn on saving orders automatically.'}<div class="ptips"><b>Tips</b><span>Right-click a tracking number on any page and pick Track Parcel.</span><span>Paste a tracking number in the address bar or command bar.</span><span>Lumen knows ${'over 160'} carriers and finds most of them by the number alone.</span></div></div>`
   }
-  m.onclick = async e => {
+  m.innerHTML = `<h2>Parcels</h2><p class="lead">Everything on its way to you. Parcels stay here until they are delivered.</p>
+    <div class="toolbar"><button class="btn primary" id="padd">${ICONS.plus} Track a parcel</button><input type="search" id="pq" placeholder="Search parcels"><button class="btn" id="pref">Check all now</button>
+    <label class="pauto">Save orders <label class="switch"><input type="checkbox" id="pautosw" ${S.parcelsAuto === true ? 'checked' : ''}><span></span></label></label></div><div id="plist"></div>`
+  $('#padd').onclick = () => addParcelDialog(async () => { list = await L.invoke('parcels'); draw() })
+  $('#pq').oninput = e => { q = e.target.value.trim().toLowerCase(); draw() }
+  $('#pref').onclick = async () => { $('#pref').disabled = true; $('#pref').textContent = 'Checking...'; list = await L.invoke('parcelRefresh'); draw(); $('#pref').disabled = false; $('#pref').textContent = 'Check all now'; flash('All parcels checked') }
+  $('#pautosw').onchange = e => { S.parcelsAuto = e.target.checked; L.invoke('setSetting', 'parcelsAuto', e.target.checked) }
+  $('#plist').onclick = async e => {
     const b = e.target.closest('[data-act]'), r = e.target.closest('[data-id]'); if (!b || !r) return
     const id = r.dataset.id, a = b.dataset.act, p = list.find(x => x.id === id)
     if (a === 'open') return L.invoke('parcelOpen', id, e.metaKey || e.ctrlKey)
     if (a === 'track') return L.invoke('navigate', p.track)
+    if (a === 'copy') { await navigator.clipboard.writeText(p.number); flash('Tracking number copied'); return }
+    if (a === 'edit') return addParcelDialog(async () => { list = await L.invoke('parcels'); draw() }, p)
     if (a === 'del') { await L.invoke('parcelRemove', id); flash('Parcel removed') }
-    if (a === 'deliver' || a === 'undeliver') await L.invoke('parcelDelivered', id, a === 'deliver')
+    if (a === 'deliver' || a === 'undeliver') { await L.invoke('parcelDelivered', id, a === 'deliver'); if (a === 'deliver') flash('Marked delivered') }
     list = await L.invoke('parcels'); draw()
   }
   draw()
@@ -645,9 +665,10 @@ async function downloadsPage(m) {
 async function about(m) {
   const st = await L.invoke('update', 'state')
   const desc = s => !s ? '' : s.status === 'checking' ? 'Checking for updates...' : s.status === 'downloading' ? `Downloading update... ${Math.round(s.progress || 0)}%` : s.status === 'ready' ? `Version ${esc(s.latest)} is ready. Restart to finish updating.` : s.status === 'available' ? (s.reason || `Version ${esc(s.latest)} is available.`) : s.status === 'uptodate' ? 'Lumen is up to date.' : s.status === 'unpacking' ? 'Unpacking the update...' : s.status === 'installing' ? 'Restarting...' : s.status === 'error' ? 'Could not check for updates. ' + esc(s.error || '') : ''
-  m.innerHTML = `<h2>About Lumen</h2><p class="lead">A fast, private browser with Chrome's engine and a calmer feel.</p>
+  m.innerHTML = `<div class="abouthero rise"><img class="ahicon" src="lumen://assets/icon-${esc(S.appIcon || 'default')}.png" alt=""><div><h2>Lumen</h2><div class="ahver">Version ${esc(VERSION)}</div><p class="lead">A fast, private browser with Chrome's engine and a calmer feel.</p>
+    <div class="ahbtns"><button class="btn" id="replay">Replay the intro</button><a class="btn" href="lumen://settings/general">Settings</a></div></div></div>
   <div class="card">
-    ${row('Version ' + esc(VERSION), `<span id="ud">${desc(st)}</span>`, `<button class="btn" id="chk">Check for updates</button><button class="btn primary ${st && st.status === 'ready' ? '' : 'hidden'}" id="rst">Restart</button>`)}
+    ${row('Updates', `<span id="ud">${desc(st)}</span>`, `<button class="btn" id="chk">Check for updates</button><button class="btn primary ${st && st.status === 'ready' ? '' : 'hidden'}" id="rst">Restart</button>`)}
     ${row('Automatic updates', 'Download updates in the background and install them when you quit.', sw('autoUpdate', S.autoUpdate))}
   </div>
   <div class="card">
@@ -657,6 +678,7 @@ async function about(m) {
   bindSettings(m)
   $('#chk').onclick = async () => { $('#ud').textContent = 'Checking for updates...'; const s = await L.invoke('update', 'check'); $('#ud').innerHTML = desc(s); $('#rst').classList.toggle('hidden', !(s && s.status === 'ready')) }
   $('#rst').onclick = () => L.invoke('update', 'install')
+  $('#replay').onclick = () => L.invoke('replayIntro')
 }
 
 // ======================================================================= error page
@@ -670,13 +692,33 @@ const ERRORS = {
   '-201': ['Your connection is not private', 'The certificate for this site is not valid.'],
   '-202': ['Your connection is not private', 'The certificate for this site is not trusted.'],
 }
+// each kind of failure gets its own picture and the most useful next step
+const ERR_KIND = code => { const c = parseInt(code); if (c === -106 || c === -21) return 'offline'; if (c === -105 || c === -137) return 'dns'; if (c <= -200 && c > -300) return 'cert'; if (c === -118 || c === -7) return 'slow'; if (c === -102 || c === -109 || c === -100 || c === -101) return 'refused'; return 'other' }
+const ERR_ART = {
+  offline: '<path d="M2 6.5a9 9 0 0 1 3-1.9M14 6.5a9 9 0 0 0-6-2.3M4.2 8.9a5.5 5.5 0 0 1 2.3-1.2M11.8 8.9a5.5 5.5 0 0 0-1.6-1M6.6 11.2a2.2 2.2 0 0 1 2.8 0M2.5 2.5l11 11"/>',
+  dns: '<circle cx="7" cy="7" r="4.5"/><path d="m10.5 10.5 3 3M5.5 7h3"/>',
+  cert: '<rect x="3" y="7" width="10" height="7" rx="1.6"/><path d="M5.5 7V5a2.5 2.5 0 0 1 5 0v2M8 9.8v1.8"/>',
+  slow: '<circle cx="8" cy="8.5" r="5.5"/><path d="M8 5.5v3l2 1.5M6.5 1.5h3"/>',
+  refused: '<path d="M6 2v3M10 2v3M4.5 5h7v3a3.5 3.5 0 0 1-7 0zM8 11.5V14"/>',
+  other: '<circle cx="8" cy="8" r="6"/><path d="M8 4.8v3.6M8 10.9v.1"/>',
+}
 function errorPage() {
   const p = new URLSearchParams(location.search)
   const code = p.get('code') || '', url = p.get('url') || ''
   const [title, text] = ERRORS[code] || (parseInt(code) <= -200 && parseInt(code) > -300 ? ERRORS['-200'] : ['This page is not working', 'Something went wrong while loading it.'])
-  document.title = hostOf(url) || 'Error'
-  root.innerHTML = `<div class="err"><div class="rise"><div class="ico">${ICONS.globe}</div><h1>${esc(title)}</h1><p>${esc(text)}</p><code>${esc(hostOf(url) || url)}  ·  ${esc(p.get('desc') || '')}</code><button class="btn primary" id="retry">Try again</button></div></div>`
+  const kind = ERR_KIND(code), host = hostOf(url)
+  document.title = host || 'Error'
+  root.innerHTML = `<div class="err k-${kind}"><div class="errglow"></div><div class="rise">
+    <div class="ico"><svg viewBox="0 0 16 16" width="30" height="30" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">${ERR_ART[kind]}</svg></div>
+    <h1>${esc(title)}</h1><p>${esc(text)}</p>
+    <code>${esc(host || url)}  ·  ${esc(p.get('desc') || '')}</code>
+    ${kind === 'offline' ? '<div class="errwait"><i></i>Lumen will reload the page as soon as you are back online</div>' : ''}
+    <div class="erracts">${history.length > 1 ? '<button class="btn" id="eback">Go back</button>' : ''}${kind === 'dns' && host ? `<button class="btn" id="esearch">Search for ${esc(host.replace(/^www\./, ''))}</button>` : ''}<button class="btn primary" id="retry">Try again</button></div>
+  </div></div>`
   $('#retry').onclick = () => L.invoke('retry', url)
+  if ($('#eback')) $('#eback').onclick = () => history.back()
+  if ($('#esearch')) $('#esearch').onclick = () => L.invoke('navigate', host.replace(/^www\./, '').split('.')[0] + ' ' + host)
+  if (kind === 'offline') addEventListener('online', () => L.invoke('retry', url), { once: true })
 }
 
 // ======================================================================= boot

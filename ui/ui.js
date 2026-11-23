@@ -630,6 +630,7 @@ function buildResults(q, data) {
     else out.push({ sec: '', icon: ICONS.search, title: qq, sub: '  ' + eng, key: 'Search', go: () => go(qq) })
   }
   if (data.calc !== undefined && data.calc !== null) out.unshift({ sec: '', icon: ICONS.bolt, title: '= ' + data.calc.toLocaleString('en-US', { maximumFractionDigits: 10 }), sub: '  Press Enter to copy', key: 'Copy', go: () => { api.do('copyText', String(data.calc)); closeCmd(true); toast('Copied ' + data.calc) } })
+  if (data.parcel) out.unshift({ sec: '', icon: ICONS.box, title: 'Track parcel ' + data.parcel.number, sub: '  ' + data.parcel.carrier, key: 'Track', go: () => { closeCmd(true); api.do('trackNumber', data.parcel.number) } })
   if (data.conv) out.unshift({ sec: '', icon: ICONS.bolt, title: data.conv.text, sub: '  Press Enter to copy', key: 'Copy', go: () => { api.do('copyText', String(data.conv.value)); closeCmd(true); toast('Copied ' + data.conv.value) } })
   if (data.shortcut) out.unshift({ sec: '', icon: ICONS.search, title: data.shortcut.query, sub: '  Search ' + data.shortcut.name, key: 'Search', go: () => go(qq) })
   const lq = qq.toLowerCase()
@@ -648,7 +649,21 @@ function buildResults(q, data) {
   return out
 }
 
+// quick actions shown while the command bar is empty
+const QUICK = ['New Tab', 'Parcels', 'History', 'Focus Mode', 'Read Later List', 'Lumen AI', 'Settings']
+function renderQuick() {
+  const q = $('#cmd-quick'); if (!q || q.dataset.done) return
+  q.dataset.done = 1
+  q.innerHTML = QUICK.map(t => { const c = COMMANDS.find(x => x.t === t) || (t === 'New Tab' ? { t, i: 'plus' } : null); return c ? `<button class="qa" data-t="${esc(t)}"><span>${ICONS[c.i] || ''}</span>${esc(t === 'Read Later List' ? 'Read later' : t)}</button>` : '' }).join('')
+  q.addEventListener('click', e => {
+    const b = e.target.closest('.qa'); if (!b) return
+    closeCmd(true)
+    if (b.dataset.t === 'New Tab') { api.do('newTab'); return }
+    const c = COMMANDS.find(x => x.t === b.dataset.t); if (c) c.run()
+  })
+}
 function renderResults() {
+  renderQuick(); $('#cmd-quick').classList.toggle('show', !cmdInput.value.trim())
   let html = '', lastSec = null
   results.forEach((r, i) => {
     if (r.sec !== lastSec && r.sec) html += `<div class="sec">${esc(r.sec)}</div>`
@@ -854,7 +869,7 @@ async function openMainMenu() {
     : up.status === 'downloading' ? `<div class="mm-update quiet">${ICONS.download}<span>Downloading update  ${Math.round((up.progress || 0))}%</span></div>` : ''
   const item = (act, icon, label, keys, extra = '') => `<div class="item mm" data-mm="${act}"><span class="ri">${ICONS[icon]}</span><div class="grow">${label}</div>${extra}${keys ? `<kbd>${keys}</kbd>` : ''}</div>`
   const html = `
-    <div class="mm-head"><div class="mm-logo"></div><div class="grow"><div class="mm-title">Lumen${info.incognito ? ' <span class="mm-pill">Private</span>' : ''}</div><div class="mm-sub">Version ${esc(info.version || '')}</div></div><button class="ib sm" data-mm="settings" title="Settings">${ICONS.gear}</button></div>
+    <div class="mm-head"><img class="mm-logo img" src="../pages/icon-${esc(settings.appIcon || 'default')}.png" alt=""><div class="grow"><div class="mm-title">Lumen${info.incognito ? ' <span class="mm-pill">Private</span>' : ''}</div><div class="mm-sub">Version ${esc(info.version || '')}</div></div><button class="ib sm" data-mm="settings" title="Settings">${ICONS.gear}</button></div>
     ${updateLine}
     <div class="mm-tiles">
       <button class="mm-tile" data-mm="newtab">${ICONS.plus}<span>New Tab</span></button>
@@ -1063,7 +1078,7 @@ api.on('download-started', () => { const b = $('#btn-downloads'); b.classList.ad
 api.on('prompt', p => addPrompt(p))
 api.on('toast', m => toast(m))
 api.on('undo-close', m => toast('Closed ' + (m.title.length > 26 ? m.title.slice(0, 26) + '...' : m.title), { label: 'Undo', run: () => api.do('reopen') }))
-api.on('parcel-saved', p => toast('Order saved to Parcels', { label: 'View', run: () => api.do('openPage', 'parcels') }))
+api.on('parcel-saved', p => toast(/^(Tracking|Already)/.test(p.name || '') ? p.name : 'Order saved to Parcels', { label: 'View', run: () => api.do('openPage', 'parcels') }))
 api.on('focus-mode', on => document.body.classList.toggle('focusmode', !!on))
 api.on('hover-url', u => { const h = $('#hoverurl'); if (u) h.textContent = u; h.classList.toggle('show', !!u) })
 api.on('update', u => { updateState = u; $('#btn-update').classList.toggle('show', u.status === 'ready') })
@@ -1079,6 +1094,7 @@ api.on('command', c => {
   else if (c === 'palette') openCmd('newtab')
   else if (c === 'menu') openMainMenu()
   else if (c === 'shortcuts') openShortcuts()
+  else if (c === 'intro') playIntro()
   else if (c === 'location') openCmd('location')
   else if (c === 'find') openFind()
   else if (c === 'findNext') { if (!findOpen) openFind(); else if (findInput.value) api.do('find', findInput.value, true, true) }

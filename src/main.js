@@ -807,6 +807,7 @@ class BrowserWin {
     if (p.selectionText && !p.isEditable) {
       const q = p.selectionText.trim().slice(0, 80)
       items.push({ label: 'Copy', role: 'copy' })
+      if (Parcels.looksLikeTracking(p.selectionText.trim()) && p.selectionText.trim().length < 40) items.push({ label: `Track Parcel ${Parcels.clean(p.selectionText)} (${Parcels.carrierName(Parcels.detect(p.selectionText))})`, click: () => trackNumber(this, p.selectionText.trim(), wc.getURL()) })
       if (web) items.push({ label: 'Highlight', submenu: Object.keys(HL.COLORS).map(c => ({ label: c[0].toUpperCase() + c.slice(1), click: () => addHighlight(this, t, c) })) })
       if (/^https?:/.test(wc.getURL()) && p.selectionText.trim().length < 300) items.push({ label: 'Copy Link to Highlight', click: () => { const u = cleanURL(wc.getURL()).split('#')[0]; const txt = p.selectionText.trim().replace(/\s+/g, ' '); const words = txt.split(' '); const frag = words.length > 8 ? encodeURIComponent(words.slice(0, 4).join(' ')).replace(/-/g, '%2D') + ',' + encodeURIComponent(words.slice(-4).join(' ')).replace(/-/g, '%2D') : encodeURIComponent(txt).replace(/-/g, '%2D'); clipboard.writeText(u + '#:~:text=' + frag); this.send('toast', 'Link to highlight copied') } })
       items.push({ label: 'Explain with Lumen AI', click: () => this.send('command', { ai: 'explain', text: p.selectionText.slice(0, 6000) }) })
@@ -1017,7 +1018,7 @@ async function parcelPage(w, t) {
     if (known.length) {
       const text = await wc.executeJavaScriptInIsolatedWorld(PARCEL_WORLD, [{ code: `(document.body && document.body.innerText || '').slice(0, 20000)` }])
       const st = Parcels.statusOf(text)
-      for (const p of known) if (Parcels.setStatus(p, st) && st.status === 'delivered') w.send('toast', `${p.name || 'Your parcel'} was delivered`)
+      for (const p of known) if (Parcels.setStatus(p, st, text) && st.status === 'delivered') w.send('toast', `${p.name || 'Your parcel'} was delivered`)
     }
     if (!auto) return
     const r = await wc.executeJavaScriptInIsolatedWorld(PARCEL_WORLD, [{ code: Parcels.ORDER_SCAN }])
@@ -1026,7 +1027,7 @@ async function parcelPage(w, t) {
     const before = Parcels.list().length
     const p = Parcels.add({ url, orderNo: r.orderNo, number: r.tracking[0] || '', shop, name: 'Order from ' + Parcels.shopName(shop), source: 'auto' })
     for (const n of r.tracking.slice(1)) Parcels.add({ number: n, url, shop, name: p ? p.name : '', source: 'auto' })
-    if (p) { Parcels.setStatus(p, Parcels.statusOf(r.text) || { status: p.status, text: p.statusText }); if (Parcels.list().length > before) w.send('parcel-saved', { id: p.id, name: p.name }) }
+    if (p) { Parcels.setStatus(p, Parcels.statusOf(r.text) || { status: p.status, text: p.statusText }, r.text); if (Parcels.list().length > before) w.send('parcel-saved', { id: p.id, name: p.name }) }
   } catch (e) { log('parcel scan failed', e.message) }
 }
 // background check: open each parcel's page out of sight, read the status, close it
@@ -1047,7 +1048,7 @@ async function checkParcels(force = false) {
         const text = await win.webContents.executeJavaScript(`(document.body && document.body.innerText || '').slice(0, 20000)`)
         const st = Parcels.statusOf(text)
         const was = p.status
-        if (st) Parcels.setStatus(p, st); else Parcels.update(p.id, { checked: Date.now() })
+        if (st) Parcels.setStatus(p, st, text); else { const eta = Parcels.etaOf(text); Parcels.update(p.id, { checked: Date.now(), ...(eta ? { eta } : {}) }) }
         if (st && st.status !== was) {
           const msg = st.status === 'delivered' ? `${p.name || 'Your parcel'} was delivered` : `${p.name || 'Your parcel'}: ${st.text}`
           for (const w of windows) w.send('toast', msg)
@@ -1061,6 +1062,16 @@ async function checkParcels(force = false) {
   } finally { parcelBusy = false }
 }
 setInterval(() => checkParcels().catch(() => {}), 30 * 60000)
+// a tracking number from the command bar or a right-click on a page
+function trackNumber(w, n, from = '') {
+  if (!Parcels.looksLikeTracking(n)) return null
+  const before = Parcels.list().length
+  const p = Parcels.add({ number: n, name: '', source: 'manual', shop: from ? (() => { try { return new URL(from).host.replace(/^www\./, '') } catch { return '' } })() : '' })
+  if (!p) return null
+  w.send('parcel-saved', { id: p.id, name: Parcels.list().length > before ? `Tracking ${p.number}` : 'Already tracking that one' })
+  setTimeout(() => checkParcels(true).catch(() => {}), 400)
+  return parcelView(p)
+}
 const parcelView = p => ({ ...p, carrierName: p.carrier ? Parcels.carrierName(p.carrier) : '', open: Parcels.openURL(p), track: p.number ? Parcels.trackURL(p) : '' })
 
 // ---------------------------------------------------------------- reading time
@@ -1252,6 +1263,7 @@ async function suggest(w, text) {
   const sc = shortcutFor(q); if (sc) out.shortcut = { name: sc.name, query: sc.query }
   const calc = calcOf(q); if (calc !== null) out.calc = calc
   const conv = calc === null && convOf(q); if (conv) out.conv = conv
+  if (q.length < 40 && Parcels.looksLikeTracking(q)) out.parcel = { number: Parcels.clean(q), carrier: Parcels.carrierName(Parcels.detect(q)) }
   if (!q) {
     out.history = D.topSites(6).map(s => ({ url: s.url, title: s.title }))
     return out
@@ -1373,6 +1385,7 @@ ipcMain.handle('ui', async (e, action, ...a) => {
       case 'readLater': return toggleReadLater(w, t)
       case 'parcelsAuto': setSetting('parcelsAuto', !!a[0]); return true
       case 'parcelsCount': return Parcels.active().length
+      case 'trackNumber': return trackNumber(w, a[0])
       case 'focusMode': return setFocusMode(w, a[0] === undefined ? !w.focusMode : a[0])
       case 'archiveNow': return archiveIdleTabs()
       case 'readLaterOpen': { const url = String(a[0] || ''); if (!D.isReadLater(url)) return; D.removeReadLater(url); w.createTab(url, { active: true }); return }
@@ -1641,10 +1654,16 @@ ipcMain.handle('lumen', async (e, action, ...a) => {
       case 'readLater': return readLaterList(a[0] || 300)
       case 'archive': return D.archive.get().slice(0, 500)
       case 'parcels': Parcels.prune(); return Parcels.list().map(parcelView)
-      case 'parcelCarriers': return Object.entries(Parcels.CARRIERS).map(([k, c]) => ({ id: k, name: c.name }))
+      case 'parcelCarriers': return Object.entries(Parcels.CARRIERS).map(([k, c]) => ({ id: k, name: c.name, region: c.region }))
       case 'parcelDetect': return Parcels.detect(a[0])
       case 'parcelAdd': { const o = a[0] || {}; const url = /^https?:\/\//i.test(String(o.url || '')) ? String(o.url) : ''; const p = Parcels.add({ number: o.number, name: o.name, carrier: o.carrier, url, source: 'manual' }); if (p) setTimeout(() => checkParcels(true).catch(() => {}), 500); return p ? parcelView(p) : null }
       case 'parcelRemove': return Parcels.remove(String(a[0]))
+      case 'parcelEdit': { const o = a[1] || {}, p = Parcels.list().find(x => x.id === a[0]); if (!p) return null
+        const patch = { name: String(o.name || '').slice(0, 80), expected: /^\d{4}-\d{2}-\d{2}$/.test(o.expected || '') ? o.expected : '' }
+        if (o.number !== undefined) { const n = Parcels.clean(o.number); patch.number = n; patch.carrier = n ? (Parcels.CARRIERS[o.carrier] ? o.carrier : Parcels.detect(n)) : '' }
+        if (o.url !== undefined) patch.url = /^https?:\/\//i.test(String(o.url || '')) ? String(o.url) : ''
+        return parcelView(Parcels.update(p.id, patch)) }
+      case 'parcelClipboard': { const c = String(clipboard.readText() || '').trim(); return c.length < 40 && Parcels.looksLikeTracking(c) ? { number: Parcels.clean(c), carrier: Parcels.detect(c) } : null }
       case 'parcelDelivered': { const p = Parcels.list().find(x => x.id === a[0]); if (p) Parcels.setStatus(p, a[1] === false ? { status: 'placed', text: 'Waiting for news' } : { status: 'delivered', text: 'Delivered' }); return true }
       case 'parcelRename': return Parcels.update(String(a[0]), { name: String(a[1] || '').slice(0, 80) })
       case 'parcelOpen': { const p = Parcels.list().find(x => x.id === a[0]); const u = p && Parcels.openURL(p); if (u) { if (a[1] && w) w.createTab(u, { active: false }); else e.sender.loadURL(u) } return }
@@ -1738,6 +1757,7 @@ ipcMain.handle('lumen', async (e, action, ...a) => {
         return app.isDefaultProtocolClient('https')
       }
       case 'restart': app.relaunch(); app.quit(); return
+      case 'replayIntro': { if (w) { w.win.focus(); w.send('command', 'intro') } return }
       case 'retry': { const u = String(a[0] || ''); if (/^(https?|lumen):\/\//i.test(u)) e.sender.loadURL(u); return }
     }
   } catch (err) { console.error('lumen action failed', action, err); return { ok: false, error: String(err.message || err) } }

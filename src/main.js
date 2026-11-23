@@ -1721,6 +1721,8 @@ function toggleSiteDark(w, on) {
   w.send('toast', on ? `Dark mode on for ${h}` : `Dark mode off for ${h}`)
 }
 
+app.on('before-quit', () => { try { if (blockedTotal) D.settings.set({ blockedTotal }) } catch {} })
+
 // ---------------------------------------------------------------- quit guard (only for Cmd+Q, never for updates or shutdown)
 function confirmQuit() {
   const n = windows.reduce((a, w) => a + w.tabs.size, 0)

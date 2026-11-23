@@ -32,7 +32,7 @@ if (location.protocol === 'lumen:') {
         // this site is known to be light: start dark right away so there is no white flash while it loads
         const put = () => { if (!document.documentElement || document.getElementById('lumen-dark-early')) return !!document.documentElement; const st = document.createElement('style'); st.id = 'lumen-dark-early'; st.textContent = `html, body { background: ${c} !important; } body { opacity: 0 !important; }`; document.documentElement.appendChild(st); return true }
         if (!put()) { const mo = new MutationObserver(() => { if (put()) mo.disconnect() }); mo.observe(document, { childList: true }) }
-        setTimeout(() => { const e = document.getElementById('lumen-dark-early'); if (e) e.remove() }, 4000)
+        setTimeout(() => { const e = document.getElementById('lumen-dark-early'); if (e) e.remove() }, 1500)
       }
     }
   } catch {}

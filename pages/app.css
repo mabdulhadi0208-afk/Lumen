@@ -231,7 +231,7 @@ input[type=text], input[type=search], input[type=password], input[type=url], sel
 .note { line-height: 1.5; }
 
 /* new tab page */
-.ntp.wp-aurora .clock, .ntp.wp-plain .clock { background: linear-gradient(180deg, var(--fg) 30%, color-mix(in srgb, var(--accent) 75%, var(--fg))); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.ntp.wp-aurora .clock .jl, .ntp.wp-plain .clock .jl { background: linear-gradient(180deg, var(--fg) 30%, color-mix(in srgb, var(--accent) 75%, var(--fg))); -webkit-background-clip: text; background-clip: text; color: transparent; padding: 0 .02em; margin: 0 -.02em; }
 .clock { font-size: 76px; font-weight: 750; letter-spacing: -.05em; }
 .date { font-size: 14.5px; }
 .searchbox { height: 58px; border-radius: 20px; background: color-mix(in srgb, var(--bg2) 88%, transparent); backdrop-filter: blur(24px) saturate(1.4); box-shadow: 0 2px 4px rgba(15,20,40,.04), 0 14px 40px rgba(15,20,40,.09), 0 0 0 1px var(--line); }
@@ -258,7 +258,6 @@ input[type=text], input[type=search], input[type=password], input[type=url], sel
 /* appearance galleries */
 .thb i { border-radius: 14px; transition: box-shadow .25s; } .thb:hover i { box-shadow: 0 10px 26px rgba(15,20,40,.18), inset 0 0 0 1px var(--line); }
 .icb img { transition: box-shadow .25s; } .icb:hover img { box-shadow: 0 10px 26px rgba(15,20,40,.22); }
-.health .hscore { background: var(--grad); -webkit-background-clip: text; background-clip: text; }
 .err code { display: block; width: fit-content; margin: 14px auto 22px; }
 
 /* new tab: jump back in */

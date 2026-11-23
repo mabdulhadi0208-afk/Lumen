@@ -1359,19 +1359,21 @@ api.on('trask', p => {
   taEl.style.top = (r.top + 14) + 'px'
   taEl.style.left = (r.left + r.width / 2) + 'px'; taEl.style.marginLeft = '-220px'
   taEl.classList.add('show')
-  api.do('overlay', true)
+  api.do('overlay', true, true)   // quiet: the page keeps keyboard focus
   taG.set({ y: -40, o: 0, s: 0.9 }); taG.to({ y: 0, o: 1, s: 1 })
-  // gives up on its own after 14 seconds, like Not now
+  // gives up on its own after 10 seconds, like Not now
   const bar = $('#ta-timer'); bar.style.transition = 'none'; bar.style.transform = 'scaleX(1)'
-  requestAnimationFrame(() => requestAnimationFrame(() => { bar.style.transition = 'transform 14s linear'; bar.style.transform = 'scaleX(0)' }))
-  clearTimeout(taT); taT = setTimeout(() => taAnswer({ allow: false }), 14000)
+  requestAnimationFrame(() => requestAnimationFrame(() => { bar.style.transition = 'transform 10s linear'; bar.style.transform = 'scaleX(0)' }))
+  clearTimeout(taT); taT = setTimeout(() => taAnswer({ allow: false }), 10000)
 })
 taEl.addEventListener('mouseenter', () => { if (!taCur) return; clearTimeout(taT); const b = $('#ta-timer'); b.style.transition = 'transform .3s'; b.style.transform = 'scaleX(1)' })
 taEl.addEventListener('mouseleave', () => { if (!taCur) return; const b = $('#ta-timer'); b.style.transition = 'transform 8s linear'; b.style.transform = 'scaleX(0)'; clearTimeout(taT); taT = setTimeout(() => taAnswer({ allow: false }), 8000) })
 $('#ta-yes').onclick = () => taAnswer({ allow: true, always: $('#ta-always').checked })
 $('#ta-no').onclick = () => taAnswer({ allow: false })
 $('#ta-never').onclick = () => taAnswer({ allow: false, never: true })
-document.addEventListener('keydown', e => { if (taCur && e.key === 'Escape') taAnswer({ allow: false }); else if (taCur && e.key === 'Enter' && !e.target.closest('input[type=text], textarea')) $('#ta-yes').click() })
+// the popup sits over the page, so anything you do outside it (click, scroll) puts it away at once
+document.addEventListener('pointerdown', e => { if (taCur && !e.target.closest('#trask') && !overlayOpen && !tgOpen && !trCard.classList.contains('show')) taAnswer({ allow: false }) }, true)
+document.addEventListener('wheel', e => { if (taCur && !e.target.closest('#trask') && !overlayOpen && !tgOpen) taAnswer({ allow: false }) }, { capture: true, passive: true })
 
 // ---------------------------------------------------------------- translate button and menu
 setIcon('#btn-translate', 'translate')

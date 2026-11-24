@@ -1,0 +1,370 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Lumen dialog</title>
+<!-- Lumen's own dialogs (docs/NOVA.md): a liquid glass sheet over the dimmed window. No emoji. -->
+<style>
+:root {
+  --accent: #5b8cff;
+  --accent2: oklch(from var(--accent) calc(l - .02) c calc(h + 40));
+  --accent3: oklch(from var(--accent) calc(l + .04) c calc(h + 95));
+  --nova: linear-gradient(135deg, var(--accent), var(--accent2) 55%, var(--accent3));
+  --fg: #141722; --fg2: rgba(20, 23, 34, .66); --fg3: rgba(20, 23, 34, .42);
+  --tint: rgba(250, 251, 255, .44);
+  --field: rgba(255, 255, 255, .72);
+  --btn: rgba(255, 255, 255, .62);
+  --line: rgba(20, 24, 48, .10);
+  --spec: inset 0 1px 0 rgba(255, 255, 255, .8);
+  --dim: rgba(14, 18, 34, .26);
+  --halo: 0 0 0 4px color-mix(in srgb, var(--accent) 22%, transparent), 0 0 24px color-mix(in srgb, var(--accent) 34%, transparent);
+  --edge: linear-gradient(135deg, color-mix(in srgb, var(--accent) 75%, transparent), rgba(255, 255, 255, .7) 34%, rgba(255, 255, 255, .2) 64%, color-mix(in srgb, var(--accent3) 65%, transparent));
+  --shadow: 0 2px 6px rgba(14, 18, 40, .10), 0 24px 60px color-mix(in srgb, var(--accent) 22%, rgba(14, 18, 40, .22)), 0 60px 120px color-mix(in srgb, var(--accent) 16%, rgba(14, 18, 40, .18));
+  --font: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI Variable Text", "Segoe UI", Inter, system-ui, sans-serif;
+  --display: ui-rounded, "SF Pro Rounded", "Nunito", system-ui, var(--font);
+  color-scheme: light;
+}
+.dark {
+  --fg: #eef0fa; --fg2: rgba(238, 240, 250, .70); --fg3: rgba(238, 240, 250, .42);
+  --tint: color-mix(in srgb, var(--accent) 8%, rgba(14, 17, 30, .50));
+  --field: rgba(255, 255, 255, .07);
+  --btn: rgba(255, 255, 255, .09);
+  --line: rgba(255, 255, 255, .10);
+  --spec: inset 0 1px 0 rgba(255, 255, 255, .18);
+  --dim: rgba(2, 4, 12, .46);
+  --edge: linear-gradient(135deg, color-mix(in srgb, var(--accent) 90%, transparent), rgba(255, 255, 255, .2) 34%, rgba(255, 255, 255, .05) 64%, color-mix(in srgb, var(--accent3) 80%, transparent));
+  --shadow: 0 2px 6px rgba(0, 0, 0, .45), 0 24px 60px color-mix(in srgb, var(--accent) 22%, rgba(0, 0, 0, .5)), 0 60px 120px color-mix(in srgb, var(--accent) 18%, rgba(0, 0, 0, .4));
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; overflow: hidden; background: transparent; font: 14px/1.45 var(--font); color: var(--fg); -webkit-font-smoothing: antialiased; user-select: none; cursor: default; -webkit-app-region: no-drag; }
+
+/* ------------------------------------------------------------- the dimmed window behind the sheet */
+#veil { position: fixed; inset: 0; opacity: 0; }
+#veil .shot { position: absolute; inset: 0; filter: blur(2px) saturate(1.15); transform: scale(1.004); }
+#veil .shot img { position: absolute; display: block; }
+#veil .dim { position: absolute; inset: 0; background: var(--dim); }
+#veil .nebula { position: absolute; inset: 0; background:
+  radial-gradient(40% 36% at 50% 0%, color-mix(in srgb, var(--accent) 30%, transparent), transparent 72%),
+  radial-gradient(30% 30% at 20% 30%, color-mix(in srgb, var(--accent2) 14%, transparent), transparent 70%),
+  radial-gradient(30% 30% at 80% 34%, color-mix(in srgb, var(--accent3) 14%, transparent), transparent 70%); }
+
+/* ------------------------------------------------------------- the sheet: real liquid glass over the veil */
+#sheet { position: fixed; left: 50%; top: 54px; width: min(420px, calc(100vw - 32px)); max-height: calc(100vh - 80px); overflow: hidden auto; scrollbar-width: none;
+  padding: 26px 26px 20px; border-radius: 24px; isolation: isolate; opacity: 0; translate: -50% 0;
+  background: var(--tint); box-shadow: var(--spec), var(--shadow);
+  backdrop-filter: blur(24px) saturate(1.9) brightness(1.05);
+  --gx: 50%; --gy: 0%; transform-origin: 50% 0; }
+.lens #sheet { backdrop-filter: var(--lensf) blur(9px) saturate(2) brightness(1.06); }
+/* hero energy: drifting saturated colour, a large faint outline of the icon, one light sweep as the sheet lands */
+.glass .orb { position: absolute; border-radius: 50%; filter: blur(30px); }
+.glass .orb.a { width: 240px; height: 240px; left: -80px; top: -120px; background: color-mix(in srgb, var(--accent) 46%, transparent); animation: orba 14s ease-in-out infinite alternate; }
+.glass .orb.b { width: 260px; height: 200px; right: -40px; bottom: -140px; background: color-mix(in srgb, var(--accent3) 38%, transparent); animation: orbb 17s ease-in-out infinite alternate; }
+.dark .glass .orb.a { background: color-mix(in srgb, var(--accent) 52%, transparent); }
+@keyframes orba { to { transform: translate(90px, 40px) scale(1.15); } }
+@keyframes orbb { to { transform: translate(-80px, -30px) scale(1.1); } }
+.glass .art { position: absolute; right: -18px; top: -14px; width: 168px; height: 168px; color: var(--accent); opacity: .12; transform: rotate(-12deg); }
+.dark .glass .art { opacity: .16; color: color-mix(in srgb, var(--accent) 60%, #fff); }
+.glass .art svg { width: 100%; height: 100%; stroke-width: .9; }
+.glass .sweep { position: absolute; inset: 0; background: linear-gradient(105deg, transparent 35%, rgba(255, 255, 255, .42) 50%, transparent 65%); transform: translateX(-110%); }
+.dark .glass .sweep { background: linear-gradient(105deg, transparent 35%, rgba(255, 255, 255, .12) 50%, transparent 65%); }
+.go .glass .sweep { animation: sweepin 1.5s .2s ease-out both; }
+@keyframes sweepin { to { transform: translateX(110%); } }
+.off .glass .orb, .off .icon::before, .off .glass .sweep { animation: none; }
+#sheet > .glass { position: absolute; inset: 0; border-radius: inherit; overflow: hidden; z-index: -1; pointer-events: none; }
+.glass .caustic { position: absolute; inset: -30%; mix-blend-mode: plus-lighter; opacity: .6; background:
+  radial-gradient(24% 18% at 26% 6%, color-mix(in srgb, var(--accent) 24%, transparent), transparent 70%),
+  radial-gradient(30% 22% at 76% 100%, color-mix(in srgb, var(--accent3) 26%, transparent), transparent 72%);
+  animation: drift 10s ease-in-out infinite alternate; }
+.dark .glass .caustic { opacity: .85; }
+@keyframes drift { from { transform: translate(-3%, -2%) rotate(-2deg); } to { transform: translate(3%, 2%) rotate(2deg); } }
+.glass .sheen { position: absolute; inset: 0; border-radius: inherit; background: linear-gradient(180deg, rgba(255, 255, 255, .5), rgba(255, 255, 255, 0) 30%);
+  box-shadow: inset 0 0 30px color-mix(in srgb, var(--accent) 12%, transparent), inset 0 -14px 30px color-mix(in srgb, var(--accent3) 9%, transparent); }
+.dark .glass .sheen { background: linear-gradient(180deg, rgba(255, 255, 255, .08), rgba(255, 255, 255, 0) 30%); }
+.glass .glint { position: absolute; inset: 0; mix-blend-mode: soft-light; opacity: .9; background: radial-gradient(260px circle at var(--gx) var(--gy), rgba(255, 255, 255, .85), transparent 62%); }
+.dark .glass .glint { mix-blend-mode: plus-lighter; background: radial-gradient(240px circle at var(--gx) var(--gy), rgba(255, 255, 255, .08), transparent 62%); }
+#sheet::before { content: ''; position: absolute; inset: 0; border-radius: inherit; padding: 1px; pointer-events: none; z-index: 3;
+  background: radial-gradient(180px circle at var(--gx) var(--gy), rgba(255, 255, 255, .95), transparent 70%), var(--edge);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor; mask-composite: exclude; }
+#sheet::after { content: ''; position: absolute; inset: 1px; border-radius: 23px; pointer-events: none; z-index: 3;
+  box-shadow: inset 2px 0 0 rgba(255, 60, 120, .10), inset -2px 0 0 rgba(40, 170, 255, .13), inset 0 -2px 0 rgba(120, 255, 210, .07); }
+#sheet::-webkit-scrollbar { display: none; }
+
+/* ------------------------------------------------------------- content */
+.icon { width: 64px; height: 64px; border-radius: 20px; margin: 0 0 18px; display: grid; place-items: center; position: relative; color: #fff;
+  background: linear-gradient(145deg, color-mix(in srgb, var(--accent) 66%, white), var(--accent) 48%, color-mix(in srgb, var(--accent2) 80%, black 6%) 78%, var(--accent3));
+  box-shadow: 0 14px 34px color-mix(in srgb, var(--accent) 52%, transparent), 0 0 0 6px color-mix(in srgb, var(--accent) 12%, transparent), inset 0 1px 0 rgba(255, 255, 255, .5), inset 0 -3px 8px rgba(0, 0, 0, .14); }
+.icon::before { content: ''; position: absolute; inset: -18px; border-radius: 30px; z-index: -1; background: radial-gradient(closest-side, color-mix(in srgb, var(--accent) 45%, transparent), transparent); filter: blur(8px); animation: pulse 3.2s ease-in-out infinite alternate; }
+@keyframes pulse { from { opacity: .55; transform: scale(.94); } to { opacity: 1; transform: scale(1.06); } }
+.icon::after { content: ''; position: absolute; inset: 0; border-radius: inherit; background: linear-gradient(180deg, rgba(255, 255, 255, .32), transparent 52%); pointer-events: none; }
+.icon svg { width: 30px; height: 30px; position: relative; z-index: 1; filter: drop-shadow(0 1px 2px rgba(0, 0, 0, .18)); }
+.icon.img { background: var(--field); box-shadow: 0 10px 26px color-mix(in srgb, var(--accent) 22%, transparent), inset 0 0 0 1px var(--line); }
+.icon.img img { width: 40px; height: 40px; border-radius: 9px; position: relative; z-index: 1; }
+.kicker { font: 700 11px var(--font); letter-spacing: .08em; text-transform: uppercase; color: var(--accent); margin-bottom: 6px; }
+h1 { margin: 0; font: 800 24px/1.16 var(--display); letter-spacing: -.035em; padding-bottom: 1px; overflow-wrap: anywhere;
+  background: linear-gradient(120deg, var(--fg) 0%, var(--fg) 40%, color-mix(in srgb, var(--accent) 80%, var(--fg)) 75%, var(--accent3) 100%); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.detail { margin: 8px 0 0; color: var(--fg2); font-size: 13.5px; line-height: 1.5; overflow-wrap: anywhere; white-space: pre-line; }
+.detail:empty { display: none; }
+
+.fields { display: grid; gap: 10px; margin-top: 18px; }
+.fields:empty { display: none; }
+.field { display: grid; gap: 5px; }
+.field span { font: 650 11.5px var(--font); color: var(--fg2); letter-spacing: .01em; padding-left: 4px; }
+.field input { font: 14px var(--font); color: var(--fg); height: 40px; padding: 0 14px; border-radius: 12px; border: 0; outline: 0; background: var(--field);
+  box-shadow: inset 0 0 0 1px var(--line), inset 0 1px 2px rgba(14, 18, 40, .06); transition: box-shadow .2s; user-select: text; }
+.field input:focus { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 60%, transparent), var(--halo); }
+.err { margin-top: 10px; color: #e5484d; font: 600 12.5px var(--font); }
+.dark .err { color: #ff8589; }
+.err:empty { display: none; }
+
+.list { display: grid; gap: 6px; margin-top: 18px; }
+.list:empty { display: none; }
+.choice { display: flex; align-items: center; gap: 12px; padding: 9px 12px; border-radius: 14px; border: 0; font: inherit; color: inherit; text-align: left; background: var(--btn);
+  box-shadow: inset 0 0 0 1px var(--line), var(--spec); outline: 0; transition: transform .35s cubic-bezier(.3, 1.5, .5, 1), box-shadow .2s, background .2s; }
+.choice:hover { background: color-mix(in srgb, var(--accent) 12%, var(--btn)); transform: translateY(-1px); }
+.choice:focus-visible { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 60%, transparent), var(--halo); }
+.choice:active { transform: scale(.97); }
+.choice .av { width: 32px; height: 32px; flex: none; border-radius: 50%; display: grid; place-items: center; color: #fff; font: 800 14px var(--display); background: var(--nova); box-shadow: inset 0 1px 0 rgba(255, 255, 255, .4), 0 4px 12px color-mix(in srgb, var(--accent) 30%, transparent); }
+.choice .who { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; }
+.choice .go { color: var(--fg3); display: grid; transition: color .2s, transform .35s cubic-bezier(.3, 1.5, .5, 1); }
+.choice:hover .go, .choice:focus-visible .go { color: var(--accent); transform: translateX(2px); }
+
+.check { display: flex; align-items: center; gap: 10px; margin-top: 18px; color: var(--fg2); font-size: 13px; width: fit-content; }
+.check[hidden] { display: none; }
+.check input { position: absolute; opacity: 0; pointer-events: none; }
+.check .box { width: 20px; height: 20px; border-radius: 7px; display: grid; place-items: center; background: var(--field); box-shadow: inset 0 0 0 1.5px var(--line); transition: background .2s, box-shadow .2s, transform .35s cubic-bezier(.3, 1.5, .5, 1); color: #fff; }
+.check .box svg { width: 13px; height: 13px; opacity: 0; transform: scale(.5); transition: opacity .15s, transform .35s cubic-bezier(.3, 1.6, .5, 1); }
+.check input:checked + .box { background: var(--nova); box-shadow: inset 0 1px 0 rgba(255, 255, 255, .4), 0 4px 12px color-mix(in srgb, var(--accent) 35%, transparent); }
+.check input:checked + .box svg { opacity: 1; transform: none; }
+.check input:focus-visible + .box { box-shadow: inset 0 0 0 1.5px var(--accent), var(--halo); }
+.check:active .box { transform: scale(.9); }
+
+.buttons { display: flex; justify-content: flex-end; gap: 10px; margin-top: 22px; flex-wrap: wrap; }
+.btn { position: relative; overflow: hidden; isolation: isolate; height: 38px; min-width: 96px; padding: 0 18px; border-radius: 999px; border: 0; outline: 0; font: 650 13.5px var(--font); color: var(--fg);
+  background: var(--btn); box-shadow: inset 0 0 0 1px var(--line), var(--spec), 0 2px 6px rgba(14, 18, 40, .06); transition: transform .35s cubic-bezier(.3, 1.5, .5, 1), box-shadow .2s, background .2s; }
+.btn:hover { transform: translateY(-1px); background: color-mix(in srgb, var(--accent) 10%, var(--btn)); }
+.btn:active, .btn.press { transform: scale(.96); }
+.btn:focus-visible { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 60%, transparent), var(--halo); }
+.btn.primary { color: #fff; background: var(--nova); box-shadow: inset 0 1px 0 rgba(255, 255, 255, .42), inset 0 -6px 12px rgba(0, 0, 0, .08), 0 8px 22px color-mix(in srgb, var(--accent) 42%, transparent); text-shadow: 0 1px 1px rgba(0, 0, 0, .12); }
+.btn.primary:hover { filter: brightness(1.06); box-shadow: inset 0 1px 0 rgba(255, 255, 255, .42), 0 10px 28px color-mix(in srgb, var(--accent) 52%, transparent); }
+.btn.primary:focus-visible { box-shadow: inset 0 1px 0 rgba(255, 255, 255, .42), var(--halo); }
+.btn.primary::after { content: ''; position: absolute; top: -20%; bottom: -20%; left: 0; width: 60%; pointer-events: none; z-index: 1;
+  background: linear-gradient(105deg, transparent 20%, rgba(255, 255, 255, .55) 50%, transparent 80%); transform: translateX(-120%) skewX(-14deg); animation: sweep 1.1s .35s cubic-bezier(.4, 0, .2, 1) 1 both; }
+@keyframes sweep { to { transform: translateX(260%) skewX(-14deg); } }
+.btn.danger.primary { background: linear-gradient(135deg, #ff5a6a, #ff7a59 60%, #ff9f6b); box-shadow: inset 0 1px 0 rgba(255, 255, 255, .42), 0 8px 22px rgba(255, 90, 106, .38); }
+.off .caustic, .off .btn.primary::after { animation: none; }
+.off .btn.primary::after { display: none; }
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs id="defs"></defs></svg>
+<div id="veil"><div class="shot"></div><div class="dim"></div><div class="nebula"></div></div>
+<div id="sheet" role="dialog" aria-modal="true" aria-labelledby="msg">
+  <div class="glass"><div class="orb a"></div><div class="orb b"></div><div class="art"></div><div class="caustic"></div><div class="sheen"></div><div class="sweep"></div><div class="glint"></div></div>
+  <div class="icon" hidden></div>
+  <div class="kicker" hidden></div>
+  <h1 id="msg"></h1>
+  <p class="detail"></p>
+  <div class="fields"></div>
+  <div class="err"></div>
+  <div class="list"></div>
+  <label class="check" hidden><input type="checkbox"><span class="box"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m3.5 8.5 3 3 6-7"/></svg></span><span class="cl"></span></label>
+  <div class="buttons"></div>
+</div>
+<script>
+'use strict'
+// ---------------------------------------------------------------- springs (Jelly, toned down)
+const PRE = { jelly: { k: 300, c: 22 }, calm: { k: 240, c: 25.5 } }
+let MOTION = 'jelly'
+const live = new Set(); let raf = 0, last = 0
+function frame(t) { const dt = Math.min(0.04, (t - (last || t)) / 1000); last = t; for (const s of [...live]) s.step(dt); if (live.size) raf = requestAnimationFrame(frame); else { raf = 0; last = 0 } }
+class Spring {
+  constructor(v, cb) { this.v = v; this.t = v; this.vel = 0; this.cb = cb }
+  to(t) { this.t = t; if (MOTION === 'off') return this.set(t); live.add(this); if (!raf) raf = requestAnimationFrame(frame); return this }
+  set(v) { this.v = this.t = v; this.vel = 0; live.delete(this); this.cb(v); return this }
+  step(dt) {
+    const c = MOTION === 'calm' ? PRE.calm : PRE.jelly
+    for (let i = 0; i < 4; i++) { const h = dt / 4, a = -c.k * (this.v - this.t) - c.c * this.vel; this.vel += a * h; this.v += this.vel * h }
+    if (Math.abs(this.v - this.t) < 0.0005 && Math.abs(this.vel) < 0.002) { this.v = this.t; this.vel = 0; live.delete(this) }
+    this.cb(this.v)
+  }
+}
+
+// ---------------------------------------------------------------- the lens: displacement strongest at the rim, chromatic fringe
+function lensMap(w, h, r, rim) {
+  const S = 0.5, W = Math.max(2, Math.round(w * S)), H = Math.max(2, Math.round(h * S))
+  const c = document.createElement('canvas'); c.width = W; c.height = H
+  const ctx = c.getContext('2d'), img = ctx.createImageData(W, H), d = img.data
+  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+    const px = x / S - w / 2, py = y / S - h / 2
+    const qx = Math.abs(px) - (w / 2 - r), qy = Math.abs(py) - (h / 2 - r)
+    const dist = Math.hypot(Math.max(qx, 0), Math.max(qy, 0)) + Math.min(Math.max(qx, qy), 0) - r
+    let nx = 0, ny = 0
+    if (qx > 0 && qy > 0) { const l = Math.hypot(qx, qy) || 1; nx = qx / l; ny = qy / l } else if (qx > qy) nx = 1; else ny = 1
+    nx *= Math.sign(px) || 1; ny *= Math.sign(py) || 1
+    const inward = -dist, f = inward < 0 ? 1 : inward < rim ? Math.pow(1 - inward / rim, 2.2) : 0
+    const i = (y * W + x) * 4
+    d[i] = 128 - nx * 127 * f; d[i + 1] = 128 - ny * 127 * f; d[i + 2] = 128; d[i + 3] = 255
+  }
+  ctx.putImageData(img, 0, 0)
+  return c.toDataURL()
+}
+function applyLens(el) {
+  if (MOTION === 'off') return
+  try {
+    const w = el.offsetWidth, h = el.offsetHeight, ns = 'http://www.w3.org/2000/svg'
+    const defs = document.getElementById('defs'); defs.innerHTML = ''
+    const f = document.createElementNS(ns, 'filter')
+    f.setAttribute('id', 'lens'); f.setAttribute('x', '0'); f.setAttribute('y', '0'); f.setAttribute('width', '100%'); f.setAttribute('height', '100%'); f.setAttribute('color-interpolation-filters', 'sRGB')
+    const ch = (n, m, v) => `<feDisplacementMap in="SourceGraphic" in2="map" scale="${66 * m}" xChannelSelector="R" yChannelSelector="G" result="d${n}"/><feColorMatrix in="d${n}" type="matrix" values="${v}  0 0 0 1 0" result="${n}"/>`
+    f.innerHTML = `<feImage href="${lensMap(w, h, 24, 40)}" x="0" y="0" width="${w}" height="${h}" preserveAspectRatio="none" result="map"/>` +
+      ch('r', 1, '1 0 0 0 0  0 0 0 0 0  0 0 0 0 0') + ch('g', 1.08, '0 0 0 0 0  0 1 0 0 0  0 0 0 0 0') + ch('b', 1.16, '0 0 0 0 0  0 0 0 0 0  0 0 1 0 0') +
+      '<feBlend in="r" in2="g" mode="screen" result="rg"/><feBlend in="rg" in2="b" mode="screen"/>'
+    defs.appendChild(f)
+    el.style.setProperty('--lensf', 'url(#lens)'); document.body.classList.add('lens')
+  } catch {}
+}
+
+// ---------------------------------------------------------------- glyphs
+const I = d => `<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">${d}</svg>`
+const GLYPH = {
+  key: I('<circle cx="5.5" cy="10.5" r="3"/><path d="m7.6 8.4 5.65-5.65M11 5l1.5 1.5M12.5 3.5 14 5"/>'),
+  lock: I('<rect x="3.5" y="7" width="9" height="6.5" rx="1.8"/><path d="M5.5 7V5.25a2.5 2.5 0 0 1 5 0V7"/><path d="M8 9.6v1.4"/>'),
+  quit: I('<path d="M8 2v5.5"/><path d="M4.6 4.2a5.25 5.25 0 1 0 6.8 0"/>'),
+  link: I('<path d="M9 2.5h4.5V7M13.5 2.5 7.5 8.5"/><path d="M12 9.5v3a1 1 0 0 1-1 1H3.5a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1h3"/>'),
+  leave: I('<path d="M6.5 2.5H4a1.5 1.5 0 0 0-1.5 1.5v8A1.5 1.5 0 0 0 4 13.5h2.5"/><path d="M10 5l3 3-3 3M13 8H6"/>'),
+  apps: I('<rect x="2.5" y="2.5" width="4.5" height="4.5" rx="1.4"/><rect x="9" y="2.5" width="4.5" height="4.5" rx="1.4"/><rect x="2.5" y="9" width="4.5" height="4.5" rx="1.4"/><rect x="9" y="9" width="4.5" height="4.5" rx="1.4"/>'),
+  puzzle: I('<path d="M3 5.5h2.5a1.5 1.5 0 1 1 3 0H11v2.5a1.5 1.5 0 1 1 0 3V13H8.5a1.5 1.5 0 1 0-3 0H3z"/>'),
+  warning: I('<path d="M8 2.2 14.2 13H1.8z"/><path d="M8 6.5v3M8 11.3v.1"/>'),
+  info: I('<circle cx="8" cy="8" r="6"/><path d="M8 7.2v3.8M8 5v.1"/>'),
+  question: I('<circle cx="8" cy="8" r="6"/><path d="M6.2 6.3a1.9 1.9 0 0 1 3.6.7c0 1.3-1.8 1.6-1.8 2.8M8 11.6v.1"/>'),
+  user: I('<circle cx="8" cy="5.5" r="2.75"/><path d="M2.75 13.5a5.25 5.25 0 0 1 10.5 0"/>'),
+}
+const CHEV = I('<path d="M6.25 3.75 10.5 8l-4.25 4.25"/>')
+
+// ---------------------------------------------------------------- the dialog
+const $ = s => document.querySelector(s)
+let D = null, answered = false, shots = []
+function answer(response) {
+  if (answered || !D) return
+  answered = true
+  const values = {}
+  document.querySelectorAll('.field input').forEach(i => { values[i.name] = i.value })
+  const r = { response, checkboxChecked: $('.check input').checked, values }
+  const b = document.querySelector(`.btn[data-i="${response}"]`); if (b) b.classList.add('press')
+  window.nova.send('answer', r)
+  // a short exit: the sheet lifts away and the window brightens again
+  if (MOTION !== 'off') {
+    $('#sheet').style.transition = 'opacity .15s ease-in, transform .15s ease-in'; $('#sheet').style.opacity = '0'; $('#sheet').style.transform = 'translateY(-10px) scale(.97)'
+    $('#veil').style.transition = 'opacity .16s ease-in'; $('#veil').style.opacity = '0'
+  }
+}
+function open(d) {
+  D = d; answered = false
+  const th = d.theme || {}
+  document.documentElement.className = (th.dark || th.incognito ? 'dark' : '') + (th.motion === 'off' ? ' off' : '')
+  document.documentElement.style.setProperty('--accent', th.incognito ? '#a77dff' : (th.accent || '#5b8cff'))
+  MOTION = th.motion === 'off' || matchMedia('(prefers-reduced-motion: reduce)').matches ? 'off' : th.motion === 'calm' ? 'calm' : 'jelly'
+  document.body.dataset.kind = d.kind || ''
+  const ic = $('.icon')
+  if (d.icon && d.icon.src) { ic.className = 'icon img'; ic.innerHTML = '<img alt="">'; ic.querySelector('img').src = d.icon.src; ic.hidden = false }
+  else { ic.className = 'icon'; ic.innerHTML = GLYPH[(d.icon && d.icon.glyph) || 'question'] || GLYPH.question; ic.hidden = false }
+  $('.glass .art').innerHTML = GLYPH[(d.icon && d.icon.glyph) || (d.fields ? 'lock' : 'question')] || GLYPH.question
+  $('#sheet').classList.remove('go'); void $('#sheet').offsetWidth; $('#sheet').classList.add('go')
+  const k = $('.kicker'); k.textContent = d.title || ''; k.hidden = !d.title
+  $('#msg').textContent = d.message
+  $('.detail').textContent = d.detail || ''
+  const fields = $('.fields'); fields.innerHTML = ''
+  for (const f of d.fields || []) {
+    const l = document.createElement('label'); l.className = 'field'
+    l.innerHTML = '<span></span><input>'
+    l.querySelector('span').textContent = f.label || f.name
+    const i = l.querySelector('input'); i.name = f.name; i.type = f.type === 'password' ? 'password' : 'text'; i.value = f.value || ''; i.autocomplete = 'off'; i.spellcheck = false
+    fields.appendChild(l)
+  }
+  $('.err').textContent = d.error || ''
+  const list = $('.list'); list.innerHTML = ''
+  const btns = $('.buttons'); btns.innerHTML = ''
+  const idx = d.buttons.map((_, i) => i)
+  const asList = d.list ? idx.filter(i => i !== d.cancelId) : []
+  for (const i of asList) {
+    const b = document.createElement('button'); b.className = 'choice'; b.dataset.i = i
+    b.innerHTML = '<span class="av"></span><span class="who"></span><span class="go">' + CHEV + '</span>'
+    b.querySelector('.av').textContent = (String(d.buttons[i]).trim()[0] || '?').toUpperCase()
+    b.querySelector('.who').textContent = d.buttons[i]
+    b.onclick = () => answer(i)
+    list.appendChild(b)
+  }
+  // like the system: the default answer sits on the right, cancel to its left
+  for (const i of idx.filter(i => !asList.includes(i)).reverse()) {
+    const b = document.createElement('button'); b.className = 'btn' + (i === d.defaultId && !d.list ? ' primary' : '')
+    b.dataset.i = i; b.textContent = d.buttons[i]
+    b.onclick = () => answer(i)
+    btns.appendChild(b)
+  }
+  const ck = $('.check'); ck.hidden = !d.checkboxLabel; ck.querySelector('.cl').textContent = d.checkboxLabel || ''; ck.querySelector('input').checked = !!d.checkboxChecked
+  // focus: the first field, else the first choice, else the default button
+  const first = fields.querySelector('input') || list.querySelector('.choice') || btns.querySelector('.primary') || btns.lastElementChild
+  if (first) first.focus({ focusVisible: !!fields.querySelector('input') || !!list.querySelector('.choice') })
+  enter()
+  applyLens($('#sheet'))
+}
+function enter() {
+  const sheet = $('#sheet'), veil = $('#veil')
+  if (MOTION === 'off') { sheet.style.opacity = '1'; veil.style.opacity = '1'; return }
+  veil.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 200, easing: 'ease-out', fill: 'forwards' })
+  new Spring(0, v => {
+    sheet.style.opacity = Math.min(1, v * 1.8)
+    sheet.style.transform = `translateY(${(1 - v) * -28}px) scale(${0.93 + 0.07 * v}, ${0.9 + 0.1 * v})`
+  }).to(1)
+  const parts = [...sheet.querySelectorAll('.icon:not([hidden]), .kicker:not([hidden]), h1, .detail, .fields, .list, .check:not([hidden]), .buttons')]
+  parts.forEach((n, i) => {
+    n.style.opacity = '0'
+    const s = new Spring(0, v => { n.style.opacity = Math.min(1, v * 1.4); n.style.transform = `translateY(${(1 - v) * 8}px)` })
+    setTimeout(() => s.to(1), 60 + i * 45)
+  })
+  const ic = sheet.querySelector('.icon')
+  if (ic && !ic.hidden) { const s = new Spring(0.6, v => { ic.style.scale = String(v) }); setTimeout(() => s.to(1), 60) }
+  // if frames were held back (a view that was waiting in the background), land on the final state anyway
+  clearTimeout(settleT)
+  settleT = setTimeout(() => {
+    if (answered) return
+    live.clear(); sheet.style.opacity = '1'; sheet.style.transform = 'none'; if (ic) ic.style.scale = '1'
+    parts.forEach(n => { n.style.opacity = '1'; n.style.transform = 'none' })
+  }, 1100)
+}
+let settleT = 0
+function paintBackdrop() {
+  const box = $('#veil .shot'); box.innerHTML = ''
+  for (const s of shots) { const im = new Image(); im.src = s.src; im.style.cssText = `left:${s.x}px;top:${s.y}px;width:${s.w}px;height:${s.h}px`; box.appendChild(im) }
+}
+
+// ---------------------------------------------------------------- keys and pointer
+document.addEventListener('keydown', e => {
+  if (!D || answered) return
+  if (e.key === 'Escape') { e.preventDefault(); answer(D.cancelId) }
+  else if (e.key === 'Enter') {
+    e.preventDefault()
+    const a = document.activeElement
+    if (a && a.classList && (a.classList.contains('choice') || a.classList.contains('btn'))) answer(Number(a.dataset.i))
+    else if (!D.list) answer(D.defaultId)
+  } else if ((e.key === 'ArrowDown' || e.key === 'ArrowUp') && document.activeElement && document.activeElement.classList.contains('choice')) {
+    e.preventDefault()
+    const all = [...document.querySelectorAll('.choice')], i = all.indexOf(document.activeElement)
+    const n = all[(i + (e.key === 'ArrowDown' ? 1 : -1) + all.length) % all.length]; if (n) n.focus()
+  }
+})
+document.addEventListener('mousemove', e => { const s = $('#sheet'), b = s.getBoundingClientRect(); s.style.setProperty('--gx', (e.clientX - b.left) + 'px'); s.style.setProperty('--gy', (e.clientY - b.top) + 'px') })
+// a click on the dimmed window gives the sheet a small shake instead of closing it, like a system sheet
+document.addEventListener('mousedown', e => {
+  if (e.target.closest && e.target.closest('#sheet')) return
+  e.preventDefault()
+  if (MOTION !== 'off') $('#sheet').animate([{ translate: '-50% 0' }, { translate: 'calc(-50% - 7px) 0' }, { translate: 'calc(-50% + 6px) 0' }, { translate: 'calc(-50% - 3px) 0' }, { translate: '-50% 0' }], { duration: 320, easing: 'ease-out' })
+})
+document.addEventListener('contextmenu', e => e.preventDefault())
+
+window.nova.on('nova:dialog-open', open)
+window.nova.on('nova:dialog-backdrop', s => { shots = s || []; paintBackdrop() })
+</script>
+</body>
+</html>

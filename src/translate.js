@@ -113,19 +113,53 @@ const DETECT = `(() => {
 })()`
 const pageLang = wc => wc.executeJavaScriptInIsolatedWorld(WORLD, [{ code: DETECT }]).catch(() => '')
 
-async function bubble(wc, text, to) {
+// The selection translation: a liquid glass card under the selected text, light or dark like the system,
+// in the user's accent, with Copy and Close. Lives in a closed shadow root in Lumen's own isolated world.
+async function bubble(wc, text, to, { accent = '#5b8cff', dark = null, motion = 'jelly' } = {}) {
   const [res] = await translateTexts([text], to)
+  const acc = /^#[0-9a-f]{3,8}$/i.test(String(accent)) ? accent : '#5b8cff'
+  const cfg = { res: res || '', to: langName(to), dir: dirOf(to), acc, dark, still: motion === 'off' }
   const code = `(() => {
-    const sel = getSelection(); const r = sel && sel.rangeCount ? sel.getRangeAt(0).getBoundingClientRect() : { left: 40, bottom: 40 }
+    const C = ${JSON.stringify(cfg)}
+    const sel = getSelection(); const r = sel && sel.rangeCount ? sel.getRangeAt(0).getBoundingClientRect() : { left: 40, bottom: 40, top: 40 }
     document.getElementById('__lumen_tr_bubble')?.remove()
     const host = document.createElement('div'); host.id = '__lumen_tr_bubble'
-    host.style.cssText = 'position:fixed;z-index:2147483647;left:' + Math.max(8, Math.min(innerWidth - 380, r.left)) + 'px;top:' + Math.min(innerHeight - 80, r.bottom + 8) + 'px'
+    const W = Math.min(400, innerWidth - 16), below = r.bottom + 190 < innerHeight
+    host.style.cssText = 'position:fixed;z-index:2147483647;left:' + Math.max(8, Math.min(innerWidth - W - 8, r.left)) + 'px;' + (below ? 'top:' + (r.bottom + 10) : 'bottom:' + Math.max(8, innerHeight - r.top + 10)) + 'px;width:' + W + 'px'
     const sh = host.attachShadow({ mode: 'closed' })
-    sh.innerHTML = '<style>.b{max-width:360px;background:rgba(250,250,252,.97);color:#1d1d1f;border-radius:14px;box-shadow:0 14px 44px rgba(0,0,0,.22),0 0 0 1px rgba(0,0,0,.06);padding:12px 14px;font:14px/1.45 -apple-system,BlinkMacSystemFont,Segoe UI,sans-serif;animation:p .45s cubic-bezier(.3,1.3,.5,1)}@keyframes p{from{opacity:0;transform:translateY(-6px) scale(.96)}}@media (prefers-color-scheme:dark){.b{background:rgba(40,41,46,.97);color:#f2f2f4}}.h{font-size:11px;opacity:.55;margin-bottom:4px;letter-spacing:.02em}.x{float:right;cursor:default;opacity:.5;margin-left:10px}</style><div class="b"><span class="x">Close</span><div class="h">Lumen Translate  ·  ${langName(to)}</div><div class="t"></div></div>'
-    sh.querySelector('.t').textContent = ${JSON.stringify(res || '')}
+    const darkQ = C.dark === null ? '@media (prefers-color-scheme:dark){.b{--dk:1}}' : ''
+    sh.innerHTML = '<style>:host{all:initial}*{box-sizing:border-box}' +
+      '.b{--accent:' + C.acc + ';--accent2:oklch(from var(--accent) calc(l - .02) c calc(h + 40));--accent3:oklch(from var(--accent) calc(l + .04) c calc(h + 95));--nova:linear-gradient(135deg,var(--accent),var(--accent2) 55%,var(--accent3));' +
+      'position:relative;isolation:isolate;overflow:hidden;border-radius:20px;padding:14px 16px 12px;font:14px/1.5 -apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI Variable Text","Segoe UI",system-ui,sans-serif;-webkit-font-smoothing:antialiased;' +
+      'color:#141722;background:radial-gradient(120% 100% at 0% 0%,color-mix(in srgb,var(--accent) 18%,transparent),transparent 60%),radial-gradient(100% 100% at 100% 100%,color-mix(in srgb,var(--accent3) 16%,transparent),transparent 60%),linear-gradient(180deg,rgba(255,255,255,.86),rgba(248,249,255,.78));' +
+      '-webkit-backdrop-filter:blur(26px) saturate(1.9);backdrop-filter:blur(26px) saturate(1.9);box-shadow:inset 0 1px 0 rgba(255,255,255,.85),0 2px 6px rgba(14,18,40,.08),0 18px 46px color-mix(in srgb,var(--accent) 26%,rgba(14,18,40,.16)),0 0 46px color-mix(in srgb,var(--accent) 16%,transparent);' +
+      'transform-origin:' + (below ? 'top' : 'bottom') + ' left;animation:in .55s cubic-bezier(.3,1.45,.5,1) both}' +
+      '.b.dark{color:#eef0fa;background:radial-gradient(120% 100% at 0% 0%,color-mix(in srgb,var(--accent) 26%,transparent),transparent 60%),radial-gradient(100% 100% at 100% 100%,color-mix(in srgb,var(--accent3) 20%,transparent),transparent 60%),linear-gradient(180deg,rgba(30,34,52,.9),rgba(16,19,31,.88));box-shadow:inset 0 1px 0 rgba(255,255,255,.14),0 2px 6px rgba(0,0,0,.4),0 18px 46px color-mix(in srgb,var(--accent) 28%,rgba(0,0,0,.45)),0 0 52px color-mix(in srgb,var(--accent) 22%,transparent)}' +
+      '.b::before{content:"";position:absolute;inset:0;border-radius:inherit;padding:1px;pointer-events:none;background:linear-gradient(135deg,color-mix(in srgb,var(--accent) 75%,transparent),rgba(255,255,255,.6) 36%,rgba(255,255,255,.15) 64%,color-mix(in srgb,var(--accent3) 65%,transparent));-webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask-composite:exclude}' +
+      '.orb{position:absolute;z-index:-1;width:200px;height:200px;left:-70px;top:-110px;border-radius:50%;filter:blur(30px);background:color-mix(in srgb,var(--accent) 36%,transparent);animation:drift 12s ease-in-out infinite alternate}' +
+      '.sw{position:absolute;inset:0;z-index:-1;background:linear-gradient(105deg,transparent 35%,rgba(255,255,255,.4) 50%,transparent 65%);transform:translateX(-110%);animation:sweep 1.3s .2s ease-out both}.dark .sw{opacity:.3}' +
+      '@keyframes in{from{opacity:0;transform:translateY(' + (below ? -8 : 8) + 'px) scale(.94)}}@keyframes drift{to{transform:translate(80px,50px) scale(1.15)}}@keyframes sweep{to{transform:translateX(110%)}}' +
+      '.h{display:flex;align-items:center;gap:10px;margin-bottom:8px}' +
+      '.k{width:30px;height:30px;flex:none;border-radius:10px;display:grid;place-items:center;color:#fff;background:var(--nova);box-shadow:0 6px 16px color-mix(in srgb,var(--accent) 45%,transparent),inset 0 1px 0 rgba(255,255,255,.45)}.k svg{width:16px;height:16px}' +
+      '.ti{flex:1;min-width:0}.t1{font:800 13.5px/1.15 ui-rounded,"SF Pro Rounded",system-ui,sans-serif;letter-spacing:-.02em}.t2{font-size:11.5px;opacity:.6;margin-top:1px}' +
+      '.x{width:26px;height:26px;border-radius:50%;display:grid;place-items:center;border:0;padding:0;color:inherit;background:rgba(127,127,140,.14);cursor:default;transition:transform .35s cubic-bezier(.3,1.5,.5,1),background .2s}.x:hover{background:color-mix(in srgb,var(--accent) 22%,transparent);transform:rotate(90deg)}.x svg{width:12px;height:12px}' +
+      '.t{font-size:15.5px;line-height:1.55;max-height:260px;overflow:auto;user-select:text;padding:2px 2px 4px;scrollbar-width:thin}' +
+      '.f{display:flex;justify-content:flex-end;gap:8px;margin-top:10px}' +
+      '.c{height:30px;padding:0 14px;border-radius:999px;border:0;font:650 12.5px -apple-system,"Segoe UI",system-ui,sans-serif;color:#fff;background:var(--nova);box-shadow:inset 0 1px 0 rgba(255,255,255,.42),0 6px 16px color-mix(in srgb,var(--accent) 38%,transparent);cursor:default;transition:transform .35s cubic-bezier(.3,1.5,.5,1)}.c:hover{transform:translateY(-1px)}.c:active{transform:scale(.95)}' +
+      darkQ + (C.still ? '*{animation:none!important;transition:none!important}' : '') + '</style>' +
+      '<div class="b"><span class="orb"></span><span class="sw"></span><div class="h"><span class="k"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3.5h7M5.5 2v1.5M3.5 3.5c.6 2.4 2.2 4.2 4.5 5.2M7.5 3.5C7 5.8 5.4 7.8 2.5 9"/><path d="M8.5 14l3-7.5 3 7.5M9.6 11.5h3.8"/></svg></span>' +
+      '<span class="ti"><div class="t1">Lumen Translate</div><div class="t2"></div></span><button class="x" title="Close"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="m4 4 8 8m0-8-8 8"/></svg></button></div>' +
+      '<div class="t"></div><div class="f"><button class="c">Copy</button></div></div>'
+    const b = sh.querySelector('.b')
+    if (C.dark === true || (C.dark === null && matchMedia('(prefers-color-scheme: dark)').matches)) b.classList.add('dark')
+    sh.querySelector('.t2').textContent = 'Translated to ' + C.to
+    const t = sh.querySelector('.t'); t.textContent = C.res; t.dir = C.dir
     sh.querySelector('.x').onclick = () => host.remove()
+    const cp = sh.querySelector('.c')
+    cp.onclick = () => { navigator.clipboard.writeText(C.res).then(() => { cp.textContent = 'Copied' }, () => { cp.textContent = 'Could not copy' }) }
     document.documentElement.appendChild(host)
     setTimeout(() => addEventListener('mousedown', function f(e) { if (!e.composedPath().includes(host)) { host.remove(); removeEventListener('mousedown', f) } }), 50)
+    addEventListener('keydown', function k(e) { if (e.key === 'Escape') { host.remove(); removeEventListener('keydown', k) } })
   })()`
   await wc.executeJavaScriptInIsolatedWorld(WORLD, [{ code }])
 }

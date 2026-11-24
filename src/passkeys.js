@@ -79,7 +79,8 @@ async function get(origin, req, ask) {
   const rp = validRp(origin, req.rpId)
   if (!rp) return { error: 'SecurityError', message: 'This site cannot use a passkey for that domain.' }
   const allow = new Set(req.allow || [])
-  const list = live().filter(p => p.rpId === rp && (!allow.size || allow.has(p.credId)))
+  const list = live().filter(p => p.rpId === rp && (!allow.size || allow.has(p.credId)) && (!req.pick || p.credId === req.pick))
+  if (!list.length && ask.fallback && ask.fallback()) return { fallback: true }
   if (!list.length) { await ask.none(rp); return { error: 'NotAllowedError', message: 'No passkey for this site is saved in Lumen.' } }
   const i = await ask.choose({ rp, accounts: list.map(p => p.userName || p.displayName || 'Account') })
   if (i < 0 || !list[i]) return { error: 'NotAllowedError', message: 'The request was cancelled.' }
@@ -92,7 +93,14 @@ async function get(origin, req, ask) {
   return { id: pk.credId, clientDataJSON: b64u(cd), authenticatorData: b64u(ad), signature: b64u(sig), userHandle: pk.userId || null }
 }
 
+// accounts a site may offer in its sign-in field (conditional mediation / passkey autofill)
+function accounts(origin, req) {
+  const rp = validRp(origin, req && req.rpId); if (!rp) return []
+  const allow = new Set((req && req.allow) || [])
+  return live().filter(p => p.rpId === rp && (!allow.size || allow.has(p.credId))).map(p => ({ credId: p.credId, userName: p.userName || p.displayName || 'Account' }))
+}
+
 function list() { return live().map(p => ({ id: p.id, rpId: p.rpId, userName: p.userName, createdAt: p.createdAt, lastUsed: p.lastUsed || 0 })).sort((a, b) => a.rpId.localeCompare(b.rpId)) }
 function remove(id) { const p = store.get().find(x => x.id === id); if (p) { p.deleted = true; p.privateKey = ''; p.updatedAt = Date.now(); store.save() } }
 
-module.exports = { store, create, get, list, remove, validRp, _cbor: cbor }
+module.exports = { store, create, get, accounts, list, remove, validRp, _cbor: cbor }

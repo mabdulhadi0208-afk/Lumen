@@ -1720,8 +1720,36 @@ function passkeyAsk(e) {
       return (await verifyUser(`sign in to ${rp} as ${accounts[i]}`)) ? i : -1
     },
     async none(rp) { if (w) w.send('toast', `No Lumen passkey for ${rp}`) },
+    // on Windows, a site with no Lumen passkey goes to Windows Hello (phones, security keys, Windows passkeys)
+    fallback: () => process.platform === 'win32',
   }
 }
+// passkey autofill: a site waits (mediation: 'conditional') until the user picks an account in its sign-in field
+const pkPending = new Map()
+function pkCancel(id, why) { const p = pkPending.get(id); if (p) { pkPending.delete(id); p.resolve({ error: 'AbortError', message: why || 'The request was aborted.' }) } }
+ipcMain.handle('pk:cond', (e, req) => {
+  const origin = passkeyFrame(e); if (!origin) return { error: 'NotAllowedError', message: 'Not allowed in this frame.' }
+  const id = e.sender.id
+  pkCancel(id, 'Replaced by a newer request.')
+  if (!pkPending.size || ![...pkPending.values()].some(p => p.wc === e.sender)) e.sender.once('destroyed', () => pkPending.delete(id))
+  return new Promise(resolve => pkPending.set(id, { resolve, origin, req: req || {}, wc: e.sender }))
+})
+ipcMain.handle('pk:cond-cancel', e => pkCancel(e.sender.id))
+ipcMain.handle('pk:accounts', e => {
+  const p = pkPending.get(e.sender.id), origin = passkeyFrame(e)
+  if (!p || p.origin !== origin) return []
+  return Passkeys.accounts(origin, p.req)
+})
+ipcMain.handle('pk:pick', async (e, credId) => {
+  const p = pkPending.get(e.sender.id), origin = passkeyFrame(e)
+  if (!p || p.origin !== origin || typeof credId !== 'string') return false
+  const ask = passkeyAsk(e)
+  try {
+    const r = await Passkeys.get(origin, { ...p.req, pick: credId }, { ...ask, fallback: null, async none() {}, async choose({ rp, accounts }) { return (await verifyUser(`sign in to ${rp} as ${accounts[0]}`)) ? 0 : -1 } })
+    if (r.error || pkPending.get(e.sender.id) !== p) return false
+    pkPending.delete(e.sender.id); p.resolve(r); return true
+  } catch (err) { log('passkey autofill failed', err.message); return false }
+})
 ipcMain.handle('pk:create', async (e, req) => {
   const origin = passkeyFrame(e); if (!origin) return { error: 'NotAllowedError', message: 'Not allowed in this frame.' }
   try { const r = await Passkeys.create(origin, req || {}, passkeyAsk(e)); if (!r.error) { const w = winForWc(e.sender.id); if (w) w.send('toast', 'Passkey saved in Lumen'); Sync.syncNow().catch(() => {}) } return r }
@@ -1729,6 +1757,7 @@ ipcMain.handle('pk:create', async (e, req) => {
 })
 ipcMain.handle('pk:get', async (e, req) => {
   const origin = passkeyFrame(e); if (!origin) return { error: 'NotAllowedError', message: 'Not allowed in this frame.' }
+  pkCancel(e.sender.id, 'A sign-in button started a new passkey request.')
   try { return await Passkeys.get(origin, req || {}, passkeyAsk(e)) }
   catch (err) { log('passkey sign-in failed', err.message); return { error: 'UnknownError', message: 'Lumen could not use the passkey.' } }
 })

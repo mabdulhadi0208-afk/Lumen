@@ -159,6 +159,8 @@ if (location.protocol === 'lumen:') {
     contextBridge.exposeInMainWorld('__lumenPasskeys', {
       create: req => ipcRenderer.invoke('pk:create', req),
       get: req => ipcRenderer.invoke('pk:get', req),
+      cond: req => ipcRenderer.invoke('pk:cond', req),
+      cancel: () => ipcRenderer.invoke('pk:cond-cancel'),
     })
     contextBridge.executeInMainWorld({
       func: () => {
@@ -211,18 +213,83 @@ if (location.protocol === 'lumen:') {
           if (r.error) throw err(r.error, r.message)
           return cred(r, 'create')
         }
+        const reqOf = p => ({ rpId: p.rpId, challenge: b2u(p.challenge), allow: (p.allowCredentials || []).map(x => b2u(x.id)) })
         C.get = async function (opts) {
           if (!opts || !opts.publicKey) return origGet(opts)
-          if (opts.mediation === 'conditional') return new Promise((_, rej) => { if (opts.signal) opts.signal.addEventListener('abort', () => rej(err('AbortError', 'Aborted'))) })
+          if (opts.signal && opts.signal.aborted) throw err('AbortError', 'Aborted')
           const p = opts.publicKey
-          const r = await PK.get({ rpId: p.rpId, challenge: b2u(p.challenge), allow: (p.allowCredentials || []).map(x => b2u(x.id)) })
+          if (opts.mediation === 'conditional') {
+            // passkey autofill: resolves when the user picks a Lumen passkey under the sign-in field
+            return new Promise((res, rej) => {
+              let done = false
+              if (opts.signal) opts.signal.addEventListener('abort', () => { if (done) return; done = true; PK.cancel(); rej(err('AbortError', 'Aborted')) })
+              PK.cond(reqOf(p)).then(r => { if (done) return; done = true; if (r.error) rej(err(r.error, r.message)); else res(cred(r, 'get')) },
+                () => { if (!done) { done = true; rej(err('NotAllowedError')) } })
+            })
+          }
+          const r = await PK.get(reqOf(p))
+          if (r.fallback) return origGet(opts)
           if (r.error) throw err(r.error, r.message)
           return cred(r, 'get')
         }
         PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable = async () => true
-        PublicKeyCredential.isConditionalMediationAvailable = async () => false
+        PublicKeyCredential.isConditionalMediationAvailable = async () => true
+        // sites ask this before offering "Create a passkey" or "Sign in with a passkey": tell them the truth about Lumen
+        const origCaps = PublicKeyCredential.getClientCapabilities && PublicKeyCredential.getClientCapabilities.bind(PublicKeyCredential)
+        PublicKeyCredential.getClientCapabilities = async () => {
+          let c = {}; try { c = origCaps ? await origCaps() : {} } catch {}
+          return { ...c, passkeyPlatformAuthenticator: true, userVerifyingPlatformAuthenticator: true, conditionalGet: true, conditionalCreate: false,
+            'extension:prf': false, 'extension:largeBlob': false, 'extension:credBlob': false, 'extension:getCredBlob': false, 'extension:hmacCreateSecret': false }
+        }
       },
     })
+  } catch {}
+
+  // passkey autofill menu: shown under a sign-in field while the site waits for a passkey
+  try {
+    let pkMenu = null, pkRows = [], pkSel = -1, pkList = []
+    const closePk = () => { if (pkMenu) { pkMenu.remove(); pkMenu = null; pkRows = []; pkSel = -1 } }
+    const pickPk = i => { const c = pkList[i]; closePk(); if (c) ipcRenderer.invoke('pk:pick', c.credId).catch(() => {}) }
+    const markPk = i => { pkSel = i; pkRows.forEach((r, j) => r.classList.toggle('on', j === i)) }
+    const wantsPasskey = el => el && el.tagName === 'INPUT' && /\bwebauthn\b/i.test(el.getAttribute('autocomplete') || '')
+    document.addEventListener('focusin', async e => {
+      const el = e.target
+      if (!wantsPasskey(el)) return
+      let list = []; try { list = await ipcRenderer.invoke('pk:accounts') } catch {}
+      if (!list.length || document.activeElement !== el) return
+      closePk()
+      const host = document.createElement('div')
+      host.style.cssText = 'position:fixed;z-index:2147483647;top:0;left:0'
+      const sh = host.attachShadow({ mode: 'closed' })
+      const r = el.getBoundingClientRect()
+      sh.innerHTML = `<style>
+        .m{position:fixed;left:${Math.round(r.left)}px;top:${Math.round(r.bottom + 8)}px;min-width:${Math.max(240, Math.round(r.width))}px;background:linear-gradient(160deg,rgba(255,255,255,.9),rgba(246,247,252,.86));backdrop-filter:blur(28px) saturate(1.8);border:1px solid rgba(110,100,255,.22);border-radius:16px;box-shadow:inset 0 1px 0 rgba(255,255,255,.6),0 18px 50px rgba(60,40,160,.22),0 0 0 4px rgba(110,100,255,.08);font:13px -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#1d1d1f;padding:6px;transform-origin:top left;animation:p .36s cubic-bezier(.2,1.3,.4,1)}
+        @keyframes p{from{opacity:0;transform:scale(.94) translateY(-6px)}to{opacity:1;transform:none}}
+        @media (prefers-reduced-motion:reduce){.m{animation:none}}
+        @media (prefers-color-scheme:dark){.m{background:linear-gradient(160deg,rgba(44,44,58,.92),rgba(26,27,38,.9));color:#f2f2f4;border-color:rgba(150,140,255,.28)}}
+        .h{font:800 11px ui-rounded,system-ui;opacity:.6;padding:5px 9px 7px;letter-spacing:.06em;text-transform:uppercase}
+        .i{padding:9px 10px;border-radius:11px;cursor:pointer;display:flex;align-items:center;gap:10px;transition:transform .2s cubic-bezier(.2,1.3,.4,1),background .15s}
+        .i:hover,.i.on{background:rgba(110,100,255,.14);transform:translateY(-1px)}.i:active{transform:scale(.97)}
+        .k{width:26px;height:26px;border-radius:9px;background:linear-gradient(135deg,#6d5cff,#c04dff 55%,#2fd3ff);box-shadow:0 0 14px rgba(140,90,255,.5);flex:none;display:grid;place-items:center}
+        .k:after{content:"";width:9px;height:9px;border:2px solid #fff;border-radius:50%}
+        .u{font-weight:600}.d{font-size:11px;opacity:.55}
+      </style><div class="m"><div class="h">Lumen Passkeys</div>${list.map(() => `<div class="i"><span class="k"></span><span><div class="u"></div><div class="d">Sign in with a passkey</div></span></div>`).join('')}</div>`
+      pkList = list; pkRows = [...sh.querySelectorAll('.i')]
+      pkRows.forEach((row, i) => {
+        row.querySelector('.u').textContent = list[i].userName
+        row.addEventListener('mousedown', ev => { ev.preventDefault(); pickPk(i) })
+      })
+      document.documentElement.appendChild(host)
+      pkMenu = host
+    }, true)
+    document.addEventListener('focusout', e => { if (wantsPasskey(e.target)) setTimeout(closePk, 150) }, true)
+    // keyboard: arrows choose an account, Enter signs in, Escape closes
+    document.addEventListener('keydown', e => {
+      if (!pkMenu || !pkRows.length) return
+      if (e.key === 'ArrowDown' || e.key === 'ArrowUp') { e.preventDefault(); markPk((pkSel + (e.key === 'ArrowDown' ? 1 : -1) + pkRows.length + (pkSel < 0 && e.key === 'ArrowUp' ? 1 : 0)) % pkRows.length) }
+      else if (e.key === 'Enter' && pkSel >= 0) { e.preventDefault(); e.stopPropagation(); pickPk(pkSel) }
+      else if (e.key === 'Escape') closePk()
+    }, true)
   } catch {}
 
   // ------------------------------------------------------------ password manager

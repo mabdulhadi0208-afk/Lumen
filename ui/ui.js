@@ -16,7 +16,7 @@ let updateState = {}
 let ROW = 36
 let GUT = 8
 Jelly.init({
-  buttons: '.ib, .btn, .pin, .site, .update, .wincontrols button, .tab .x, .tab .add, .tab .audio, .popover .seg button, .mm-tile',
+  buttons: '.ib, .btn, .pin, .site, .update, .wincontrols button, .tab .x, .tab .add, .tab .audio, .popover .seg button, .mm-tile, .qa, .bm, .ai-chip, .ai-send, .tg-close, .trm-go',
   cards: '.prompt, .newtab',
   press: '.popover .item',
 })
@@ -408,11 +408,15 @@ function renameGroup(gid) {
   n.onblur = () => done(true)
 }
 
+// Surge and Koi sit next to Reload with tabs on top; the sidebar is too narrow for that, so there they join Settings
+function seatAppButtons() {
+  if (TOP) { if (!$('.navbtns #btn-surge')) $('.navbtns').append($('#btn-surge'), $('#btn-koi')) }
+  else if (!$('.bottomrow #btn-surge')) $('#btn-split').after($('#btn-surge'), $('#btn-koi'))
+}
 function setTabLayout(top) {
   TOP = top
   document.body.classList.toggle('toplayout', top)
-  // Surge and Koi sit next to Reload with tabs on top; the sidebar is too narrow for that, so there they join Settings
-  if (top) $('.navbtns').append($('#btn-surge'), $('#btn-koi')); else $('#btn-split').after($('#btn-surge'), $('#btn-koi'))
+  seatAppButtons()
   // re-seat every tab and the pill on the new axis without animating across the screen
   const list = S.tabs.filter(t => !t.pinned)
   if (TOP) measureTabW(list.length)
@@ -1150,6 +1154,7 @@ function applySettings(s) {
     api.do('trafficLights', !collapsed, wantTop ? { x: 16, y: settings.compact ? 11 : 15 } : { x: 16, y: 18 })
     queueLayout()
   }
+  seatAppButtons()   // a window that starts with tabs in the sidebar never runs setTabLayout, so seat them here too
 }
 
 // watch for extension actions appearing

@@ -12,5 +12,7 @@ To earn the number, 4.0 is several rounds, each checked with screenshots before 
    restyle: new layout, new widgets, the clock, search, shortcuts, wallpapers, everything on it rethought.
    Then the same major treatment for every other screen.
 4. Real new features worth a major version, not only looks (picked and listed here before building).
-5. A new film, a new update card and restart flow, a new website, a new icon pass.
+5. The intro film for 4.0 is the biggest ever: a full trailer-level reshoot, not an edit of the old one.
+   The owner's phrase for 4.0: "make everything 100000000 times better". Every item must visibly earn it.
+   A new film, a new update card and restart flow, a new website, a new icon pass.
 6. Full suite, misplaced-UI check, auto-update check, then ship as 4.0.0.

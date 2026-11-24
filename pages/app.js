@@ -15,6 +15,19 @@ function flash(msg) {
   clearTimeout(flash.t); flash.t = setTimeout(() => el.classList.remove('show'), 2600)
 }
 const $$ = s => [...document.querySelectorAll(s)]
+function novaConfirm({ title, text, ok = 'OK', cancel = 'Cancel', danger = false, icon }) {
+  return new Promise(res => {
+    const d = document.createElement('div'); d.className = 'dialog-wrap nv-wrap'
+    d.innerHTML = `<div class="nv-dlg ${danger ? 'danger' : ''}" role="alertdialog" aria-modal="true" aria-label="${esc(title)}"><div class="nv-ico">${icon || ICONS.info}</div><h3>${esc(title)}</h3>${text ? `<p>${esc(text)}</p>` : ''}<div class="actions"><button class="btn" data-r="0">${esc(cancel)}</button><button class="btn primary ${danger ? 'danger-p' : ''}" data-r="1">${esc(ok)}</button></div></div>`
+    document.body.appendChild(d)
+    let over = false
+    const done = v => { if (over) return; over = true; removeEventListener('keydown', key, true); d.classList.add('out'); setTimeout(() => d.remove(), 220); res(v) }
+    const key = e => { if (e.key === 'Escape') { e.preventDefault(); done(false) } else if (e.key === 'Enter') { e.preventDefault(); done(document.activeElement && document.activeElement.dataset.r === '0' ? false : true) } }
+    addEventListener('keydown', key, true)
+    d.onclick = e => { const b = e.target.closest('[data-r]'); if (b) done(b.dataset.r === '1'); else if (e.target === d) done(false) }
+    setTimeout(() => { const b = d.querySelector('[data-r="1"]'); if (b) b.focus() }, 40)
+  })
+}
 
 let S = {}, ENGINES = {}, VERSION = '', PLATFORM = ''
 const page = location.host
@@ -24,27 +37,35 @@ function applyLook(s) {
   document.documentElement.style.setProperty('--accent', s.accent || '#5b8cff')
   document.body.dataset.motion = s.motion
   Jelly.setMode(s.motion === 'lively' ? 'jelly' : s.motion)
+  const was = window.Glass && Glass.on
+  if (window.Glass) { Glass.setMode(Jelly.getMode()); if (was !== Glass.on && typeof buildClock === 'function' && document.getElementById('clock')) buildClock() }
 }
-Jelly.init({ buttons: '.btn, .ib, .seg button, .swatches button, .nav a, .ntp .foot a, .customize', cards: '.tile, .err .ico, .key, .wpb, .thb, .icb, .rc, .pcard', press: '.list .row' })
+Jelly.init({ buttons: '.btn, .ib, .seg button, .swatches button, .nav a, .ntp .foot a, .customize, .cswatch, .gtoggle, .sb-eng', cards: '.tile, .err .ico, .key, .wpb, .thb, .icb, .rc, .pcard, .clkb, .hero-ic, .an-dial', press: '.list .row, a.row.hit' })
 Jelly.smoothScroll(window)
 
 // ======================================================================= new tab
 function greeting() { const h = new Date().getHours(); return h < 5 ? 'Good night' : h < 12 ? 'Good morning' : h < 18 ? 'Good afternoon' : 'Good evening' }
+// every wallpaper has some fine structure (rings, light shafts, star dust) so the liquid glass has something to bend
 const WALLPAPERS = {
   aurora: { name: 'Aurora', css: '' },
-  sunset: { name: 'Sunset', css: 'radial-gradient(60% 50% at 20% 20%, #ff8a5c55, transparent 70%), radial-gradient(55% 50% at 80% 75%, #c94b9a55, transparent 70%), linear-gradient(160deg, #2a1a3a, #40243f 50%, #1f1530)' },
-  ocean: { name: 'Ocean', css: 'radial-gradient(60% 55% at 25% 30%, #2bb6d955, transparent 70%), radial-gradient(50% 50% at 80% 70%, #3d6dff55, transparent 70%), linear-gradient(170deg, #0c1f33, #0f2f4a 55%, #0a1828)' },
-  forest: { name: 'Forest', css: 'radial-gradient(60% 50% at 20% 25%, #3ccf8e44, transparent 70%), radial-gradient(50% 50% at 80% 75%, #c8e06a33, transparent 70%), linear-gradient(165deg, #0f2219, #163326 55%, #0c1a14)' },
-  dusk: { name: 'Dusk', css: 'radial-gradient(60% 50% at 25% 25%, #8a63f255, transparent 70%), radial-gradient(55% 50% at 80% 70%, #f0763b44, transparent 70%), linear-gradient(160deg, #1a1630, #2a1f3f 55%, #120f22)' },
+  sunset: { name: 'Sunset', css: 'radial-gradient(34% 28% at 50% 64%, #ffd27acc, #ff8a5c66 45%, transparent 72%), repeating-radial-gradient(circle at 50% 64%, rgba(255,214,170,.12) 0 2px, transparent 2px 34px), radial-gradient(55% 45% at 12% 12%, #c94b9a88, transparent 70%), radial-gradient(50% 42% at 88% 18%, #7b4dd888, transparent 70%), linear-gradient(180deg, #22113a, #5a2346 55%, #8a3b45 72%, #1d1128)' },
+  ocean: { name: 'Ocean', css: 'radial-gradient(48% 40% at 28% 28%, #2bd4ff77, transparent 70%), radial-gradient(45% 45% at 80% 74%, #3d6dff88, transparent 70%), repeating-radial-gradient(ellipse 140% 60% at 50% 120%, rgba(160,230,255,.11) 0 2px, transparent 2px 28px), linear-gradient(175deg, #061a2e, #0c3352 50%, #062036)' },
+  forest: { name: 'Forest', css: 'radial-gradient(45% 40% at 22% 20%, #4be3a077, transparent 70%), radial-gradient(45% 45% at 82% 80%, #c8e06a55, transparent 70%), repeating-linear-gradient(100deg, rgba(200,255,220,.07) 0 3px, transparent 3px 40px), linear-gradient(165deg, #0a1f16, #14382a 55%, #07150e)' },
+  dusk: { name: 'Dusk', css: 'radial-gradient(45% 40% at 25% 25%, #8a63f288, transparent 70%), radial-gradient(45% 40% at 80% 72%, #f0763b66, transparent 70%), radial-gradient(1.3px 1.3px at 20% 30%, #fff, transparent) 0 0 / 120px 120px, radial-gradient(1px 1px at 70% 60%, #ffffffcc, transparent) 0 0 / 90px 90px, repeating-conic-gradient(from 0deg at 50% 115%, rgba(255,255,255,.05) 0 2deg, transparent 2deg 9deg), linear-gradient(160deg, #161230, #2a1f45 55%, #0f0c20)' },
+  nebula: { name: 'Nebula', css: 'radial-gradient(34% 30% at 30% 40%, #ff4fa377, transparent 70%), radial-gradient(40% 35% at 72% 56%, #4f7bff88, transparent 70%), radial-gradient(24% 24% at 55% 28%, #a35bff77, transparent 70%), radial-gradient(1.3px 1.3px at 10% 20%, #fff, transparent) 0 0 / 97px 97px, radial-gradient(1px 1px at 60% 70%, #ffffffbb, transparent) 0 0 / 61px 61px, radial-gradient(1.7px 1.7px at 40% 50%, #cfe0ff, transparent) 0 0 / 173px 173px, linear-gradient(160deg, #070818, #120d2c 50%, #05060f)' },
+  ember: { name: 'Ember', css: 'radial-gradient(42% 36% at 70% 80%, #ff6a3d99, transparent 70%), radial-gradient(35% 30% at 24% 18%, #ffb34766, transparent 70%), repeating-linear-gradient(60deg, rgba(255,190,140,.08) 0 2px, transparent 2px 30px), repeating-linear-gradient(-60deg, rgba(255,190,140,.06) 0 2px, transparent 2px 30px), linear-gradient(170deg, #1c0d0a, #3a1510 55%, #120806)' },
   plain: { name: 'Plain', css: 'var(--bg)' },
 }
 function addShortcutDialog(onSave) {
   const d = document.createElement('div'); d.className = 'ntp-modal'
-  d.innerHTML = `<form class="ntp-card rise"><h3>Add shortcut</h3><input type="text" id="sc-name" placeholder="Name"><input type="text" id="sc-url" placeholder="Website address" required><div class="row2"><button type="button" class="btn" id="sc-cancel">Cancel</button><button class="btn primary">Add</button></div></form>`
+  d.innerHTML = `<form class="ntp-card rise"><div class="sc-head"><span class="sc-prev" id="sc-prev">${ICONS.globe}</span><div><h3>Add shortcut</h3><p>It shows up on every new tab.</p></div></div><label>Website address<input type="text" id="sc-url" placeholder="example.com" required spellcheck="false" autocomplete="off"></label><label>Name <input type="text" id="sc-name" placeholder="Optional"></label><div class="row2"><button type="button" class="btn" id="sc-cancel">Cancel</button><button class="btn primary">Add shortcut</button></div></form>`
   document.body.appendChild(d)
   d.querySelector('#sc-url').focus()
+  // the preview turns into the site's letter as you type
+  d.querySelector('#sc-url').oninput = e => { const h = hostOf(/^https?:\/\//i.test(e.target.value) ? e.target.value : 'https://' + e.target.value.trim()); $('#sc-prev').innerHTML = h && h.includes('.') ? letterFav(h.replace(/^www\./, '')) : ICONS.globe }
   d.querySelector('#sc-cancel').onclick = () => d.remove()
   d.onclick = e => { if (e.target === d) d.remove() }
+  d.onkeydown = e => { if (e.key === 'Escape') d.remove() }
   d.querySelector('form').onsubmit = e => {
     e.preventDefault()
     let url = d.querySelector('#sc-url').value.trim(); if (!url) return
@@ -53,11 +74,112 @@ function addShortcutDialog(onSave) {
     onSave({ url, title: d.querySelector('#sc-name').value.trim() || host.replace(/^www\./, '') }); d.remove()
   }
 }
+
+// ---------------------------------------------------------------- the New Tab clock: Glass, Minimal, Analog or Off
+// Stored in ntpClock: true (or 'glass') is Glass, the default; 'minimal' and 'analog'; false is Off.
+const clockStyle = () => S.ntpClock === false || S.ntpClock === 'off' ? 'off' : S.ntpClock === 'minimal' || S.ntpClock === 'analog' ? S.ntpClock : 'glass'
+const nowText = d => d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }).replace(/\s?[AP]M/i, '').trim()
+const SUN = '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><circle cx="8" cy="8" r="3"/><path d="M8 1.5v1.6M8 12.9v1.6M1.5 8h1.6M12.9 8h1.6M3.4 3.4l1.1 1.1M11.5 11.5l1.1 1.1M3.4 12.6l1.1-1.1M11.5 4.5l1.1-1.1"/></svg>'
+const MOON = '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M13.2 9.6A5.6 5.6 0 0 1 6.4 2.8a5.6 5.6 0 1 0 6.8 6.8z"/></svg>'
+const CK = { timer: 0, cells: [], txt: '', glyph: null }
+// the digits are cut out of glass: a mask strip of 0-9 (and a second 0, so 9 rolls forward into 0) per layer
+function glyphStrips(fs) {
+  const fam = getComputedStyle(document.documentElement).getPropertyValue('--display').trim() || 'system-ui'
+  const key = fs + fam
+  if (CK.glyph && CK.glyph.key === key) return CK.glyph
+  const dpr = Math.min(2, devicePixelRatio || 1), font = `800 ${fs}px ${fam}`
+  const m = document.createElement('canvas').getContext('2d'); m.font = font
+  const cw = Math.ceil(Math.max(...'0123456789'.split('').map(c => m.measureText(c).width)) * 1.04 + fs * .02), ch = Math.ceil(fs * 1.02)
+  const asc = m.measureText('0').actualBoundingBoxAscent || fs * .72
+  const strip = kind => {
+    const c = document.createElement('canvas'); c.width = cw * dpr; c.height = ch * 11 * dpr
+    const x = c.getContext('2d'); x.scale(dpr, dpr); x.font = font; x.textAlign = 'center'; x.fillStyle = x.strokeStyle = '#fff'; x.lineJoin = 'round'
+    for (let i = 0; i < 11; i++) { const y = i * ch + ch / 2 + asc / 2, t = String(i % 10); if (kind === 'rim') { x.lineWidth = Math.max(1.5, fs * .026); x.strokeText(t, cw / 2, y) } else x.fillText(t, cw / 2, y) }
+    return `url(${c.toDataURL()})`
+  }
+  const ccw = Math.round(fs * .3), r = fs * .068
+  const colon = kind => {
+    const c = document.createElement('canvas'); c.width = ccw * dpr; c.height = ch * dpr
+    const x = c.getContext('2d'); x.scale(dpr, dpr); x.fillStyle = x.strokeStyle = '#fff'; x.lineWidth = Math.max(1.5, fs * .026)
+    for (const y of [ch / 2 - asc * .26, ch / 2 + asc * .3]) { x.beginPath(); x.arc(ccw / 2, y, r, 0, 7); if (kind === 'rim') x.stroke(); else x.fill() }
+    return `url(${c.toDataURL()})`
+  }
+  return (CK.glyph = { key, cw, ch, ccw, m: strip('fill'), mr: strip('rim'), cm: colon('fill'), cmr: colon('rim') })
+}
+const unwrap = (prev, t) => prev + ((((t - prev) % 360) + 540) % 360 - 180)
+function rollSpring(set, p) {
+  const s = new Jelly.Spring(p, 'jelly', v => { set(v); if (v === 10 && !s.vel) setTimeout(() => { if (s.t === 10) s.set(0) }, 0) })
+  s.d = p
+  return s
+}
+const rollTo = (s, d) => { if (s.d === d) return; const cur = s.d; s.d = d; s.to(d === 0 && cur === 9 ? 10 : d) }
+const anglesOf = d => ({ h: (d.getHours() % 12 + d.getMinutes() / 60) * 30, m: (d.getMinutes() + d.getSeconds() / 60) * 6, s: d.getSeconds() * 6 })
+function buildClock() {
+  const c = $('#clock'); if (!c) return
+  const style = clockStyle(), d = new Date(), txt = nowText(d)
+  CK.cells = []; CK.secs = null; CK.hands = null; CK.sec = null; CK.txt = txt; CK.style = style
+  if (style === 'glass') {
+    const fs = Math.round(innerWidth <= 560 ? 84 : Math.min(176, Math.max(104, innerWidth * .135)))
+    const g = glyphStrips(fs)
+    c.style.setProperty('--m', g.m); c.style.setProperty('--mr', g.mr); c.style.setProperty('--fs', fs + 'px')
+    const lens = Glass.lens(g.cw, g.ch, Math.min(g.cw, g.ch) * .45, 1.35), lensC = Glass.lens(g.ccw, g.ch, g.ccw * .45, 1.2)
+    c.innerHTML = [...txt].map((ch, n) => /\d/.test(ch)
+      ? `<span class="cg-cell" style="--cw:${g.cw}px;--ch:${g.ch}px;--n:${n};--p:${ch}"><i class="cg-sh"><b></b></i><i class="cg-body"></i><i class="cg-rim"></i><i class="cg-hi"></i></span>`
+      : `<span class="cg-cell colon" style="--cw:${g.ccw}px;--ch:${g.ch}px;--n:${n};--m:${g.cm};--mr:${g.cmr}"><i class="cg-sh"><b></b></i><i class="cg-body"></i><i class="cg-rim"></i><i class="cg-hi"></i></span>`).join('')
+    c.querySelectorAll('.cg-cell').forEach(e => { const b = e.querySelector('.cg-body'); if (lens) b.style.setProperty('--lens', e.classList.contains('colon') ? lensC : lens) })
+    CK.cells = [...c.querySelectorAll('.cg-cell')].map((e, i) => /\d/.test(txt[i]) ? rollSpring(v => e.style.setProperty('--p', v.toFixed(4)), +txt[i]) : null)
+    const tr = $('.cg-track'); if (tr) tr.style.setProperty('--tw', Math.round(c.getBoundingClientRect().width * .8) + 'px')
+  } else if (style === 'minimal') {
+    const strip = '<span class="mn-strip">' + '01234567890'.split('').map(x => `<span>${x}</span>`).join('') + '</span>'
+    const digits = txt.replace(/\D/g, ''), s = String(d.getSeconds()).padStart(2, '0')
+    c.innerHTML = [...txt].map(ch => /\d/.test(ch) ? `<span class="mn-cell">${strip}</span>` : `<span class="mn-colon">${esc(ch)}</span>`).join('') + `<span class="mn-sec"><span class="mn-cell">${strip}</span><span class="mn-cell">${strip}</span></span>`
+    const cells = [...c.querySelectorAll(':scope > .mn-cell')], secs = [...c.querySelectorAll('.mn-sec .mn-cell')]
+    cells.forEach((e, i) => e.style.setProperty('--p', digits[i])); secs.forEach((e, i) => e.style.setProperty('--p', s[i]))
+    CK.cells = cells.map((e, i) => rollSpring(v => e.style.setProperty('--p', v.toFixed(4)), +digits[i]))
+    CK.secs = secs.map((e, i) => rollSpring(v => e.style.setProperty('--p', v.toFixed(4)), +s[i]))
+  } else if (style === 'analog') {
+    c.innerHTML = `<div class="an-dial"><b class="an-n n12">12</b><b class="an-n n3">3</b><b class="an-n n6">6</b><b class="an-n n9">9</b><i class="an-hand an-h"></i><i class="an-hand an-m"></i><i class="an-hand an-s"></i><i class="an-c"></i></div>`
+    c.querySelector('.an-dial').style.setProperty('--d', c.offsetWidth + 'px')
+    const hand = sel => { const e = c.querySelector(sel); return new Jelly.Spring(0, 'jelly', v => e.style.setProperty('--a', v.toFixed(2) + 'deg')) }
+    CK.hands = { h: hand('.an-h'), m: hand('.an-m'), s: hand('.an-s') }
+    const a = anglesOf(d); for (const k in a) CK.hands[k].set(a[k])
+  }
+  const tr = $('.cg-track i, .mn-line i')
+  if (tr) { CK.sec = new Jelly.Spring(0, 'jelly', v => tr.style.setProperty('--s', v.toFixed(3))); CK.sec.set(d.getSeconds()) }
+}
+function tickClock() {
+  const c = $('#clock'), d = new Date()
+  if (c) {
+    const txt = nowText(d)
+    if (CK.style === 'glass' || CK.style === 'minimal') {
+      if (txt.length !== CK.txt.length) buildClock()
+      else if (txt !== CK.txt) {
+        CK.txt = txt
+        if (CK.style === 'glass') [...txt].forEach((ch, i) => CK.cells[i] && rollTo(CK.cells[i], +ch))
+        else txt.replace(/\D/g, '').split('').forEach((ch, i) => CK.cells[i] && rollTo(CK.cells[i], +ch))
+      }
+      if (CK.secs) String(d.getSeconds()).padStart(2, '0').split('').forEach((ch, i) => rollTo(CK.secs[i], +ch))
+    } else if (CK.style === 'analog' && CK.hands) { const a = anglesOf(d); for (const k in a) CK.hands[k].to(unwrap(CK.hands[k].t, a[k])) }
+    if (CK.sec) CK.sec.to(d.getSeconds())
+  }
+  const dt = $('#date')
+  if (dt) {
+    const h = d.getHours(), night = h < 6 || h >= 19
+    const dl = `<span class="dt-ic ${night ? 'night' : ''}">${night ? MOON : SUN}</span><b>${greeting()}</b><i></i><span>${esc(d.toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric' }))}</span>`
+    if (dt.dataset.v !== dl) { dt.dataset.v = dl; dt.innerHTML = dl }
+  }
+  clearTimeout(CK.timer); CK.timer = setTimeout(tickClock, 1000 - Date.now() % 1000 + 8)
+}
+function clockMarkup(style, lightWp) {
+  if (style === 'off') return '<div class="clockwrap ck-off"></div>'
+  return `<div class="clockwrap ck-${style} ${lightWp ? 'light-wp' : ''}" id="clockwrap"><div class="clock" id="clock" role="timer" aria-live="off"></div>${style === 'glass' ? '<div class="cg-track"><i></i></div>' : style === 'minimal' ? '<div class="mn-line"><i></i></div>' : ''}</div>`
+}
+
 async function newTab() {
   document.title = 'New Tab'
   const custom = Array.isArray(S.ntpShortcuts)
   const sites = custom ? S.ntpShortcuts : (S.homeTiles ? (await L.invoke('topSites')).map(s => ({ url: s.url, title: s.host.replace(/^www\./, '') })) : [])
-  const wp = S.ntpWallpaper || 'aurora'
+  const wp = S.ntpWallpaper === 'custom' || WALLPAPERS[S.ntpWallpaper] ? S.ntpWallpaper : 'aurora'
   // jump back in: the last few pages you were on, one per site
   let recent = []
   if (S.ntpRecent !== false) { try { const seen = new Set(); for (const h of await L.invoke('history', '')) { const k = hostOf(h.url); if (!k || seen.has(k) || !/^https?:/.test(h.url)) continue; seen.add(k); recent.push(h); if (recent.length === 4) break } } catch {} }
@@ -66,40 +188,37 @@ async function newTab() {
   let stats = null; if (S.ntpStats !== false) { try { stats = await L.invoke('stats') } catch {} }
   const ago = t => { const m = Math.round((Date.now() - t) / 60000); return m < 1 ? 'Just now' : m < 60 ? m + ' min ago' : m < 1440 ? Math.round(m / 60) + ' hr ago' : Math.round(m / 1440) + ' d ago' }
   const img = wp === 'custom' ? await L.invoke('wallpaper') : ''
+  const style = clockStyle(), lightWp = (wp === 'aurora' || wp === 'plain') && !matchMedia('(prefers-color-scheme: dark)').matches
   root.innerHTML = `<div class="ntp wp-${esc(wp)}" id="ntp">
     <div class="ntp-bg" style="${wp === 'custom' && img ? `background-image:url('${img}')` : WALLPAPERS[wp] && WALLPAPERS[wp].css ? `background:${WALLPAPERS[wp].css}` : ''}"></div>
-    ${S.ntpClock !== false ? `<div class="clock rise" id="clock" data-jl-grad></div><div class="date rise" style="animation-delay:.04s" id="date"></div>` : '<div style="height:40px"></div>'}
-    <form class="searchbox rise" style="animation-delay:.08s" id="sf">${ICONS.search}<input id="q" autofocus placeholder="Search ${esc(ENGINES[S.searchEngine] || 'Google')} or type an address" spellcheck="false" autocomplete="off"></form>
-    <div class="tiles" id="tiles">${sites.map((s, i) => `<div class="tile rise" style="animation-delay:${0.12 + i * 0.03}s" data-url="${esc(s.url)}" data-i="${i}"><div class="ti">${fav(s.url)}</div><span>${esc(s.title || hostOf(s.url))}</span><button class="tx" title="Remove">${ICONS.close}</button></div>`).join('')}${sites.length < 12 ? `<div class="tile add rise" style="animation-delay:${0.12 + sites.length * 0.03}s" id="addtile"><div class="ti">${ICONS.plus}</div><span>Add</span></div>` : ''}</div>
+    ${clockMarkup(style, lightWp)}<div class="date" id="date"></div>
+    <form class="searchbox rise" style="animation-delay:.08s" id="sf">${ICONS.search}<input id="q" autofocus placeholder="Search ${esc(ENGINES[S.searchEngine] || 'Google')} or type an address" spellcheck="false" autocomplete="off"><span class="sb-eng">${esc(ENGINES[S.searchEngine] || 'Google')}<kbd>Enter</kbd></span></form>
+    <div class="tiles" id="tiles">${sites.map((s, i) => `<div class="tile rise" style="animation-delay:${0.12 + i * 0.03}s;--th:hsl(${hue(hostOf(s.url) || '?')} 72% 56%)" data-url="${esc(s.url)}" data-i="${i}"><div class="ti">${fav(s.url)}</div><span>${esc(s.title || hostOf(s.url))}</span><button class="tx" title="Remove">${ICONS.close}</button></div>`).join('')}${sites.length < 12 ? `<div class="tile add rise" style="animation-delay:${0.12 + sites.length * 0.03}s" id="addtile"><div class="ti">${ICONS.plus}</div><span>Add</span></div>` : ''}</div>
     ${stats && stats.blocked > 0 ? `<div class="nstats rise" style="animation-delay:.26s"><span class="ns-i">${ICONS.shield}</span><b>${stats.blocked.toLocaleString('en-US')}</b> ads and trackers blocked${stats.blocked > 400 ? `<i></i>about <b>${stats.blocked * 0.05 < 90 ? Math.round(stats.blocked * 0.05) + ' sec' : Math.round(stats.blocked * 0.05 / 60) + ' min'}</b> saved` : ''}</div>` : ''}
     ${recent.length ? `<div class="recent rise" style="animation-delay:.3s"><div class="rc-h">Jump back in</div><div class="rc-list">${recent.map(h => `<a class="rc" href="${esc(h.url)}"><span class="rc-f">${fav(h.url)}</span><span class="rc-b"><b>${esc(h.title || hostOf(h.url))}</b><i>${esc(hostOf(h.url).replace(/^www\./, ''))}  ·  ${ago(h.t)}</i></span></a>`).join('')}</div></div>` : ''}
     ${S.ntpParcels !== false ? parcelsRow(parcels) : ''}
     ${later.length ? `<div class="recent later rise" style="animation-delay:.34s"><div class="rc-h">Read later</div><div class="rc-list" id="rl">${later.map(h => `<a class="rc" href="${esc(h.url)}" data-rl="${esc(h.url)}"><span class="rc-f">${fav(h.url)}</span><span class="rc-b"><b>${esc(h.title || hostOf(h.url))}</b><i>${esc(hostOf(h.url).replace(/^www\./, ''))}  ·  saved ${ago(h.t).toLowerCase()}</i></span><button class="tx rl-x" title="Remove">${ICONS.close}</button></a>`).join('')}</div></div>` : ''}
-    <div class="foot"><a href="lumen://history">History</a><a href="lumen://bookmarks">Bookmarks</a><a href="lumen://passwords">Passwords</a><a href="lumen://settings">Settings</a></div>
+    <div class="foot"><a href="lumen://history">${ICONS.clock}History</a><a href="lumen://bookmarks">${ICONS.star}Bookmarks</a><a href="lumen://passwords">${ICONS.key}Passwords</a><a href="lumen://settings">${ICONS.gear}Settings</a></div>
     <button class="customize" id="cust">${ICONS.tune}<span>Customize</span></button>
   </div>
   <aside class="drawer" id="drawer">
-    <div class="dh"><b>Customize</b><button class="ib" id="dclose">${ICONS.close}</button></div>
+    <div class="dh"><b>Customize</b><button class="ib" id="dclose" title="Close">${ICONS.close}</button></div>
+    <p class="dsub">Make the New Tab page yours.</p>
+    <div class="dl">Clock</div>
+    <div class="clkpick" id="clk">${[['glass', 'Glass', '<b>9:41</b>'], ['minimal', 'Minimal', '<b>9:41</b>'], ['analog', 'Analog', '<b></b>'], ['off', 'Off', '<b></b>']].map(([v, l, art]) => `<button class="clkb ${style === v ? 'on' : ''}" data-clk="${v}" title="${l} clock"><i class="cp cp-${v}">${art}</i><span>${l}</span></button>`).join('')}</div>
     <div class="dl">Wallpaper</div>
     <div class="wps">${Object.entries(WALLPAPERS).map(([k, v]) => `<button class="wpb ${k === wp ? 'on' : ''}" data-wp="${k}" title="${v.name}"><i class="wp-${k}" style="${v.css && v.css !== 'var(--bg)' ? `background:${v.css}` : ''}"></i><span>${v.name}</span></button>`).join('')}
       <label class="wpb ${wp === 'custom' ? 'on' : ''}" title="Your own image"><i class="wpup">${ICONS.plus}</i><span>Your image</span><input type="file" id="wpfile" accept="image/*" hidden></label></div>
     <div class="dl">Shortcuts</div>
     <div class="seg" id="scmode"><button data-v="auto" class="${custom ? '' : 'on'}">Most visited</button><button data-v="mine" class="${custom ? 'on' : ''}">My shortcuts</button></div>
-    <label class="drow"><span>Show Jump back in</span><span class="switch"><input type="checkbox" id="rcsw" ${S.ntpRecent !== false ? 'checked' : ''}><span></span></span></label>
-    <label class="drow"><span>Show Parcels</span><span class="switch"><input type="checkbox" id="pcsw" ${S.ntpParcels !== false ? 'checked' : ''}><span></span></span></label>
-    <label class="drow"><span>Show Read later</span><span class="switch"><input type="checkbox" id="rlsw" ${S.ntpReadLater !== false ? 'checked' : ''}><span></span></span></label>
-    <label class="drow"><span>Show clock</span><span class="switch"><input type="checkbox" id="clk" ${S.ntpClock !== false ? 'checked' : ''}><span></span></span></label>
+    <div class="dl">Sections</div>
+    <label class="drow"><span><em style="--ic:var(--accent)">${ICONS.clock}</em>Show Jump back in</span><span class="switch"><input type="checkbox" id="rcsw" ${S.ntpRecent !== false ? 'checked' : ''}><span></span></span></label>
+    <label class="drow"><span><em style="--ic:oklch(from var(--accent) l c calc(h + 140))">${ICONS.box}</em>Show Parcels</span><span class="switch"><input type="checkbox" id="pcsw" ${S.ntpParcels !== false ? 'checked' : ''}><span></span></span></label>
+    <label class="drow"><span><em style="--ic:oklch(from var(--accent) l c calc(h + 70))">${ICONS.book}</em>Show Read later</span><span class="switch"><input type="checkbox" id="rlsw" ${S.ntpReadLater !== false ? 'checked' : ''}><span></span></span></label>
   </aside>`
-  const tick = () => {
-    const c = $('#clock'); if (!c) return
-    const d = new Date()
-    const tt = d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }).replace(/\s?[AP]M/i, '')
-    if (c.dataset.t !== tt) { c.dataset.t = tt; c.textContent = tt; Jelly.letters(c) }
-    const dl = `<b>${greeting()}</b><i></i><span>${esc(d.toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric' }))}</span>`
-    if ($('#date').innerHTML !== dl) $('#date').innerHTML = dl
-  }
-  tick(); clearInterval(window.__clk); window.__clk = setInterval(tick, 5000)
-  if (!window.__trail) window.__trail = Jelly.trail({ size: 26, style: 'border:1.5px solid color-mix(in srgb, var(--accent) 70%, transparent);background:color-mix(in srgb, var(--accent) 10%, transparent)' })
+  buildClock(); tickClock()
+  // the cursor is a small drop of liquid glass that bends the page under it
+  if (!window.__trail) window.__trail = Jelly.trail({ size: 30, style: `backdrop-filter:${Glass.lens(30, 30, 15, 1.6)} blur(.5px) saturate(1.6) brightness(1.08);background:radial-gradient(circle at 34% 28%, rgba(255,255,255,.55), rgba(255,255,255,0) 40%), radial-gradient(circle at 50% 120%, color-mix(in srgb, var(--accent) 35%, transparent), transparent 70%);box-shadow:inset 0 0 0 1px rgba(255,255,255,.45), inset 0 -3px 6px color-mix(in srgb, var(--accent) 30%, transparent), 0 4px 14px rgba(0,0,0,.18)` })
   $('#sf').onsubmit = e => { e.preventDefault(); const v = $('#q').value.trim(); if (v) L.invoke('navigate', v) }
   setTimeout(() => $('#q').focus(), 30)
   const save = list => { S.ntpShortcuts = list; L.invoke('setSetting', 'ntpShortcuts', list).then(newTab) }
@@ -138,7 +257,12 @@ async function newTab() {
     if (await L.invoke('wallpaper', c.toDataURL('image/jpeg', 0.86))) { S.ntpWallpaper = 'custom'; await L.invoke('setSetting', 'ntpWallpaper', 'custom'); await newTab(); $('#drawer').classList.add('open') }
   }
   $('#scmode').onclick = e => { const b = e.target.closest('button'); if (!b) return; save(b.dataset.v === 'mine' ? sites.slice() : null) }
-  $('#clk').onchange = e => { S.ntpClock = e.target.checked; L.invoke('setSetting', 'ntpClock', e.target.checked).then(() => newTab().then(() => $('#drawer').classList.add('open'))) }
+  $('#clk').onclick = e => {
+    const b = e.target.closest('[data-clk]'); if (!b) return
+    const v = { glass: true, minimal: 'minimal', analog: 'analog', off: false }[b.dataset.clk]
+    S.ntpClock = v; L.invoke('setSetting', 'ntpClock', v).then(() => newTab().then(() => $('#drawer').classList.add('open')))
+  }
+  if (!newTab.rs) { newTab.rs = true; let t; addEventListener('resize', () => { clearTimeout(t); t = setTimeout(() => { if ($('#clock')) buildClock() }, 200) }) }
 }
 
 // ======================================================================= settings shell
@@ -158,7 +282,8 @@ function stagger(main) {
   mo.observe(main, { childList: true })
 }
 function shell(active) {
-  root.innerHTML = `<div class="shell"><nav class="nav"><h1>Lumen</h1><div class="navsearch">${ICONS.search}<input type="search" id="setq" placeholder="Search settings" spellcheck="false" autocomplete="off"></div>${SECTIONS.map(([id, label, icon]) => `${NAV_GROUPS[id] ? `<div class="navgrp">${NAV_GROUPS[id]}</div>` : ''}<a title="${label}" href="${id === 'history' || id === 'bookmarks' || id === 'downloads' || id === 'passwords' || id === 'extensions' || id === 'parcels' ? 'lumen://' + id : 'lumen://settings/' + id}" class="${id === active ? 'on' : ''}">${ICONS[icon]}${label}</a>`).join('')}</nav><main class="main rise" id="main"></main></div>`
+  CUR_SECTION = active
+  root.innerHTML = `<div class="shell"><nav class="nav"><div class="navhead"><img class="navlogo" src="lumen://assets/icon-${esc(S.appIcon || 'default')}.png" alt=""><h1>Lumen</h1></div><div class="navsearch">${ICONS.search}<input type="search" id="setq" placeholder="Search settings" spellcheck="false" autocomplete="off"><kbd>/</kbd></div>${SECTIONS.map(([id, label, icon]) => `${NAV_GROUPS[id] ? `<div class="navgrp">${NAV_GROUPS[id]}</div>` : ''}<a title="${label}" href="${id === 'history' || id === 'bookmarks' || id === 'downloads' || id === 'passwords' || id === 'extensions' || id === 'parcels' ? 'lumen://' + id : 'lumen://settings/' + id}" class="${id === active ? 'on' : ''}">${ICONS[icon]}${label}</a>`).join('')}</nav><main class="main rise" id="main"></main></div>`
   document.title = active === 'general' ? 'Settings' : (SECTIONS.find(s => s[0] === active) || [, 'Settings'])[1]
   bindSettingsSearch(active)
   stagger($('#main'))
@@ -195,8 +320,9 @@ function bindSettingsSearch(active) {
     const words = v.split(/\s+/)
     const hits = idx.filter(x => words.every(w => (x.t + ' ' + x.d + ' ' + x.label).toLowerCase().includes(w))).slice(0, 40)
     const mark = s => esc(s).replace(new RegExp('(' + words.map(w => w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|') + ')', 'gi'), '<mark>$1</mark>')
-    m.innerHTML = `<h2>Search</h2><p class="lead">${hits.length ? hits.length + ' setting' + (hits.length > 1 ? 's' : '') + ' found' : 'Nothing matches that. Try another word.'}</p>` + (hits.length ? `<div class="card list">${hits.map(x => `<a class="row hit" href="lumen://settings/${x.id}#${encodeURIComponent(x.t)}"><div class="grow"><div class="t">${mark(x.t)}</div>${x.d ? `<div class="d">${mark(x.d)}</div>` : ''}</div><span class="pill">${esc(x.label)}</span></a>`).join('')}</div>` : '')
+    m.innerHTML = `<h2>Search</h2><p class="lead">${hits.length ? hits.length + ' setting' + (hits.length > 1 ? 's' : '') + ' found' : 'Nothing matches that. Try another word.'}</p>` + (hits.length ? `<div class="card list">${hits.map(x => `<a class="row hit" href="lumen://settings/${x.id}#${encodeURIComponent(x.t)}"><div class="grow"><div class="t">${mark(x.t)}</div>${x.d ? `<div class="d">${mark(x.d)}</div>` : ''}</div><span class="pill">${esc(x.label)}</span><span class="hitgo">${ICONS.arrowRight}</span></a>`).join('')}</div>` : '')
   }
+  if (!bindSettingsSearch.k) { bindSettingsSearch.k = true; addEventListener('keydown', e => { const t = document.activeElement; if (e.key === '/' && !e.metaKey && !e.ctrlKey && !(t && /INPUT|SELECT|TEXTAREA/.test(t.tagName)) && $('#setq')) { e.preventDefault(); $('#setq').focus() } }) }
   q.onkeydown = e => { if (e.key === 'Enter') { const a = document.querySelector('#main a.hit'); if (a) location.href = a.href } else if (e.key === 'Escape') { q.value = ''; q.oninput() } }
 }
 const sw = (key, on) => `<label class="switch"><input type="checkbox" data-set="${key}" ${on ? 'checked' : ''}><span></span></label>`
@@ -293,9 +419,9 @@ function appearance(m) {
     <div class="themes">${Object.entries(LUMEN_THEMES).map(([k, v]) => `<button class="thb ${k === (S.browserTheme || 'default') ? 'on' : ''}" data-th="${k}"><i style="background:${v.bg || 'linear-gradient(135deg, #e9ecf2, #d9dde6)'}"><b class="${v.dark ? 'dk' : ''}"></b></i><span>${v.name}</span></button>`).join('')}
       <button class="thb ${S.browserTheme === 'custom' ? 'on' : ''}" data-th="custom"><i id="cprev" style="background:linear-gradient(${(S.themeCustom || {}).angle || 135}deg, ${(S.themeCustom || {}).a || '#5b8cff'}, ${(S.themeCustom || {}).b || '#8a63f2'})"><b></b></i><span>Custom</span></button></div>
     <div class="row" id="customrow" style="${S.browserTheme === 'custom' ? '' : 'display:none'}"><div class="grow"><div class="t">Your colors</div><div class="d">Pick two colors for the gradient.</div></div>
-      <input type="color" id="ca" value="${(S.themeCustom || {}).a || '#5b8cff'}"><input type="color" id="cb" value="${(S.themeCustom || {}).b || '#8a63f2'}">
-      <select id="cang">${[90, 135, 180, 225].map(a => `<option value="${a}" ${a === ((S.themeCustom || {}).angle || 135) ? 'selected' : ''}>${a} degrees</option>`).join('')}</select>
-      <label style="display:flex;gap:6px;align-items:center;font-size:13px;color:var(--fg2)"><input type="checkbox" id="cglass" ${(S.themeCustom || {}).glass ? 'checked' : ''}> Glass</label></div>
+      ${[['ca', (S.themeCustom || {}).a || '#5b8cff', 'First color'], ['cb', (S.themeCustom || {}).b || '#8a63f2', 'Second color']].map(([id, v, t]) => `<label class="cswatch" title="${t}" style="--c:${esc(v)}"><input type="color" id="${id}" value="${esc(v)}"><i></i><span>${esc(v)}</span></label>`).join('')}
+      <span class="angchip" style="--a:${(S.themeCustom || {}).angle || 135}deg"><em></em><select id="cang">${[90, 135, 180, 225].map(a => `<option value="${a}" ${a === ((S.themeCustom || {}).angle || 135) ? 'selected' : ''}>${a} degrees</option>`).join('')}</select></span>
+      <label class="gtoggle">Glass<span class="switch"><input type="checkbox" id="cglass" ${(S.themeCustom || {}).glass ? 'checked' : ''}><span></span></span></label></div>
   </div>
   <div class="card"><h3>APP ICON</h3>
     <div class="icons">${['default', 'midnight', 'sunset', 'mint', 'ocean', 'gold', 'rose', 'mono'].map(k => `<button class="icb ${k === (S.appIcon || 'default') ? 'on' : ''}" data-ic="${k}"><img src="lumen://assets/icon-${k}.png" alt=""><span>${k[0].toUpperCase() + k.slice(1)}</span></button>`).join('')}</div>
@@ -316,9 +442,11 @@ function appearance(m) {
   const saveCustom = () => {
     const c = { a: $('#ca').value, b: $('#cb').value, angle: +$('#cang').value, glass: $('#cglass').checked }
     $('#cprev').style.background = `linear-gradient(${c.angle}deg, ${c.a}, ${c.b})`
+    for (const id of ['ca', 'cb']) { const l = $('#' + id).closest('.cswatch'); l.style.setProperty('--c', $('#' + id).value); l.querySelector('span').textContent = $('#' + id).value }
+    $('#cang').closest('.angchip').style.setProperty('--a', c.angle + 'deg')
     S.themeCustom = c; L.invoke('setSetting', 'themeCustom', c)
   }
-  for (const id of ['ca', 'cb', 'cang', 'cglass']) $('#' + id).addEventListener('input', saveCustom)
+  for (const id of ['ca', 'cb', 'cang', 'cglass']) $('#' + id).addEventListener(id === 'cglass' || id === 'cang' ? 'change' : 'input', saveCustom)
   m.querySelectorAll('[data-ic]').forEach(b => b.onclick = () => {
     m.querySelectorAll('[data-ic]').forEach(x => x.classList.toggle('on', x === b))
     S.appIcon = b.dataset.ic; L.invoke('setSetting', 'appIcon', b.dataset.ic)
@@ -426,7 +554,7 @@ async function passwords(m) {
   $('#imp').onclick = async () => { const r = await L.invoke('importPasswords'); if (r && r.ok) { passwords(m) } else if (r && r.error) alertBox(r.error) }
   $('#exp').onclick = async () => { await L.invoke('exportPasswords') }
 }
-function alertBox(msg) { const n = document.createElement('p'); n.className = 'note'; n.style.color = '#e5484d'; n.textContent = msg; $('#main').prepend(n); setTimeout(() => n.remove(), 4000) }
+function alertBox(msg) { const n = document.createElement('p'); n.className = 'note errnote'; n.setAttribute('role', 'alert'); n.textContent = msg; const m = $('#main'), h = m.querySelector(':scope > .hero'); if (h) h.after(n); else m.prepend(n); setTimeout(() => { n.style.transition = 'opacity .3s, transform .4s'; n.style.opacity = '0'; n.style.transform = 'translateY(-6px) scale(.98)'; setTimeout(() => n.remove(), 400) }, 4000) }
 
 async function sync(m) {
   const st = await L.invoke('sync', 'status')
@@ -439,7 +567,7 @@ async function sync(m) {
     </div>` : `<div class="card"><h3>TURN ON SYNC</h3>
       ${row('Sync folder', st.icloud ? 'iCloud Drive (recommended on Mac). Or pick a Dropbox, Google Drive or OneDrive folder.' : 'Pick a folder that syncs between your computers, like Dropbox, Google Drive, OneDrive or iCloud Drive.', `<span class="mono" id="folder" style="max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--fg3)">${esc(st.folder || 'None')}</span><button class="btn" id="pick">Choose</button>`)}
       <div class="row"><div class="grow"><div class="t">Sync passphrase</div><div class="d">Use the same passphrase on each computer. Lumen cannot recover it for you.</div></div><input type="password" id="pp" placeholder="At least 8 characters" style="width:220px"></div>
-      <div class="row"><div class="grow" id="msg" style="color:#e5484d;font-size:13px"></div><button class="btn primary" id="on">Turn on sync</button></div>
+      <div class="row"><div class="grow errtext" id="msg"></div><button class="btn primary" id="on">Turn on sync</button></div>
     </div>`}`
   let folder = st.folder
   const p = $('#pick'); if (p) p.onclick = async () => { const f = await L.invoke('sync', 'pickFolder'); if (f) { folder = f; $('#folder').textContent = f } }
@@ -471,8 +599,8 @@ async function importPage(m) {
 async function extensionsPage(m) {
   const list = await L.invoke('extensions')
   m.innerHTML = `<h2>Extensions</h2><p class="lead">Lumen runs Chrome extensions. Get them from the Chrome Web Store, same as in Chrome.</p>
-  <div class="toolbar"><a class="btn primary" style="display:inline-flex;align-items:center" href="https://chromewebstore.google.com/" id="store">Open Chrome Web Store</a><button class="btn" id="unpacked">Load unpacked</button></div>
-  <div class="card list">${list.length ? list.map(x => `<div class="row">${x.icon ? `<img src="${x.icon}" style="width:28px;height:28px">` : `<span style="width:28px;display:grid;place-items:center;color:var(--fg3)">${ICONS.puzzle}</span>`}<div class="grow"><div class="t">${esc(x.name)} <span style="color:var(--fg3);font-weight:400;font-size:12px">${esc(x.version)}</span></div><div class="d">${esc(x.description).slice(0, 140)}</div></div><button class="btn sm danger" data-rm="${x.id}">Remove</button></div>`).join('') : '<div class="empty">No extensions yet</div>'}</div>
+  <div class="toolbar"><a class="btn primary" href="https://chromewebstore.google.com/" id="store">${ICONS.puzzle}Open Chrome Web Store</a><button class="btn" id="unpacked">Load unpacked</button></div>
+  <div class="card list">${list.length ? list.map(x => `<div class="row">${x.icon ? `<img class="extico" src="${x.icon}" alt="">` : `<span class="extico">${ICONS.puzzle}</span>`}<div class="grow"><div class="t">${esc(x.name)}<span class="extver">${esc(x.version)}</span></div><div class="d">${esc(x.description).slice(0, 140)}</div></div><button class="btn sm danger" data-rm="${x.id}">Remove</button></div>`).join('') : '<div class="empty">No extensions yet. Add one from the Chrome Web Store.</div>'}</div>
   <p class="note">Some extensions that depend on features only Google Chrome has may not work fully.</p>`
   $('#store').onclick = e => { e.preventDefault(); L.invoke('open', 'https://chromewebstore.google.com/') }
   $('#unpacked').onclick = async () => { if (await L.invoke('loadUnpacked')) extensionsPage(m) }
@@ -496,7 +624,7 @@ async function historyPage(m) {
     for (const h of list) {
       const lab = dayLabel(h.t)
       if (lab !== cur) { if (cur) html += '</div>'; html += `<div class="daylabel">${esc(lab)}</div><div class="card list">`; cur = lab }
-      html += `<div class="row" data-url="${esc(h.url)}"><span style="width:64px;color:var(--fg3);font-size:12.5px;flex:none">${new Date(h.t).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}</span>${fav(h.url)}<div class="grow"><div class="t" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(h.title || h.url)}</div><div class="d">${esc(hostOf(h.url))}</div></div><button class="ib hov" data-forget title="Forget everything from ${esc(hostOf(h.url))}">${ICONS.trash || ICONS.close}</button><button class="ib" data-del title="Remove">${ICONS.close}</button></div>`
+      html += `<div class="row" data-url="${esc(h.url)}"><span class="htime">${new Date(h.t).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}</span>${fav(h.url)}<div class="grow"><div class="t" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(h.title || h.url)}</div><div class="d">${esc(hostOf(h.url))}</div></div><button class="ib hov" data-forget title="Forget everything from ${esc(hostOf(h.url))}">${ICONS.trash || ICONS.close}</button><button class="ib" data-del title="Remove">${ICONS.close}</button></div>`
     }
     $('#out').innerHTML = html + '</div>'
   }
@@ -507,7 +635,7 @@ async function historyPage(m) {
     if (e.target.closest('[data-del]')) { await L.invoke('deleteHistory', r.dataset.url); r.remove(); return }
     if (e.target.closest('[data-forget]')) {
       const host = hostOf(r.dataset.url)
-      if (!confirm(`Remove every page from ${host} from your history?`)) return
+      if (!await novaConfirm({ title: `Forget ${host}?`, text: `Remove every page from ${host} from your history?`, ok: 'Remove', danger: true, icon: ICONS.trash || ICONS.close })) return
       const n = await L.invoke('deleteHistoryHost', host); draw($('#q').value); flash(`Forgot ${n} page${n === 1 ? '' : 's'} from ${host}`); return
     }
     if (e.metaKey || e.ctrlKey) L.invoke('open', r.dataset.url, true); else L.invoke('navigate', r.dataset.url)
@@ -638,7 +766,7 @@ async function appsPage(m) {
   m.onchange = async e => {
     const s = e.target.closest('[data-appsw]'); if (!s) return
     const res = await L.invoke('appSet', s.dataset.appsw, s.checked)
-    if (res && res.restart) { if (confirm('Restart Lumen to turn it back on now?')) L.invoke('restart') }
+    if (res && res.restart) { if (await novaConfirm({ title: 'Restart Lumen?', text: 'Restart Lumen to turn it back on now?', ok: 'Restart', cancel: 'Later', icon: ICONS.reload })) L.invoke('restart') }
     else flash(s.checked ? 'Turned on' : 'Turned off')
     draw(await L.invoke('apps'))
   }
@@ -713,13 +841,13 @@ async function bookmarksPage(m) {
 
 function fmtBytes(n) { if (!n) return '0 B'; const u = ['B', 'KB', 'MB', 'GB']; let i = 0; while (n >= 1024 && i < 3) { n /= 1024; i++ } return n.toFixed(i ? 1 : 0) + ' ' + u[i] }
 async function downloadsPage(m) {
-  m.innerHTML = `<h2>Downloads</h2><p class="lead">Files you downloaded since Lumen started.</p><div class="toolbar"><div style="flex:1"></div><button class="btn" id="clr">Clear list</button></div><div class="card list" id="out"></div>`
+  m.innerHTML = `<h2>Downloads</h2><p class="lead">Files you downloaded since Lumen started.</p><div class="toolbar"><div style="flex:1"></div><button class="btn" id="clr">${ICONS.trash || ''}Clear list</button></div><div class="card list" id="out"></div>`
   const draw = async () => {
     const list = await L.invoke('downloads')
     $('#out').innerHTML = list.length ? list.map(d => {
       const pct = d.total ? Math.round(d.received / d.total * 100) : 0
       const status = d.state === 'progressing' ? `${fmtBytes(d.received)} of ${d.total ? fmtBytes(d.total) : 'unknown'}${d.paused ? ', paused' : ''}` : d.state === 'completed' ? (d.exists ? fmtBytes(d.total || d.received) + '  ·  ' + esc(hostOf(d.url)) : 'Moved or deleted') : d.state === 'cancelled' ? 'Cancelled' : 'Failed'
-      return `<div class="row" data-id="${d.id}"><span style="color:var(--fg3)">${ICONS.download}</span><div class="grow"><div class="t" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(d.name)}</div><div class="d">${status}</div>${d.state === 'progressing' ? `<div class="bar"><i style="width:${pct}%"></i></div>` : ''}</div>
+      return `<div class="row" data-id="${d.id}"><span class="dlico ${d.state === 'progressing' ? 'busy' : d.state === 'completed' && d.exists ? '' : 'bad'}">${ICONS.download}</span><div class="grow"><div class="t" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(d.name)}</div><div class="d">${status}</div>${d.state === 'progressing' ? `<div class="bar"><i style="width:${pct}%"></i></div>` : ''}</div>
         ${d.state === 'completed' && d.exists ? '<button class="btn sm" data-a="open">Open</button><button class="btn sm" data-a="show">Show in folder</button>' : ''}
         ${d.state === 'progressing' ? `<button class="btn sm" data-a="pause">${d.paused ? 'Resume' : 'Pause'}</button><button class="btn sm danger" data-a="cancel">Cancel</button>` : ''}
         ${d.state === 'interrupted' || d.state === 'cancelled' ? '<button class="btn sm" data-a="retry">Retry</button>' : ''}
@@ -779,6 +907,7 @@ function errorPage() {
   document.title = host || 'Error'
   root.innerHTML = `<div class="err k-${kind}"><div class="errglow"></div><div class="rise">
     <div class="ico"><svg viewBox="0 0 16 16" width="30" height="30" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">${ERR_ART[kind]}</svg></div>
+    <div class="crash-why">${{ offline: 'No internet', dns: 'Address not found', cert: 'Certificate problem', slow: 'Timed out', refused: 'Connection refused', other: 'Could not load' }[kind]}</div>
     <h1>${esc(title)}</h1><p>${esc(text)}</p>
     <code>${esc(host || url)}  ·  ${esc(p.get('desc') || '')}</code>
     ${kind === 'offline' ? '<div class="errwait"><i></i>Lumen will reload the page as soon as you are back online</div>' : ''}
@@ -790,6 +919,76 @@ function errorPage() {
   if (kind === 'offline') addEventListener('online', () => L.invoke('retry', url), { once: true })
 }
 
+// ======================================================================= crashed tab
+const CRASH_WHY = { oom: 'It ran out of memory', crashed: 'The page stopped working', killed: 'The page was stopped', 'launch-failed': 'The page could not start', 'integrity-failure': 'The page could not start', abnormal: 'The page stopped working' }
+function crashedPage() {
+  const p = new URLSearchParams(location.search)
+  const url = p.get('url') || '', host = hostOf(url), why = CRASH_WHY[p.get('reason')] || ''
+  document.title = host ? host + ' crashed' : 'This tab crashed'
+  root.innerHTML = `<div class="err crash"><div class="errglow"></div><div class="rise">
+    <div class="ico"><svg viewBox="0 0 16 16" width="30" height="30" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3.5h10a1 1 0 0 1 1 1v7a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1v-7a1 1 0 0 1 1-1zM2 6h12"/><path d="m6 8.2 1.6 1.6M7.6 8.2 6 9.8M8.6 8.2l1.6 1.6M10.2 8.2 8.6 9.8"/></svg></div>
+    ${why ? `<div class="crash-why">${esc(why)}</div>` : ''}
+    <h1>This tab crashed</h1><p>Something went wrong while showing ${host ? esc(host.replace(/^www\./, '')) : 'this page'}. Your other tabs are fine. Reload to try again.</p>
+    ${url ? `<code>${esc(url)}</code>` : '<div style="height:26px"></div>'}
+    <div class="erracts"><button class="btn" id="cnew">Open New Tab</button><button class="btn primary" id="creload">${ICONS.reload}Reload</button></div>
+    <p class="crash-tip">If it keeps crashing, the page may need more memory than it can get. Closing a few tabs can help.</p>
+  </div></div>`
+  $('#creload').onclick = () => L.invoke('retry', /^(https?|lumen):\/\//i.test(url) ? url : 'lumen://newtab')
+  $('#cnew').onclick = () => L.invoke('retry', 'lumen://newtab')
+  setTimeout(() => $('#creload').focus(), 60)
+}
+
+// ======================================================================= section heroes and springy segmented controls
+// Pages keep writing a plain <h2> and lead; this dresses them up as a lit liquid-glass hero with the section's icon,
+// in the same color as its chip in the sidebar.
+let CUR_SECTION = ''
+const HERO_HUE = [0, 40, 85, 140, 200, 250, 300]
+const HERO_ICON = { Search: 'search', Highlights: 'book', 'Archived tabs': 'layers' }
+let heroSeen = ''
+function springPop(el, from) {
+  // the hero icon lands with a real Jelly spring: scale and a small turn settle together
+  if (!window.Jelly || Jelly.getMode() === 'off') return
+  const s = new Jelly.Spring(from, 'jelly', v => { el.style.transform = `scale(${v.toFixed(4)}) rotate(${((1 - v) * -40).toFixed(2)}deg)` })
+  s.to(1)
+}
+function buildHero(main) {
+  const h2 = main.querySelector(':scope > h2'); if (!h2) return
+  const lead = h2.nextElementSibling && h2.nextElementSibling.matches('p.lead') ? h2.nextElementSibling : null
+  const title = h2.textContent.trim()
+  const idx = Math.max(0, SECTIONS.findIndex(s => s[0] === CUR_SECTION))
+  const icon = HERO_ICON[title] || (SECTIONS[idx] || [])[2] || 'gear'
+  const hero = document.createElement('header'); hero.className = 'hero'
+  hero.style.setProperty('--ic', `oklch(from var(--accent) l c calc(h + ${HERO_HUE[idx % 7]}))`)
+  hero.innerHTML = `<i class="hero-orb a"></i><i class="hero-orb b"></i><i class="hero-orb c"></i><span class="hero-art" aria-hidden="true">${ICONS[icon] || ''}</span><span class="hero-ic" aria-hidden="true">${ICONS[icon] || ''}</span><div class="hero-tx"></div>`
+  main.insertBefore(hero, h2)
+  const tx = hero.querySelector('.hero-tx'); tx.append(h2); if (lead) tx.append(lead)
+  // a page that redraws itself keeps its hero still; a new page gets the full entrance
+  if (heroSeen !== title) { hero.classList.add('enter'); springPop(hero.querySelector('.hero-ic'), 0.45) }
+  heroSeen = title
+}
+function segIndicator(g) {
+  g.classList.add('has-ind')
+  const ind = document.createElement('i'); ind.className = 'seg-ind'; ind.setAttribute('aria-hidden', 'true'); g.prepend(ind)
+  let sx = null, sw = null
+  const render = () => { ind.style.transform = `translateX(${sx.v.toFixed(2)}px)`; ind.style.width = Math.max(0, sw.v).toFixed(2) + 'px' }
+  const place = animate => {
+    const b = g.querySelector('button.on'); if (!b || !b.offsetWidth) { ind.style.opacity = '0'; return }
+    const x = b.offsetLeft, w = b.offsetWidth
+    if (!sx) { sx = new Jelly.Spring(x, 'jelly', render); sw = new Jelly.Spring(w, 'jelly', render); render() }
+    if (animate) { sx.to(x); sw.to(w) } else { sx.set(x); sw.set(w) }
+    ind.style.opacity = '1'
+  }
+  place(false)
+  g.addEventListener('click', () => requestAnimationFrame(() => place(true)))
+  if (window.ResizeObserver) new ResizeObserver(() => place(false)).observe(g)
+}
+function decorate() {
+  const v = location.hash === '#highlights' || location.hash === '#archive' ? location.hash.slice(1) : page === 'settings' ? (sub || 'general') : page
+  if (document.body.dataset.view !== v) document.body.dataset.view = v
+  const main = document.getElementById('main'); if (main) buildHero(main)
+  if (window.Jelly) root.querySelectorAll('.seg:not(.has-ind)').forEach(segIndicator)
+}
+new MutationObserver(decorate).observe(root, { childList: true, subtree: true })
 
 // ======================================================================= boot
 ;(async () => {
@@ -798,7 +997,7 @@ function errorPage() {
   applyLook(S)
   L.onSettings(s => { S = s; applyLook(s) })
   const routes = {
-    newtab: newTab, error: errorPage,
+    newtab: newTab, error: errorPage, crashed: crashedPage,
     parcels: () => parcelsPage(shell('parcels')),
     history: () => historyPage(shell('history')), bookmarks: () => bookmarksPage(shell('bookmarks')), downloads: () => downloadsPage(shell('downloads')),
     passwords: () => passwords(shell('passwords')), extensions: () => extensionsPage(shell('extensions')), about: () => about(shell('about')),

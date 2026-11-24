@@ -425,7 +425,7 @@ function appearance(m) {
   </div>
   <div class="card"><h3>APP ICON</h3>
     <div class="icons">${['default', 'midnight', 'sunset', 'mint', 'ocean', 'gold', 'rose', 'mono'].map(k => `<button class="icb ${k === (S.appIcon || 'default') ? 'on' : ''}" data-ic="${k}"><img src="lumen://assets/icon-${k}.png" alt=""><span>${k[0].toUpperCase() + k.slice(1)}</span></button>`).join('')}</div>
-    <p class="note" style="padding:0 18px 14px">Changes Lumen's icon in the Dock while it's running.</p>
+    <p class="note" style="margin:4px 18px 14px">Changes Lumen's icon in the Dock while it's running.</p>
   </div>
   <div class="card"><h3>COLORS AND MOTION</h3>
     ${row('Theme', '', seg('theme', [['system', 'System'], ['light', 'Light'], ['dark', 'Dark']], S.theme))}

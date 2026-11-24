@@ -5,14 +5,14 @@
 ;(function () {
   // ---- edit this list every release: it is the "New in Lumen" act of the film
   const WHATS_NEW = {
-    version: '1.16',
+    version: '1.17',
     items: [
+      { icon: 'download', title: 'A better updater', text: 'See what is new before you update. Every download is checked before it installs.' },
+      { icon: 'key', title: 'Google sign-in fixed', text: 'Lumen signs in to Google like any Chrome, and retries in another mode if Google says no.' },
+      { icon: 'close', title: 'Less in your way', text: 'No popup after you close a tab. Shift Cmd T still brings it back.' },
       { icon: 'box', title: 'Your carrier, your link', text: 'Parcels open on the carrier you pick, or on the tracking link you paste.' },
-      { icon: 'play', title: 'A friendlier intro', text: 'A tour that shows what every feature does, with a brighter, softer sound.' },
       { icon: 'globe', title: '440 carriers', text: 'Couriers and post offices worldwide, most found from the number alone.' },
-      { icon: 'search', title: 'Track from anywhere', text: 'Paste a tracking number in the address bar, or right-click one on any page.' },
-      { icon: 'key', title: 'Google sign-in fixed', text: 'Lumen signs in to Google like any Chrome, and retries in another mode if Google ever says no.' },
-      { icon: 'sparkle', title: 'A fresh coat of paint', text: 'Calmer tabs, a richer command bar, nicer menus and dark mode fixes.' },
+      { icon: 'play', title: 'A friendlier intro', text: 'A tour that shows what every feature does, with a brighter, softer sound.' },
     ],
   }
   const FEATURES = [

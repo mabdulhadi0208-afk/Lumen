@@ -204,6 +204,19 @@ jobs:
         run: echo "tag=v$(node -p "require('./package.json').version")" >> "$GITHUB_OUTPUT"
       - uses: actions/download-artifact@v4
         with: { path: out, merge-multiple: true }
+      # release notes: the bullet list from the release commit (what the update card shows), then install help
+      - name: Release notes
+        run: |
+          {
+            echo "Lumen ${{ steps.v.outputs.tag }}"
+            echo
+            git log -1 --format=%B "${{ github.sha }}" | sed -e '1d' -e '/^Co-Authored-By:/d' -e '/^Claude-Session:/d' -e '/^- New test/d'
+            echo
+            echo "Mac: download Lumen-mac-arm64.dmg (Apple Silicon) or Lumen-mac-x64.dmg (Intel), drag to Applications, right-click and Open the first time."
+            echo "Windows: run Lumen-win-x64.exe (SmartScreen: More info, Run anyway)."
+            echo "Already installed? Lumen updates itself."
+          } > notes.md
+          cat notes.md
       - uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ steps.v.outputs.tag }}
@@ -211,8 +224,4 @@ jobs:
           target_commitish: ${{ github.sha }}
           files: out/*
           make_latest: true
-          body: |
-            Lumen ${{ steps.v.outputs.tag }}
-            Mac: download Lumen-mac-arm64.dmg (Apple Silicon) or Lumen-mac-x64.dmg (Intel), drag to Applications, right-click and Open the first time.
-            Windows: run Lumen-win-x64.exe (SmartScreen: More info, Run anyway).
-            Already installed? Lumen updates itself.
+          body_path: notes.md

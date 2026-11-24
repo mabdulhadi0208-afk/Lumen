@@ -41,11 +41,9 @@ app.whenReady().then(async () => {
   const n0 = w.order.length
   await ex(`api.do('close', ${a.id})`); await wait(700)
   ok(w.order.length === n0 - 1, 'tab closed')
-  ok(await ex(`!!document.querySelector('#toast .toast-btn') && document.getElementById('toast').classList.contains('act')`), 'toast has an Undo button')
-  ok(await ex(`(() => { const r = document.getElementById('toast').getBoundingClientRect(); return r.left >= 0 && r.right <= innerWidth && r.width > 200 })()`), 'undo toast fully on screen')
-  await shotUI('undo')
-  await ex(`document.querySelector('#toast .toast-btn') && document.querySelector('#toast .toast-btn').click()`); await wait(1200)
-  ok(w.order.length === n0 && [...w.tabs.values()].some(t => /undo$/.test(t.url)), 'Undo brings the tab back')
+  ok(!(await ex(`!!document.querySelector('#toast .toast-btn') && document.getElementById('toast').classList.contains('act')`)), 'no Undo popup in the way after closing a tab')
+  await ex(`api.do('reopen')`); await wait(1200)
+  ok(w.order.length === n0 && [...w.tabs.values()].some(t => /undo$/.test(t.url)), 'Reopen Closed Tab still brings it back')
 
   // ---- archive
   const old = []

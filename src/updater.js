@@ -17,7 +17,7 @@ const REPO = (pkg.lumen && pkg.lumen.repo) || 'mabdulhadi0208-afk/lumen'
 const IS_WIN = process.platform === 'win32'
 const ARCH = process.arch === 'arm64' ? 'arm64' : 'x64'
 const ZIP = `Lumen-mac-${ARCH}.zip`, DMG = `Lumen-mac-${ARCH}.dmg`, EXE = 'Lumen-win-x64.exe'
-const state = { status: 'idle', latest: null, url: null, size: 0, progress: 0, bytes: 0, speed: 0, eta: 0, error: null, staged: null, isZip: true }
+const state = { notes: [], sha256: null, status: 'idle', latest: null, url: null, size: 0, progress: 0, bytes: 0, speed: 0, eta: 0, error: null, staged: null, isZip: true }
 let C = null, timer = null, popup = null, snoozedUntil = 0, skipVersion = null, polling = false, misses = 0, lastTag = null, lastCheck = 0, dlProc = null
 let adhoc = false, migrate = false, enabled = true
 const listeners = new Set()
@@ -33,6 +33,25 @@ async function probe(url) {
   const codes = [...h.matchAll(/^HTTP\/[\d.]+ (\d{3})/gm)].map(m => +m[1]), len = [...h.matchAll(/^content-length:\s*(\d+)/gmi)].map(m => +m[1])
   return { ok: codes.length > 0 && codes[codes.length - 1] === 200, size: len.length ? len[len.length - 1] : 0 }
 }
+// What changed and the file fingerprints, from GitHub's release page data. Never required: an update still works
+// if this fails, it just shows no notes and skips the extra check.
+async function releaseInfo(tag) {
+  try {
+    const j = JSON.parse(await sh(curl, ['-sL', '-H', 'Accept: application/vnd.github+json', `https://api.github.com/repos/${REPO}/releases/tags/${tag}`], { timeout: 15000 }))
+    const notes = []
+    for (const line of String(j.body || '').split(/\r?\n/)) {
+      if (/^(Mac|Windows|Already installed)[:?]/i.test(line.trim())) break
+      if (/^\s*[-*]\s+/.test(line)) notes.push(line.replace(/^\s*[-*]\s+/, '').trim())
+      else if (/^\s{2,}\S/.test(line) && notes.length) notes[notes.length - 1] += ' ' + line.trim()
+    }
+    const digests = {}
+    for (const a of j.assets || []) if (a && a.name && /^sha256:[0-9a-f]{64}$/.test(a.digest || '')) digests[a.name] = a.digest.slice(7)
+    return { notes: notes.filter(n => n.length > 2 && !/^New test/i.test(n)).slice(0, 8), digests, title: String(j.name || '') }
+  } catch (e) { log('release info failed:', e.message); return { notes: [], digests: {} } }
+}
+function sha256File(file) {
+  return new Promise((res, rej) => { const h = require('crypto').createHash('sha256'); fs.createReadStream(file).on('data', d => h.update(d)).on('end', () => res(h.digest('hex'))).on('error', rej) })
+}
 function stagedVersion(appPath) {
   try { const pl = fs.readFileSync(path.join(appPath, 'Contents', 'Info.plist'), 'utf8'); const v = /CFBundleShortVersionString<\/key>\s*<string>([^<]+)/.exec(pl); if (v) return v[1] } catch {}
   try { return execFileSync('defaults', ['read', path.join(appPath, 'Contents', 'Info.plist'), 'CFBundleShortVersionString']).toString().trim() } catch { return null }
@@ -43,19 +62,19 @@ const migratedFlag = () => path.join(app.getPath('userData'), 'migrated-' + app.
 const log = (...a) => { try { fs.appendFileSync(path.join(app.getPath('logs'), 'lumen.log'), `[${new Date().toISOString()}] updater: ${a.join(' ')}\n`) } catch {} }
 const updDir = () => path.join(app.getPath('userData'), 'update')
 function clearStaged() { try { fs.rmSync(updDir(), { recursive: true, force: true }) } catch {} state.staged = null; state.stagedTag = null }
-function snapshot() { return { ...state, current: app.getVersion(), lastCheck, version: app.getVersion() } }
+function snapshot() { let appIcon = 'default'; try { appIcon = (C && C.appIcon && C.appIcon()) || 'default' } catch {} return { ...state, appIcon, current: app.getVersion(), lastCheck, version: app.getVersion() } }
 function push() {
   const s = snapshot()
   for (const fn of listeners) { try { fn(s) } catch {} }
   if (popup && !popup.isDestroyed()) { try { popup.webContents.send('update:state', s) } catch {} }
 }
-function set(patch) { Object.assign(state, patch); push() }
+function set(patch) { Object.assign(state, patch); push(); if (patch.notes) fitCard() }
 
 // ------------------------------------------------------------ floating update card
 function showCard() {
   if (!C || !C.cardEnabled()) return
   if (popup && !popup.isDestroyed()) { if (!popup.isVisible()) popup.showInactive(); push(); return }
-  const d = screen.getPrimaryDisplay().workArea, w = 560, h = 186
+  const d = screen.getPrimaryDisplay().workArea, w = 600, h = cardHeight()
   popup = new BrowserWindow({
     width: w, height: h, x: Math.round(d.x + d.width / 2 - w / 2), y: d.y + 12, frame: false, transparent: true, hasShadow: false, resizable: false,
     alwaysOnTop: true, skipTaskbar: true, focusable: true, fullscreenable: false, backgroundColor: '#00000000', show: false,
@@ -66,6 +85,8 @@ function showCard() {
   popup.once('ready-to-show', () => { popup.showInactive(); push() })
   popup.on('closed', () => (popup = null))
 }
+function cardHeight() { const n = Math.min(6, (state.notes || []).length); return n ? 238 + n * 24 : 204 }
+function fitCard() { if (popup && !popup.isDestroyed()) { const b = popup.getBounds(), h = cardHeight(); if (b.height !== h) popup.setBounds({ ...b, height: h }) } }
 function hideCard() { if (popup && !popup.isDestroyed()) popup.hide() }
 function showCardIfAllowed(manual) { if (manual || Date.now() > snoozedUntil) showCard() }
 
@@ -78,7 +99,7 @@ function check(manual) {
   return inflight
 }
 async function runCheck(manual) {
-  if (['downloading', 'unpacking', 'installing'].includes(state.status)) return snapshot()
+  if (['downloading', 'verifying', 'unpacking', 'installing'].includes(state.status)) return snapshot()
   set({ status: 'checking', error: null }); lastCheck = Date.now()
   try {
     const latest = await latestTag(); if (!latest) throw new Error('GitHub did not answer')
@@ -91,7 +112,8 @@ async function runCheck(manual) {
     let url = `https://github.com/${REPO}/releases/download/${latest}/${IS_WIN ? EXE : ZIP}`, isZip = !IS_WIN, p = await probe(url)
     if (!p.ok && !IS_WIN) { url = `https://github.com/${REPO}/releases/download/${latest}/${DMG}`; isZip = false; p = await probe(url) }
     if (!p.ok) throw new Error(`${latest} is published but the file is not ready yet`)
-    set({ status: 'available', latest, url, isZip, size: p.size, progress: 0, bytes: 0 })
+    const info = await releaseInfo(latest)
+    set({ status: 'available', verified: false, latest, url, isZip, size: p.size, progress: 0, bytes: 0, notes: info.notes, sha256: info.digests[url.split('/').pop()] || null })
     log('available', latest, isZip ? 'zip' : (IS_WIN ? 'exe' : 'dmg'), fmtMB(p.size))
     if (migrate) { download().then(() => { if (state.staged) { try { fs.writeFileSync(migratedFlag(), '1') } catch {} install(true) } }); return snapshot() }
     showCardIfAllowed(manual)
@@ -101,7 +123,7 @@ async function runCheck(manual) {
 }
 
 async function download() {
-  if (!state.url || ['downloading', 'unpacking', 'installing'].includes(state.status)) return
+  if (!state.url || ['downloading', 'verifying', 'unpacking', 'installing'].includes(state.status)) return
   if (state.staged && !IS_WIN) { const sv = stagedVersion(state.staged); if (sv && same(sv, state.latest)) { set({ status: 'ready' }); return } clearStaged() }
   const dir = updDir()
   const file = path.join(dir, IS_WIN ? EXE : state.isZip ? ZIP : DMG), mnt = path.join(dir, 'mnt')
@@ -126,6 +148,8 @@ async function download() {
     if (!ok) throw err || new Error('download failed')
     clearInterval(prog); prog = null
     if (state.size && fs.statSync(file).size !== state.size) throw new Error('download incomplete')
+    // the file must match the fingerprint GitHub published for it, or it is thrown away
+    if (state.sha256) { set({ status: 'verifying' }); const got = await sha256File(file); if (got !== state.sha256) { fs.rmSync(file, { force: true }); throw new Error('the download did not match its fingerprint, so it was thrown away') } log('sha256 verified'); set({ verified: true }) }
     set({ progress: 100, status: 'unpacking' })
     if (IS_WIN) { set({ staged: file, stagedTag: state.latest, status: 'ready' }); log('staged installer', state.latest); showCardIfAllowed(false); C.notify('Lumen update ready', `${state.latest} is downloaded. Restart to finish.`); return }
     if (state.isZip) {
@@ -157,7 +181,7 @@ async function download() {
 
 // relaunch=false is used when the person quits Lumen: the update is applied and Lumen stays closed
 async function install(relaunch = true, { fromQuit = false } = {}) {
-  if (!state.staged) { if (!fromQuit && state.status !== 'downloading' && state.status !== 'unpacking') await download(); if (!state.staged) return snapshot() }
+  if (!state.staged) { if (!fromQuit && !['downloading', 'verifying', 'unpacking'].includes(state.status)) await download(); if (!state.staged) return snapshot() }
   try { C.flush() } catch {}
   const marker = path.join(app.getPath('userData'), 'just-updated')
   if (IS_WIN) {
@@ -208,7 +232,7 @@ echo "=== done"
 }
 
 async function poll() {
-  if (!enabled || polling || ['downloading', 'unpacking', 'installing', 'checking'].includes(state.status)) return
+  if (!enabled || polling || ['downloading', 'verifying', 'unpacking', 'installing', 'checking'].includes(state.status)) return
   polling = true
   const tag = await latestTag().finally(() => (polling = false))
   if (!tag) { misses++; if (misses === 20) { clearInterval(timer); timer = setInterval(poll, 60000); log('backing off to 60s') } return }
@@ -254,7 +278,7 @@ function setEnabled(on) {
 }
 
 module.exports = {
-  REPO, start, check, download, install, setEnabled,
+  REPO, start, check, download, install, setEnabled, __releaseInfo: releaseInfo, __sha256File: sha256File,
   later: () => { snoozedUntil = Date.now() + 2 * 3600000; hideCard() },
   skip: () => { skipVersion = state.latest; try { C.setSkipped(skipVersion) } catch {} hideCard() },
   cancel: () => { try { dlProc && dlProc.kill('SIGTERM') } catch {} set({ status: 'available', progress: 0 }) },

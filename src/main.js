@@ -673,8 +673,6 @@ class BrowserWin {
     this.pruneGroups()
     if (!this.order.length) { this.win.close(); return }
     this.pushState(); saveSession()
-    // a tab you closed yourself can come right back from the toast
-    if (undo && !this.incognito && url && url !== 'lumen://newtab/') this.send('undo-close', { title: t.title || url })
   }
 
   moveTab(id, toIndex) {
@@ -2147,6 +2145,7 @@ app.whenReady().then(async () => {
     setSkipped: v => D.settings.set('skippedVersion', v),
     flush: () => { quitting = true; flushAll() },
     toast: msg => broadcast('toast', msg),
+    appIcon: () => D.settings.get('appIcon'),
     notify: (title, body) => { try { const { Notification } = require('electron'); if (Notification.isSupported()) new Notification({ title, body, silent: true }).show() } catch {} },
   })
   log('boot ' + app.getVersion())

@@ -434,6 +434,9 @@
   }
 
   // ------------------------------------------------------------ the sky: a nebula, 3D stars, warp tunnel, the orb, ghosts, shockwaves, caustics
+  const LOGO = new Image()
+  function loadLogo() { let id = 'default'; try { if (typeof settings !== 'undefined' && settings.appIcon) id = settings.appIcon } catch {} const src = `../build/icons/${id}.png`; if (!LOGO.src.endsWith(src.slice(2))) { LOGO.onerror = () => { if (!LOGO.src.endsWith('/default.png')) LOGO.src = '../build/icons/default.png' }; LOGO.src = src } }
+  loadLogo()
   const sky = { oy: 0, speed: .4, warp: 0, gather: 0, orb: 0, orbR: 0, ring: 0, shock: [], flash: 0, shake: 0, rays: 0, bokeh: 0, neb: 0, dof: 0, ghosts: 0, caus: 0 }
   const camera = { x: 0, y: 0, px: 0, py: 0, push: 0, roll: 0, lift: 0 }
   let bokeh = [], stars = [], caus = [], nebula = null, dofShown = -1
@@ -525,7 +528,9 @@
       const g = cx.createRadialGradient(oxc, oyc, 0, oxc, oyc, R)
       g.addColorStop(0, `rgba(240,244,255,${sky.orb})`); g.addColorStop(.18, `hsla(${HUE},100%,75%,${.55 * sky.orb})`); g.addColorStop(1, `hsla(${HUE},100%,60%,0)`)
       cx.fillStyle = g; cx.fillRect(oxc - R, oyc - R, R * 2, R * 2)
-      cx.fillStyle = `rgba(255,255,255,${sky.orb})`; cx.beginPath(); cx.arc(oxc, oyc, sky.orbR, 0, 6.283); cx.fill()
+      // the star of the show is Lumen's own app icon (the one picked in Settings), lit from behind
+      const IS = sky.orbR * 4.6, hasLogo = LOGO.complete && LOGO.naturalWidth > 0
+      if (!hasLogo) { cx.fillStyle = `rgba(255,255,255,${sky.orb})`; cx.beginPath(); cx.arc(oxc, oyc, sky.orbR, 0, 6.283); cx.fill() }
       const st = cx.createLinearGradient(0, 0, W, 0), sa = .55 * sky.orb * (.85 + Math.sin(now / 700) * .15)
       st.addColorStop(0, `hsla(${HUE},100%,65%,0)`); st.addColorStop(.5, `hsla(${HUE},100%,86%,${sa})`); st.addColorStop(1, `hsla(${HUE + 40},100%,65%,0)`)
       cx.fillStyle = st; cx.fillRect(0, oyc - 1.2, W, 2.4)
@@ -542,12 +547,18 @@
         })
       }
       if (sky.ring > .01) {
-        cx.save(); cx.translate(oxc, oyc); cx.rotate(-.42)
-        ;[['255,90,120', -1.2], ['120,255,190', 0], ['110,150,255', 1.2]].forEach(([c, o]) => {
-          cx.strokeStyle = `rgba(${c},${.5 * sky.ring})`; cx.lineWidth = 2.4
-          cx.beginPath(); cx.ellipse(o, 0, sky.orbR * 2.8, sky.orbR, 0, Math.PI * (1 - sky.ring), Math.PI * (1 + sky.ring)); cx.stroke()
+        // a halo in the icon's own rounded-square shape, split into three colours at the rim, breathing slowly
+        const k = 1.22 + Math.sin(now / 900) * .03, side = IS * k, rr = side * .23
+        ;[['255,90,120', -1.4], ['120,255,190', 0], ['110,150,255', 1.4]].forEach(([c, o]) => {
+          cx.strokeStyle = `rgba(${c},${.45 * sky.ring * sky.orb})`; cx.lineWidth = 2
+          cx.beginPath(); cx.roundRect(oxc - side / 2 + o, oyc - side / 2, side, side, rr); cx.stroke()
         })
-        cx.restore()
+      }
+      if (hasLogo) {
+        // drawn last, with normal blending, so the icon keeps its real colours in front of the light
+        cx.save(); cx.globalCompositeOperation = 'source-over'; cx.globalAlpha = sky.orb
+        cx.shadowColor = `hsla(${HUE},100%,60%,.7)`; cx.shadowBlur = IS * .35; cx.shadowOffsetY = IS * .06
+        cx.drawImage(LOGO, oxc - IS / 2, oyc - IS / 2, IS, IS); cx.restore()
       }
     }
     // caustics: the glass frame focuses light into a shimmering pool on the floor below it, and sparks drift up out of it
@@ -910,6 +921,7 @@
   // ------------------------------------------------------------ play
   // play({ onDone }) is the full film for a first launch. play({ whatsNew: '1.15.0', onDone }) is the short cut after an update.
   async function play({ onDone, whatsNew: wn, askParcels = false } = {}) {
+    loadLogo()
     if (document.getElementById('intro')) return
     skip = false
     still = matchMedia('(prefers-reduced-motion: reduce)').matches || (document.body && document.body.dataset.motion === 'off')

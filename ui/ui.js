@@ -91,10 +91,13 @@ function doLayout() {
   { const lb = $('#loadbar'); lb.style.left = (rect.x + 12) + 'px'; lb.style.width = Math.max(0, rect.width - 24) + 'px'; lb.style.top = (rect.y - 5) + 'px' }
   ds.setProperty('--cx', rect.x + 'px'); ds.setProperty('--cy', rect.y + 'px'); ds.setProperty('--cw', rect.width + 'px'); ds.setProperty('--ch', rect.height + 'px')
   // cut a hole the exact shape of the page (rounded corners included) so no dark corner shows through
-  const tb = $('#themebg')
-  if (tb && document.body.classList.contains('themed')) {
+  // (the Nova nebula behind the chrome gets the same hole, so it never covers the page while an overlay is up)
+  {
     const { x, y, width: w, height: h } = rect, r = document.body.classList.contains('compact') ? 8 : 10
-    tb.style.clipPath = `path(evenodd, "M0 0H${innerWidth}V${innerHeight}H0Z M${x + r} ${y}H${x + w - r}A${r} ${r} 0 0 1 ${x + w} ${y + r}V${y + h - r}A${r} ${r} 0 0 1 ${x + w - r} ${y + h}H${x + r}A${r} ${r} 0 0 1 ${x} ${y + h - r}V${y + r}A${r} ${r} 0 0 1 ${x + r} ${y}Z")`
+    const hole = `path(evenodd, "M0 0H${innerWidth}V${innerHeight}H0Z M${x + r} ${y}H${x + w - r}A${r} ${r} 0 0 1 ${x + w} ${y + r}V${y + h - r}A${r} ${r} 0 0 1 ${x + w - r} ${y + h}H${x + r}A${r} ${r} 0 0 1 ${x} ${y + h - r}V${y + r}A${r} ${r} 0 0 1 ${x + r} ${y}Z")`
+    const tb = $('#themebg'), nb = $('#nova-bg')
+    if (tb && document.body.classList.contains('themed') && tb.style.clipPath !== hole) tb.style.clipPath = hole
+    if (nb && nb.dataset.hole !== hole) { nb.dataset.hole = hole; nb.style.clipPath = hole }
   }
   const sh = $('#content-shadow')
   Object.assign(sh.style, { left: rect.x + 'px', top: rect.y + 'px', width: rect.width + 'px', height: rect.height + 'px' })
@@ -278,6 +281,8 @@ function renderTabs() {
   const pinned = S.tabs.filter(t => t.pinned)
   const list = S.tabs.filter(t => !t.pinned)
   if (TOP) measureTabW(list.length)
+  // narrow tabs on top drop their extras so nothing spills past the tab
+  tabsEl.classList.toggle('narrow', TOP && tabW < 132); tabsEl.classList.toggle('tiny', TOP && tabW < 100)
   const step = stepOf()
   LAYOUT = layoutOf(list)
 
@@ -357,6 +362,8 @@ function renderTabs() {
     if (pillG.state.o < 0.05) pillG.set({ p, w: tabW })
     pillG.to({ p, o: 1, w: tabW })
     if (!drag) act.el.scrollIntoView({ block: 'nearest', inline: 'nearest' })
+    // all tabs fit: never leave the strip scrolled sideways (a resize mid-spring can leave a stale scroll behind)
+    if (TOP && !drag) { const tl = $('#tablist'); if (LAYOUT.total <= tl.clientWidth && tl.scrollLeft) tl.scrollLeft = 0 }
   } else pillG.to({ o: 0 })
 }
 
@@ -589,6 +596,9 @@ async function openCmd(mode, prefill) {
   requestAnimationFrame(() => { cmdInput.focus(); cmdInput.select() })
   lastTyped = cmdInput.value
   refresh(cmdInput.value)
+  // Nova: the quick actions and the results rise in one after another
+  novaStagger($('#cmd-quick').querySelectorAll('.qa'), { step: 40, y: 6 })
+  novaStagger([cmdResults], { step: 0, y: 10, delay: 60 })
 }
 function closeCmd(instant) {
   if (overlayOpen !== 'cmd') return
@@ -736,6 +746,18 @@ function go(text) {
   forceNewTab = false
 }
 
+// Nova staggered entrance: things arrive 40ms apart on a soft spring curve. Still under Motion Off / reduced motion.
+function novaStagger(els, { step = 40, max = 10, y = 8, delay = 30 } = {}) {
+  if (!els || (Jelly.getMode && Jelly.getMode() === 'off')) return
+  let i = 0
+  for (const el of els) {
+    if (!el || !el.animate) continue
+    el.animate([{ opacity: 0, transform: `translateY(${y}px) scale(.97)` }, { opacity: 1, transform: 'none' }],
+      { duration: 460, delay: delay + Math.min(i, max) * step, easing: 'cubic-bezier(.3,1.35,.5,1)', fill: 'backwards' })
+    i++
+  }
+}
+
 // ---------------------------------------------------------------- popovers (site info, downloads)
 const pop = $('#popover')
 const popG = new SpringGroup({ s: 0.96, o: 0, y: -6 }, 'calm', v => { pop.style.transform = `translateY(${v.y}px) scale(${v.s})`; pop.style.opacity = Math.max(0, Math.min(1, v.o)) })
@@ -758,6 +780,7 @@ function openPopover(html, anchor, { above = false, wide = false } = {}) {
   showOverlay('pop')
   scrimS.to(0.35)
   popG.set({ s: 0.88, o: 0, y: above ? 12 : -12 }).to({ s: 1, o: 1, y: 0 })
+  novaStagger(pop.querySelectorAll(':scope > h3, :scope > .sub, :scope > .mm-head, :scope > .mm-update, :scope > .mm-tiles > .mm-tile, :scope > .mm-zoom, :scope > .item'), { step: 40, max: 12, y: above ? -6 : 6 })
   api.do('focusUI')
 }
 function closePopover(instant) {

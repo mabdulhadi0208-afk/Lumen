@@ -10,16 +10,10 @@
 ;(function () {
   // ---- edit this list every release: it is the "New in Lumen" act of the film (only this version's changes)
   const WHATS_NEW = {
-    version: '1.23',
+    version: '1.23',   // matches every 1.23.x; the film shows the exact version
     items: [
-      { icon: 'sparkle', text: 'Lumen Nova: a brand new look for absolutely everything, made of real liquid glass' },
-      { icon: 'tabs', text: 'A new browser: tabs, the address bar, menus and the command bar rebuilt' },
-      { icon: 'clock', text: 'A new New Tab clock with styles to pick from' },
-      { icon: 'layers', text: 'Lumen draws its own right-click menus and pop-ups now' },
-      { icon: 'bolt', text: 'Surge and Koi redesigned to match' },
-      { icon: 'moon', text: 'Lumen keeps running in the background for Surge and Koi: Cmd Q closes the windows, Cmd Option Q quits everything' },
-      { icon: 'star', text: 'Passkeys work on real sites, and your passkeys pop up right under the sign-in field' },
-      { icon: 'play', text: 'A new film, reshot from the first frame to the last' },
+      { icon: 'play', text: 'The intro plays smoothly now: the film no longer stutters on Mac' },
+      { icon: 'sparkle', text: 'The update card stays smooth while it downloads' },
     ],
   }
   const HEAD = 'ui-rounded,"SF Pro Rounded","SF Pro Display",-apple-system,system-ui,sans-serif'
@@ -407,8 +401,12 @@
     g.putImageData(im, 0, 0); return c.toDataURL()
   }
   // put the lens on an element's backdrop: three displacement passes (red bends most, blue least) for the chromatic rim
+  const LENS_IN_FILM = false
   function lens(el, o = {}) {
     if (still || !el || !defs || el.dataset.lens) return
+    // Speed: the film moves under every glass piece, so a displacement lens had to be recomputed for each one on
+    // every frame. That made the intro stutter on real Macs. In the film the glass gets plain frosted blur instead.
+    if (!LENS_IN_FILM) { el.dataset.lens = 'blur'; el.style.backdropFilter = `blur(${Math.min(o.blur ?? 10, 12)}px) saturate(${o.sat ?? 1.8})${o.bright ? ` brightness(${o.bright})` : ''}`; return }
     const w = Math.round(el.offsetWidth), h = Math.round(el.offsetHeight); if (w < 4 || h < 4) return
     const r = Math.min(parseFloat(getComputedStyle(el).borderTopLeftRadius) || 0, w / 2, h / 2)
     const S = o.scale ?? Math.min(44, Math.max(14, Math.min(w, h) * .16)), edge = o.edge ?? Math.min(56, Math.max(10, Math.min(w, h) * .32))
@@ -441,7 +439,8 @@
   const camera = { x: 0, y: 0, px: 0, py: 0, push: 0, roll: 0, lift: 0 }
   let bokeh = [], stars = [], caus = [], nebula = null, dofShown = -1
   function size() {
-    const scale = Math.min(1.25, devicePixelRatio || 1)
+    // the sky is soft light: drawing it below screen resolution looks the same and costs a fraction
+    const scale = Math.min(1, devicePixelRatio || 1) * (innerWidth * innerHeight > 1200000 ? .6 : .75)
     const r = cv.getBoundingClientRect(); W = Math.round(r.width) || innerWidth + 80; H = Math.round(r.height) || innerHeight + 80
     cv.width = Math.round(W * scale); cv.height = Math.round(H * scale)
     cx.setTransform(scale, 0, 0, scale, 0, 0)

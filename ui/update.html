@@ -26,7 +26,7 @@
   /* the living light field the glass refracts */
   .bg{position:absolute;inset:0;z-index:0;pointer-events:none;overflow:hidden}
   .bg .au{position:absolute;inset:-60px;filter:blur(30px)}
-  .bg .au i{position:absolute;width:300px;height:200px;border-radius:50%;animation:drift 14s ease-in-out infinite alternate}
+  .bg .au i{position:absolute;width:300px;height:200px;border-radius:50%;animation:drift 14s ease-in-out 2 alternate}
   .bg .au i:nth-child(1){left:-40px;top:-90px;background:color-mix(in srgb,var(--accent) 70%,transparent)}
   .bg .au i:nth-child(2){right:-30px;top:-60px;background:color-mix(in srgb,var(--a2) 60%,transparent);animation-duration:17s;animation-delay:-5s}
   .bg .au i:nth-child(3){left:34%;bottom:-120px;background:color-mix(in srgb,var(--a3) 55%,transparent);animation-duration:21s;animation-delay:-9s}
@@ -256,6 +256,9 @@ const cache = {}; let lensN = 0
 // three displacement passes (red bends most, blue least) give the chromatic fringe at the rim
 function lens(el, o = {}) {
   if (still) return
+  // Speed: the card's light field keeps moving, so a displacement lens over it was recomputed every frame (often on the CPU).
+  // Plain frosted glass looks nearly the same and keeps the card smooth while it downloads.
+  el.style.backdropFilter = `blur(${o.blur ?? 6}px) saturate(${o.sat ?? 1.8})`; return
   const w = Math.round(el.offsetWidth), h = Math.round(el.offsetHeight); if (w < 4 || h < 4) return
   const r = Math.min(parseFloat(getComputedStyle(el).borderTopLeftRadius) || 0, w / 2, h / 2)
   const S = o.scale ?? Math.min(36, Math.max(10, Math.min(w, h) * .4)), edge = o.edge ?? Math.min(30, Math.max(8, Math.min(w, h) * .4))

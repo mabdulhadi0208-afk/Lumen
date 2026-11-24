@@ -16,7 +16,7 @@ let updateState = {}
 let ROW = 36
 let GUT = 8
 Jelly.init({
-  buttons: '.ib, .btn, .pin, .site, .update, .wincontrols button, .tab .x, .tab .add, .tab .audio, .popover .seg button, .mm-tile, .qa, .bm, .ai-chip, .ai-send, .tg-close, .trm-go',
+  buttons: '.ib, .btn, .pin, .site, .update, .wincontrols button, .tab .x, .tab .add, .tab .audio, .tab .rl, .privchip, .tg-x, .popover .seg button, .mm-tile, .qa, .bm, .ai-chip, .ai-send, .tg-close, .trm-go',
   cards: '.prompt, .newtab',
   press: '.popover .item',
 })
@@ -29,6 +29,10 @@ setIcon('#btn-star', 'star'); setIcon('#btn-settings', 'gear'); setIcon('#btn-do
 setIcon('#find-prev', 'back'); setIcon('#find-next', 'forward'); setIcon('#find-close', 'close')
 $('#find-prev').firstChild.style.transform = 'rotate(90deg)'; $('#find-next').firstChild.style.transform = 'rotate(90deg)'
 $('.newtab .plus').innerHTML = ICONS.plus
+$('#find-ic').innerHTML = ICONS.search
+if (INCOGNITO) { const pc = $('#privchip'); pc.innerHTML = `${ICONS.mask}<span>Private</span>`; pc.classList.add('show') }
+$('#btn-update').innerHTML = `<i class="up-orb">${ICONS.download}</i><span class="up-l">Restart</span><span class="up-more">&nbsp;to update</span>`
+$('#btn-update').title = 'A new Lumen is ready. Restart to update.'
 $('#kbd-newtab').textContent = IS_MAC ? 'Cmd T' : 'Ctrl T'
 if (!IS_MAC) {
   $('#wincontrols').innerHTML = `<button data-w="close" class="x" title="Close">${ICONS.winClose}</button><button data-w="min" title="Minimize">${ICONS.winMin}</button><button data-w="max" title="Maximize">${ICONS.winMax}</button>`
@@ -47,7 +51,8 @@ function favHTML(t) {
   }
   const host = hostOf(url)
   const letter = esc((host[0] || '?').toUpperCase())
-  const fallback = `<span class="fav" style="background:hsl(${hue(host)} 55% 52%)">${letter}</span>`
+  // letter tile: a two-tone glass gem in a color picked from the site name
+  const fallback = `<span class="fav lf" style="--fh:${hue(host)}">${letter}</span>`
   if (!t.favicon) return fallback
   return `<img src="${esc(t.favicon)}" draggable="false" data-fallback="${esc(fallback)}">`
 }
@@ -106,6 +111,7 @@ function doLayout() {
   Object.assign(fb.style, { left: (rect.x + rect.width - fbW) + 'px', top: barTop + 'px', width: fbW + 'px', opacity: Math.min(1, findH.value / 46), transform: `translateY(${(findH.value - 46) * 0.25}px)` })
   if (!TOP && (!collapsed || peeking)) sidebar.style.width = sidebarW + 'px'
   $('#resizer').style.left = (sidebarW - 4) + 'px'
+  pageRect = rect
   const key = JSON.stringify(rect)
   if (key !== lastRectKey) { lastRectKey = key; api.do('layout', rect) }
 }
@@ -267,15 +273,19 @@ const pillG = new SpringGroup({ p: 0, o: 0, s: 1, w: 200 }, 'calm', v => {
 let drag = null
 
 function tabInner(t) {
-  return `<span class="icon">${favHTML(t)}${t.loading ? '<span class="spinner"></span>' : ''}</span>
-    <span class="title">${esc(titleOf(t))}</span>
+  // a crashed or frozen tab says so right on the tab, with its own Reload button
+  const broken = t.crashed || t.hung
+  const icon = t.crashed ? `<span class="fav sick">${ICONS.crash}</span>` : t.hung ? `<span class="fav sick hung">${ICONS.hourglass}</span>` : favHTML(t)
+  return `<span class="icon">${icon}${t.loading && !broken ? '<span class="spinner"></span>' : ''}</span>
+    <span class="title">${esc(titleOf(t))}${broken ? `<small class="tstate">${t.crashed ? 'Crashed' : 'Not responding'}</small>` : ''}</span>
+    ${broken ? `<button class="rl" title="${t.crashed ? 'This tab crashed. Reload it' : 'This page is not responding. Reload it'}">${ICONS.reload}</button>` : ''}
     <span class="split-badge">SPLIT</span>
     <span class="eq"><i></i><i></i><i></i></span>
     <button class="audio" title="${t.muted ? 'Unmute' : 'Mute'}">${t.muted ? ICONS.muted : ICONS.speaker}</button>
     <button class="add" title="New tab next to this one">${ICONS.plus}</button>
     <button class="x" title="Close tab">${ICONS.close}</button>`
 }
-function tabSig(t) { return [t.title, t.url, t.favicon, t.loading, t.muted, t.audible].join('|') }
+function tabSig(t) { return [t.title, t.url, t.favicon, t.loading, t.muted, t.audible, t.crashed, t.hung].join('|') }
 
 function renderTabs() {
   const pinned = S.tabs.filter(t => t.pinned)
@@ -298,7 +308,8 @@ function renderTabs() {
     el.classList.toggle('active', t.id === S.activeId)
     el.classList.toggle('asleep', t.asleep)
     el.classList.toggle('audible', t.audible)
-    el.title = titleOf(t)
+    el.classList.toggle('crashed', !!t.crashed); el.classList.toggle('hung', !t.crashed && !!t.hung)
+    el.title = titleOf(t) + (t.crashed ? ' (crashed, click to reload)' : t.hung ? ' (not responding)' : '')
   }
 
   // list
@@ -342,8 +353,10 @@ function renderTabs() {
     v.el.classList.toggle('asleep', t.asleep)
     v.el.classList.toggle('audible', t.audible)
     v.el.classList.toggle('muted', t.muted)
+    v.el.classList.toggle('crashed', !!t.crashed)
+    v.el.classList.toggle('hung', !t.crashed && !!t.hung)
     v.el.classList.toggle('insplit', t.id === S.splitId || (S.splitId && t.id === S.activeId))
-    v.el.title = titleOf(t)
+    v.el.title = titleOf(t) + (t.crashed ? ' (crashed)' : t.hung ? ' (not responding)' : '')
   })
   for (const [id, v] of tabViews) {
     if (seen.has(id) || v.leaving) continue
@@ -409,8 +422,10 @@ function renameGroup(gid) {
   const v = headViews.get(gid); if (!v) return
   const n = v.el.querySelector('.gn')
   n.contentEditable = 'plaintext-only'; n.focus()
+  v.el.classList.add('editing'); n.spellcheck = false
+  requestAnimationFrame(() => Jelly.kick && Jelly.kick(n, 0.5, 0.3))
   const sel = getSelection(); sel.selectAllChildren(n)
-  const done = save => { n.removeAttribute('contenteditable'); n.onblur = n.onkeydown = null; if (save) api.do('groupRename', gid, n.textContent.trim()); else renderTabs() }
+  const done = save => { v.el.classList.remove('editing'); n.removeAttribute('contenteditable'); n.onblur = n.onkeydown = null; if (save) api.do('groupRename', gid, n.textContent.trim()); else renderTabs() }
   n.onkeydown = e => { if (e.key === 'Enter') { e.preventDefault(); done(true) } else if (e.key === 'Escape') done(false) }
   n.onblur = () => done(true)
 }
@@ -441,7 +456,7 @@ function bindTab(v, id) {
   const coord = e => TOP ? e.clientX : e.clientY
   el.addEventListener('pointerdown', e => {
     if (e.button === 1) { e.preventDefault(); return }
-    if (e.button !== 0 || e.target.closest('.x, .audio, .add')) return
+    if (e.button !== 0 || e.target.closest('.x, .audio, .add, .rl')) return
     drag = { id, active: false, start: coord(e), startPos: LAYOUT.pos.get(id) || 0, index: v.index }
     el.setPointerCapture(e.pointerId)
     // press squashes the tab a little
@@ -495,12 +510,31 @@ function bindTab(v, id) {
     if (e.target.closest('.x')) { e.stopPropagation(); api.do('close', id) }
     else if (e.target.closest('.add')) { e.stopPropagation(); api.do('newTabAfter', id) }
     else if (e.target.closest('.audio')) { e.stopPropagation(); api.do('mute', id) }
+    else if (e.target.closest('.rl')) { e.stopPropagation(); reloadTab(id) }
   })
   el.addEventListener('contextmenu', e => { e.preventDefault(); api.do('tabMenu', id) })
   el.addEventListener('dblclick', e => { if (!e.target.closest('button')) api.do('pin', id) })
 }
 
-pinsEl.addEventListener('click', e => { const p = e.target.closest('.pin'); if (p) api.do('activate', +p.dataset.id) })
+pinsEl.addEventListener('click', e => {
+  const p = e.target.closest('.pin'); if (!p) return
+  const t = S.tabs.find(x => x.id === +p.dataset.id)
+  if (t && (t.crashed || t.hung)) reloadTab(t.id); else api.do('activate', +p.dataset.id)
+})
+// reload a crashed or frozen tab: bring it forward, then reload (main rebuilds a crashed tab's view)
+function reloadTab(id) {
+  const go = () => api.do('reload')
+  if (S.activeId === id) go(); else Promise.resolve(api.do('activate', id)).then(go, go)
+}
+// tell you when the tab you are looking at crashes or stops responding, with a Reload button right there
+const tabHealth = new Map()
+function watchTabHealth() {
+  for (const t of S.tabs) {
+    const was = tabHealth.get(t.id) || '', now = t.crashed ? 'crashed' : t.hung ? 'hung' : ''
+    if (now && now !== was && t.id === S.activeId) toast(now === 'crashed' ? 'This tab crashed' : 'This page is not responding', { label: 'Reload', run: () => reloadTab(t.id) }, 'bad')
+    tabHealth.set(t.id, now)
+  }
+}
 pinsEl.addEventListener('auxclick', e => { const p = e.target.closest('.pin'); if (p && e.button === 1) api.do('close', +p.dataset.id) })
 pinsEl.addEventListener('contextmenu', e => { const p = e.target.closest('.pin'); if (p) { e.preventDefault(); api.do('tabMenu', +p.dataset.id) } })
 // double click empty tab area -> new tab
@@ -603,12 +637,13 @@ async function openCmd(mode, prefill) {
   // Nova: the quick actions and the results rise in one after another
   novaStagger($('#cmd-quick').querySelectorAll('.qa'), { step: 40, y: 6 })
   novaStagger([cmdResults], { step: 0, y: 10, delay: 60 })
+  glassUnder(cmd)
 }
 function closeCmd(instant) {
   if (overlayOpen !== 'cmd') return
   overlayOpen = 'closing'
   scrimS.to(0)
-  const done = () => { cmd.classList.remove('show'); cmdResults.innerHTML = ''; if (overlayOpen === 'closing') hideOverlay() }
+  const done = () => { cmd.classList.remove('show'); cmdResults.innerHTML = ''; if (window.Glass) Glass.underOff(); if (overlayOpen === 'closing') hideOverlay() }
   if (instant || getMotion() === 'off') { cmdG.set({ o: 0 }); done(); return }
   cmdG.to({ s: 0.98, o: 0, y: -4 })
   setTimeout(done, 140)
@@ -762,13 +797,27 @@ function novaStagger(els, { step = 40, max = 10, y = 8, delay = 30 } = {}) {
   }
 }
 
+// Liquid glass over the page: the chrome cannot see the web page through a backdrop filter, so overlay glass gets a
+// snapshot of the page painted right under it, and refracts and blurs that (ui/glass.js)
+let pageRect = null
+function glassUnder(el) {
+  if (!window.Glass || !Glass.enabled() || S.splitId || !S.activeId || !pageRect) return
+  const rect = { ...pageRect }, want = overlayOpen
+  Promise.resolve(api.do('tabThumb', S.activeId)).then(src => {
+    if (src && overlayOpen === want && el.classList.contains('show')) Glass.under(el, rect, src)
+  }).catch(() => {})
+}
+
+// hero banner bits: two drifting colour blobs and a big faint outline icon behind a header
+const heroBits = icon => `<i class="hb a"></i><i class="hb b"></i><span class="hart">${ICONS[icon] || ''}</span>`
+
 // ---------------------------------------------------------------- popovers (site info, downloads)
 const pop = $('#popover')
 const popG = new SpringGroup({ s: 0.96, o: 0, y: -6 }, 'calm', v => { pop.style.transform = `translateY(${v.y}px) scale(${v.s})`; pop.style.opacity = Math.max(0, Math.min(1, v.o)) })
-function openPopover(html, anchor, { above = false, wide = false } = {}) {
+function openPopover(html, anchor, { above = false, wide = false, mini = false } = {}) {
   if (overlayOpen === 'cmd') closeCmd(true)
   pop.innerHTML = html
-  pop.classList.toggle('wide', wide); pop.classList.remove('sheet')
+  pop.classList.toggle('wide', wide); pop.classList.remove('sheet'); pop.classList.toggle('mini', mini)
   const r = anchor.getBoundingClientRect()
   overlay.classList.add('show')   // the overlay must be visible to measure the popover
   pop.classList.add('show')
@@ -784,14 +833,15 @@ function openPopover(html, anchor, { above = false, wide = false } = {}) {
   showOverlay('pop')
   scrimS.to(0.35)
   popG.set({ s: 0.88, o: 0, y: above ? 12 : -12 }).to({ s: 1, o: 1, y: 0 })
-  novaStagger(pop.querySelectorAll(':scope > h3, :scope > .sub, :scope > .mm-head, :scope > .mm-update, :scope > .mm-tiles > .mm-tile, :scope > .mm-zoom, :scope > .item'), { step: 40, max: 12, y: above ? -6 : 6 })
+  glassUnder(pop)
+  novaStagger(pop.querySelectorAll(':scope > h3, :scope > .sub, :scope > .chero, :scope > .mm-head, :scope > .mm-update, :scope > .mm-tiles > .mm-tile, :scope > .mm-zoom, :scope > .item'), { step: 40, max: 12, y: above ? -6 : 6 })
   api.do('focusUI')
 }
 function closePopover(instant) {
   if (overlayOpen !== 'pop') return
   overlayOpen = 'closing'
   scrimS.to(0)
-  const done = () => { pop.classList.remove('show'); if (overlayOpen === 'closing') hideOverlay() }
+  const done = () => { pop.classList.remove('show'); if (window.Glass) Glass.underOff(); if (overlayOpen === 'closing') hideOverlay() }
   if (instant) { popG.set({ o: 0 }); done(); return }
   popG.to({ s: 0.98, o: 0 })
   setTimeout(done, 130)
@@ -805,12 +855,12 @@ async function openSiteInfo() {
   if (!info) return
   const perms = Object.entries(info.permissions || {})
   const html = `
-    <h3>${esc(info.host)}</h3>
-    <div class="sub">${info.secure ? ICONS.lock + ' Connection is secure' : ICONS.unlock + ' Connection is not secure'}</div>
+    <div class="si-head chero ${info.secure ? 'ok' : 'bad'}">${heroBits('shield')}<span class="si-lock">${info.secure ? ICONS.lock : ICONS.unlock}</span><div class="grow"><h3>${esc(info.host)}</h3>
+    <div class="sub">${info.secure ? 'Connection is secure' : 'Connection is not secure'}</div></div>${S.blocked > 0 ? `<span class="si-count"><b>${S.blocked > 999 ? '999+' : S.blocked}</b>blocked</span>` : ''}</div>
     ${info.forceDark ? `<div class="item" data-act="dark"><span class="ri">${ICONS.moon}</span><div class="grow">Dark mode on this site<div class="small">${info.darkOff ? 'Off here, showing the site as designed' : 'Light pages are shown dark'}</div></div><label class="switch sm"><input type="checkbox" ${info.darkOff ? '' : 'checked'} tabindex="-1"><span></span></label></div>` : ''}
     ${info.adblock ? `<div class="item" data-act="adblock"><span class="ri">${ICONS.shield}</span><div class="grow">Ad blocker on this site<div class="small">${info.adOff ? 'Off here. Ads can show on this site.' : `${info.blocked} blocked on this page`}</div></div><label class="switch sm"><input type="checkbox" ${info.adOff ? '' : 'checked'} tabindex="-1"><span></span></label></div>` : ''}
-    <div class="item"><span class="ri">${ICONS.search}</span><div class="grow">Zoom</div><div class="zoom"><button class="ib sm" data-z="-0.5">${ICONS.minus}</button><span id="zv">${S.zoom}%</span><button class="ib sm" data-z="0.5">${ICONS.plus}</button></div></div>
-    ${perms.length ? '<div class="sep"></div>' + perms.map(([k, v]) => `<div class="item"><span class="ri">${ICONS.check}</span><div class="grow">${esc(PERM_NAMES[k] || k)}</div><div class="small">${v === 'allow' ? 'Allowed' : 'Blocked'}</div></div>`).join('') + `<div class="item" data-act="reset"><span class="ri">${ICONS.reload}</span><div class="grow">Reset permissions</div></div>` : ''}
+    <div class="item"><span class="ri">${ICONS.search}</span><div class="grow">Zoom</div><div class="zoom stepper"><button class="ib sm" data-z="-0.5" title="Zoom out">${ICONS.minus}</button><span id="zv">${S.zoom}%</span><button class="ib sm" data-z="0.5" title="Zoom in">${ICONS.plus}</button></div></div>
+    ${perms.length ? '<div class="sep"></div>' + perms.map(([k, v]) => `<div class="item perm"><span class="ri">${ICONS[/geo/.test(k) ? 'location' : /video|display/.test(k) ? 'camera' : /audio|midi/.test(k) ? 'speaker' : /notif/.test(k) ? 'bolt' : /clip/.test(k) ? 'link' : 'shield']}</span><div class="grow">${esc(PERM_NAMES[k] || k)}</div><span class="pstate ${v === 'allow' ? 'on' : 'off'}">${v === 'allow' ? 'Allowed' : 'Blocked'}</span></div>`).join('') + `<div class="item" data-act="reset"><span class="ri">${ICONS.reload}</span><div class="grow">Reset permissions</div></div>` : ''}
     <div class="sep"></div>
     <div class="item" data-act="reader"><span class="ri">${ICONS.book}</span><div class="grow">Reader mode<div class="small" id="rtime"></div></div></div>
     <div class="item" data-act="qr"><span class="ri">${ICONS.phone}</span><div class="grow">Send to phone<div class="small">Show a QR code for this page</div></div></div>
@@ -862,8 +912,8 @@ function renderNowPlaying() {
   const media = S.tabs.filter(t => t.id !== S.activeId && (t.playing || (t.mediaAt && Date.now() - t.mediaAt < 10 * 60000)))
     .sort((a, b) => (b.playing - a.playing) || (b.mediaAt - a.mediaAt))[0]
   if (!media) { np.classList.remove('show'); np.innerHTML = ''; return }
-  np.classList.add('show')
-  np.innerHTML = `<button class="np-main" data-np="go" title="Go to tab"><span class="np-ico">${favHTML(media)}</span><span class="np-t"><b>${esc(titleOf(media))}</b><span>${media.playing ? 'Playing' : 'Paused'}  ·  ${esc(hostOf(media.url))}</span></span></button>
+  np.classList.add('show'); np.classList.toggle('playing', !!media.playing)
+  np.innerHTML = `<button class="np-main" data-np="go" title="Go to tab"><span class="np-ico">${favHTML(media)}</span><span class="np-t"><b>${esc(titleOf(media))}</b><span>${media.playing ? '<i class="np-eq"><i></i><i></i><i></i></i>Playing' : 'Paused'}  ·  ${esc(hostOf(media.url))}</span></span></button>
     <button class="ib" data-np="toggle" title="${media.playing ? 'Pause' : 'Play'}">${media.playing ? '<svg viewBox="0 0 16 16" width="16" height="16" fill="currentColor"><rect x="4" y="3" width="3" height="10" rx="1"/><rect x="9" y="3" width="3" height="10" rx="1"/></svg>' : '<svg viewBox="0 0 16 16" width="16" height="16" fill="currentColor"><path d="M5 3.2v9.6c0 .5.6.8 1 .5l7-4.8c.4-.3.4-.8 0-1L6 2.7c-.4-.3-1 0-1 .5z"/></svg>'}</button>`
   np.dataset.tab = media.id
 }
@@ -878,10 +928,13 @@ function openShortcuts() {
     ['Page', [['Find', `${K.cmd} F`], ['Translate', `${K.opt} ${K.cmd} T`], ['Reader mode', `${K.sh} ${K.cmd} E`], ['Save to Read later', `${K.sh} ${K.cmd} D`], ['Picture in picture', `${K.sh} ${K.cmd} P`], ['Video speed', 'Shift  >  <'], ['Screenshot', `${K.sh} ${K.cmd} 2`], ['Zoom', `${K.cmd} +  -  0`]]],
     ['Lumen', [['Split view', `${K.sh} ${K.cmd} \\`], ['Toggle sidebar', `${K.sh} ${K.cmd} S`], ['Focus mode', `${K.sh} ${K.cmd} F`], ['Tabs on top / side', `${K.opt} ${K.cmd} S`], ['Copy clean link', `${K.sh} ${K.cmd} C`], ['Private window', `${K.sh} ${K.cmd} N`], ['This sheet', `${K.cmd} /`]]],
   ]
-  const html = `<div class="sc-head"><b>Keyboard shortcuts</b><button class="ib sm" data-sc="close">${ICONS.close}</button></div><div class="sc-grid">${groups.map(([g, rows]) => `<div><div class="mm-label">${g}</div>${rows.map(([l, k]) => `<div class="sc-row"><span>${esc(l)}</span><kbd>${esc(k)}</kbd></div>`).join('')}</div>`).join('')}</div>`
+  // every key is its own keycap; gestures (clicks, swipes) get one soft chip
+  const keys = k => /click|finger/i.test(k) ? `<kbd class="gesture">${esc(k)}</kbd>` : `<span class="keys">${k.split(/\s+/).filter(Boolean).map(x => `<kbd>${esc(x)}</kbd>`).join('')}</span>`
+  const gi = { Tabs: 'tabs', Navigate: 'arrowRight', Page: 'file', Lumen: 'sparkle' }
+  const html = `<div class="sc-head chero">${heroBits('keyboard')}<span class="sc-orb">${ICONS.keyboard}</span><div class="grow"><b>Keyboard shortcuts</b><div class="sc-sub">Everything Lumen does, one keystroke away. Press ${K.cmd} / any time.</div></div><button class="ib sm" data-sc="close" title="Close">${ICONS.close}</button></div><div class="sc-grid">${groups.map(([g, rows]) => `<div class="sc-sec"><div class="mm-label sc-label"><span class="sc-gi">${ICONS[gi[g]]}</span>${g}</div>${rows.map(([l, k]) => `<div class="sc-row"><span>${esc(l)}</span>${keys(k)}</div>`).join('')}</div>`).join('')}</div>`
   if (overlayOpen === 'cmd') closeCmd(true)
   pop.innerHTML = html
-  pop.classList.add('wide', 'sheet')
+  pop.classList.add('wide', 'sheet'); pop.classList.remove('mini')
   pop.style.maxHeight = ''; pop.style.overflowY = ''   // a menu opened before may have left a height limit
   overlay.classList.add('show'); pop.classList.add('show')
   pop.style.left = Math.max(8, (innerWidth - pop.offsetWidth) / 2) + 'px'
@@ -889,6 +942,8 @@ function openShortcuts() {
   pop.style.transformOrigin = '50% 30%'
   showOverlay('pop'); scrimS.to(0.4)
   popG.set({ s: 0.9, o: 0, y: 10 }).to({ s: 1, o: 1, y: 0 })
+  novaStagger(pop.querySelectorAll('.sc-sec'), { step: 50, y: 8 })
+  glassUnder(pop)
   api.do('focusUI')
   pop.onclick = e => { if (e.target.closest('[data-sc="close"]')) closePopover() }
 }
@@ -902,7 +957,7 @@ async function openMainMenu() {
     : up.status === 'downloading' ? `<div class="mm-update quiet">${ICONS.download}<span>Downloading update  ${Math.round((up.progress || 0))}%</span></div>` : ''
   const item = (act, icon, label, keys, extra = '') => `<div class="item mm" data-mm="${act}"><span class="ri">${ICONS[icon]}</span><div class="grow">${label}</div>${extra}${keys ? `<kbd>${keys}</kbd>` : ''}</div>`
   const html = `
-    <div class="mm-head"><img class="mm-logo img" src="../pages/icon-${esc(settings.appIcon || 'default')}.png" alt=""><div class="grow"><div class="mm-title">Lumen${info.incognito ? ' <span class="mm-pill">Private</span>' : ''}</div><div class="mm-sub">Version ${esc(info.version || '')}</div></div><button class="ib sm" data-mm="settings" title="Settings">${ICONS.gear}</button></div>
+    <div class="mm-head chero">${heroBits('sparkle')}<img class="mm-logo img" src="../pages/icon-${esc(settings.appIcon || 'default')}.png" alt=""><div class="grow"><div class="mm-title">Lumen${info.incognito ? ' <span class="mm-pill">Private</span>' : ''}</div><div class="mm-sub">Version ${esc(info.version || '')}</div></div><button class="ib sm" data-mm="settings" title="Settings">${ICONS.gear}</button></div>
     ${updateLine}
     <div class="mm-tiles">
       <button class="mm-tile" data-mm="newtab">${ICONS.plus}<span>New Tab</span></button>
@@ -972,11 +1027,13 @@ async function openMainMenu() {
 function fmtBytes(n) { if (!n) return '0 B'; const u = ['B', 'KB', 'MB', 'GB']; let i = 0; while (n >= 1024 && i < 3) { n /= 1024; i++ } return n.toFixed(i ? 1 : 0) + ' ' + u[i] }
 function downloadsHTML() {
   const list = downloads.slice(0, 8)
-  if (!list.length) return '<div class="empty">No downloads yet</div>'
-  return `<h3>Downloads</h3><div style="height:6px"></div>` + list.map(d => {
+  if (!list.length) return `<div class="empty dl-empty"><span class="em-orb">${ICONS.download}</span><b>No downloads yet</b><span>Files you download land here, with a live progress ring on the toolbar.</span></div>`
+  const live = list.filter(d => d.state === 'progressing').length
+  return `<div class="dl-head chero">${heroBits('download')}<span class="hero-ic">${ICONS.download}</span><div class="grow"><h3>Downloads</h3><div class="sub">${list.length} recent ${list.length === 1 ? 'file' : 'files'}</div></div>${live ? `<span class="dl-live">${live} in progress</span>` : ''}</div><div style="height:6px"></div>` + list.map(d => {
     const pct = d.total ? Math.round(d.received / d.total * 100) : 0
     const status = d.state === 'progressing' ? `${fmtBytes(d.received)} of ${d.total ? fmtBytes(d.total) : '?'}${d.paused ? ' (paused)' : ''}` : d.state === 'completed' ? (d.exists ? fmtBytes(d.total || d.received) : 'Moved or deleted') : d.state === 'cancelled' ? 'Cancelled' : 'Failed'
-    return `<div class="item" data-id="${d.id}" data-act="${d.state === 'completed' ? 'open' : ''}"><span class="ri">${ICONS.download}</span><div class="grow"><div style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(d.name)}</div><div class="small">${esc(status)}</div>${d.state === 'progressing' ? `<div class="bar"><i style="width:${pct}%"></i></div>` : ''}</div>
+    const ext = (String(d.name).match(/\.([a-z0-9]{1,5})$/i) || [, ''])[1].toUpperCase()
+    return `<div class="item dl ${d.state}" data-id="${d.id}" data-act="${d.state === 'completed' ? 'open' : ''}"><span class="ri ft">${d.state === 'progressing' ? ICONS.download : d.state === 'completed' ? ICONS.file : ICONS.close}${ext && d.state === 'completed' ? `<em>${esc(ext.slice(0, 4))}</em>` : ''}</span><div class="grow"><div style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(d.name)}</div><div class="small">${esc(status)}</div>${d.state === 'progressing' ? `<div class="bar"><i style="width:${pct}%"></i></div>` : ''}</div>
       ${d.state === 'completed' && d.exists ? `<button class="ib sm" data-act="show" title="Show in folder">${ICONS.folder}</button>` : ''}
       ${d.state === 'progressing' ? `<button class="ib sm" data-act="cancel" title="Cancel">${ICONS.close}</button>` : ''}
       ${d.state === 'interrupted' || d.state === 'cancelled' ? `<button class="ib sm" data-act="retry" title="Retry">${ICONS.reload}</button>` : ''}</div>`
@@ -1041,16 +1098,18 @@ const promptsEl = $('#prompts')
 function addPrompt(p) {
   const el = document.createElement('div')
   el.className = 'prompt'
+  const pic = p.kind === 'permission' ? (/locat/i.test(p.text) ? 'location' : /camera|video/i.test(p.text) ? 'camera' : /micro|audio/i.test(p.text) ? 'speaker' : /notif/i.test(p.text) ? 'bolt' : 'shield') : p.kind === 'translate' ? 'translate' : 'key'
+  el.dataset.kind = p.kind || 'password'
   if (p.kind === 'permission') {
-    el.innerHTML = `<div class="ph">${esc(p.host)}</div><div class="pt">Wants to ${esc(p.text)}</div>
-      <label><input type="checkbox" checked> Remember for this site</label>
+    el.innerHTML = `<span class="pic">${ICONS[pic]}</span><div class="ph">${esc(p.host)}</div><div class="pt">Wants to ${esc(p.text)}</div>
+      <label class="pcheck"><input type="checkbox" checked><span class="box">${ICONS.check}</span>Remember for this site</label>
       <div class="row"><button class="btn primary" data-a="allow">Allow</button><button class="btn" data-a="block">Block</button></div>`
   } else if (p.kind === 'translate') {
-    el.innerHTML = `<div class="ph">Lumen Translate</div><div class="pt">${esc(p.text)}</div>
-      <label><input type="checkbox"> Always translate ${esc(p.lang || 'this language')}</label>
+    el.innerHTML = `<span class="pic">${ICONS[pic]}</span><div class="ph">Lumen Translate</div><div class="pt">${esc(p.text)}</div>
+      <label class="pcheck"><input type="checkbox"><span class="box">${ICONS.check}</span>Always translate ${esc(p.lang || 'this language')}</label>
       <div class="row"><button class="btn primary" data-a="translate">Translate</button><button class="btn" data-a="later">Not now</button><div class="spacer"></div><button class="btn" data-a="never">Never</button></div>`
   } else {
-    el.innerHTML = `<div class="ph">${esc(p.host)}</div><div class="pt">${esc(p.text)}</div>
+    el.innerHTML = `<span class="pic">${ICONS[pic]}</span><div class="ph">${esc(p.host)}</div><div class="pt">${esc(p.text)}</div>
       <div class="row"><button class="btn primary" data-a="save">Save</button><button class="btn" data-a="later">Not now</button><div class="spacer"></div><button class="btn" data-a="never">Never</button></div>`
   }
   promptsEl.appendChild(el)
@@ -1083,9 +1142,12 @@ const toastEl = $('#toast')
 const toastG = new SpringGroup({ y: 10, o: 0 }, 'calm', v => { toastEl.style.transform = `translateY(${v.y}px)`; toastEl.style.opacity = Math.max(0, Math.min(1, v.o)) })
 let toastT
 // toast(message) or toast(message, { label: 'Undo', run }) for one action button
-function toast(msg, action) {
-  toastEl.textContent = msg
+function toast(msg, action, kind) {
+  toastEl.innerHTML = `<span class="t-orb"></span><span class="t-msg"></span>`
+  toastEl.querySelector('.t-msg').textContent = msg
   toastEl.classList.toggle('act', !!action)
+  toastEl.classList.toggle('bad', kind === 'bad')
+  requestAnimationFrame(() => Jelly.kick && Jelly.kick(toastEl.querySelector('.t-orb'), 0.8, 0.6))
   if (action) {
     const b = document.createElement('button'); b.className = 'toast-btn'; b.textContent = action.label
     b.onclick = () => { clearTimeout(toastT); toastG.to({ y: 10, o: 0 }); toastEl.classList.remove('act'); action.run() }
@@ -1103,7 +1165,7 @@ api.on('state', s => {
   S = s
   updateLoadbar()
   if (document.body.classList.contains('winfs') !== !!s.winFull) { document.body.classList.toggle('winfs', !!s.winFull); queueLayout() }
-  renderChrome(); renderTabs(); renderNowPlaying()
+  renderChrome(); renderTabs(); renderNowPlaying(); watchTabHealth()
   $('#extbar').classList.toggle('has', !!document.querySelector('#actions') && ($('#actions').shadowRoot ? $('#actions').shadowRoot.querySelectorAll('.action, button').length > 0 : false))
 })
 api.on('settings', s => applySettings(s))
@@ -1114,7 +1176,11 @@ api.on('toast', m => toast(m))
 api.on('yt-stuck', h => toast(`Video still stuck on ${h || 'this site'}?`, { label: 'Pause ad blocker here', run: () => api.do('siteAdblock', false) }))
 api.on('parcel-saved', p => toast(/^(Tracking|Already)/.test(p.name || '') ? p.name : 'Order saved to Parcels', { label: 'View', run: () => api.do('openPage', 'parcels') }))
 api.on('focus-mode', on => document.body.classList.toggle('focusmode', !!on))
-api.on('hover-url', u => { const h = $('#hoverurl'); if (u) h.textContent = u; h.classList.toggle('show', !!u) })
+api.on('hover-url', u => {
+  const h = $('#hoverurl')
+  if (u) { let host = u, rest = ''; try { const x = new URL(u); host = x.host.replace(/^www\./, ''); rest = (x.pathname === '/' ? '' : x.pathname) + x.search } catch {} h.innerHTML = `${ICONS.link}<span class="hu-t"><b>${esc(host)}</b>${esc(rest)}</span>` }
+  h.classList.toggle('show', !!u)
+})
 api.on('update', u => { updateState = u; $('#btn-update').classList.toggle('show', u.status === 'ready') })
 api.on('fullscreen', f => { fullscreenWindow = f; document.body.classList.toggle('winfs', !!f); queueLayout() })
 let fullscreenWindow = false
@@ -1224,6 +1290,8 @@ function playIntro(opts = {}) {
 let aiOpen = false, aiBusy = null, aiHistory = [], aiSeq = 0
 const aiLog = $('#ai-log'), aiQ = $('#ai-q')
 $('#ai-close').innerHTML = ICONS.close; $('#ai-clear').innerHTML = ICONS.reload; $('#ai-send').innerHTML = ICONS.arrowRight
+for (const [k, ic] of [['summarize', 'book'], ['keypoints', 'layers'], ['explain', 'sparkle']]) { const c = document.querySelector(`.ai-chip[data-ai="${k}"]`); if (c) c.insertAdjacentHTML('afterbegin', ICONS[ic]) }
+$('#ai-addkey').insertAdjacentHTML('afterbegin', ICONS.key); $('#ai-hart').innerHTML = ICONS.sparkle
 function mdToHTML(src) {
   const lines = esc(src).split('\n'); let out = '', list = null
   const inline = s => s.replace(/`([^`]+)`/g, '<code>$1</code>').replace(/\*\*([^*]+)\*\*/g, '<b>$1</b>').replace(/(^|[^*])\*([^*\n]+)\*/g, '$1<i>$2</i>')
@@ -1301,7 +1369,7 @@ $('#ai-addkey').onclick = () => api.do('openPage', 'settings/ai')
 async function openQR() {
   const q = await api.do('qr')
   if (!q) { toast('Open a web page first'); return }
-  openPopover(`<h3>Open on your phone</h3><div class="sub">Point your phone camera at the code.</div>
+  openPopover(`<div class="qr-head chero">${heroBits('phone')}<span class="hero-ic">${ICONS.qr}</span><div class="grow"><h3>Open on your phone</h3><div class="sub">Point your phone camera at the code.</div></div></div>
     <div class="qrbox"><img src="${q.img}" alt=""></div>
     <div class="qrurl">${esc(q.url.length > 70 ? q.url.slice(0, 70) + '...' : q.url)}</div>
     <div class="item" data-act="copy"><span class="ri">${ICONS.link}</span><div class="grow">Copy link</div></div>`, $('#urlbar'))
@@ -1501,7 +1569,7 @@ async function openTranslateMenu() {
   if (!st.web) { toast('Open a web page to translate it'); return }
   const cur = st.to
   const fromName = st.from ? english(st.from) : ''
-  openPopover(`<div class="trm-head"><span class="ic">${ICONS.translate}</span><div class="grow"><div style="font-weight:650">Translate</div><div class="small">${st.from ? `This page is in ${esc(fromName)}` : 'Detecting the language'}</div></div></div>
+  openPopover(`<div class="trm-head chero">${heroBits('globe')}<span class="ic">${ICONS.translate}</span><div class="grow"><div style="font-weight:650">Translate</div><div class="small">${st.from ? `This page is in ${esc(fromName)}` : 'Detecting the language'}</div></div></div>
     ${st.translated ? `<button class="trm-go orig" data-tr="orig">Show the original</button>` : `<button class="trm-go" data-tr="go">Translate to ${esc(english(cur))}</button>`}
     <div class="small" style="padding:4px 6px 2px">Or pick a language</div>
     <div class="trm-langs">${TR_LANGS.map(c => `<button data-to="${c}" class="${c === cur ? 'cur' : ''}"><span dir="auto">${esc(native(c))}</span><small>${esc(english(c))}</small></button>`).join('')}</div>
@@ -1618,7 +1686,7 @@ function tgRender() {
     return `<div class="tg-card ${t.id === S.activeId ? 'cur' : ''}" data-id="${t.id}" style="animation-delay:${Math.min(i, 14) * 22}ms">
       <div class="tg-thumb">${th ? `<img src="${th}" alt="">` : `<div class="tg-ph">${favHTML(t)}</div>`}<button class="tg-x" title="Close tab">${ICONS.close}</button>${t.audible && !t.muted ? '<span class="tg-badge">Playing</span>' : t.asleep ? '<span class="tg-badge dim">Asleep</span>' : ''}</div>
       <div class="tg-meta"><span class="tg-fav">${favHTML(t)}</span><div class="grow"><div class="tg-title">${esc(titleOf(t))}</div><div class="tg-host">${g ? `<i style="background:${GROUP_COLORS[g.color] || g.color}"></i>${esc(g.name)}  ` : ''}${esc(/^lumen:/.test(t.url || '') ? 'Lumen' : host)}</div></div></div></div>`
-  }).join('') || '<div class="tg-empty">No tabs match</div>'
+  }).join('') || `<div class="tg-empty"><span class="tge-orb">${ICONS.search}</span><b>No tabs match</b><span>Try another word, or press Esc to go back.</span></div>`
 }
 async function openTabGrid() {
   if (tgOpen) return
@@ -1683,7 +1751,7 @@ async function bmLoad() { try { bmItems = await api.do('bmList') || [] } catch {
 $('#bmbar').addEventListener('click', e => {
   const c = e.target.closest('.bm'); if (!c) return
   if (c.id === 'bm-more') {
-    openPopover(`<h3>Bookmarks</h3><div style="max-height:420px;overflow:auto">${bmItems.map((b, i) => `<div class="item" data-bm="${i}"><span class="ri">${ICONS.star}</span><div class="grow">${esc(b.title || hostOf(b.url))}<div class="small">${esc(hostOf(b.url))}</div></div></div>`).join('')}</div>`, c, { wide: true })
+    openPopover(`<h3>Bookmarks</h3><div class="sub">${bmItems.length} saved</div><div class="bm-list" style="max-height:420px;overflow:auto">${bmItems.map((b, i) => `<div class="item" data-bm="${i}"><span class="ri">${favHTML({ url: b.url, favicon: (() => { try { return new URL(b.url).origin + '/favicon.ico' } catch { return '' } })() })}</span><div class="grow">${esc(b.title || hostOf(b.url))}<div class="small">${esc(hostOf(b.url))}</div></div></div>`).join('')}</div>`, c, { wide: true })
     pop.onclick = ev => { const it = ev.target.closest('[data-bm]'); if (it) { closePopover(true); api.do('navigate', bmItems[+it.dataset.bm].url, ev.metaKey || ev.ctrlKey) } }
     return
   }
@@ -1693,7 +1761,7 @@ $('#bmbar').addEventListener('auxclick', e => { const c = e.target.closest('.bm[
 $('#bmbar').addEventListener('contextmenu', e => {
   const c = e.target.closest('.bm[data-i]'); if (!c) return
   e.preventDefault(); const b = bmItems[+c.dataset.i]
-  openPopover(`<div class="item" data-a="open"><span class="ri">${ICONS.plus}</span><div class="grow">Open in new tab</div></div><div class="item" data-a="rm"><span class="ri">${ICONS.trash}</span><div class="grow">Remove bookmark</div></div>`, c)
+  openPopover(`<div class="mini-head">${esc(b.title || hostOf(b.url))}</div><div class="item" data-a="open"><span class="ri">${ICONS.plus}</span><div class="grow">Open in new tab</div></div><div class="item danger" data-a="rm"><span class="ri">${ICONS.trash}</span><div class="grow">Remove bookmark</div></div>`, c, { mini: true })
   pop.onclick = ev => { const it = ev.target.closest('[data-a]'); if (!it) return; closePopover(true); if (it.dataset.a === 'open') api.do('navigate', b.url, true); else api.do('bmRemove', b.url).then(bmLoad) }
 })
 api.on('state', () => { clearTimeout(bmT); bmT = setTimeout(bmLoad, 250) })

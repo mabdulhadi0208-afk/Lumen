@@ -291,7 +291,10 @@ function parseLsappinfo(o) {
   return out;
 }
 let appsWarned = false;
-function runningApps() {
+let raCache = null, raAt = 0, raP = null
+// the Dock asks for this from several places: one real read every 3 s is plenty
+function runningApps() { const n = Date.now(); if (raCache && n - raAt < 3000) return Promise.resolve(raCache); if (raP) return raP; raP = runningAppsNow().then(r => { raCache = r; raAt = Date.now(); raP = null; return r; }, e => { raP = null; throw e; }); return raP; }
+function runningAppsNow() {
   if (IS_WIN) return winapps.list().then(l => { if (!l) return winRunning;
     const names = new Map(installedWin().map(a => [a.path, a.name])); const seen = new Map();
     for (const a of l) { const k = a.path.toLowerCase(); if (/\\windows\\systemapps\\|applicationframehost|textinputhost|shellexperiencehost|\\surge\.exe$/.test(k)) continue;
@@ -420,14 +423,14 @@ function chipFlow(b) {
   if (!b || !tray || flowPaused) return;
   try { const C = require('./traychip.js'), g = mod('glow') || {};
     flowL = C.chipLayout(b, { accent: g.theme === 'solid' ? g.color : '#00FF85', scale: 2 });
-    flowT = setInterval(() => { try {
+    const step = () => { try {
       if (!tray || tray.isDestroyed()) return chipFlow(null);
       flowI = (flowI + 1) % C.FRAMES;
       let img = flowFrames[flowI];
       if (!img) { img = nativeImage.createFromBuffer(C.chipFramePNG(flowL, flowI), { scaleFactor: 2 }); if (img.isEmpty()) return chipFlow(null); img.setTemplateImage(false); flowFrames[flowI] = img; }
       tray.setImage(img);
       if (!flowLogged && flowI === C.FRAMES - 1) { flowLogged = true; log('tray chip flow ok ' + C.FRAMES + ' frames'); }
-    } catch (e) { log('tray chip flow error ' + e.message); chipFlow(null); } }, b.charging ? 140 : 260);
+    } catch (e) { log('tray chip flow error ' + e.message); chipFlow(null); } }; step(); if (b.charging) flowT = setInterval(step, 420);   // still on battery, gently flowing while charging
   } catch (e) { log('tray chip flow error ' + e.message); }
 }
 function chipFlowPause(p) { flowPaused = p; if (p) chipFlow(null); else { trayIconKey = ''; try { MODULES.glow?.onSettings?.(ctx); } catch {} } }
@@ -455,7 +458,7 @@ function updateTray() {
 const ctx = {
   app, screen, clipboard, Notification, nativeTheme, powerSaveBlocker, globalShortcut, execFile, os,
   get settings() { return settings; }, log, mod, fireGlow, overlaySend, setOverlayPersistent, play, sysSound, onInput, hookState: () => hookState,
-  frontApp: async () => { try { return (await runningApps()).find(a => a.front) || null; } catch { return null; } },
+  frontApp: async () => { try { return (await runningAppsNow()).find(a => a.front) || null; } catch { return null; } },
   activateApp: (a) => { if (!a) return; if (IS_WIN) { if (a.pid) winapps.activate(a.pid); } else if (a.path) execFile('open', ['-a', a.path], () => {}); },
   setTray, setTrayBattery, openSettings, toggleNotes, readBattery, markCleanExit, bundlePath, stopHook: () => { quitting = true; stopHook(); }, applyPatch: (p) => applyPatch(p), get battery() { return battery; }, set battery(v) { battery = v; },
   notify: (title, body) => { try { new Notification({ title, body, silent: true }).show(); } catch {} },

@@ -1835,7 +1835,7 @@ ipcMain.handle('lumen', async (e, action, ...a) => {
       case 'history': return D.listHistory(a[0] || '', 500)
       case 'readLater': return readLaterList(a[0] || 300)
       case 'archive': return D.archive.get().slice(0, 500)
-      case 'apps': return { list: Apps.list(), openAtLogin: !!D.settings.get('openAtLogin'), toolbarApps: D.settings.get('toolbarApps') !== false, platform: process.platform }
+      case 'apps': return { list: Apps.list(), openAtLogin: !!D.settings.get('openAtLogin'), backgroundApps: D.settings.get('backgroundApps') !== false, toolbarApps: D.settings.get('toolbarApps') !== false, platform: process.platform }
       case 'appSet': {
         const id = String(a[0]), on = !!a[1]; if (!Apps.APPS[id]) return null
         D.settings.set({ apps: { ...(D.settings.get('apps') || {}), [id]: on } })

@@ -38,7 +38,7 @@ module.exports = {
       const ts = s().trayStyle || 'chip'; ctx.setTrayBattery?.(ts === 'pct' || ts === 'bolt' ? null : b, ts);
       ctx.setTray('glow', { title: ts === 'icon' || ts === 'bolt' || (ts === 'chip' && process.platform === 'darwin') ? '' : `${b.level}%`, menu: [{ label: status, enabled: false }, { label: 'Preview glow', click: () => ctx.fireGlow('preview') }] });
     }); };
-    tick(); timer = setInterval(tick, 1200);
+    tick(); timer = setInterval(tick, 5000);   // plugging in and out still shows at once (power events)
     if (!module.exports._pm) { module.exports._pm = true; try { const { powerMonitor } = require('electron'); powerMonitor.on('resume', () => setTimeout(() => timer && tick(), 1500)); powerMonitor.on('on-ac', () => setTimeout(() => timer && tick(), 200)); powerMonitor.on('on-battery', () => setTimeout(() => timer && tick(), 200)); } catch {} }
   },
   stop(ctx) { clearInterval(timer); timer = null; ctx.setTrayBattery?.(null); },

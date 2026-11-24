@@ -93,7 +93,7 @@ body::before { content: ''; position: fixed; inset: -14%; z-index: -1; pointer-e
     radial-gradient(42% 36% at 74% 98%, color-mix(in srgb, var(--accent3) 16%, transparent), transparent 70%),
     radial-gradient(30% 28% at 22% 88%, color-mix(in srgb, var(--accent2) 10%, transparent), transparent 70%),
     conic-gradient(from 200deg at 50% -20%, transparent 0 40deg, color-mix(in srgb, var(--accent) 6%, transparent) 48deg, transparent 58deg, transparent 80deg, color-mix(in srgb, var(--accent3) 5%, transparent) 90deg, transparent 102deg);
-  animation: nebula 52s ease-in-out infinite alternate; }
+  animation: none; }   /* still on purpose: anything moving under the glass makes all of it redraw every frame */
 @keyframes nebula { 50% { transform: translate(2%, -1.5%) rotate(2deg) scale(1.04); } 100% { transform: translate(-1.5%, 1.5%) rotate(-1.5deg); } }
 body::after { content: ''; position: fixed; inset: 0; z-index: -1; pointer-events: none; opacity: .5;
   background-image: radial-gradient(color-mix(in srgb, var(--accent) 22%, transparent) 1px, transparent 1.3px);
@@ -369,18 +369,18 @@ img.fav { object-fit: contain; background-image: none !important; box-shadow: no
 .hero.enter::after { animation: herosheen 1.6s .25s ease-out both; }
 @keyframes herosheen { 0% { transform: translateX(-110%); opacity: 1; } 100% { transform: translateX(110%); opacity: 1; } }
 .hero-orb { position: absolute; z-index: -1; border-radius: 50%; filter: blur(34px); pointer-events: none; }
-.hero-orb.a { width: 260px; height: 260px; left: -70px; top: -130px; background: color-mix(in srgb, var(--ic) 55%, transparent); animation: orba 14s ease-in-out infinite alternate; }
-.hero-orb.b { width: 300px; height: 220px; right: 6%; bottom: -160px; background: color-mix(in srgb, var(--accent) 42%, transparent); animation: orbb 17s ease-in-out infinite alternate; }
-.hero-orb.c { width: 160px; height: 160px; left: 42%; top: -110px; background: color-mix(in srgb, var(--accent3) 34%, transparent); animation: orba 11s -4s ease-in-out infinite alternate-reverse; }
+.hero-orb.a { width: 260px; height: 260px; left: -70px; top: -130px; background: color-mix(in srgb, var(--ic) 55%, transparent); animation: orba 14s ease-in-out 2 alternate; }
+.hero-orb.b { width: 300px; height: 220px; right: 6%; bottom: -160px; background: color-mix(in srgb, var(--accent) 42%, transparent); animation: orbb 17s ease-in-out 2 alternate; }
+.hero-orb.c { width: 160px; height: 160px; left: 42%; top: -110px; background: color-mix(in srgb, var(--accent3) 34%, transparent); animation: orba 11s -4s ease-in-out 2 alternate-reverse; }
 @keyframes orba { to { transform: translate(90px, 40px) scale(1.15); } }
 @keyframes orbb { to { transform: translate(-80px, -30px) scale(1.1); } }
-.hero-art { position: absolute; z-index: -1; right: 14px; top: 50%; width: 200px; height: 200px; margin-top: -100px; color: var(--ic); opacity: .16; transform: rotate(-12deg); pointer-events: none; animation: heroart 9s ease-in-out infinite alternate; }
+.hero-art { position: absolute; z-index: -1; right: 14px; top: 50%; width: 200px; height: 200px; margin-top: -100px; color: var(--ic); opacity: .16; transform: rotate(-12deg); pointer-events: none; animation: heroart 9s ease-in-out 2 alternate; }
 @keyframes heroart { to { transform: rotate(-4deg) translateY(-8px) scale(1.04); } }
 .hero-art svg { width: 100%; height: 100%; stroke-width: .9; }
 .hero-ic { position: relative; width: 78px; height: 78px; flex: none; display: grid; place-items: center; border-radius: 24px; color: #fff;
   background: linear-gradient(180deg, rgba(255,255,255,.34), transparent 52%), linear-gradient(145deg, color-mix(in srgb, var(--ic) 70%, white), var(--ic) 55%, color-mix(in srgb, var(--ic) 72%, black));
   box-shadow: 0 16px 36px color-mix(in srgb, var(--ic) 50%, transparent), 0 0 0 8px color-mix(in srgb, var(--ic) 14%, transparent), inset 0 1px 0 rgba(255,255,255,.55), inset 0 -3px 8px rgba(0,0,0,.14); will-change: transform; }
-.hero-ic::after { content: ''; position: absolute; inset: -16px; border-radius: 34px; border: 1px solid color-mix(in srgb, var(--ic) 30%, transparent); animation: nv-breathe 4s ease-in-out infinite; pointer-events: none; }
+.hero-ic::after { content: ''; position: absolute; inset: -16px; border-radius: 34px; border: 1px solid color-mix(in srgb, var(--ic) 30%, transparent); animation: nv-breathe 4s ease-in-out 2; pointer-events: none; }
 .hero-ic svg { width: 36px; height: 36px; stroke-width: 1.6; filter: drop-shadow(0 2px 2px rgba(0,0,0,.2)); }
 .hero-tx { flex: 1; min-width: 0; max-width: 720px; padding-right: 160px; }
 .main .hero h2 { margin: 0 0 8px; padding: 0 0 2px; font-size: 44px; line-height: 1.06; letter-spacing: -.045em;
@@ -656,7 +656,7 @@ span.extico { display: grid; place-items: center; color: var(--on-accent, #fff);
   background-color: var(--glass); backdrop-filter: var(--lens, ) var(--blur); box-shadow: var(--gsh), var(--shadow-lift); overflow: hidden; }
 .abouthero::before { content: ''; position: absolute; left: -12%; top: -70%; width: 62%; height: 240%; pointer-events: none;
   background: conic-gradient(from var(--sa), color-mix(in srgb, var(--accent) 30%, transparent), color-mix(in srgb, var(--accent3) 26%, transparent), color-mix(in srgb, var(--accent2) 22%, transparent), color-mix(in srgb, var(--accent) 30%, transparent));
-  -webkit-mask: radial-gradient(closest-side, #000, transparent); animation: sbspin 18s linear infinite; }
+  -webkit-mask: radial-gradient(closest-side, #000, transparent); }
 .abouthero > * { position: relative; }
 .ahicon { width: 132px; height: 132px; border-radius: 32px; flex: none; box-shadow: 0 0 0 9px var(--a12), 0 0 0 22px color-mix(in srgb, var(--accent) 5%, transparent), 0 28px 64px var(--a30), 0 0 0 1px var(--line); animation: nv-float 5s ease-in-out infinite; }
 .abouthero h2 { margin: 0 !important; font-size: 58px !important; background: var(--nova) !important; -webkit-background-clip: text !important; background-clip: text !important; }
@@ -688,7 +688,7 @@ span.extico { display: grid; place-items: center; color: var(--on-accent, #fff);
     radial-gradient(32% 28% at 52% 78%, color-mix(in srgb, var(--accent3) 24%, transparent), transparent 70%),
     radial-gradient(20% 18% at 84% 82%, color-mix(in srgb, var(--accent) 18%, transparent), transparent 70%),
     conic-gradient(from 180deg at 50% 120%, transparent 0 150deg, color-mix(in srgb, var(--accent3) 10%, transparent) 170deg, transparent 190deg, color-mix(in srgb, var(--accent) 10%, transparent) 205deg, transparent 220deg);
-  filter: blur(6px); animation: aurora 30s ease-in-out infinite alternate; }
+  filter: blur(6px); }
 @keyframes aurora { 50% { transform: translate(3%, -2%) rotate(5deg) scale(1.06); } 100% { transform: translate(-2%, 2%) rotate(-3deg); } }
 .ntp.wp-plain .ntp-bg { background-image: radial-gradient(var(--line) 1.2px, transparent 1.5px) !important; background-size: 22px 22px; }
 .ntp.wp-custom::after { content: ''; position: absolute; inset: 0; background: linear-gradient(180deg, rgba(0,0,0,.22), rgba(0,0,0,.46)); z-index: 0; }
@@ -777,7 +777,8 @@ span.extico { display: grid; place-items: center; color: var(--on-accent, #fff);
   box-shadow: var(--gsh), 0 2px 4px rgba(16,20,40,.04), 0 22px 60px color-mix(in srgb, var(--accent) 18%, rgba(16,20,40,.1));
   transition: box-shadow .35s, transform .6s var(--spring); }
 .searchbox::before { padding: 1.5px; opacity: .6; transition: opacity .3s;
-  background: conic-gradient(from var(--sa), var(--accent), var(--accent2), var(--accent3), #fff, var(--accent2), var(--accent)) !important; animation: sbspin 9s linear infinite; }
+  background: conic-gradient(from var(--sa), var(--accent), var(--accent2), var(--accent3), #fff, var(--accent2), var(--accent)) !important; }
+.searchbox:has(input:not(:placeholder-shown))::before { animation: sbspin 9s linear infinite; }   /* the rim only turns while you type */
 @keyframes sbspin { to { --sa: 360deg; } }
 .searchbox:hover::before { opacity: .9; }
 .searchbox:focus-within::before { opacity: 1; }

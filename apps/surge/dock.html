@@ -298,6 +298,6 @@ function paint(){
 (async()=>{ S=await api?.getSettings()||{}; paintSettings(); build(); api?.appsInstalled?.().then(l=>{ (l||[]).forEach(a=>NAMES[a.path]=a.name); lastAppsKey=''; refreshApps(); }); clock(); setInterval(clock,1000);
   api?.on('settings:update',s=>{ const before=JSON.stringify(S.modules?.dock?.widgets); S=s; paintSettings(); if(JSON.stringify(S.modules?.dock?.widgets)!==before) build(); else { lastAppsKey=''; refreshApps(); fit(); } });
   api?.on('dock:hidden',()=>{ overDock=false; closeCtx(); hideTip(); mx=null; kick(); });
-  api?.on('dock:data',d=>{ D=d; paint(); refreshApps(); }); setInterval(refreshApps,1500); })();
+  api?.on('dock:data',d=>{ D=d; paint(); refreshApps(); }); setInterval(refreshApps,4000); })();
 </script>
 </body></html>

@@ -144,7 +144,7 @@ module.exports = {
     win.loadFile(path.join(__dirname, '..', 'dock.html'));
     win.webContents.on('did-finish-load', () => { win.webContents.send('settings:update', ctx.settings); module.exports._place(ctx); win.showInactive(); module.exports._tick(ctx); });
     win.on('closed', () => (win = null));
-    poll = setInterval(() => module.exports._tick(ctx), 2000);
+    poll = setInterval(() => module.exports._tick(ctx), 5000);
     try { ctx.globalShortcut.register('Control+Alt+D', () => module.exports._toggle(ctx)); ctx.globalShortcut.register('Control+Alt+L', () => module.exports._launchpad(ctx)); } catch {}
     if (!module.exports._dispHooked) { module.exports._dispHooked = true; screen.on('display-metrics-changed', () => module.exports._place(ctx)); }
     if (!IS_WIN && ctx.mod('dock').hideMacDock && !macDockHidden) module.exports._confirmMacDock(ctx).then(ok => ok && module.exports._macDock(true, ctx));

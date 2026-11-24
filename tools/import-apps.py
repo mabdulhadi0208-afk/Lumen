@@ -104,6 +104,21 @@ module.exports = {
 }
 """)
 
+# Speed: Surge runs inside Lumen's main process, so anything it does nonstop is felt in the browser too.
+# Fewer helper processes (the app list, the volume and the battery were each read by launching a program every 1 to 2 s),
+# and the menu-bar chip only moves while charging.
+edit(os.path.join(S, 'main.js'), [
+    ("function runningApps() {", "let raCache = null, raAt = 0, raP = null\n// the Dock asks for this from several places: one real read every 3 s is plenty\nfunction runningApps() { const n = Date.now(); if (raCache && n - raAt < 3000) return Promise.resolve(raCache); if (raP) return raP; raP = runningAppsNow().then(r => { raCache = r; raAt = Date.now(); raP = null; return r; }, e => { raP = null; throw e; }); return raP; }\nfunction runningAppsNow() {"),
+    ("frontApp: async () => { try { return (await runningApps())", "frontApp: async () => { try { return (await runningAppsNow())"),
+    ("    flowT = setInterval(() => { try {", "    const step = () => { try {"),
+    ("chipFlow(null); } }, b.charging ? 140 : 260);", "chipFlow(null); } }; step(); if (b.charging) flowT = setInterval(step, 420);   // still on battery, gently flowing while charging"),
+])
+edit(os.path.join(S, 'modules', '01-glow.js'), [("tick(); timer = setInterval(tick, 1200);", "tick(); timer = setInterval(tick, 5000);   // plugging in and out still shows at once (power events)")])
+edit(os.path.join(S, 'modules', '09-clipboard.js'), [("}, 700);", "}, 1200);")])
+edit(os.path.join(S, 'modules', '14-network.js'), [("timer = setInterval(check, 5000);", "timer = setInterval(check, 20000);")])
+edit(os.path.join(S, 'modules', '19-dock.js'), [("poll = setInterval(() => module.exports._tick(ctx), 2000);", "poll = setInterval(() => module.exports._tick(ctx), 5000);")])
+edit(os.path.join(S, 'dock.html'), [("setInterval(refreshApps,1500);", "setInterval(refreshApps,4000);")])
+
 # Lumen Nova: one stylesheet per tool, linked after each window's own styles. Each window is tagged
 # (<html data-lg="...">) so the sheet can style it on its own. Looks only: no ids, classes or scripts change.
 GLOW = os.path.join(LUMEN, 'tools', 'glow')

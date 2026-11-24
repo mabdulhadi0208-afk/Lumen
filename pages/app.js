@@ -753,6 +753,7 @@ async function appsPage(m) {
     </div>` }).join('')}
     <div class="card">
       ${row('Show in the toolbar', 'Surge and Koi buttons next to Reload, in your accent color.', sw('toolbarApps', d.toolbarApps))}
+      ${row('Keep Surge and Koi running when Lumen quits', `${PLATFORM === 'darwin' ? 'Cmd Q' : 'Ctrl Q'} closes your windows and Lumen keeps running quietly for Surge and Koi. Open Lumen again and every window and tab comes back. ${PLATFORM === 'darwin' ? 'Cmd Option Q' : 'Exit Lumen, Surge and Koi'} quits everything.`, sw('backgroundApps', d.backgroundApps))}
       ${row('Start Lumen when you log in', 'Lumen opens quietly in the background so Surge and Koi are ready, without opening a window.', sw('openAtLogin', d.openAtLogin))}
       ${row('Keyboard and mouse access', 'Keyboard sounds, click ripples and typing stats need macOS to allow Lumen in Privacy and Security, Accessibility and Input Monitoring. Surge asks when you turn one of them on.', '')}
     </div>`

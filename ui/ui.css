@@ -144,7 +144,7 @@ kbd { font: 11px var(--font); color: var(--fg3); }
     radial-gradient(34% 42% at 92% 6%, color-mix(in srgb, var(--accent3) 26%, transparent), transparent 70%),
     radial-gradient(46% 56% at 72% 104%, color-mix(in srgb, var(--accent2) 16%, transparent), transparent 72%),
     radial-gradient(30% 40% at 4% 96%, color-mix(in srgb, var(--accent) 12%, transparent), transparent 70%);
-  animation: nova-drift 48s ease-in-out infinite alternate; will-change: transform;
+  animation: none;   /* still: a moving nebula made every glass surface above it redraw each frame (GPU, battery, lag) */
 }
 #nova-bg::after { content: ''; position: absolute; inset: 0; opacity: 0; }
 @media (prefers-color-scheme: dark) {

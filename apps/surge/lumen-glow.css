@@ -626,7 +626,7 @@ input[type=range]:hover::-webkit-slider-thumb{transform:scale(1.08);box-shadow:i
 [data-lg=dock] .clock .v{font:800 28px/1 var(--nv-head);letter-spacing:-.03em;font-variant-numeric:tabular-nums;display:flex;align-items:flex-start}
 [data-lg=dock] .clock .v .lg-rs b,[data-lg=dock] .clock .v>span:not(.lg-rd):not(.lg-rx){background:linear-gradient(180deg,#fff 30%,color-mix(in oklab,var(--nv-a3) 45%,#fff));-webkit-background-clip:text;background-clip:text;color:transparent}
 [data-lg=dock] .clock .v .lg-rd{filter:drop-shadow(0 0 10px rgb(from var(--nv-a) r g b / .45))}
-[data-lg=dock] .clock .v i{display:inline-block;margin:0 1px;color:var(--nv-a3);text-shadow:0 0 10px var(--nv-a);animation:nvColon 2s ease-in-out infinite;line-height:1.05}
+[data-lg=dock] .clock .v i{display:inline-block;margin:0 1px;color:var(--nv-a3);text-shadow:0 0 10px var(--nv-a);line-height:1.05}
 [data-lg=dock] .clock .d{font:700 11.5px var(--nv-head);letter-spacing:.01em;color:color-mix(in oklab,var(--nv-mut) 70%,#fff);display:flex;align-items:center;gap:6px}
 [data-lg=dock] .clock .d::before{content:"";width:6px;height:6px;border-radius:50%;background:var(--nova);box-shadow:0 0 8px var(--nv-a)}
 

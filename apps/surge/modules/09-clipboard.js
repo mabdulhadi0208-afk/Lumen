@@ -55,7 +55,7 @@ module.exports = {
   },
   start(ctx) {
     last = ctx.clipboard.readText();
-    timer = setInterval(() => { const t = ctx.clipboard.readText(); if (t && t !== last) { last = t; if (t.length <= 20000) { items = [t, ...items.filter(x => x !== t)].slice(0, ctx.mod('clip').max); module.exports._tray(ctx); } } }, 700);
+    timer = setInterval(() => { const t = ctx.clipboard.readText(); if (t && t !== last) { last = t; if (t.length <= 20000) { items = [t, ...items.filter(x => x !== t)].slice(0, ctx.mod('clip').max); module.exports._tray(ctx); } } }, 1200);
     try { ctx.globalShortcut.register(HOTKEY, () => module.exports._picker(ctx)); } catch {}
     module.exports._tray(ctx);
   },

@@ -912,6 +912,7 @@ let saveTimer
 function saveSession() { clearTimeout(saveTimer); saveTimer = setTimeout(saveSessionNow, 1000) }
 function saveSessionNow() {
   clearTimeout(saveTimer)
+  if (inBackground) return  // the tabs were saved when Lumen went to the background; closing its windows must not shrink that
   const data = {
     windows: windows.filter(w => !w.incognito && !w.win.isDestroyed()).map(w => ({
       bounds: w.win.getBounds(),
@@ -999,7 +1000,7 @@ function startApps() {
     const started = Apps.start({
       D, Updater, log,
       // "Quit" in a tool's own menu turns just that tool off; on Windows, Lumen leaves when nothing is left open
-      onStopped: () => { setTimeout(() => broadcast('settings', publicSettings()), 60); if (!isMac && !windows.length && !Apps.list().some(a => a.running)) app.quit() },
+      onStopped: () => { setTimeout(() => broadcast('settings', publicSettings()), 60); if (!windows.length && !appsRunning() && (!isMac || inBackground)) quitEverything() },
       onSeparate: async ids => {
         const names = ids.map(i => Apps.APPS[i].name), both = names.length > 1, n = names.join(' and ')
         const r = await dialog.showMessageBox({ type: 'info', buttons: [both ? 'Quit them' : 'Quit it', 'Keep running'], defaultId: 0, cancelId: 1,
@@ -1608,7 +1609,7 @@ function downloadAction(id, what) {
   broadcast('downloads', listDownloads())
 }
 
-const PUBLIC_SETTINGS = ['openAtLogin', 'toolbarApps', 'googleSignInMode', 'ntpParcels', 'parcelsAuto', 'whatsNewSeen', 'archiveTabsAfterH', 'bookmarksBar', 'ntpStats', 'ntpRecent', 'ntpReadLater', 'darkStyle', 'uiSounds', 'darkOffSites', 'translateFlipDir', 'searchShortcuts', 'rememberZoom', 'soundActiveOnly', 'linksBackground', 'confirmQuit', 'wheelTabs', 'adblockAllow', 'aiModel', 'aiTabGroups', 'browserTheme', 'themeCustom', 'compact', 'appIcon', 'cleanLinks', 'swipeNav', 'videoSpeedKeys', 'hideCookieBanners', 'blockNotifications', 'forceDark', 'translateTo', 'offerTranslate', 'autoPip', 'ntpShortcuts', 'ntpWallpaper', 'ntpClock', 'searchEngine', 'motion', 'theme', 'accent', 'adblock', 'blockTrackers', 'httpsOnly', 'sleepTabsAfterMin', 'restoreSession', 'sidebarCollapsed', 'sidebarWidth', 'tabLayout', 'introSeen', 'autoUpdate', 'askWhereToSave', 'doNotTrack', 'showSuggestions', 'homeTiles']
+const PUBLIC_SETTINGS = ['backgroundApps', 'openAtLogin', 'toolbarApps', 'googleSignInMode', 'ntpParcels', 'parcelsAuto', 'whatsNewSeen', 'archiveTabsAfterH', 'bookmarksBar', 'ntpStats', 'ntpRecent', 'ntpReadLater', 'darkStyle', 'uiSounds', 'darkOffSites', 'translateFlipDir', 'searchShortcuts', 'rememberZoom', 'soundActiveOnly', 'linksBackground', 'confirmQuit', 'wheelTabs', 'adblockAllow', 'aiModel', 'aiTabGroups', 'browserTheme', 'themeCustom', 'compact', 'appIcon', 'cleanLinks', 'swipeNav', 'videoSpeedKeys', 'hideCookieBanners', 'blockNotifications', 'forceDark', 'translateTo', 'offerTranslate', 'autoPip', 'ntpShortcuts', 'ntpWallpaper', 'ntpClock', 'searchEngine', 'motion', 'theme', 'accent', 'adblock', 'blockTrackers', 'httpsOnly', 'sleepTabsAfterMin', 'restoreSession', 'sidebarCollapsed', 'sidebarWidth', 'tabLayout', 'introSeen', 'autoUpdate', 'askWhereToSave', 'doNotTrack', 'showSuggestions', 'homeTiles']
 function publicSettings() { const s = D.settings.get(); return Object.fromEntries(PUBLIC_SETTINGS.map(k => [k, s[k]])) }
 function setSetting(k, v) {
   if (!PUBLIC_SETTINGS.includes(k)) return
@@ -1899,7 +1900,7 @@ function buildMenu() {
       { label: 'Settings...', accelerator: 'Cmd+,', click: focused(w => openSettings(w)) },
       { label: 'Set as Default Browser', click: () => { app.setAsDefaultProtocolClient('http'); app.setAsDefaultProtocolClient('https') } },
       { type: 'separator' }, { role: 'services' }, { type: 'separator' },
-      { role: 'hide' }, { role: 'hideOthers' }, { role: 'unhide' }, { type: 'separator' }, { label: 'Quit Lumen', accelerator: 'Cmd+Q', click: () => confirmQuit() },
+      { role: 'hide' }, { role: 'hideOthers' }, { role: 'unhide' }, { type: 'separator' }, { label: 'Quit Lumen', accelerator: 'Cmd+Q', click: () => quitLumen() }, { label: 'Quit Lumen, Surge and Koi', accelerator: 'Cmd+Alt+Q', click: () => quitEverything() },
     ] }] : []),
     { label: 'File', submenu: [
       { label: 'New Tab', accelerator: 'CmdOrCtrl+T', click: focused(w => w.send('command', 'newtab')) },
@@ -1913,7 +1914,7 @@ function buildMenu() {
       { type: 'separator' },
       { label: 'Save Page As...', accelerator: 'CmdOrCtrl+S', click: focused((w, t) => activeWc(w, t) && savePage(activeWc(w, t))) },
       { label: 'Print...', accelerator: 'CmdOrCtrl+P', click: focused((w, t) => activeWc(w, t) && activeWc(w, t).print()) },
-      ...(isMac ? [] : [{ type: 'separator' }, { label: 'Settings', accelerator: 'Ctrl+,', click: focused(w => openSettings(w)) }, { role: 'quit' }]),
+      ...(isMac ? [] : [{ type: 'separator' }, { label: 'Settings', accelerator: 'Ctrl+,', click: focused(w => openSettings(w)) }, { label: 'Exit', accelerator: 'Ctrl+Q', click: () => quitLumen() }, { label: 'Exit Lumen, Surge and Koi', click: () => quitEverything() }]),
     ] },
     { label: 'Edit', submenu: [
       { role: 'undo' }, { role: 'redo' }, { type: 'separator' }, { role: 'cut' }, { role: 'copy' }, { role: 'paste' }, { role: 'pasteAndMatchStyle' }, { role: 'selectAll' },
@@ -2096,6 +2097,43 @@ function toggleSiteDark(w, on) {
 app.on('before-quit', () => { try { if (blockedTotal) D.settings.set({ blockedTotal }) } catch {} })
 
 // ---------------------------------------------------------------- quit guard (only for Cmd+Q, never for updates or shutdown)
+// with Surge or Koi on, Cmd+Q puts Lumen in the background: the windows close (tabs saved), the Dock icon goes,
+// and Surge and Koi keep working from the menu bar. Opening Lumen again brings the tabs back.
+let inBackground = false
+function appsRunning() { try { return Apps.list().some(a => a.running) } catch { return false } }
+function goBackground() {
+  if (!appsRunning() || D.settings.get('backgroundApps') === false) return false
+  saveSessionNow()
+  inBackground = true
+  for (const w of [...windows]) { try { w.win.close() } catch {} }
+  if (isMac && app.dock) app.dock.hide()
+  if (!D.settings.get('backgroundToldOnce')) {
+    D.settings.set({ backgroundToldOnce: true })
+    const names = Apps.list().filter(a => a.running).map(a => a.name).join(' and ')
+    try { const { Notification } = require('electron'); if (Notification.isSupported()) new Notification({ title: 'Lumen is still running', body: `${names} keep working in the background. Open Lumen to get your tabs back.`, silent: true }).show() } catch {}
+  }
+  log('background: windows closed, tools running')
+  return true
+}
+// back from the background (or from opening at login): show the Dock icon and the saved tabs
+function comeBack() {
+  if (isMac && app.dock) app.dock.show()
+  const was = inBackground; inBackground = false
+  if (windows.length) return lastFocused() || windows[0]
+  return was ? restoreWindows(true) : createWindow({})
+}
+function restoreWindows(all) {
+  const saved = D.session.get().windows || [], restore = all || D.settings.get('restoreSession')
+  let first = null
+  saved.forEach(sw => {
+    const tabs = restore ? sw.tabs : sw.tabs.filter(t => t.pinned)
+    const w = createWindow({ restore: tabs.length ? { tabs, groups: sw.groups || [], active: restore ? sw.active : 0 } : null, bounds: sw.bounds })
+    first = first || w
+  })
+  return first || createWindow({})
+}
+function quitEverything() { inBackground = false; app.quit() }
+function quitLumen() { if (!goBackground()) confirmQuit() }
 function confirmQuit() {
   const n = windows.reduce((a, w) => a + w.tabs.size, 0)
   if (!D.settings.get('confirmQuit') || n < 2) return app.quit()
@@ -2168,6 +2206,7 @@ function setFocusMode(w, on) {
 const pendingOpen = []
 function openExternalURL(url) {
   if (!app.isReady() || !mainSession) { pendingOpen.push(url); return }
+  if (inBackground && isMac && app.dock) { app.dock.show(); inBackground = false }
   const w = windows.find(x => !x.incognito) || createWindow({ urls: [] })
   w.createTab(url); w.win.show(); w.win.focus()
 }
@@ -2176,7 +2215,7 @@ app.on('open-file', (e, file) => { e.preventDefault(); openExternalURL('file://'
 app.on('second-instance', (e, argv) => {
   const urls = argv.filter(a => /^(https?|file):/.test(a))
   if (urls.length) urls.forEach(openExternalURL)
-  else { const w = lastFocused(); if (w) { if (w.win.isMinimized()) w.win.restore(); w.win.focus() } else createWindow({}) }
+  else { const w = windows.length ? lastFocused() : comeBack(); if (w) { if (w.win.isMinimized()) w.win.restore(); w.win.show(); w.win.focus() } }
 })
 
 // ---------------------------------------------------------------- lifecycle
@@ -2204,8 +2243,8 @@ ipcMain.handle('update:action', (e, name) => {
   }
 })
 // with Surge running, Lumen stays in the tray when its last window closes, like Surge did on its own
-app.on('window-all-closed', () => { if (!isMac && !Apps.list().some(a => a.running)) app.quit() })
-app.on('activate', () => { if (!windows.length && app.isReady() && mainSession) createWindow({}) })
+app.on('window-all-closed', () => { if (isMac || quitting) return; if (appsRunning() && D.settings.get('backgroundApps') !== false) inBackground = true; else app.quit() })
+app.on('activate', () => { if (!windows.length && app.isReady() && mainSession) comeBack() })
 process.on('uncaughtException', err => { console.error('uncaught', err); log('UNCAUGHT', err && err.stack || err) })
 process.on('unhandledRejection', err => { console.error('unhandled', err); log('UNHANDLED', err && err.stack || err) })
 
@@ -2223,15 +2262,10 @@ app.whenReady().then(async () => {
   setInterval(() => refreshAdblock().catch(() => {}), 30 * 60e3)
   powerMonitor.on('resume', () => setTimeout(() => refreshAdblock().catch(() => {}), 15000))
   const saved = D.session.get().windows || []
-  const restore = D.settings.get('restoreSession')
   const argUrls = process.argv.slice(1).filter(a => /^(https?|file):/.test(a))
-  if (saved.length) {
-    saved.forEach(sw => {
-      const tabs = restore ? sw.tabs : sw.tabs.filter(t => t.pinned)
-      createWindow({ restore: tabs.length ? { tabs, groups: sw.groups || [], active: restore ? sw.active : 0 } : null, bounds: sw.bounds })
-    })
-  } else if (!openedHidden()) createWindow({})
-  else log('opened at login: no window, tools only')
+  if (openedHidden() && !argUrls.length) { inBackground = true; if (isMac && app.dock) app.dock.hide(); log('opened at login: in the background, tools only') }
+  else if (saved.length) restoreWindows(false)
+  else createWindow({})
   for (const u of [...argUrls, ...pendingOpen.splice(0)]) openExternalURL(u)
   applyAppIcon()
   Updater.onState(s => broadcast('update', s))
@@ -2254,4 +2288,4 @@ app.whenReady().then(async () => {
   powerMonitor.on('resume', () => Sync.syncNow().catch(() => {}))
 })
 
-module.exports = { windows, createWindow, D, allowSites, toggleSiteAdblock, __refreshAdblock: refreshAdblock, __adblockAge: adblockAge, __hl_add: addHighlight, __hl_recolor: recolorHighlight, __addToNTP: addToNTP, __checkParcels: checkParcels, __appOpen: appOpen }
+module.exports = { windows, createWindow, D, allowSites, toggleSiteAdblock, __refreshAdblock: refreshAdblock, __adblockAge: adblockAge, __hl_add: addHighlight, __hl_recolor: recolorHighlight, __addToNTP: addToNTP, __checkParcels: checkParcels, __appOpen: appOpen, __goBackground: goBackground, __comeBack: comeBack, __isBackground: () => inBackground, __quitLumen: quitLumen }

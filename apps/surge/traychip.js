@@ -68,7 +68,7 @@ function chipLayout(b, opts = {}) {
     for (let sy = 0; sy < SS; sy++) for (let sx = 0; sx < SS; sx++) { const x = (px + (sx + .5) / SS) / s, y = (py + (sy + .5) / SS) / s;
       if (bolt && inPoly(x, y, bolt)) { a++; sh++; continue; }
       let d = 9; for (const q of G) { if (x < Math.min(q[0], q[2]) - 1.5 || x > Math.max(q[0], q[2]) + 1.5) continue; const k = dseg(x, y, q); if (k < d) d = k; }
-      if (d < .82) a++; if (d < 1.45) sh++; }
+      if (d < .92) a++; if (d < 1.6) sh++; }
     ink[py * pw + px] = a / 9; shade[py * pw + px] = sh / 9;
   }
   return { W, H, R, s, pw, ph, lvl, col, fw, ink, shade, charging: hasBolt };
@@ -83,12 +83,12 @@ function chipFrame(L, f = 0) {
       const x = (px + (sx + .5) / SS) / s, y = (py + (sy + .5) / SS) / s;
       const qx = Math.abs(x - W / 2) - (W / 2 - R), qy = Math.abs(y - H / 2) - (H / 2 - R), sd = Math.hypot(Math.max(qx, 0), Math.max(qy, 0)) + Math.min(Math.max(qx, qy), 0) - R;
       if (sd > 0) continue;
-      let c0 = 16, c1 = 20, c2 = 29, al = .94;
+      let c0 = 11, c1 = 13, c2 = 25, al = .95;
       const edge = lvl >= 100 ? W + 1 : fw + 1.25 * Math.sin((y / H) * Math.PI * 2 - ph2) + .5 * Math.sin((y / H) * Math.PI * 4 + ph2);   // the surface rolls
       if (x < edge) { let o = .55 + .4 * Math.min(1, x / Math.max(1, fw)); c0 += (col[0] - c0) * o; c1 += (col[1] - c1) * o; c2 += (col[2] - c2) * o; al += (1 - al) * o;
         if (shimmer) { const d = Math.abs(x - y * .35 - sx0); if (d < 3.2) { o = .3 * (1 - d / 3.2); c0 += (255 - c0) * o; c1 += (255 - c1) * o; c2 += (255 - c2) * o; } } }
-      if (y < H / 2) { c0 += (255 - c0) * .07; c1 += (255 - c1) * .07; c2 += (255 - c2) * .07; }
-      if (sd > -1) { c0 += (255 - c0) * .22; c1 += (255 - c1) * .22; c2 += (255 - c2) * .22; al += (1 - al) * .22; }
+      { const sp = y < H * .45 ? .16 * Math.pow(1 - y / (H * .45), 1.5) : 0, dk = y > H * .6 ? .22 * (y - H * .6) / (H * .4) : 0; c0 += (255 - c0) * sp; c1 += (255 - c1) * sp; c2 += (255 - c2) * sp; c0 *= 1 - dk; c1 *= 1 - dk; c2 *= 1 - dk; }
+      if (sd > -1.2) { const k2 = .42 * (1 + sd / 1.2) * (y < H / 2 ? 1 : .55), rc = x < W * .45 ? [Math.min(255, col[0] + 90), Math.min(255, col[1] + 90), Math.min(255, col[2] + 90)] : [255, 255, 255]; c0 += (rc[0] - c0) * k2; c1 += (rc[1] - c1) * k2; c2 += (rc[2] - c2) * k2; al += (1 - al) * k2; }
       r += c0 * al; g += c1 * al; bl += c2 * al; a += al;
     }
     const i = (py * pw + px) * 4, A = a / 9;

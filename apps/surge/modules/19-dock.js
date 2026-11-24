@@ -76,12 +76,12 @@ module.exports = {
   },
   async _confirmMacDock(ctx) {
     if (ctx.mod('dock').macDockConfirmed) return true;
-    const r = await dialog.showMessageBox({ type: 'question', buttons: ['Replace it', 'Keep the macOS Dock'], defaultId: 0, cancelId: 1, message: 'Replace the macOS Dock with Surge Dock?',
+    const r = await require('../lumen-dialog.js')({ type: 'question', buttons: ['Replace it', 'Keep the macOS Dock'], defaultId: 0, cancelId: 1, message: 'Replace the macOS Dock with Surge Dock?',
       detail: 'Surge will take over the Dock. macOS will ask you to allow Surge to control "System Events" — that permission is what lets Surge switch the Dock off and on cleanly.\n\nApple\'s Dock comes back instantly if you turn this off, disable Surge Dock, or quit Surge.' });
     if (r.response !== 0) { ctx.applyPatch({ modules: { dock: { hideMacDock: false } } }); return false; }
     // this call triggers the Automation (System Events) permission prompt the first time
     const ok = await new Promise(res => execFile('osascript', ['-e', 'tell application "System Events" to set autohide of dock preferences to true'], { timeout: 15000 }, (e) => res(!e)));
-    if (!ok) { await dialog.showMessageBox({ type: 'warning', buttons: ['Open Automation settings', 'Cancel'], defaultId: 0, cancelId: 1, message: 'Surge needs permission to control System Events',
+    if (!ok) { await require('../lumen-dialog.js')({ type: 'warning', buttons: ['Open Automation settings', 'Cancel'], defaultId: 0, cancelId: 1, message: 'Surge needs permission to control System Events',
         detail: 'System Settings → Privacy & Security → Automation → Surge → turn on System Events. Then flip "Replace the macOS Dock" on again.' }).then(x => x.response === 0 && require('electron').shell.openExternal('x-apple.systempreferences:com.apple.preference.security?Privacy_Automation'));
       ctx.applyPatch({ modules: { dock: { hideMacDock: false } } }); return false; }
     ctx.applyPatch({ modules: { dock: { macDockConfirmed: true } } });

@@ -63,7 +63,7 @@ function hideOverlay(){if(!overlay)return;shown=false;overlay.webContents.send('
 function toggle(){const t=Date.now();if(t-lastToggle<250)return;lastToggle=t;shown?hideOverlay():showOverlay()}
 function openTour(){
   if(tour&&!tour.isDestroyed()){tour.focus();return}
-  tour=new BrowserWindow({width:1280,height:800,minWidth:900,minHeight:600,titleBarStyle:'hiddenInset',backgroundColor:'#04050c',show:false,
+  tour=new BrowserWindow({width:1280,height:800,minWidth:900,minHeight:600,titleBarStyle:'hiddenInset',backgroundColor:'#0a0c15',show:false,
     webPreferences:{preload:path.join(__dirname,'preload.js'),contextIsolation:true,nodeIntegration:false,autoplayPolicy:'no-user-gesture-required'}});
   tour.once('ready-to-show',()=>tour.show());
   tour.loadFile(path.join(__dirname,'renderer','app.html'),{query:{mode:'tour'}});

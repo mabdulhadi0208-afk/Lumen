@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html><head><meta charset="utf-8">
 <style>
-  :root{--a:#5b8cff;--b:#8a63f2;--ink:#f2f2f6;--muted:#9a9aa6;--line:rgba(255,255,255,.09);--spring:cubic-bezier(.34,1.56,.64,1);--flow:cubic-bezier(.2,.8,.2,1);--ease:cubic-bezier(.22,1,.36,1)}
+  :root{--a:var(--lumen-a,#5b8cff);--b:var(--lumen-b,#8a63f2);--ink:#f2f2f6;--muted:#9a9aa6;--line:rgba(255,255,255,.09);--spring:cubic-bezier(.34,1.56,.64,1);--flow:cubic-bezier(.2,.8,.2,1);--ease:cubic-bezier(.22,1,.36,1)}
   *{box-sizing:border-box} html,body{margin:0;height:100%;background:transparent;font:13px/1.4 -apple-system,"SF Pro Text",Inter,system-ui,sans-serif;color:var(--ink);-webkit-font-smoothing:antialiased;-webkit-user-select:none;overflow:hidden}
   body.bottom .arrow{top:auto;bottom:2px;transform:translateX(-50%) rotate(225deg)} body.bottom .panel{transform-origin:50% 100%}
   .arrow{position:absolute;top:2px;left:50%;width:16px;height:16px;background:rgba(18,18,24,.92);transform:translateX(-50%) rotate(45deg);border-radius:3px;border-left:1px solid var(--line);border-top:1px solid var(--line)}
@@ -22,7 +22,7 @@
   .m svg{width:18px;height:18px;stroke:var(--muted);fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;transition:stroke .25s}
   .m span{font-size:9.5px;color:var(--muted);text-align:center;line-height:1.1;max-width:100%;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
   .m:hover{transform:translateY(-2px);background:rgba(255,255,255,.08)} .m:active{transform:scale(.93)}
-  .m.on{background:rgba(91, 140, 255,.1);border-color:rgba(91, 140, 255,.4);box-shadow:0 0 18px -6px var(--a)} .m.on svg{stroke:var(--a)} .m.on span{color:var(--ink)}
+  .m.on{background:rgb(from var(--lumen-a,#5b8cff) r g b / .1);border-color:rgb(from var(--lumen-a,#5b8cff) r g b / .4);box-shadow:0 0 18px -6px var(--a)} .m.on svg{stroke:var(--a)} .m.on span{color:var(--ink)}
   .m.need::after{content:"";position:absolute;top:5px;right:5px;width:5px;height:5px;border-radius:50%;background:#FFB300}
   .vol{display:flex;align-items:center;gap:10px;padding:10px 16px 4px} .vol svg{width:16px;height:16px;stroke:var(--muted);fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;flex:none;cursor:pointer}
   input[type=range]{-webkit-appearance:none;flex:1;height:6px;border-radius:3px;background:linear-gradient(90deg,var(--a) var(--p,50%),rgba(255,255,255,.12) var(--p,50%));outline:none;cursor:pointer}
@@ -30,7 +30,7 @@
   .vol output{width:34px;text-align:right;font-size:11px;color:var(--muted);font-variant-numeric:tabular-nums}
   .quick{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;padding:8px 16px 10px}
   .q{all:unset;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:5px;padding:10px 4px;border-radius:14px;background:rgba(255,255,255,.05);border:1px solid var(--line);font-size:10.5px;color:var(--muted);transition:transform .35s var(--spring),background .25s} .q:hover{background:rgba(255,255,255,.1);transform:translateY(-2px)} .q:active{transform:scale(.93)}
-  .q svg{width:18px;height:18px;stroke:var(--ink);fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round} .q.hot{background:linear-gradient(135deg,rgba(91, 140, 255,.25),rgba(138, 99, 242,.1));border-color:rgba(91, 140, 255,.4);color:var(--ink)} .q.hot svg{stroke:var(--a)}
+  .q svg{width:18px;height:18px;stroke:var(--ink);fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round} .q.hot{background:linear-gradient(135deg,rgb(from var(--lumen-a,#5b8cff) r g b / .25),rgb(from var(--lumen-b,#8a63f2) r g b / .1));border-color:rgb(from var(--lumen-a,#5b8cff) r g b / .4);color:var(--ink)} .q.hot svg{stroke:var(--a)}
   .q.live{border-color:rgba(255,179,0,.5);color:#FFD37A} .q.live svg{stroke:#FFB300}
   @keyframes tileIn{from{opacity:0;transform:translateY(16px) scale(.86)}}
   .panel.show .m{animation:tileIn .55s var(--flow) backwards;animation-delay:calc(var(--i,0)*16ms)}
@@ -38,7 +38,7 @@
   .panel.show header{animation:tileIn .5s var(--flow) backwards}
   .upd.upd button{position:relative;overflow:hidden;isolation:isolate} .upd.upd button::before{content:"";position:absolute;left:50%;top:100%;width:190%;aspect-ratio:1;border-radius:50%;background:rgba(255,255,255,.35);transform:translate(-50%,0);transition:transform .6s var(--flow);z-index:-1}
   .upd.upd button:hover::before{transform:translate(-50%,-60%)}
-  .upd{margin:4px 16px 0;padding:10px 12px;border-radius:14px;background:linear-gradient(135deg,rgba(91, 140, 255,.18),rgba(0,212,255,.08));border:1px solid rgba(91, 140, 255,.4);display:flex;align-items:center;gap:10px;font-size:12px;animation:pop .5s var(--spring)} .upd svg{width:16px;height:16px;stroke:var(--a);fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex:none} .upd span{flex:1} .upd button{all:unset;cursor:pointer;padding:6px 12px;border-radius:999px;background:var(--a);color:#06110a;font-weight:700;font-size:11px}
+  .upd{margin:4px 16px 0;padding:10px 12px;border-radius:14px;background:linear-gradient(135deg,rgb(from var(--lumen-a,#5b8cff) r g b / .18),rgba(0,212,255,.08));border:1px solid rgb(from var(--lumen-a,#5b8cff) r g b / .4);display:flex;align-items:center;gap:10px;font-size:12px;animation:pop .5s var(--spring)} .upd svg{width:16px;height:16px;stroke:var(--a);fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex:none} .upd span{flex:1} .upd button{all:unset;cursor:pointer;padding:6px 12px;border-radius:999px;background:var(--a);color:#06110a;font-weight:700;font-size:11px}
   footer{margin-top:auto;display:flex;align-items:center;gap:8px;padding:10px 16px 14px;border-top:1px solid var(--line);font-size:12px;color:var(--muted)}
   footer a{cursor:pointer;padding:6px 10px;border-radius:9px;transition:background .2s} footer a:hover{background:rgba(255,255,255,.08);color:var(--ink)}
   .toast{position:absolute;left:50%;bottom:58px;transform:translate(-50%,20px);background:rgba(30,30,38,.95);border:1px solid var(--line);border-radius:999px;padding:6px 12px;font-size:11px;opacity:0;transition:all .4s var(--spring);pointer-events:none} .toast.show{opacity:1;transform:translate(-50%,0)}

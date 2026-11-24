@@ -976,7 +976,7 @@ function startApps() {
     const started = Apps.start({
       D, Updater, log,
       // "Quit" in a tool's own menu turns just that tool off; on Windows, Lumen leaves when nothing is left open
-      onStopped: () => { if (!isMac && !windows.length && !Apps.list().some(a => a.running)) app.quit() },
+      onStopped: () => { setTimeout(() => broadcast('settings', publicSettings()), 60); if (!isMac && !windows.length && !Apps.list().some(a => a.running)) app.quit() },
       onSeparate: async ids => {
         const names = ids.map(i => Apps.APPS[i].name), both = names.length > 1, n = names.join(' and ')
         const r = await dialog.showMessageBox({ type: 'info', buttons: [both ? 'Quit them' : 'Quit it', 'Keep running'], defaultId: 0, cancelId: 1,
@@ -991,9 +991,9 @@ function startApps() {
   } catch (e) { log('apps failed', e && e.stack || e) }
 }
 // open a part of Surge or Koi, the same way their own menus do
-function appOpen(id, what) {
+function appOpen(id, what, rect) {
   if (!Apps.isRunning(id)) return false
-  if (id === 'surge') { if (what === 'notes') Apps.poke('notes:toggle'); else Apps.poke('open:settings') }
+  if (id === 'surge') { if (what === 'notes') Apps.poke('notes:toggle'); else if (what === 'menu' && rect) Apps.poke('lumen:popover', rect); else Apps.poke('open:settings') }
   if (id === 'koi') Apps.poke('pop:action', what === 'hotkeys' ? 'hotkeys' : what === 'tour' ? 'tour' : 'open')
   return true
 }
@@ -1446,7 +1446,12 @@ ipcMain.handle('ui', async (e, action, ...a) => {
       case 'readLater': return toggleReadLater(w, t)
       case 'parcelsAuto': setSetting('parcelsAuto', !!a[0]); return true
       case 'parcelsCount': return Parcels.active().length
-      case 'appOpen': return appOpen(String(a[0]), String(a[1] || ''))
+      case 'appOpen': {
+        // from Lumen's toolbar: the button's place on screen, so Surge's menu opens right under it
+        let rect = null; const r = a[2]
+        if (r && [r.x, r.y, r.width, r.height].every(Number.isFinite)) { const cb = w.win.getContentBounds(); rect = { x: Math.round(cb.x + r.x), y: Math.round(cb.y + r.y), width: Math.round(r.width), height: Math.round(r.height) } }
+        return appOpen(String(a[0]), String(a[1] || ''), rect)
+      }
       case 'appsRunning': return Apps.list().filter(x => x.running).map(x => x.id)
       case 'trackNumber': return trackNumber(w, a[0])
       case 'focusMode': return setFocusMode(w, a[0] === undefined ? !w.focusMode : a[0])
@@ -1580,7 +1585,7 @@ function downloadAction(id, what) {
   broadcast('downloads', listDownloads())
 }
 
-const PUBLIC_SETTINGS = ['openAtLogin', 'googleSignInMode', 'ntpParcels', 'parcelsAuto', 'whatsNewSeen', 'archiveTabsAfterH', 'bookmarksBar', 'ntpStats', 'ntpRecent', 'ntpReadLater', 'darkStyle', 'uiSounds', 'darkOffSites', 'translateFlipDir', 'searchShortcuts', 'rememberZoom', 'soundActiveOnly', 'linksBackground', 'confirmQuit', 'wheelTabs', 'adblockAllow', 'aiModel', 'aiTabGroups', 'browserTheme', 'themeCustom', 'compact', 'appIcon', 'cleanLinks', 'swipeNav', 'videoSpeedKeys', 'hideCookieBanners', 'blockNotifications', 'forceDark', 'translateTo', 'offerTranslate', 'autoPip', 'ntpShortcuts', 'ntpWallpaper', 'ntpClock', 'searchEngine', 'motion', 'theme', 'accent', 'adblock', 'blockTrackers', 'httpsOnly', 'sleepTabsAfterMin', 'restoreSession', 'sidebarCollapsed', 'sidebarWidth', 'tabLayout', 'introSeen', 'autoUpdate', 'askWhereToSave', 'doNotTrack', 'showSuggestions', 'homeTiles']
+const PUBLIC_SETTINGS = ['openAtLogin', 'toolbarApps', 'googleSignInMode', 'ntpParcels', 'parcelsAuto', 'whatsNewSeen', 'archiveTabsAfterH', 'bookmarksBar', 'ntpStats', 'ntpRecent', 'ntpReadLater', 'darkStyle', 'uiSounds', 'darkOffSites', 'translateFlipDir', 'searchShortcuts', 'rememberZoom', 'soundActiveOnly', 'linksBackground', 'confirmQuit', 'wheelTabs', 'adblockAllow', 'aiModel', 'aiTabGroups', 'browserTheme', 'themeCustom', 'compact', 'appIcon', 'cleanLinks', 'swipeNav', 'videoSpeedKeys', 'hideCookieBanners', 'blockNotifications', 'forceDark', 'translateTo', 'offerTranslate', 'autoPip', 'ntpShortcuts', 'ntpWallpaper', 'ntpClock', 'searchEngine', 'motion', 'theme', 'accent', 'adblock', 'blockTrackers', 'httpsOnly', 'sleepTabsAfterMin', 'restoreSession', 'sidebarCollapsed', 'sidebarWidth', 'tabLayout', 'introSeen', 'autoUpdate', 'askWhereToSave', 'doNotTrack', 'showSuggestions', 'homeTiles']
 function publicSettings() { const s = D.settings.get(); return Object.fromEntries(PUBLIC_SETTINGS.map(k => [k, s[k]])) }
 function setSetting(k, v) {
   if (!PUBLIC_SETTINGS.includes(k)) return
@@ -1597,6 +1602,7 @@ function setSetting(k, v) {
   if (k === 'autoUpdate') Updater.setEnabled(!!v)
   if (k === 'tabLayout') buildMenu()
   if (k === 'appIcon') applyAppIcon()
+  if (k === 'accent') Apps.setAccent()
   broadcast('settings', publicSettings())
   for (const w of windows) for (const t of w.tabs.values()) if (t.view && (t.url || '').startsWith('lumen://')) t.view.webContents.send('lumen:settings', publicSettings())
 }
@@ -1717,10 +1723,11 @@ ipcMain.handle('lumen', async (e, action, ...a) => {
       case 'history': return D.listHistory(a[0] || '', 500)
       case 'readLater': return readLaterList(a[0] || 300)
       case 'archive': return D.archive.get().slice(0, 500)
-      case 'apps': return { list: Apps.list(), openAtLogin: !!D.settings.get('openAtLogin'), platform: process.platform }
+      case 'apps': return { list: Apps.list(), openAtLogin: !!D.settings.get('openAtLogin'), toolbarApps: D.settings.get('toolbarApps') !== false, platform: process.platform }
       case 'appSet': {
         const id = String(a[0]), on = !!a[1]; if (!Apps.APPS[id]) return null
         D.settings.set({ apps: { ...(D.settings.get('apps') || {}), [id]: on } })
+        setTimeout(() => broadcast('settings', publicSettings()), 60)   // the toolbar buttons follow
         if (!on) { Apps.stop(id, 'off'); return { ok: true } }
         if (Apps.isRunning(id)) return { ok: true }
         return Apps.startApp(id) ? { ok: true } : { restart: true }   // a tool switched off earlier in this session comes back after a restart

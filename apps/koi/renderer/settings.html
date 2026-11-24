@@ -1,6 +1,6 @@
 <!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><title>Koi — Hotkeys</title>
 <style>
-:root{--bg:#eef1fb;--card:rgba(255,255,255,.72);--tx:#1b1d2a;--mut:rgba(27,29,42,.55);--ln:rgba(0,0,0,.08);--ac:#5b8cff;--chip:rgba(0,0,0,.06)}
+:root{--bg:#eef1fb;--card:rgba(255,255,255,.72);--tx:#1b1d2a;--mut:rgba(27,29,42,.55);--ln:rgba(0,0,0,.08);--ac:var(--lumen-a,#5b8cff);--chip:rgba(0,0,0,.06)}
 @media(prefers-color-scheme:dark){:root{--bg:#15172c;--card:rgba(255,255,255,.07);--tx:#f1f2ff;--mut:rgba(230,232,255,.55);--ln:rgba(255,255,255,.1);--chip:rgba(255,255,255,.1)}}
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text",system-ui,sans-serif;background:var(--bg);color:var(--tx);-webkit-font-smoothing:antialiased;user-select:none;padding:46px 26px 26px;overflow-y:auto;height:100vh}
@@ -12,8 +12,8 @@ h1{font-size:26px;letter-spacing:-.02em;margin-bottom:4px}.sub{color:var(--mut);
 .row .nm{flex:1;font-size:14px;font-weight:550;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .rec{all:unset;cursor:pointer;min-width:150px;text-align:center;padding:8px 14px;border-radius:11px;background:var(--chip);font:600 14px ui-monospace,Menlo,monospace;transition:transform .35s cubic-bezier(.3,2,.5,1),background .2s,box-shadow .2s}
 .rec:hover{transform:scale(1.04)}
-.rec.on{background:var(--ac);color:#fff;box-shadow:0 0 0 5px rgba(91, 140, 255,.25);animation:pl 1s ease-in-out infinite}
-@keyframes pl{50%{box-shadow:0 0 0 9px rgba(91, 140, 255,.12)}}
+.rec.on{background:var(--ac);color:#fff;box-shadow:0 0 0 5px rgb(from var(--lumen-a,#5b8cff) r g b / .25);animation:pl 1s ease-in-out infinite}
+@keyframes pl{50%{box-shadow:0 0 0 9px rgb(from var(--lumen-a,#5b8cff) r g b / .12)}}
 .rec.err{background:#ff453a;color:#fff;animation:sh .4s}
 @keyframes sh{20%{transform:translateX(-6px)}40%{transform:translateX(6px)}60%{transform:translateX(-4px)}80%{transform:translateX(3px)}}
 .btn{all:unset;cursor:pointer;padding:7px 13px;border-radius:10px;background:var(--chip);font-size:13px;font-weight:600;transition:transform .35s cubic-bezier(.3,2,.5,1)}

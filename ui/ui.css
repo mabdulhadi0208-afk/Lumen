@@ -880,3 +880,8 @@ body.toplayout .tab.active .title { color: var(--fg); }
 @media (prefers-color-scheme: dark) { #bmbar img, .bm img, .tab .icon img, .res .ri img { background: rgba(255,255,255,.9); border-radius: 4px; padding: 1px; } }
 .res .rk:empty { display: none; }
 body.toplayout #toast { max-width: 460px; }
+
+/* Surge and Koi next to Reload: their logos, in the accent color */
+.appbtn[hidden] { display: none !important; }
+.appbtn .applogo { width: 18px; height: 18px; filter: drop-shadow(0 1px 2px color-mix(in srgb, var(--accent) 35%, transparent)); transition: transform .35s cubic-bezier(.34,1.56,.64,1); }
+.appbtn:hover .applogo { transform: scale(1.1) rotate(-4deg); }

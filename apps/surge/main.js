@@ -343,11 +343,13 @@ ipcMain.on('popover:height', (_e, h) => { const w = popWin; if (!w || w.isDestro
   const d = screen.getDisplayNearestPoint({ x: b.x, y: b.y }); const maxH = d.workArea.height - 16; h = Math.min(h, maxH);
   let y = popBelow ? b.y : b.y + b.height - h; y = Math.max(d.workArea.y + 6, Math.min(y, d.workArea.y + d.workArea.height - h - 6));
   w.setBounds({ x: b.x, y, width: b.width, height: h }, false); });
+let lumenAnchor = null;   // Lumen's toolbar button, when the menu is opened from there
+ipcMain.on('lumen:popover', (_e, b) => { lumenAnchor = { ...b, t: Date.now() }; togglePopover(); });
 function togglePopover() {
   const w = ensurePopover();
   if (w.isVisible()) { w.hide(); return; }
   if (Date.now() - popHidAt < 250) return;
-  const b = tray.getBounds(); const d = screen.getDisplayNearestPoint({ x: b.x, y: b.y });
+  const b = lumenAnchor && Date.now() - lumenAnchor.t < 1500 ? lumenAnchor : tray.getBounds(); lumenAnchor = null; const d = screen.getDisplayNearestPoint({ x: b.x, y: b.y });
   const [pw, ph] = w.getSize();
   let x = Math.round(b.x + b.width / 2 - pw / 2); const below = b.y < d.workArea.y + d.workArea.height / 2; let y = below ? Math.round(b.y + b.height + 4) : Math.round(b.y - ph - 8);
   if (!b.width && !b.height) { x = d.workArea.x + d.workArea.width - pw - 12; y = d.workArea.y + d.workArea.height - ph - 12; }   // some Windows trays report no bounds

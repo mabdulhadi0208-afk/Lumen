@@ -411,6 +411,8 @@ function renameGroup(gid) {
 function setTabLayout(top) {
   TOP = top
   document.body.classList.toggle('toplayout', top)
+  // Surge and Koi sit next to Reload with tabs on top; the sidebar is too narrow for that, so there they join Settings
+  if (top) $('.navbtns').append($('#btn-surge'), $('#btn-koi')); else $('#btn-split').after($('#btn-surge'), $('#btn-koi'))
   // re-seat every tab and the pill on the new axis without animating across the screen
   const list = S.tabs.filter(t => !t.pinned)
   if (TOP) measureTabW(list.length)
@@ -1669,3 +1671,19 @@ api.on('state', () => { clearTimeout(bmT); bmT = setTimeout(bmLoad, 250) })
 api.on('settings', () => setTimeout(bmRender, 50))
 window.addEventListener('resize', () => { clearTimeout(bmT); bmT = setTimeout(bmRender, 120) })
 bmLoad()
+
+// ---------------------------------------------------------------- Surge and Koi, next to Reload
+// Their logos are drawn in your accent color. Surge opens its own menu right under the button; Koi fans out your apps.
+$('#btn-surge').innerHTML = appLogo('surge'); $('#btn-koi').innerHTML = appLogo('koi')
+async function renderAppButtons() {
+  let on = []
+  try { on = settings.toolbarApps === false ? [] : (await api.do('appsRunning')) || [] } catch {}
+  for (const id of ['surge', 'koi']) $('#btn-' + id).hidden = !on.includes(id)
+}
+for (const id of ['surge', 'koi']) $('#btn-' + id).onclick = () => {
+  const r = $('#btn-' + id).getBoundingClientRect()
+  api.do('appOpen', id, id === 'surge' ? 'menu' : 'open', { x: r.left, y: r.top, width: r.width, height: r.height })
+}
+renderAppButtons()
+api.on('settings', () => renderAppButtons())
+addEventListener('focus', () => renderAppButtons())

@@ -50,9 +50,24 @@ function makeShim(id) {
   const menu = new Proxy(Menu, { get: (t, k) => k === 'setApplicationMenu' ? () => {} : (typeof t[k] === 'function' ? t[k].bind(t) : t[k]) })
   // real windows and trays (so BrowserWindow.fromWebContents and friends keep working), just remembered per tool
   const AppTray = new Proxy(Tray, { construct: (T, a) => { const t = new T(...a); st.trays.add(t); return t } })
-  const AppWindow = new Proxy(BrowserWindow, { construct: (B, a) => { const w = new B(...a); st.windows.add(w); w.once('closed', () => st.windows.delete(w)); return w } })
+  const AppWindow = new Proxy(BrowserWindow, { construct: (B, a) => { const w = new B(...a); st.windows.add(w); w.once('closed', () => st.windows.delete(w)); w.webContents.on('dom-ready', () => paint(w)); return w } })
   return new Proxy(electron, { get: (t, k) => k === 'app' ? proxyApp : k === 'globalShortcut' ? gs : k === 'Menu' ? menu : k === 'Tray' ? AppTray : k === 'BrowserWindow' ? AppWindow : t[k] })
 }
+
+// ------------------------------------------------------------ colors: their windows follow the accent color picked in Lumen
+// Lumen's blue pairs with its purple; any other accent pairs with the same color turned a little further round the wheel.
+function accentVars() {
+  const a = /^#[0-9a-f]{6}$/i.test(String(L && L.D.settings.get('accent'))) ? L.D.settings.get('accent').toLowerCase() : '#5b8cff'
+  return { a, b: a === '#5b8cff' ? '#8a63f2' : `oklch(from ${a} calc(l - .03) c calc(h + 40))` }
+}
+function paint(w) {
+  try {
+    if (w.isDestroyed()) return
+    const { a, b } = accentVars()
+    w.webContents.executeJavaScript(`(() => { const r = document.documentElement.style; r.setProperty('--lumen-a', ${JSON.stringify(a)}); r.setProperty('--lumen-b', ${JSON.stringify(b)}) })()`).catch(() => {})
+  } catch {}
+}
+function setAccent() { for (const st of running.values()) for (const w of st.windows) paint(w) }
 
 // every require('electron') made by a tool's own files gets that tool's layer
 const shims = {}
@@ -137,4 +152,4 @@ const list = () => Object.entries(APPS).map(([id, a]) => ({ id, name: a.name, su
 // send a message to a tool as if one of its own windows did (used for Open Surge settings and the like)
 function poke(channel, ...args) { try { require('electron').ipcMain.emit(channel, { sender: null, returnValue: null, reply() {} }, ...args) } catch {} }
 
-module.exports = { start, stop, startApp, list, isRunning: id => running.has(id), poke, quitSeparate, APPS, userDataFor }
+module.exports = { start, stop, startApp, list, setAccent, accentVars, isRunning: id => running.has(id), poke, quitSeparate, APPS, userDataFor }

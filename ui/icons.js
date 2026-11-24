@@ -52,3 +52,21 @@ window.ICONS = {
   sidebarL: I('<rect x="2" y="2.5" width="12" height="11" rx="2"/><path d="M6 2.5v11"/>'),
   tabsTop: I('<rect x="2" y="2.5" width="12" height="11" rx="2"/><path d="M2 6h12"/>'),
 }
+
+// Surge and Koi logos, drawn in the accent color you pick in Lumen (and turned a little round the color wheel for the
+// second stop, so blue goes to purple, pink goes to orange and so on). Used in the toolbar, Settings and the intro.
+let logoN = 0
+window.appLogo = (id, cls = '') => {
+  const n = ++logoN, g = `lg${n}`, h = `lh${n}`
+  const a = 'var(--accent, #5b8cff)'
+  const glyph = id === 'surge'
+    ? `<path d="M26.6 9.5 13.8 27.4h9.3L20.9 38.5 34.2 20.1h-9.4z" fill="#fff" filter="url(#${h})"/>`
+    : `<circle cx="24" cy="24" r="11" fill="none" stroke="#fff" stroke-width="4.2"/><circle cx="24" cy="24" r="4.6" fill="#fff"/>`
+  return `<svg class="applogo ${cls}" viewBox="0 0 48 48" aria-hidden="true"><defs>
+    <linearGradient id="${g}" x1="0" y1="0" x2="1" y2="1"><stop offset="0" style="stop-color:oklch(from ${a} calc(l + .07) c h)"/><stop offset="1" style="stop-color:oklch(from ${a} calc(l - .05) c calc(h + ${id === 'surge' ? 40 : 28}))"/></linearGradient>
+    <filter id="${h}" x="-30%" y="-30%" width="160%" height="160%"><feDropShadow dx="0" dy="1" stdDeviation="1.2" flood-color="#000" flood-opacity=".25"/></filter></defs>
+    <rect x="2" y="2" width="44" height="44" rx="12.5" fill="url(#${g})"/>
+    <rect x="2.5" y="2.5" width="43" height="43" rx="12" fill="none" stroke="#fff" stroke-opacity=".28"/>
+    <path d="M2 14.5C2 7.6 7.6 2 14.5 2h19C40.4 2 46 7.6 46 14.5V18c-7 3-14.4 4.4-22 4.4S9 21 2 18z" fill="#fff" opacity=".13"/>
+    ${glyph}</svg>`
+}

@@ -590,13 +590,14 @@ async function appsPage(m) {
   const draw = d => {
     m.innerHTML = `<h2>Surge and Koi</h2><p class="lead">Two tools that used to be separate apps now live inside Lumen. They work just like before, update with Lumen, and keep your old settings.</p>
     ${d.list.map(a => { const i = APP_INFO[a.id]; return `<div class="card appcard ${a.running ? 'on' : ''} ${a.supported ? '' : 'na'}" data-app="${a.id}">
-      <div class="apphead"><img class="appicon" src="lumen://assets/app-${a.id}.png" alt="" onerror="this.style.visibility='hidden'"><div class="grow"><div class="appname">${esc(a.name)} <span class="appstate">${!a.supported ? 'Mac only' : a.running ? 'Running' : a.enabled ? 'Starting after restart' : 'Off'}</span></div><div class="apptag">${esc(i.tag)}</div></div>
+      <div class="apphead"><span class="appicon">${appLogo(a.id)}</span><div class="grow"><div class="appname">${esc(a.name)} <span class="appstate">${!a.supported ? 'Mac only' : a.running ? 'Running' : a.enabled ? 'Starting after restart' : 'Off'}</span></div><div class="apptag">${esc(i.tag)}</div></div>
       ${a.supported ? `<label class="switch"><input type="checkbox" data-appsw="${a.id}" ${a.enabled ? 'checked' : ''}><span></span></label>` : ''}</div>
       <p class="apptext">${esc(i.text)}</p>
       <div class="appkeys">${i.keys.map(([k, t]) => `<span><kbd>${esc(k)}</kbd>${esc(t)}</span>`).join('')}</div>
       ${a.running ? `<div class="appacts">${i.actions.map(([k, t], n) => `<button class="btn ${n ? '' : 'primary'}" data-open="${k}">${esc(t)}</button>`).join('')}</div>` : ''}
     </div>` }).join('')}
     <div class="card">
+      ${row('Show in the toolbar', 'Surge and Koi buttons next to Reload, in your accent color.', sw('toolbarApps', d.toolbarApps))}
       ${row('Start Lumen when you log in', 'Lumen opens quietly in the background so Surge and Koi are ready, without opening a window.', sw('openAtLogin', d.openAtLogin))}
       ${row('Keyboard and mouse access', 'Keyboard sounds, click ripples and typing stats need macOS to allow Lumen in Privacy and Security, Accessibility and Input Monitoring. Surge asks when you turn one of them on.', '')}
     </div>`

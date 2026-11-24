@@ -120,7 +120,7 @@
 /*fx:119 app name lifts*/ .a .n{transition:translate .6s var(--spring),color .3s} .a:hover .n,.a.sel .n{translate:0 2px;color:#fff}
 /*fx:120 notes close button turns red*/ header .x:hover{color:#FF5C5C;opacity:1}
 /*fx:121 saved indicator blinks softly*/ @keyframes fx-saved{0%,100%{opacity:.55}50%{opacity:1}} .win>footer span:last-child{animation:fx-saved 3s ease-in-out infinite}
-/*fx:122 notes page lines glow on focus*/ .win:has(textarea:focus){box-shadow:inset 0 1px 0 rgba(255,255,255,.1),inset 0 0 0 1px color-mix(in srgb,#5b8cff 30%,transparent)}
+/*fx:122 notes page lines glow on focus*/ .win:has(textarea:focus){box-shadow:inset 0 1px 0 rgba(255,255,255,.1),inset 0 0 0 1px color-mix(in srgb,var(--lumen-a,#5b8cff) 30%,transparent)}
 /*fx:123 progress bar candy stripes*/ .bar i{position:relative;overflow:hidden} .bar i::after{content:"";position:absolute;top:0;bottom:0;left:-32px;right:0;background:repeating-linear-gradient(115deg,rgba(255,255,255,.3) 0 8px,transparent 8px 16px);animation:fx-stripe .8s linear infinite} @keyframes fx-stripe{to{transform:translateX(28.3px)}}
 /*fx:124 progress head glows*/ .bar i{box-shadow:0 0 14px var(--a)}
 /*fx:125 ready button shine loops*/ .card.ready .btn{position:relative;overflow:hidden} .card.ready .btn::after{content:"";position:absolute;top:0;bottom:0;left:0;width:45%;background:linear-gradient(110deg,transparent,rgba(255,255,255,.5),transparent);animation:fx-shine 2.4s var(--flow) infinite} @keyframes fx-shine{from{transform:translateX(-130%)}to{transform:translateX(330%)}}

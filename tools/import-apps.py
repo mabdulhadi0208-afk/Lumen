@@ -7,6 +7,8 @@ Their code stays as it was. Only these things change on the way in:
   - Surge's Cmd Shift hotkeys go back to Ctrl Opt, so they never take Lumen's shortcuts
   - the permission repair, watchdog and shutdown signal are pointed at Lumen
   - their own updaters are replaced by stand-ins that hand off to Lumen's updater
+  - their window colors follow your Lumen accent color (--lumen-a and --lumen-b, set by Lumen)
+  - Surge's menu can open under Lumen's toolbar button as well as under its menu bar icon
 """
 import os, re, shutil, sys
 
@@ -38,6 +40,20 @@ def recolor(path, table):
     for pat, rep in table: s = re.sub(pat, rep, s, flags=re.I)
     open(path, 'w', encoding='utf-8').write(s)
 
+# Lumen's blue and purple become live CSS variables, so the tools follow the accent color picked in Lumen.
+# Only in stylesheets: colors inside scripts (canvas drawing and the like) stay as they are.
+def varify_css(css):
+    css = re.sub(r'rgba\(\s*91,\s*140,\s*255\s*,\s*([\d.]+)\s*\)', r'rgb(from var(--lumen-a,#5b8cff) r g b / \1)', css)
+    css = re.sub(r'rgba\(\s*138,\s*99,\s*242\s*,\s*([\d.]+)\s*\)', r'rgb(from var(--lumen-b,#8a63f2) r g b / \1)', css)
+    css = re.sub(r'(?<![\w-])#5b8cff\b(?!\))', 'var(--lumen-a,#5b8cff)', css, flags=re.I)
+    css = re.sub(r'(?<![\w-])#8a63f2\b(?!\))', 'var(--lumen-b,#8a63f2)', css, flags=re.I)
+    return css
+def varify(path):
+    s = open(path, encoding='utf-8').read()
+    if path.endswith('.css'): s = varify_css(s)
+    else: s = re.sub(r'(<style[^>]*>)(.*?)(</style>)', lambda m: m.group(1) + varify_css(m.group(2)) + m.group(3), s, flags=re.S | re.I)
+    open(path, 'w', encoding='utf-8').write(s)
+
 # ------------------------------------------------------------------ Surge
 S = os.path.join(LUMEN, 'apps', 'surge')
 copy_tree(SURGE_SRC, S, {'.github', 'docs', 'site', 'build-dmg.sh', 'package-lock.json', 'update.html', 'scripts', 'build'})
@@ -50,6 +66,9 @@ def keep_block(name, start, end):
     a, b = src.index(start), src.index(end, src.index(start)); a2, b2 = dst.index(start), dst.index(end, dst.index(start))
     open(dst_p, 'w', encoding='utf-8').write(dst[:a2] + src[a:b] + dst[b2:])
 keep_block('settings.html', 'const THEMES=[', '];')
+for f in os.listdir(S):
+    if f.endswith(('.html', '.css')) and f != 'glow.html': varify(os.path.join(S, f))
+edit(os.path.join(S, 'settings.html'), [("g.theme==='solid' ? g.color : '#5b8cff'", "g.theme==='solid' ? g.color : 'var(--lumen-a,#5b8cff)'")])
 for f in os.listdir(os.path.join(S, 'modules')):
     p = os.path.join(S, 'modules', f)
     s = open(p, encoding='utf-8').read()
@@ -59,6 +78,8 @@ edit(os.path.join(S, 'main.js'), [
     ("globalShortcut.register('CommandOrControl+Shift+N', toggleNotes)", "globalShortcut.register('Control+Alt+N', toggleNotes)"),
     ("for (const sig of ['SIGTERM', 'SIGINT']) process.on(sig, () => { markCleanExit(); app.quit(); });", "// inside Lumen, Lumen handles shutdown signals"),
     ("function startWatchdog() {", "function startWatchdog() { return; /* inside Lumen: Lumen looks after itself */"),
+    ("function togglePopover() {", "let lumenAnchor = null;   // Lumen's toolbar button, when the menu is opened from there\nipcMain.on('lumen:popover', (_e, b) => { lumenAnchor = { ...b, t: Date.now() }; togglePopover(); });\nfunction togglePopover() {"),
+    ("const b = tray.getBounds(); const d = screen.getDisplayNearestPoint", "const b = lumenAnchor && Date.now() - lumenAnchor.t < 1500 ? lumenAnchor : tray.getBounds(); lumenAnchor = null; const d = screen.getDisplayNearestPoint"),
     ("tccutil reset Accessibility app.surge.glow; tccutil reset ListenEvent app.surge.glow; sleep 1; pkill -x Surge;", "tccutil reset Accessibility app.lumen.browser; tccutil reset ListenEvent app.lumen.browser; sleep 1; pkill -x Lumen;"),
 ])
 for f in ('settings.html', 'popover.html'):
@@ -81,7 +102,9 @@ module.exports = {
 K = os.path.join(LUMEN, 'apps', 'koi')
 copy_tree(KOI_SRC, K, {'.github', 'build', 'README.md', 'CLAUDE.md', 'package-lock.json', '.gitignore'})
 KOI_COLORS = [(r'#0a84ff', '#5b8cff'), (r'#7c5cff', '#8a63f2'), (r'10,\s*132,\s*255', '91, 140, 255'), (r'124,\s*92,\s*255', '138, 99, 242')]
-for f in os.listdir(os.path.join(K, 'renderer')): recolor(os.path.join(K, 'renderer', f), KOI_COLORS)
+for f in os.listdir(os.path.join(K, 'renderer')):
+    recolor(os.path.join(K, 'renderer', f), KOI_COLORS)
+    if f.endswith(('.html', '.css')): varify(os.path.join(K, 'renderer', f))
 open(os.path.join(K, 'updater.js'), 'w', encoding='utf-8').write("""// Inside Lumen, Koi updates together with Lumen. This stand-in keeps Koi's menu working and hands off to Lumen.
 const H = () => globalThis.__lumenApps || {}
 const state = () => (H().state ? H().state() : { status: 'idle' })

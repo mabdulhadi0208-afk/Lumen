@@ -7,6 +7,7 @@ const settings = new Store('settings', {
   motion: 'jelly',           // jelly | calm | off
   theme: 'system',           // system | light | dark
   accent: '#5b8cff',
+  toolbarApps: true,         // Surge and Koi buttons next to Reload
   adblock: true,
   blockTrackers: true,
   httpsOnly: false,

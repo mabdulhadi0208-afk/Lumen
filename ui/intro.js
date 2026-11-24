@@ -1,18 +1,16 @@
 /* Lumen's opening film. Cold open, warp, ignition, the logo forged from light, a 3D feature carousel,
-   what is new in this version, then one question before you start. Letterboxed, film grain, anamorphic flares,
+   then one question before you start. Letterboxed, film grain, anamorphic flares,
    synthesized score. No emoji. Skippable at any point with Skip or Escape.
    Every release updates WHATS_NEW below, and after an update Lumen plays the short what's-new cut once. */
 ;(function () {
   // ---- edit this list every release: it is the "New in Lumen" act of the film
   const WHATS_NEW = {
-    version: '1.18',
+    version: '1.19',
     items: [
-      { icon: 'bolt', title: 'Surge is built in', text: 'Charge glow, keyboard sounds, click ripples, a new Dock and more. Settings, Surge and Koi.' },
-      { icon: 'sparkle', title: 'Koi is built in', text: 'Press Option Space and your apps bloom around the cursor in a springy fan.' },
-      { icon: 'reload', title: 'One app, one update', text: 'Surge and Koi update with Lumen and keep the settings you already had.' },
-      { icon: 'download', title: 'A better updater', text: 'See what is new before you update. Every download is checked before it installs.' },
-      { icon: 'key', title: 'Google sign-in fixed', text: 'Lumen signs in to Google like any Chrome, and retries in another mode if Google says no.' },
-      { icon: 'close', title: 'Less in your way', text: 'No popup after you close a tab. Shift Cmd T still brings it back.' },
+      { icon: 'bolt', title: 'Surge and Koi in the toolbar', text: 'Right next to Reload. Surge opens its menu under the button, Koi fans out your apps.' },
+      { icon: 'sparkle', title: 'Logos in your color', text: 'The Surge and Koi logos are drawn in the accent color you pick, and change with it.' },
+      { icon: 'moon', title: 'Their windows match too', text: 'Surge and Koi follow your Lumen accent color in every window, the moment you change it.' },
+      { icon: 'play', title: 'A proper first hello', text: 'New to Lumen? The intro shows what Lumen can do. What is new is only for updates.' },
     ],
   }
   const FEATURES = [
@@ -97,6 +95,7 @@
   #intro .mw.dark .ub{background:#2a2c33;color:#aaa}#intro .mw.dark .t.on{background:#2f3139;color:#fff}
   #intro .desk{position:relative;width:min(700px,74vw);height:min(400px,46vh);border-radius:18px;overflow:hidden;background:radial-gradient(120% 90% at 30% 20%,#2a2f5a,#12142a 60%,#0b0c18);box-shadow:0 50px 120px rgba(0,0,0,.55),0 0 0 1px rgba(255,255,255,.1)}
   #intro .desk .menubar{height:24px;background:rgba(255,255,255,.08);display:flex;align-items:center;justify-content:flex-end;gap:12px;padding:0 12px;font:600 11px -apple-system,system-ui,sans-serif;color:rgba(255,255,255,.75)}
+  #intro .desk .menubar span{display:inline-flex;align-items:center;gap:6px} #intro .applogo.mb{width:15px;height:15px}
   #intro .desk .edge{position:absolute;inset:0;border-radius:18px;box-shadow:inset 0 0 0 0 rgba(0,255,133,0);transition:box-shadow 1.1s cubic-bezier(.2,.9,.3,1)}
   #intro .desk.lit .edge{box-shadow:inset 0 0 40px 10px rgba(0,255,133,.55),inset 0 0 120px 20px rgba(0,212,255,.25)}
   #intro .desk .chg{position:absolute;left:50%;top:58px;transform:translateX(-50%) scale(.6);opacity:0;padding:9px 16px;border-radius:999px;background:rgba(20,22,36,.85);color:#fff;font:700 13px system-ui;display:flex;gap:10px;align-items:center;box-shadow:0 10px 30px rgba(0,0,0,.4);transition:all .7s cubic-bezier(.3,1.5,.5,1)}
@@ -434,13 +433,13 @@
     { title: 'Two pages, side by side.', text: '<kbd>Shift Cmd \\</kbd> opens split view. Reader mode, picture in picture and screenshots are one shortcut away too.', build: () => MW(`<div class="split"><div class="pp">${LINES(5)}</div><div class="pp">${LINES(5)}</div></div>`), play: async s => {
       const ps = s.querySelectorAll('.pp'); anim(ps[0], [{ transform: 'translateX(50%)' }, { transform: 'none' }], { duration: 900 }); anim(ps[1], [{ transform: 'translateX(-50%)', opacity: 0 }, { transform: 'none', opacity: 1 }], { duration: 900 }); if (!skip) SFX.whoosh()
     } },
-    { title: 'Surge, built in.', text: 'Your Mac lights up when it charges. Keys and clicks get sounds, clicks get ripples, and there is a new Dock, a focus timer and more.', build: () => `<div class="desk"><div class="menubar"><span>Surge</span><span>67%</span><span>9:41</span></div><div class="edge"></div><div class="chg"><i></i>Charging  67%</div><div class="keys">${'LUMEN'.split('').map(k => `<b>${k}</b>`).join('')}</div></div>`, play: async s => {
+    { title: 'Surge, built in.', text: 'Your Mac lights up when it charges. Keys and clicks get sounds, clicks get ripples, and there is a new Dock, a focus timer and more.', build: () => `<div class="desk"><div class="menubar"><span>${appLogo('surge', 'mb')}Surge</span><span>67%</span><span>9:41</span></div><div class="edge"></div><div class="chg"><i></i>Charging  67%</div><div class="keys">${'LUMEN'.split('').map(k => `<b>${k}</b>`).join('')}</div></div>`, play: async s => {
       const d = s.querySelector('.desk'); await sleep(300); d.classList.add('lit'); if (!skip) SFX.shimmer()
       const keys = s.querySelectorAll('.keys b')
       for (const k of keys) { await sleep(170); k.classList.add('dn'); if (!skip) SFX.key(); setTimeout(() => k.classList.remove('dn'), 130) }
       for (const [x, y] of [[30, 45], [70, 38], [52, 70]]) { const r = document.createElement('i'); r.className = 'rip'; r.style.left = x + '%'; r.style.top = y + '%'; d.appendChild(r); anim(r, [{ transform: 'scale(.4)', opacity: 1 }, { transform: 'scale(4)', opacity: 0 }], { duration: 800, easing: 'cubic-bezier(.2,.8,.3,1)' }); if (!skip) SFX.pop(1.1); await sleep(260) }
     } },
-    { title: 'Koi, one key away.', text: 'Press <kbd>Option Space</kbd> and your apps bloom around the cursor in a springy fan. Type a letter or click to open one.', build: () => `<div class="desk"><div class="menubar"><span>Koi</span><span>9:41</span></div><div class="fan"></div><div class="cur"></div></div>`, play: async s => {
+    { title: 'Koi, one key away.', text: 'Press <kbd>Option Space</kbd> and your apps bloom around the cursor in a springy fan. Type a letter or click to open one.', build: () => `<div class="desk"><div class="menubar"><span>${appLogo('koi', 'mb')}Koi</span><span>9:41</span></div><div class="fan"></div><div class="cur"></div></div>`, play: async s => {
       const fan = s.querySelector('.fan'), apps = [['#ff5f57', 'M'], ['#febc2e', 'N'], ['#28c840', 'F'], ['#5b8cff', 'S'], ['#8a63f2', 'C'], ['#e9609c', 'P'], ['#20c997', 'T']]
       apps.forEach(([c, l], i) => {
         const el = document.createElement('i'); el.style.background = `linear-gradient(135deg, ${c}, ${c}aa)`; el.textContent = l; fan.appendChild(el)
@@ -557,7 +556,7 @@
       removeEventListener('keydown', onKey)
       if (!skip || askParcels) { skip = false; answer = await finale({ short: true, ask: askParcels }) }
     } else {
-      await sleep(600); await coldOpen(); await warp(); await ignite(); await tour(); await whatsNew()
+      await sleep(600); await coldOpen(); await warp(); await ignite(); await tour()   // a first launch shows what Lumen can do; what is new is only for people who update
       removeEventListener('keydown', onKey)
       clearCaption()
       // the last scene asks one question, even when the film itself was skipped

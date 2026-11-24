@@ -59,7 +59,7 @@ app.whenReady().then(async () => {
   const s = w.createTab('lumen://settings/apps', { active: true }); await wait(2000)
   const sq = x => s.view.webContents.executeJavaScript(x)
   ok(await sq(`document.querySelectorAll('.appcard').length`) === 2 && await sq(`document.querySelectorAll('.appcard.on').length`) === 2, 'Settings shows Surge and Koi, both running')
-  ok(await sq(`[...document.querySelectorAll('.appicon')].every(i => i.naturalWidth > 0)`), 'with their own icons')
+  ok(await sq(`document.querySelectorAll('.appicon svg.applogo').length`) === 2, 'with their own logos')
   fs.writeFileSync(`${SHOTS}/apps-settings.png`, (await s.view.webContents.capturePage()).toPNG())
 
   // "Quit Koi" from its own menu turns only Koi off

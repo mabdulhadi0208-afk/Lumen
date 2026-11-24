@@ -1,0 +1,115 @@
+/* Lumen glow for Koi: loaded last in Koi's windows (tools/import-apps.py links it after each window's own styles).
+   Visual layer only: glass with gradient edges in your Lumen accent (--lumen-a, --lumen-b), deeper light and shadow,
+   calmer springs, clear focus rings. */
+:root{
+  --lg-a:var(--lumen-a,#5b8cff); --lg-b:var(--lumen-b,#8a63f2);
+  --lg-grad:linear-gradient(135deg,var(--lg-a),var(--lg-b));
+  --lg-spring:linear(0,.046,.159,.307,.465,.618,.752,.863,.95,1.012,1.052,1.074,1.083,1.082,1.074,1.062,1.049,1.036,1.024,1.014,1.006,1,.997,.994,.993,.993,.994,.994,.996,.997,.998,.999,1);
+}
+html,body,*{overscroll-behavior:none}
+::selection{background:rgb(from var(--lg-a) r g b / .3)}
+::-webkit-scrollbar{width:10px;height:10px} ::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:rgb(from var(--lg-a) r g b / .25);border:3px solid transparent;background-clip:padding-box;border-radius:99px}
+:focus-visible{outline:2px solid rgb(from var(--lg-a) r g b / .9);outline-offset:2px}
+@keyframes lgSheen{0%{transform:translateX(-130%) skewX(-20deg)}100%{transform:translateX(330%) skewX(-20deg)}}
+@keyframes lgRing{0%{opacity:.75;transform:scale(1)}100%{opacity:0;transform:scale(1.7)}}
+@keyframes lgFlow{to{background-position:200% 0}}
+
+/* ───────────── Menu bar popover ───────────── */
+[data-lg=kpop] #panel{background:radial-gradient(130% 45% at 0% -6%,rgb(from var(--lg-a) r g b / .16),transparent 62%),radial-gradient(120% 40% at 100% 106%,rgb(from var(--lg-b) r g b / .13),transparent 62%),linear-gradient(180deg,var(--bg),var(--bg2));box-shadow:var(--sh),0 0 60px -26px var(--lg-a),inset 0 1px 0 rgba(255,255,255,.6),inset 0 0 0 1px var(--ln)}
+[data-lg=kpop] body.dk #panel{box-shadow:var(--sh),0 0 70px -24px var(--lg-a),inset 0 1px 0 rgba(255,255,255,.12),inset 0 0 0 1px var(--ln)}
+[data-lg=kpop] #panel::after{content:"";position:absolute;inset:0;border-radius:inherit;padding:1px;background:linear-gradient(150deg,rgb(from var(--lg-a) r g b / .7),transparent 34%,transparent 66%,rgb(from var(--lg-b) r g b / .6));-webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask-composite:exclude;pointer-events:none}
+[data-lg=kpop] .aura{opacity:.18}
+[data-lg=kpop] .lg{background:var(--lg-grad);box-shadow:0 10px 22px -8px var(--lg-a),0 0 26px -8px var(--lg-b),inset 0 1px 0 rgba(255,255,255,.5),inset 0 0 0 1px rgba(255,255,255,.18)}
+[data-lg=kpop] .hd b{background:linear-gradient(90deg,var(--tx) 40%,color-mix(in srgb,var(--lg-a) 70%,var(--tx)));-webkit-background-clip:text;background-clip:text;color:transparent}
+[data-lg=kpop] .go{background:linear-gradient(120deg,var(--lg-a),var(--lg-b) 55%,color-mix(in srgb,var(--lg-b) 70%,var(--lg-a)));box-shadow:0 16px 30px -12px rgb(from var(--lg-a) r g b / .8),0 0 34px -14px var(--lg-b),inset 0 1px 0 rgba(255,255,255,.4),inset 0 0 0 1px rgba(255,255,255,.16)}
+[data-lg=kpop] .go::before{content:"";position:absolute;top:-20%;bottom:-20%;left:0;width:34%;background:linear-gradient(90deg,transparent,rgba(255,255,255,.34),transparent);transform:translateX(-130%) skewX(-20deg);pointer-events:none}
+[data-lg=kpop] .go:hover::before{animation:lgSheen .9s cubic-bezier(.3,.7,.3,1)}
+[data-lg=kpop] .go kbd{background:rgba(255,255,255,.24);box-shadow:inset 0 -1px 0 rgba(0,0,0,.15),inset 0 1px 0 rgba(255,255,255,.3)}
+[data-lg=kpop] .lbl{display:flex;align-items:center;gap:8px;color:color-mix(in srgb,var(--mut) 75%,var(--lg-a))}
+[data-lg=kpop] .lbl::before{content:"";width:12px;height:2px;border-radius:2px;background:var(--lg-grad)}
+[data-lg=kpop] .seg{box-shadow:inset 0 1px 2px rgba(20,30,70,.08)}
+[data-lg=kpop] .seg .th{box-shadow:0 3px 10px rgba(30,40,90,.2),0 0 0 1px rgb(from var(--lg-a) r g b / .22),0 6px 16px -8px var(--lg-a)}
+[data-lg=kpop] body.dk .seg .th{background:linear-gradient(135deg,rgb(from var(--lg-a) r g b / .45),rgb(from var(--lg-b) r g b / .35));box-shadow:0 4px 14px -4px var(--lg-a),inset 0 1px 0 rgba(255,255,255,.25)}
+[data-lg=kpop] .row:hover{background:linear-gradient(90deg,rgb(from var(--lg-a) r g b / .1),rgb(from var(--lg-b) r g b / .04))}
+[data-lg=kpop] .row .ic{background:linear-gradient(135deg,rgb(from var(--lg-a) r g b / .16),rgb(from var(--lg-b) r g b / .1));color:var(--lg-a);box-shadow:inset 0 0 0 1px rgb(from var(--lg-a) r g b / .14)}
+[data-lg=kpop] .row.dg .ic{background:rgba(255,69,58,.12);color:#ff453a;box-shadow:none}
+[data-lg=kpop] .tg{box-shadow:inset 0 1px 2px rgba(0,0,0,.12)}
+[data-lg=kpop] .tg.on{background:var(--lg-grad);box-shadow:inset 0 1px 0 rgba(255,255,255,.3),0 6px 16px -6px var(--lg-a)}
+[data-lg=kpop] .tg i{background:radial-gradient(circle at 50% 30%,#fff,#eef0f6)}
+[data-lg=kpop] .up-b{box-shadow:0 12px 26px -16px var(--lg-a)}
+[data-lg=kpop] .bt{background:var(--lg-grad);box-shadow:0 6px 16px -6px var(--lg-a),inset 0 1px 0 rgba(255,255,255,.35)}
+[data-lg=kpop] .sep{background:linear-gradient(90deg,transparent,var(--ln) 20%,var(--ln) 80%,transparent)}
+
+/* ───────────── Hotkeys window ───────────── */
+[data-lg=ksettings] body{background:radial-gradient(700px 380px at 105% -8%,rgb(from var(--lg-a) r g b / .2),transparent 62%),radial-gradient(640px 420px at -10% 108%,rgb(from var(--lg-b) r g b / .16),transparent 60%),var(--bg);background-attachment:fixed}
+[data-lg=ksettings] h1{font-size:30px;letter-spacing:-.03em;background:linear-gradient(90deg,var(--tx) 30%,color-mix(in srgb,var(--lg-a) 75%,var(--tx)) 75%,var(--lg-b));-webkit-background-clip:text;background-clip:text;color:transparent;width:max-content}
+[data-lg=ksettings] .sub{font-size:14px}
+[data-lg=ksettings] .card{position:relative;border:0;border-radius:20px;padding:18px 20px;background:linear-gradient(180deg,rgba(255,255,255,.12),rgba(255,255,255,0)),var(--card);box-shadow:inset 0 1px 0 rgba(255,255,255,.55),0 1px 2px rgba(20,30,70,.06),0 22px 44px -28px rgba(40,50,120,.45);transition:box-shadow .5s}
+@media(prefers-color-scheme:dark){[data-lg=ksettings] .card{box-shadow:inset 0 1px 0 rgba(255,255,255,.08),0 22px 44px -26px rgba(0,0,10,.8)}}
+[data-lg=ksettings] .card::before{content:"";position:absolute;inset:0;border-radius:inherit;padding:1px;background:linear-gradient(150deg,rgb(from var(--lg-a) r g b / .45),var(--ln) 30%,var(--ln) 70%,rgb(from var(--lg-b) r g b / .4));-webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask-composite:exclude;pointer-events:none}
+[data-lg=ksettings] .card:hover{box-shadow:inset 0 1px 0 rgba(255,255,255,.55),0 1px 2px rgba(20,30,70,.06),0 26px 50px -26px rgb(from var(--lg-a) r g b / .55)}
+[data-lg=ksettings] .card h2{display:flex;align-items:center;gap:9px;font-size:15px}
+[data-lg=ksettings] .card h2::before{content:"";width:8px;height:8px;border-radius:50%;background:var(--lg-grad);box-shadow:0 0 0 3px rgb(from var(--lg-a) r g b / .16),0 0 10px var(--lg-a)}
+[data-lg=ksettings] .rec{background:linear-gradient(180deg,rgba(255,255,255,.5),rgba(255,255,255,.1)),var(--chip);box-shadow:inset 0 0 0 1px var(--ln),inset 0 -2px 0 rgba(20,30,70,.08),0 4px 10px -6px rgba(20,30,70,.3)}
+@media(prefers-color-scheme:dark){[data-lg=ksettings] .rec{background:linear-gradient(180deg,rgba(255,255,255,.08),rgba(255,255,255,.02)),var(--chip);box-shadow:inset 0 0 0 1px var(--ln),inset 0 -2px 0 rgba(0,0,0,.3)}}
+[data-lg=ksettings] .rec:hover{box-shadow:inset 0 0 0 1px rgb(from var(--lg-a) r g b / .5),0 0 0 4px rgb(from var(--lg-a) r g b / .12),0 8px 18px -8px var(--lg-a)}
+[data-lg=ksettings] .rec.on{background:var(--lg-grad);color:#fff}
+[data-lg=ksettings] .btn.pr{background:var(--lg-grad);color:#fff;box-shadow:0 10px 22px -10px var(--lg-a),inset 0 1px 0 rgba(255,255,255,.35)}
+[data-lg=ksettings] .btn.pr:hover{box-shadow:0 14px 28px -10px var(--lg-a),0 0 26px -10px var(--lg-b),inset 0 1px 0 rgba(255,255,255,.4)}
+[data-lg=ksettings] .btn:not(.pr){box-shadow:inset 0 0 0 1px var(--ln)}
+[data-lg=ksettings] .row{border-top-color:transparent;background:linear-gradient(90deg,transparent,var(--ln) 15%,var(--ln) 85%,transparent) top/100% 1px no-repeat}
+[data-lg=ksettings] .row:first-of-type{background:none}
+[data-lg=ksettings] select{box-shadow:inset 0 1px 0 rgba(255,255,255,.3)}
+[data-lg=ksettings] select:focus{outline:0;box-shadow:0 0 0 3px rgb(from var(--lg-a) r g b / .25);border-color:var(--lg-a)}
+[data-lg=ksettings] .empty{display:flex;align-items:center;gap:10px}
+[data-lg=ksettings] .empty::before{content:"";width:26px;height:26px;border-radius:8px;flex:none;background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='2' stroke-linecap='round'%3E%3Cpath d='M12 6v12M6 12h12'/%3E%3C/svg%3E") center/14px no-repeat,linear-gradient(135deg,rgb(from var(--lg-a) r g b / .7),rgb(from var(--lg-b) r g b / .6))}
+/* the Accessibility card: a clear, glowing call to action that turns green by itself */
+[data-lg=ksettings] .perm{position:relative;overflow:hidden;isolation:isolate;border:0;border-radius:20px;padding:16px 18px;background:radial-gradient(120% 140% at 0% 0%,rgb(from var(--lg-a) r g b / .24),transparent 55%),radial-gradient(120% 140% at 100% 100%,rgb(from var(--lg-b) r g b / .2),transparent 60%),var(--card);box-shadow:inset 0 0 0 1px rgb(from var(--lg-a) r g b / .45),inset 0 1px 0 rgba(255,255,255,.4),0 18px 40px -18px rgb(from var(--lg-a) r g b / .7),0 0 40px -20px var(--lg-b)}
+[data-lg=ksettings] .perm::after{content:"";position:absolute;top:0;bottom:0;left:0;width:30%;background:linear-gradient(90deg,transparent,rgba(255,255,255,.28),transparent);transform:translateX(-130%) skewX(-20deg);animation:lgSheen 1.4s cubic-bezier(.3,.7,.3,1) .6s 1 both;pointer-events:none;z-index:-1}
+[data-lg=ksettings] .perm .pi{position:relative;width:42px;height:42px;border-radius:13px;background:var(--lg-grad);box-shadow:0 10px 22px -8px var(--lg-a),0 0 24px -8px var(--lg-b),inset 0 1px 0 rgba(255,255,255,.45)}
+[data-lg=ksettings] .perm .pi::after{content:"";position:absolute;inset:-4px;border-radius:16px;border:2px solid rgb(from var(--lg-a) r g b / .55);animation:lgRing 2.2s cubic-bezier(.2,.7,.3,1) infinite}
+[data-lg=ksettings] .perm .pi svg{width:22px;height:22px}
+[data-lg=ksettings] .perm .pt b{font-size:14.5px}
+[data-lg=ksettings] .perm .btn.pr{flex:none;padding:9px 15px;border-radius:12px}
+[data-lg=ksettings] .perm.ok{background:radial-gradient(120% 140% at 0% 0%,rgba(48,209,88,.24),transparent 55%),var(--card);box-shadow:inset 0 0 0 1px rgba(48,209,88,.5),0 18px 40px -18px rgba(48,209,88,.6)}
+[data-lg=ksettings] .perm.ok .pi{background:linear-gradient(135deg,#34c759,#20b26b);box-shadow:0 10px 22px -8px #34c759}
+[data-lg=ksettings] .perm.ok .pi::after{border-color:rgba(52,199,89,.6)}
+[data-lg=ksettings] .foot{line-height:1.5;padding:0 12px}
+
+/* ───────────── Tour and the app fan ───────────── */
+[data-lg=kapp] body{--g1:color-mix(in srgb,var(--lg-a) 12%,#e8ecfb)}
+[data-lg=kapp] body.dk{--g0:color-mix(in srgb,var(--lg-a) 20%,#4a5070);--g1:color-mix(in srgb,var(--lg-b) 18%,#2a2e48)}
+[data-lg=kapp] .w.sel svg{filter:drop-shadow(0 10px 18px rgba(80,100,160,.25)) drop-shadow(0 0 16px rgb(from var(--lg-a) r g b / .55))}
+[data-lg=kapp] .w.sel .kl,[data-lg=kapp] body.dk .w.sel .kl{color:var(--lg-a);text-shadow:0 0 10px rgb(from var(--lg-a) r g b / .5)}
+[data-lg=kapp] body.dk .w.sel .kl{color:color-mix(in srgb,var(--lg-a) 65%,#fff)}
+[data-lg=kapp] #ctr b{text-shadow:0 2px 16px rgb(from var(--lg-a) r g b / .45)}
+[data-lg=kapp] body.dk #spot{background:radial-gradient(circle,rgb(from var(--lg-a) r g b / .5),rgb(from var(--lg-b) r g b / .14) 45%,transparent 66%)}
+[data-lg=kapp] .chip{box-shadow:0 6px 16px rgba(70,90,150,.28),inset 0 0 0 1px rgb(from var(--lg-a) r g b / .3),inset 0 1px 0 rgba(255,255,255,.4)}
+[data-lg=kapp] .chip:hover{box-shadow:0 8px 20px -4px var(--lg-a),inset 0 0 0 1px rgb(from var(--lg-a) r g b / .6)}
+[data-lg=kapp] body.dk .chip{box-shadow:0 6px 18px rgba(0,0,10,.45),inset 0 0 0 1px rgb(from var(--lg-a) r g b / .35),inset 0 1px 0 rgba(255,255,255,.12)}
+[data-lg=kapp] #lab,[data-lg=kapp] .chip i{background:linear-gradient(135deg,rgba(30,33,50,.92),rgba(22,24,40,.92));box-shadow:inset 0 0 0 1px rgb(from var(--lg-a) r g b / .4),0 8px 22px -8px rgba(0,0,20,.5),0 0 20px -10px var(--lg-a)}
+[data-lg=kapp] #q{box-shadow:0 4px 14px rgba(70,90,150,.25),inset 0 0 0 1.5px rgb(from var(--lg-a) r g b / .5)}
+[data-lg=kapp] #rip{border-color:rgb(from var(--lg-a) r g b / .6);box-shadow:0 0 18px rgb(from var(--lg-a) r g b / .35)}
+/* tour */
+/* the control bar keeps its centre: its entrance animation used to wipe the centring transform and push it off the edge */
+[data-lg=kapp] .ctl{left:0;right:0;margin:0 auto;width:max-content;max-width:calc(100vw - 32px);transform:none}
+[data-lg=kapp] .hero h1{font-size:38px;letter-spacing:-.03em;background:linear-gradient(90deg,#23263a 30%,color-mix(in srgb,var(--lg-a) 80%,#23263a),var(--lg-b));-webkit-background-clip:text;background-clip:text;color:transparent}
+[data-lg=kapp] body.dk .hero h1{background-image:linear-gradient(90deg,#fff 30%,color-mix(in srgb,var(--lg-a) 55%,#fff),color-mix(in srgb,var(--lg-b) 60%,#fff))}
+[data-lg=kapp] .ctl{box-shadow:0 12px 36px rgba(90,110,170,.25),0 0 40px -18px var(--lg-a),inset 0 1px 0 rgba(255,255,255,.7)}
+[data-lg=kapp] body.dk .ctl{box-shadow:0 12px 36px rgba(0,0,10,.45),0 0 40px -16px var(--lg-a),inset 0 1px 0 rgba(255,255,255,.1)}
+[data-lg=kapp] .go,[data-lg=kapp] .btns button.pr{background:var(--lg-grad);border-color:transparent;box-shadow:0 8px 20px -8px var(--lg-a),inset 0 1px 0 rgba(255,255,255,.35)}
+[data-lg=kapp] .go:hover{background:var(--lg-grad);filter:brightness(1.08)}
+[data-lg=kapp] .btns button.pr:hover{background:var(--lg-grad);box-shadow:0 12px 28px -8px var(--lg-a),0 0 30px -10px var(--lg-b)}
+[data-lg=kapp] .glow{background:radial-gradient(circle,rgb(from var(--lg-a) r g b / .42),rgb(from var(--lg-b) r g b / .18) 45%,transparent 68%)}
+[data-lg=kapp] .words div{background:linear-gradient(90deg,#fff,color-mix(in srgb,var(--lg-a) 45%,#fff),color-mix(in srgb,var(--lg-b) 50%,#fff),#fff);background-size:200% 100%;-webkit-background-clip:text;background-clip:text}
+[data-lg=kapp] #pg,[data-lg=kapp] .dl .pb i{background:linear-gradient(90deg,var(--lg-a),var(--lg-b));box-shadow:0 0 12px var(--lg-a)}
+[data-lg=kapp] .dl .di{background:var(--lg-grad);box-shadow:0 10px 30px rgb(from var(--lg-a) r g b / .5)}
+[data-lg=kapp] #cap{background:radial-gradient(120% 100% at 0% 0%,rgb(from var(--lg-a) r g b / .2),transparent 60%),rgba(12,14,30,.7);border-color:transparent;box-shadow:inset 0 0 0 1px rgb(from var(--lg-a) r g b / .35),inset 0 1px 0 rgba(255,255,255,.12),0 24px 60px rgba(0,0,10,.5),0 0 50px -20px var(--lg-a)}
+[data-lg=kapp] #cap .n{color:color-mix(in srgb,var(--lg-a) 70%,#fff)}
+[data-lg=kapp] #skip{box-shadow:inset 0 1px 0 rgba(255,255,255,.15)}
+[data-lg=kapp] #skip:hover{background:rgb(from var(--lg-a) r g b / .3);border-color:rgb(from var(--lg-a) r g b / .5)}
+
+@media (prefers-reduced-motion:reduce){
+  [data-lg] .go:hover::before,[data-lg] .perm::after,[data-lg] .perm .pi::after{animation:none!important}
+}

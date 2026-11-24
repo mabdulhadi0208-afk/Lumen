@@ -1,4 +1,4 @@
-<!DOCTYPE html><html><head><meta charset="utf-8"><style>
+<!DOCTYPE html><html data-lg="notes"><head><meta charset="utf-8"><style>
   html,body{margin:0;height:100%;background:transparent;font:14px/1.5 -apple-system,system-ui,sans-serif;color:#f2f2f6;-webkit-font-smoothing:antialiased}
   .win{height:100%;display:flex;flex-direction:column;background:rgba(14,14,20,.78);border-radius:14px;overflow:hidden;border:1px solid rgba(255,255,255,.1)}
   header{-webkit-app-region:drag;height:38px;display:flex;align-items:center;padding:0 12px;gap:8px;font-size:12px;color:#9a9aa6;font-weight:600;letter-spacing:.4px;text-transform:uppercase}
@@ -21,9 +21,9 @@
   .sv{display:inline-flex;align-items:center;gap:6px;animation:none!important;opacity:1!important} .sv svg{width:11px;height:11px;stroke:var(--lumen-a,#5b8cff);stroke-width:2;fill:none;stroke-linecap:round;stroke-linejoin:round;scale:0;transition:scale .5s cubic-bezier(.34,1.56,.64,1)} .sv.ok svg{scale:1} .sv.ok b{color:#cfe9db} .sv b{font-weight:600;transition:color .3s}
   @keyframes svPop{40%{scale:1.15}} .sv.pop{animation:svPop .5s ease-out!important}
 </style><link rel="stylesheet" href="fluid.css"><script defer src="fluid.js"></script><link rel="stylesheet" href="fx.css"><script defer src="fx.js"></script>
-</head><body><div class="win">
+<link rel="stylesheet" href="lumen-glow.css"></head><body><div class="win">
 <header><i></i>Quick Notes<span class="x" id="x"><svg viewBox="0 0 12 12"><path d="M2 2l8 8M10 2l-8 8"/></svg></span></header>
-<textarea id="t" placeholder="Jot anything… it autosaves. ⌘⇧N to toggle."></textarea>
+<textarea id="t" placeholder="Jot anything… it autosaves. ⌃⌥N to toggle."></textarea>
 <footer><span id="count"></span><span id="sv" class="sv ok"><svg viewBox="0 0 12 12"><path d="M2 6.5l2.7 2.7L10 3.5"/></svg><b>Saved</b></span></footer></div>
 <script>
 const t=document.getElementById('t'), c=document.getElementById('count'), sv=document.getElementById('sv'); let timer;

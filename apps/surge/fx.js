@@ -1,7 +1,7 @@
 // Surge effects pack, script half (see fx.css): particle bursts, 3D tilt, letter waves, scroll progress, rolling titles, idle winks.
 (() => {
   if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-  const $$ = (s, r = document) => [...r.querySelectorAll(s)], acc = () => getComputedStyle(document.documentElement).getPropertyValue('--accent').trim() || getComputedStyle(document.documentElement).getPropertyValue('--a').trim() || '#00FF85';
+  const $$ = (s, r = document) => [...r.querySelectorAll(s)], acc = () => getComputedStyle(document.documentElement).getPropertyValue('--accent').trim() || getComputedStyle(document.documentElement).getPropertyValue('--a').trim() || '#5b8cff';
 
   /* particle burst from a point */
   function burst(x, y, n = 10, col) { const c = col || acc(); for (let i = 0; i < n; i++) { const p = document.createElement('i'), a = (i / n) * Math.PI * 2 + Math.random() * .6, d = 18 + Math.random() * 26;

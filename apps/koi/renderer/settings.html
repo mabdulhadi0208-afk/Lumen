@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><title>Koi — Hotkeys</title>
+<!DOCTYPE html><html data-lg="ksettings" lang="en"><head><meta charset="utf-8"><title>Koi — Hotkeys</title>
 <style>
 :root{--bg:#eef1fb;--card:rgba(255,255,255,.72);--tx:#1b1d2a;--mut:rgba(27,29,42,.55);--ln:rgba(0,0,0,.08);--ac:var(--lumen-a,#5b8cff);--chip:rgba(0,0,0,.06)}
 @media(prefers-color-scheme:dark){:root{--bg:#15172c;--card:rgba(255,255,255,.07);--tx:#f1f2ff;--mut:rgba(230,232,255,.55);--ln:rgba(255,255,255,.1);--chip:rgba(255,255,255,.1)}}
@@ -36,7 +36,7 @@ button{transition:transform .45s cubic-bezier(.3,1.9,.5,1),background .2s,box-sh
 .perm.show{display:flex}.perm .pi{width:36px;height:36px;flex:none;border-radius:11px;display:grid;place-items:center;background:linear-gradient(135deg,var(--lumen-a,#5b8cff),var(--lumen-b,#8a63f2));box-shadow:0 6px 16px -6px var(--lumen-a,#5b8cff)}
 .perm .pi svg{width:20px;height:20px;fill:none;stroke:#fff;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}.perm .pt{flex:1;display:flex;flex-direction:column;gap:3px;font-size:12.5px;color:var(--mut);line-height:1.4}.perm .pt b{font-size:13.5px;color:var(--tx)}
 .perm.ok{background:linear-gradient(135deg,rgba(48,209,88,.14),rgba(48,209,88,.06));border-color:rgba(48,209,88,.4);box-shadow:0 10px 30px -12px rgba(48,209,88,.5)}.perm.ok .pi{background:linear-gradient(135deg,#34c759,#20b26b);box-shadow:0 6px 16px -6px #34c759}.perm.ok .btn{display:none}
-</style></head><body><div class="drag"></div>
+</style><link rel="stylesheet" href="lumen-glow.css"></head><body><div class="drag"></div>
 <h1>Hotkeys</h1><div class="sub">Pick your own shortcuts. Click a box, then press the keys you want.</div>
 <div class="perm" id="perm"><div class="pi"><svg viewBox="0 0 24 24"><path d="M12 3 4.5 6v5.5c0 4.6 3.2 8.4 7.5 9.5 4.3-1.1 7.5-4.9 7.5-9.5V6z"/><path d="m9 12 2.2 2.2L15.5 10"/></svg></div><div class="pt"><b id="permT">One step left</b><span id="permS">Holding just modifier keys needs Accessibility permission for Lumen. Turn on Lumen in System Settings, Privacy and Security, Accessibility. If Lumen is already on there, turn it off and on again.</span></div><button class="btn pr" id="permB">Open Settings</button></div>
 <div class="card"><h2>Open Koi</h2><p>Brings up the fan around your cursor.</p>

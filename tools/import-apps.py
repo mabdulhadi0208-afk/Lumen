@@ -9,6 +9,8 @@ Their code stays as it was. Only these things change on the way in:
   - their own updaters are replaced by stand-ins that hand off to Lumen's updater
   - their window colors follow your Lumen accent color (--lumen-a and --lumen-b, set by Lumen)
   - Surge's menu can open under Lumen's toolbar button as well as under its menu bar icon
+  - every Surge and Koi window gets Lumen's glow layer (tools/glow/*.css, copied in as lumen-glow.css and linked
+    last): richer glass, gradient edges in the accent color, calmer springs, and no rubber-banding on scroll
 """
 import os, re, shutil, sys
 
@@ -82,7 +84,7 @@ edit(os.path.join(S, 'main.js'), [
     ("const b = tray.getBounds(); const d = screen.getDisplayNearestPoint", "const b = lumenAnchor && Date.now() - lumenAnchor.t < 1500 ? lumenAnchor : tray.getBounds(); lumenAnchor = null; const d = screen.getDisplayNearestPoint"),
     ("tccutil reset Accessibility app.surge.glow; tccutil reset ListenEvent app.surge.glow; sleep 1; pkill -x Surge;", "tccutil reset Accessibility app.lumen.browser; tccutil reset ListenEvent app.lumen.browser; sleep 1; pkill -x Lumen;"),
 ])
-for f in ('settings.html', 'popover.html'):
+for f in ('settings.html', 'popover.html', 'notes.html'):
     p = os.path.join(S, f); s = open(p, encoding='utf-8').read(); open(p, 'w', encoding='utf-8').write(s.replace('⌘⇧', '⌃⌥'))
 open(os.path.join(S, 'modules', '00-updater.js'), 'w', encoding='utf-8').write("""// Inside Lumen, Surge updates together with Lumen. This stand-in keeps Surge's settings working and hands off to Lumen.
 const H = () => globalThis.__lumenApps || {}
@@ -97,6 +99,24 @@ module.exports = {
   start() {}, stop() {}, onSettings() {}, _check: () => H().check && H().check(), _migrating: () => false,
 }
 """)
+
+# Lumen's glow layer: one stylesheet per tool, linked after each window's own styles. Each window is tagged
+# (<html data-lg="...">) so the sheet can style it on its own. Looks only: no ids, classes or scripts change.
+GLOW = os.path.join(LUMEN, 'tools', 'glow')
+def glow(path, tag):
+    s = open(path, encoding='utf-8').read()
+    if '<html' not in s or '</head>' not in s: raise SystemExit(f'{path}: no <html> or </head> to add the glow layer to')
+    s = s.replace('<html', f'<html data-lg="{tag}"', 1)
+    i = s.index('</head>'); s = s[:i] + '<link rel="stylesheet" href="lumen-glow.css">' + s[i:]
+    open(path, 'w', encoding='utf-8').write(s)
+shutil.copy2(os.path.join(GLOW, 'surge.css'), os.path.join(S, 'lumen-glow.css'))
+for f, tag in (('settings.html', 'settings'), ('popover.html', 'popover'), ('notes.html', 'notes'), ('clip.html', 'clip'), ('launchpad.html', 'launchpad'), ('dock.html', 'dock')):
+    glow(os.path.join(S, f), tag)
+# no rubber-banding on scroll (a Lumen rule): Surge's stretchy list ends stay off unless a window asks for them
+edit(os.path.join(S, 'fluid.js'), [("{ let el = null, off = 0, v = 0, rb = 0, lastW = 0; const RB = C.rubber || '.pane.on,.list,.grid,.sp .list';",
+                                    "if (C.rubber) { let el = null, off = 0, v = 0, rb = 0, lastW = 0; const RB = C.rubber;")])
+# the sparks fall back to Lumen's blue, not Surge's green
+edit(os.path.join(S, 'fx.js'), [("|| '#00FF85'", "|| '#5b8cff'")])
 
 # ------------------------------------------------------------------ Koi
 K = os.path.join(LUMEN, 'apps', 'koi')
@@ -188,6 +208,10 @@ const actions = {
 }
 module.exports = { start() {}, actions, snapshot: state, _swapScript: () => '', _newer: () => false }
 """)
+# Lumen's glow layer for Koi's popover, Hotkeys window, tour and app fan
+shutil.copy2(os.path.join(GLOW, 'koi.css'), os.path.join(K, 'renderer', 'lumen-glow.css'))
+for f, tag in (('popover.html', 'kpop'), ('settings.html', 'ksettings'), ('app.html', 'kapp')):
+    glow(os.path.join(K, 'renderer', f), tag)
 # their app icons, for the Surge and Koi page in Lumen Settings
 for src, name in ((os.path.join(SURGE_SRC, 'build', 'icon.png'), 'app-surge.png'), (os.path.join(KOI_SRC, 'build', 'icon.png'), 'app-koi.png')):
     if not os.path.exists(src): continue

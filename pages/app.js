@@ -148,7 +148,8 @@ const SECTIONS = [
   ['parcels', 'Parcels', 'box'], ['downloads', 'Downloads', 'download'], ['about', 'About Lumen', 'info'],
 ]
 function shell(active) {
-  root.innerHTML = `<div class="shell"><nav class="nav"><h1>Lumen</h1><div class="navsearch">${ICONS.search}<input type="search" id="setq" placeholder="Search settings" spellcheck="false" autocomplete="off"></div>${SECTIONS.map(([id, label, icon]) => `<a href="${id === 'history' || id === 'bookmarks' || id === 'downloads' || id === 'passwords' || id === 'extensions' || id === 'parcels' ? 'lumen://' + id : 'lumen://settings/' + id}" class="${id === active ? 'on' : ''}">${ICONS[icon]}${label}</a>`).join('')}</nav><main class="main rise" id="main"></main></div>`
+  CUR_SECTION = active
+  root.innerHTML = `<div class="shell"><nav class="nav"><div class="brandrow"><img src="lumen://assets/icon-${esc(S.appIcon || 'default')}.png" alt=""><div><h1>Lumen</h1><small>Version ${esc(VERSION)}</small></div></div><div class="navsearch">${ICONS.search}<input type="search" id="setq" placeholder="Search settings" spellcheck="false" autocomplete="off"></div>${SECTIONS.map(([id, label, icon], n) => `<a href="${id === 'history' || id === 'bookmarks' || id === 'downloads' || id === 'passwords' || id === 'extensions' || id === 'parcels' ? 'lumen://' + id : 'lumen://settings/' + id}" class="${id === active ? 'on' : ''}" style="--n:${n}">${ICONS[icon]}${label}</a>`).join('')}</nav><main class="main rise" id="main"></main></div>`
   document.title = active === 'general' ? 'Settings' : (SECTIONS.find(s => s[0] === active) || [, 'Settings'])[1]
   bindSettingsSearch(active)
   // arriving from a search result: scroll to that setting and make it glow
@@ -778,6 +779,57 @@ function errorPage() {
   if ($('#esearch')) $('#esearch').onclick = () => L.invoke('navigate', host.replace(/^www\./, '').split('.')[0] + ' ' + host)
   if (kind === 'offline') addEventListener('online', () => L.invoke('retry', url), { once: true })
 }
+
+// ======================================================================= glow-up: section heroes, springy segmented controls
+// Pages keep writing a plain <h2> and lead; this dresses them up as a lit hero with the section's icon and color.
+let CUR_SECTION = ''
+const HERO_COLORS = ['var(--accent)', '#8a63f2', '#e9609c', '#f08a3c', '#22a6b3', '#3fb37f', '#dcae22']
+const HERO_ICON = { Search: 'search', Highlights: 'book', 'Archived tabs': 'layers' }
+let heroSeen = ''
+function springPop(el, from) {
+  // the hero icon lands with a real Jelly spring: scale and a small turn settle together
+  if (!window.Jelly || Jelly.getMode() === 'off') return
+  const s = new Jelly.Spring(from, 'jelly', v => { el.style.transform = `scale(${v.toFixed(4)}) rotate(${((1 - v) * -40).toFixed(2)}deg)` })
+  s.to(1)
+}
+function buildHero(main) {
+  const h2 = main.querySelector(':scope > h2'); if (!h2) return
+  const lead = h2.nextElementSibling && h2.nextElementSibling.matches('p.lead') ? h2.nextElementSibling : null
+  const title = h2.textContent.trim()
+  const idx = Math.max(0, SECTIONS.findIndex(s => s[0] === CUR_SECTION))
+  const icon = HERO_ICON[title] || (SECTIONS[idx] || [])[2] || 'gear'
+  const hero = document.createElement('header'); hero.className = 'hero'
+  hero.style.setProperty('--ic', HERO_COLORS[idx % HERO_COLORS.length])
+  hero.innerHTML = `<i class="hero-orb a"></i><i class="hero-orb b"></i><span class="hero-art" aria-hidden="true">${ICONS[icon] || ''}</span><span class="hero-ic" aria-hidden="true">${ICONS[icon] || ''}</span><div class="hero-tx"></div>`
+  main.insertBefore(hero, h2)
+  const tx = hero.querySelector('.hero-tx'); tx.append(h2); if (lead) tx.append(lead)
+  // a page that redraws itself keeps its hero still; a new page gets the full entrance
+  if (heroSeen !== title) { hero.classList.add('enter'); springPop(hero.querySelector('.hero-ic'), 0.45) }
+  heroSeen = title
+}
+function segIndicator(g) {
+  g.classList.add('has-ind')
+  const ind = document.createElement('i'); ind.className = 'seg-ind'; ind.setAttribute('aria-hidden', 'true'); g.prepend(ind)
+  let sx = null, sw = null
+  const render = () => { ind.style.transform = `translateX(${sx.v.toFixed(2)}px)`; ind.style.width = Math.max(0, sw.v).toFixed(2) + 'px' }
+  const place = animate => {
+    const b = g.querySelector('button.on'); if (!b || !b.offsetWidth) { ind.style.opacity = '0'; return }
+    const x = b.offsetLeft, w = b.offsetWidth
+    if (!sx) { sx = new Jelly.Spring(x, 'jelly', render); sw = new Jelly.Spring(w, 'jelly', render); render() }
+    if (animate) { sx.to(x); sw.to(w) } else { sx.set(x); sw.set(w) }
+    ind.style.opacity = '1'
+  }
+  place(false)
+  g.addEventListener('click', () => requestAnimationFrame(() => place(true)))
+  if (window.ResizeObserver) new ResizeObserver(() => place(false)).observe(g)
+}
+function decorate() {
+  const v = location.hash === '#highlights' || location.hash === '#archive' ? location.hash.slice(1) : page === 'settings' ? (sub || 'general') : page
+  if (document.body.dataset.view !== v) document.body.dataset.view = v
+  const main = document.getElementById('main'); if (main) buildHero(main)
+  if (window.Jelly) root.querySelectorAll('.seg:not(.has-ind)').forEach(segIndicator)
+}
+new MutationObserver(decorate).observe(root, { childList: true, subtree: true })
 
 // ======================================================================= boot
 ;(async () => {

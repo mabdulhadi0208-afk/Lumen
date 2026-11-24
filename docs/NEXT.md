@@ -8,6 +8,9 @@ To earn the number, 4.0 is several rounds, each checked with screenshots before 
 1. A fresh inventory of every surface (browser, pages, menus, dialogs, intro, update card, Surge, Koi, website).
 2. Round after round of redesign on every item, each round clearly beyond the last, with real liquid glass
    as the material everywhere (docs/NOVA.md). Nothing ships on a round that only tweaks.
-3. Real new features worth a major version, not only looks (picked and listed here before building).
-4. A new film, a new update card and restart flow, a new website, a new icon pass.
-5. Full suite, misplaced-UI check, auto-update check, then ship as 4.0.0.
+3. MAJOR upgrades to the home screen (New Tab) above all: owner asked for this specifically. Not a
+   restyle: new layout, new widgets, the clock, search, shortcuts, wallpapers, everything on it rethought.
+   Then the same major treatment for every other screen.
+4. Real new features worth a major version, not only looks (picked and listed here before building).
+5. A new film, a new update card and restart flow, a new website, a new icon pass.
+6. Full suite, misplaced-UI check, auto-update check, then ship as 4.0.0.

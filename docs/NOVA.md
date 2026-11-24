@@ -6,6 +6,12 @@ Everything in Lumen gets redesigned in this one language, so every surface feels
 - Liquid glass: translucent layers with `backdrop-filter: blur(28px) saturate(1.8)`, a specular top highlight
   (`inset 0 1px 0 rgba(255,255,255,.55)` light, `.14` dark), and a refractive edge: a 1px gradient border from the
   accent to transparent to `--accent3` (mask trick). Depth comes from 2-3 stacked soft shadows tinted with the accent.
+- Real liquid glass, and more of it: glass bends what is behind it, not just blurs it. Use an SVG
+  displacement filter on the backdrop (`backdrop-filter: url(#lumen-lens) blur(..) saturate(..)`) so edges
+  refract like a thick lens, add a chromatic fringe at the rim, a moving specular glint that follows the pointer,
+  and an inner caustic glow. Every floating surface uses it: toolbar capsules, menus, right-click menus, popovers,
+  the command bar, dialogs, toasts, cards on the pages, the update card, Surge and Koi panels. Fall back to plain
+  blur where the filter is not supported or Motion is off.
 - Backgrounds: light is porcelain `#f5f6fb` with a slow accent nebula; dark is deep ink `#0a0c15` with the same nebula
   plus a faint star dust. Never flat grey.
 

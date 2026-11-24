@@ -60,7 +60,7 @@
   addEventListener('resize', () => document.querySelectorAll('.seg').forEach(s => segSync(s, true)));
   addEventListener('load', scan); scan(); setTimeout(() => document.querySelectorAll('.seg').forEach(s => segSync(s, true)), 600);
   /* rubber-band: push past the end of a list and it stretches, then springs back */
-  { let el = null, off = 0, v = 0, rb = 0, lastW = 0; const RB = C.rubber || '.pane.on,.list,.grid,.sp .list';
+  if (C.rubber) { let el = null, off = 0, v = 0, rb = 0, lastW = 0; const RB = C.rubber;
     const tick = () => { rb = 0; if (!el) return; if (performance.now() - lastW > 70) { v = (v + (0 - off) * .14) * .7; off += v; } if (Math.abs(off) < .3 && Math.abs(v) < .3 && performance.now() - lastW > 70) { el.style.translate = ''; el = null; off = v = 0; return; } el.style.translate = `0 ${off.toFixed(1)}px`; rb = requestAnimationFrame(tick); };
     addEventListener('wheel', e => { if (e.ctrlKey || Math.abs(e.deltaY) < Math.abs(e.deltaX)) return; let s = closest(e.target, RB); while (s && s.scrollHeight <= s.clientHeight + 2) s = closest(s.parentElement, RB); if (!s) return;
       const top = s.scrollTop <= 0 && e.deltaY < 0, bot = s.scrollTop + s.clientHeight >= s.scrollHeight - 1 && e.deltaY > 0; if (!top && !bot) { if (el === s && off) lastW = 0; return; }

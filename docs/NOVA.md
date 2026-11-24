@@ -37,3 +37,9 @@ Everything in Lumen gets redesigned in this one language, so every surface feels
 - No emojis anywhere, ever. Plain words only.
 - Light and dark, every accent color, tabs on top and tabs in the sidebar, 1280px and 900px wide: nothing overlaps,
   clips or spills.
+
+## Scope: literally everything
+Every surface Lumen draws, plus the things it used to leave to the system: the app icon and all 8 icon choices, Surge's
+and Koi's menu-bar icons, right-click menus on web pages and tabs (drawn by Lumen in Nova instead of the plain system
+menu), and Lumen's pop-up questions such as Quit Lumen (Nova dialogs instead of system alerts). Notifications and the
+macOS menu bar stay native: the system draws those.

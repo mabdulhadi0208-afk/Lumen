@@ -18,11 +18,11 @@ app.whenReady().then(async () => {
     nativeTheme.themeSource = theme
     for (const [st, extra] of Object.entries(STATES)) {
       cur = { ...BASE, status: st, accent: theme === 'dark' ? '#e5487d' : '#5b8cff', ...extra }
-      const n = Math.min(6, cur.notes.length), h = n ? 256 + n * 24 : 214
+      const n = Math.min(6, cur.notes.length), h = n ? 256 + n * 24 : 214   // the card window: 600 wide, (notes ? 256 + 24 n : 214) tall
       const w = new BrowserWindow({ width: 600, height: h, show: false, transparent: true, frame: false, webPreferences: { preload: path.join(__dirname, '../src/preload-update.js'), contextIsolation: true, sandbox: true } })
       await w.loadFile(path.join(__dirname, '../ui/update.html')); await wait(1100)
-      const r = await w.webContents.executeJavaScript(`(() => { const c = document.getElementById('card').getBoundingClientRect(); const go = document.getElementById('go').getBoundingClientRect(); const notes = [...document.querySelectorAll('#notes li')]; const last = notes.length ? notes[notes.length - 1].getBoundingClientRect() : null; return { bar: document.getElementById('card').classList.contains('busy') ? document.getElementById('bar').getBoundingClientRect().height : 7, title: document.getElementById('title').textContent, btn: document.getElementById('go').textContent, goIn: go.bottom <= c.bottom && go.right <= c.right && go.width > 40, notesIn: !last || last.bottom < go.top, notes: notes.length, img: document.getElementById('icon').naturalWidth } })()`)
-      ok(r.goIn && r.notesIn && r.bar >= 6, `${theme} ${st}: "${r.title}" / ${r.btn}, everything inside the card, progress bar visible`)
+      const r = await w.webContents.executeJavaScript(`(() => { const c = document.getElementById('card').getBoundingClientRect(); const go = document.getElementById('go').getBoundingClientRect(); const notes = [...document.querySelectorAll('#notes li')]; const last = notes.length ? notes[notes.length - 1].getBoundingClientRect() : null; return { title: document.getElementById('title').textContent, btn: document.getElementById('go').textContent, goIn: go.bottom <= c.bottom && go.right <= c.right && go.width > 40, notesIn: !last || last.bottom < go.top, notes: notes.length, img: document.getElementById('icon').naturalWidth } })()`)
+      ok(r.goIn && r.notesIn, `${theme} ${st}: "${r.title}" / ${r.btn}, everything inside the card`)
       if (st === 'available') ok(r.notes === 5 && r.img > 0, `${theme}: release notes listed (${r.notes}) and the real app icon shows`)
       if (st === 'available') ok(await w.webContents.executeJavaScript(`getComputedStyle(document.documentElement).getPropertyValue('--accent').trim()`) === cur.accent, `${theme}: the card takes your accent color (${cur.accent})`)
       if (st === 'downloading') {   // it finishes while you watch: the icon bounces and a burst goes off

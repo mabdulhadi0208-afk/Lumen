@@ -29,6 +29,9 @@ Everything in Lumen gets redesigned in this one language, so every surface feels
 - Generous spacing; nothing cramped.
 
 ## Signature details
+- Energy reference (owner's favourite): the section hero banner. Big glass banner, glowing gradient icon tile,
+  huge bold title, drifting saturated colour blobs, a large faint outline icon, a light sweep on open. Every
+  surface should have this much energy: bold, saturated accent glow, big confident type, real depth.
 - Halo: active, selected and focused things get a soft accent glow ring (`0 0 0 4px` accent at 18% plus a 24px blur
   glow), never a hard outline.
 - Light sweep: primary buttons and new content get one diagonal light sweep when they appear.

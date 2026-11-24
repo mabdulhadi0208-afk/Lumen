@@ -9,8 +9,9 @@ Their code stays as it was. Only these things change on the way in:
   - their own updaters are replaced by stand-ins that hand off to Lumen's updater
   - their window colors follow your Lumen accent color (--lumen-a and --lumen-b, set by Lumen)
   - Surge's menu can open under Lumen's toolbar button as well as under its menu bar icon
-  - every Surge and Koi window gets Lumen's glow layer (tools/glow/*.css, copied in as lumen-glow.css and linked
-    last): richer glass, gradient edges in the accent color, calmer springs, and no rubber-banding on scroll
+  - every Surge and Koi window is redesigned in Lumen Nova (docs/NOVA.md) by one layer per tool (tools/glow/*.css,
+    copied in as lumen-glow.css and linked last): ink and porcelain with an accent nebula, liquid glass with a
+    refractive edge, halo rings, rounded heavy headings, calm springs, and no rubber-banding on scroll
 """
 import os, re, shutil, sys
 
@@ -100,7 +101,7 @@ module.exports = {
 }
 """)
 
-# Lumen's glow layer: one stylesheet per tool, linked after each window's own styles. Each window is tagged
+# Lumen Nova: one stylesheet per tool, linked after each window's own styles. Each window is tagged
 # (<html data-lg="...">) so the sheet can style it on its own. Looks only: no ids, classes or scripts change.
 GLOW = os.path.join(LUMEN, 'tools', 'glow')
 def glow(path, tag):

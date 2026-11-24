@@ -85,7 +85,7 @@ function showCard() {
   popup.once('ready-to-show', () => { popup.showInactive(); push() })
   popup.on('closed', () => (popup = null))
 }
-function cardHeight() { const n = Math.min(6, (state.notes || []).length); return n ? 238 + n * 24 : 204 }
+function cardHeight() { const n = Math.min(6, (state.notes || []).length); return n ? 256 + n * 24 : 214 }   // room for the notes and the progress bar
 function fitCard() { if (popup && !popup.isDestroyed()) { const b = popup.getBounds(), h = cardHeight(); if (b.height !== h) popup.setBounds({ ...b, height: h }) } }
 function hideCard() { if (popup && !popup.isDestroyed()) popup.hide() }
 function showCardIfAllowed(manual) { if (manual || Date.now() > snoozedUntil) showCard() }

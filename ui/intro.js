@@ -5,12 +5,12 @@
 ;(function () {
   // ---- edit this list every release: it is the "New in Lumen" act of the film
   const WHATS_NEW = {
-    version: '1.21',
+    version: '1.22',
     items: [
-      { icon: 'play', title: 'YouTube plays again', text: 'The ad blocker gets fresh lists every 8 hours, so YouTube changes do not stop your videos.' },
-      { icon: 'reload', title: 'Stuck videos fix themselves', text: 'If a video never starts, Lumen grabs fresh lists and reloads it. Still stuck? One click pauses the blocker there.' },
-      { icon: 'shield', title: 'See how fresh it is', text: 'Settings, Privacy shows when the filter lists were updated, with an Update now button.' },
-      { icon: 'sparkle', title: 'Sharper film and card', text: 'The logo forms through a lens split, a widescreen streak crosses the light, and the new version rolls in.' },
+      { icon: 'sparkle', title: 'A massive glow-up', text: 'Every part of Lumen got a new look: tabs, address bar, menus, the command bar and every page.' },
+      { icon: 'bolt', title: 'Surge and Koi too', text: 'Their windows, menus and the app fan got the same new glass, light and motion.' },
+      { icon: 'download', title: 'A launch-style update', text: 'The update card has a turning halo, a moving arrow to the new version and a brand new restart screen.' },
+      { icon: 'play', title: 'A bigger picture', text: 'The film now has lens ghosts strung across the light, like a real widescreen camera.' },
     ],
   }
   const FEATURES = [
@@ -341,6 +341,15 @@
       st.addColorStop(0, 'rgba(90,140,255,0)'); st.addColorStop(.5, `rgba(170,200,255,${sa})`); st.addColorStop(1, 'rgba(90,140,255,0)')
       cx.fillStyle = st; cx.fillRect(0, oyc - 1.2, W, 2.4)
       cx.fillStyle = `rgba(120,160,255,${sa * .25})`; cx.fillRect(W * .2, oyc - 5, W * .6, 10)
+      // lens ghosts: soft discs and rings strung along the line from the light through the middle of the frame
+      const gdx = W * (.2 + Math.sin(performance.now() / 2600) * .03), gdy = (cym + H * .22) - oyc
+      ;[[-.55, 26, '255,160,120', .10, 0], [-.9, 12, '140,200,255', .16, 1], [-1.25, 54, '170,140,255', .07, 0], [-1.6, 18, '120,255,210', .12, 1], [-2.0, 80, '150,170,255', .05, 0]].forEach(([k, r, c, a, ring]) => {
+        const x = cxm + gdx * -k * .6, y = oyc + gdy * -k * .6
+        const al = a * sky.orb * (sky.rays + .3)
+        if (ring) { cx.strokeStyle = `rgba(${c},${al * 1.6})`; cx.lineWidth = 1.5; cx.beginPath(); cx.arc(x, y, r, 0, 6.283); cx.stroke() }
+        const g2 = cx.createRadialGradient(x, y, 0, x, y, r); g2.addColorStop(0, `rgba(${c},${al})`); g2.addColorStop(.8, `rgba(${c},${al * .7})`); g2.addColorStop(1, `rgba(${c},0)`)
+        cx.fillStyle = g2; cx.beginPath(); cx.arc(x, y, r, 0, 6.283); cx.fill()
+      })
       if (sky.ring > .01) {
         cx.save(); cx.translate(cxm, oyc); cx.rotate(-.42)
         // a chromatic ring: red, green and blue drawn a hair apart, like a real lens

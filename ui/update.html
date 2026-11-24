@@ -68,7 +68,8 @@
   @keyframes sheen{to{transform:translateX(120%)}}
   .in{z-index:1}
   .ic svg.ring .fg{filter:drop-shadow(0 0 4px color-mix(in srgb,var(--accent) 80%,transparent))}
-  .bar{height:7px;box-shadow:inset 0 0 0 1px var(--line)}
+  .bar{height:7px;flex:none;box-shadow:inset 0 0 0 1px var(--line)}
+  .notes,.meta,.row,.top,.nh{flex-shrink:0}
   .bar i{position:relative;box-shadow:0 0 12px color-mix(in srgb,var(--accent) 70%,transparent)}
   .bar i::after{content:'';position:absolute;inset:0;background:linear-gradient(90deg,transparent,rgba(255,255,255,.55),transparent);transform:translateX(-100%);animation:shine 1.6s ease-in-out infinite}
   @keyframes shine{to{transform:translateX(100%)}}
@@ -92,6 +93,32 @@
   .notes li{animation-name:lispring;animation-timing-function:cubic-bezier(.3,1.5,.5,1)}
   @keyframes lispring{from{opacity:0;transform:translateX(-12px) scale(.96)}to{opacity:1;transform:none}}
   @media (prefers-reduced-motion:reduce){.chip .roll{animation:none}.aur i,.bar i::after,.sheen,.ready .btn::after{animation:none}}
+
+  /* 1.22 massive glow-up: a halo that turns around the icon, a moving arrow from old to new, a mesh of light,
+     a restart screen that feels like a launch, and a soft shake when something goes wrong */
+  .ic::before{content:'';position:absolute;inset:-6px;border-radius:50%;background:conic-gradient(from 0deg,transparent,color-mix(in srgb,var(--accent) 55%,transparent),transparent 40%,color-mix(in srgb,var(--a3) 45%,transparent),transparent 75%);filter:blur(6px);opacity:.0;transition:opacity .5s;animation:spinh 5s linear infinite}
+  .busy .ic::before,.ready .ic::before{opacity:.9}
+  @keyframes spinh{to{transform:rotate(360deg)}}
+  .arrow{width:18px;height:10px;flex:none;fill:none;stroke:var(--fg3);stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round;display:none}
+  #from:not([style*="none"]) + .arrow{display:block}
+  .arrow{animation:arrowgo 2.2s cubic-bezier(.4,0,.2,1) infinite}
+  @keyframes arrowgo{0%,100%{transform:translateX(-2px);opacity:.6}50%{transform:translateX(2px);opacity:1}}
+  .card::after{content:'';position:absolute;inset:0;border-radius:inherit;pointer-events:none;padding:1px;background:linear-gradient(135deg,color-mix(in srgb,var(--accent) 55%,transparent),transparent 35%,transparent 65%,color-mix(in srgb,var(--a3) 45%,transparent));-webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask-composite:exclude;opacity:.8}
+  .t b{background:linear-gradient(100deg,var(--fg) 40%,color-mix(in srgb,var(--accent) 70%,var(--fg)));-webkit-background-clip:text;background-clip:text;color:transparent}
+  .notes{background:color-mix(in srgb,var(--hover) 70%,transparent);box-shadow:inset 0 0 0 1px var(--line);backdrop-filter:blur(8px)}
+  .notes li:hover{color:var(--fg);transform:translateX(2px);transition:transform .4s cubic-bezier(.34,1.56,.64,1)}
+  .error .card,.card.error{animation:shake .5s cubic-bezier(.36,.07,.19,.97)}
+  @keyframes shake{20%,60%{transform:translateX(-5px)}40%,80%{transform:translateX(5px)}}
+  .done{gap:12px;z-index:5}
+  .done .halo{position:relative;width:86px;height:86px;display:grid;place-items:center;margin-bottom:4px}
+  .done .halo::before{content:'';position:absolute;inset:0;border-radius:50%;background:conic-gradient(from 0deg,var(--accent),var(--a2),var(--a3),var(--accent));-webkit-mask:radial-gradient(farthest-side,transparent calc(100% - 4px),#000 calc(100% - 3px));mask:radial-gradient(farthest-side,transparent calc(100% - 4px),#000 calc(100% - 3px));animation:spinh 1.4s linear infinite;filter:drop-shadow(0 0 8px color-mix(in srgb,var(--accent) 70%,transparent))}
+  .done .halo .orb{animation:pulse 1.4s ease-out infinite, orbpop .7s cubic-bezier(.3,1.6,.5,1)}
+  @keyframes orbpop{from{transform:scale(.3)}}
+  .done .type{display:inline-block;white-space:nowrap;animation:reveal 1s cubic-bezier(.3,.7,.2,1) .2s backwards}
+  @keyframes reveal{from{clip-path:inset(0 100% 0 0);filter:blur(4px)}to{clip-path:inset(0 0 0 0);filter:blur(0)}}
+  .done .dots{display:flex;gap:6px;margin-top:2px}.done .dots i{width:6px;height:6px;border-radius:50%;background:var(--grad);animation:dot 1.2s ease-in-out infinite}.done .dots i:nth-child(2){animation-delay:.15s}.done .dots i:nth-child(3){animation-delay:.3s}
+  @keyframes dot{0%,100%{transform:translateY(0);opacity:.4}50%{transform:translateY(-5px);opacity:1}}
+  @media (prefers-reduced-motion:reduce){.ic::before,.arrow path,.done .halo::before,.done .dots i{animation:none}.done .type{animation:none}}
 </style></head><body>
 <div class="card" id="card">
   <div class="aur"><i></i><i></i><i></i></div><div class="glow"></div><div class="sheen"></div><div class="fx" id="fx"></div>
@@ -99,7 +126,7 @@
     <div class="top">
       <div class="ic"><img id="icon" src="../pages/icon-default.png" alt=""><svg class="ring" viewBox="0 0 58 58"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" style="stop-color:var(--accent)"/><stop offset=".55" style="stop-color:var(--a2)"/><stop offset="1" style="stop-color:var(--a3)"/></linearGradient></defs><circle class="bgc" cx="29" cy="29" r="27"/><circle class="fg" id="arc" cx="29" cy="29" r="27"/></svg></div>
       <div class="t"><b id="title">Update Lumen</b><small id="sub"></small></div>
-      <div class="chips"><span class="chip ok" title="The download matched the fingerprint GitHub published for it">Verified</span><span class="chip" id="from"></span><span class="chip v" id="to"></span></div>
+      <div class="chips"><span class="chip ok" title="The download matched the fingerprint GitHub published for it">Verified</span><span class="chip" id="from"></span><svg class="arrow" id="arrow" viewBox="0 0 20 10"><path d="M1 5h16M13 1.5 17 5l-4 3.5"/></svg><span class="chip v" id="to"></span></div>
       <button class="x" id="close" title="Hide">
         <svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="m4 4 8 8M12 4l-8 8"/></svg></button>
     </div>
@@ -114,7 +141,7 @@
       <button class="btn" id="go">Update now</button>
     </div>
   </div>
-  <div class="done"><div class="orb"><svg viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg></div>Restarting Lumen<small>Your tabs come right back</small></div>
+  <div class="done"><div class="halo"><div class="orb"><svg viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg></div></div><span class="type" id="rs">Restarting Lumen</span><small>Your tabs come right back</small><div class="dots"><i></i><i></i><i></i></div></div>
 </div>
 <script>
 const $ = s => document.querySelector(s), api = window.lumenUpdate

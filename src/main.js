@@ -10,6 +10,7 @@ const Sync = require('./sync')
 const Importer = require('./importer')
 const Updater = require('./updater')
 const Passkeys = require('./passkeys')
+const AXGuard = require('./axguard')
 const Translate = require('./translate')
 const Groups = require('./groups')
 const Nova = require('./nova')
@@ -1032,6 +1033,13 @@ async function offerTranslate(w, t) {
 
 // ---------------------------------------------------------------- Surge and Koi
 function startApps() {
+  // updates used to leave the Accessibility switch stale (on, but ignored): repair it before Surge and Koi start
+  try {
+    AXGuard.check({ settings: D.settings, log, notify: () => setTimeout(() => {
+      for (const w of windows) w.send('toast', 'Lumen updated. Turn Lumen back on in the Accessibility list so Surge and Koi keep working')
+      try { new (require('electron').Notification)({ title: 'Turn Lumen back on for Surge and Koi', body: 'Lumen was updated. Switch Lumen on in Privacy and Security, Accessibility. No need to remove it first.' }).show() } catch {}
+    }, 2500) })
+  } catch (e) { log('accessibility check failed', e.message) }
   try {
     const started = Apps.start({
       D, Updater, log,

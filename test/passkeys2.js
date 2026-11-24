@@ -1,4 +1,5 @@
 // Passkeys on real sites: client capabilities, passkey autofill (conditional mediation) and the Windows fallback.
+process.env.LUMEN_NATIVE_MENUS = '1'   // answer the passkey questions with the stubbed system dialog
 const { app, dialog } = require('electron')
 const http = require('http'), fs = require('fs')
 app.setPath('userData', '/tmp/lumen-pk2-profile')

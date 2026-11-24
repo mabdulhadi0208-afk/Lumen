@@ -18,7 +18,7 @@
       { icon: 'layers', text: 'Lumen draws its own right-click menus and pop-ups now' },
       { icon: 'bolt', text: 'Surge and Koi redesigned to match' },
       { icon: 'moon', text: 'Lumen keeps running in the background for Surge and Koi: Cmd Q closes the windows, Cmd Option Q quits everything' },
-      { icon: 'star', text: 'A new app icon in every color' },
+      { icon: 'star', text: 'Passkeys work on real sites, and your passkeys pop up right under the sign-in field' },
       { icon: 'play', text: 'A new film, reshot from the first frame to the last' },
     ],
   }

@@ -86,7 +86,12 @@
   .done .orb::before,.done .orb::after{content:'';position:absolute;inset:-2px;border-radius:50%;border:2px solid color-mix(in srgb,var(--accent) 60%,transparent);animation:ripple 1.8s ease-out infinite}
   .done .orb::after{animation-delay:.9s}
   @keyframes ripple{from{transform:scale(1);opacity:.9}to{transform:scale(2.6);opacity:0}}
-  @media (prefers-reduced-motion:reduce){.aur i,.bar i::after,.sheen,.ready .btn::after{animation:none}}
+  .chip.v{overflow:hidden;display:inline-flex}
+  .chip .roll{display:inline-block;animation:roll .75s cubic-bezier(.3,1.6,.5,1) backwards}
+  @keyframes roll{from{transform:translateY(130%);opacity:0;filter:blur(2px)}60%{opacity:1}}
+  .notes li{animation-name:lispring;animation-timing-function:cubic-bezier(.3,1.5,.5,1)}
+  @keyframes lispring{from{opacity:0;transform:translateX(-12px) scale(.96)}to{opacity:1;transform:none}}
+  @media (prefers-reduced-motion:reduce){.chip .roll{animation:none}.aur i,.bar i::after,.sheen,.ready .btn::after{animation:none}}
 </style></head><body>
 <div class="card" id="card">
   <div class="aur"><i></i><i></i><i></i></div><div class="glow"></div><div class="sheen"></div><div class="fx" id="fx"></div>
@@ -139,7 +144,9 @@ function paint(u) {
   $('#card').className = 'card ' + [busy && 'busy', spin && 'spin', u.status === 'error' && 'error', u.status === 'installing' && 'installing', u.status === 'ready' && 'ready', notes.length && 'has-notes', u.verified && 'verified'].filter(Boolean).join(' ')
   $('#from').textContent = u.latest && u.status !== 'uptodate' ? v(u.current) : ''
   $('#from').style.display = $('#from').textContent ? '' : 'none'
-  $('#to').textContent = v(u.status === 'uptodate' ? u.current : u.latest || u.current)
+  // the new version number rolls in like a slot machine, once per version
+  const toV = v(u.status === 'uptodate' ? u.current : u.latest || u.current)
+  if ($('#to').dataset.v !== toV) { $('#to').dataset.v = toV; $('#to').innerHTML = toV.split('').map((c, i) => `<span class="roll" style="animation-delay:${.25 + i * .05}s">${esc(c)}</span>`).join('') }
   const T = {
     available: [`Lumen ${v(u.latest)} is here`, u.size ? `${fmt(u.size)}, downloads quietly in the background` : 'Downloads quietly in the background'],
     checking: ['Checking for updates', 'One moment'],

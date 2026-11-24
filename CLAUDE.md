@@ -17,7 +17,7 @@ Lumen is an Electron (Chromium) browser for Mac and Windows, with Surge and Koi 
 7. Tabs are on top by default. Cmd T opens a new tab. Cmd K opens the command bar.
 8. Never commit signing keys, `.p12` files or secrets.
 9. Always run commands in the background.
-10. When building websites and apps, always give everything a glow-up.
+10. Everything gets a glow-up: every website, app, feature, screen and release, whenever it is touched.
 11. Every Lumen update:
     - Update the website.
     - Rewrite `WHATS_NEW` in `ui/intro.js` with only that version's changes; remove everything from older versions.
@@ -34,7 +34,7 @@ Lumen is an Electron (Chromium) browser for Mac and Windows, with Surge and Koi 
 
 - Run a test with `xvfb-run -a npx electron test/NAME.js --no-sandbox`. Each test prints PASS and FAIL lines; newer tests also write them to `/tmp/lumen-NAME.log`.
 - Before every release, run the full suite on a git worktree of the exact release commit, with `node_modules` symlinked in.
-- The suite: `adallow addbtn batch12 dark dark2 polish qol3 sweep trcard trcard2 v17 v20 readlater wave13 wave14 wave15 wave16 gsignin updatecard apps wave19 koikeys`.
+- The suite: `adallow addbtn batch12 dark dark2 polish qol3 sweep trcard trcard2 v17 v20 readlater wave13 wave14 wave15 wave16 gsignin updatecard apps wave19 koikeys ytfix`.
   - `sweep` should print NO ERRORS.
   - `selftest.js` was already broken before these rules and is unrelated.
 - Surge and Koi only start on macOS and Windows. Set `LUMEN_APPS_ANYWHERE=1` to run them in tests on Linux.

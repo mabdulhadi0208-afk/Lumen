@@ -137,16 +137,33 @@ function setupSession(ses, { incognito = false } = {}) {
   return ses
 }
 
-async function setupAdblock() {
+// The filter lists go stale fast: uBlock's quick fixes, which keep YouTube playing, expire every 8 hours. Lumen starts
+// from the saved copy (instant), then fetches fresh lists in the background at launch, every 8 hours and after sleep,
+// and swaps them in. If a download fails, the lists it already has keep working.
+const ADBLOCK_MAX_AGE = 8 * 3600e3
+const adCachePath = () => path.join(app.getPath('userData'), D.settings.get('hideCookieBanners') ? 'adblock-engine-full.bin' : 'adblock-engine.bin')
+const adblockAge = () => { try { return Date.now() - fs.statSync(adCachePath()).mtimeMs } catch { return Infinity } }
+let adRefreshing = null
+function refreshAdblock(force) {
+  if (adRefreshing) return adRefreshing
+  if (!force && adblockAge() < ADBLOCK_MAX_AGE) return Promise.resolve(false)
+  log('adblock: fetching fresh filter lists')
+  adRefreshing = setupAdblock({ fresh: true }).finally(() => { adRefreshing = null })
+  return adRefreshing
+}
+async function setupAdblock({ fresh = false } = {}) {
   try {
     const { ElectronBlocker } = require('@ghostery/adblocker-electron')
     const full = !!D.settings.get('hideCookieBanners')
-    const cache = path.join(app.getPath('userData'), full ? 'adblock-engine-full.bin' : 'adblock-engine.bin')
+    const cache = adCachePath(), tmp = cache + '.new'
     const fetchImpl = (url, opts) => net.fetch(url, opts)
-    const caching = { path: cache, read: fs.promises.readFile, write: fs.promises.writeFile }
-    const timeout = new Promise((_, rej) => setTimeout(() => rej(new Error('adblock list timeout')), 15000))
+    if (fresh) await fs.promises.rm(tmp, { force: true }).catch(() => {})
+    const caching = { path: fresh ? tmp : cache, read: fs.promises.readFile, write: fs.promises.writeFile }
+    const timeout = new Promise((_, rej) => setTimeout(() => rej(new Error('adblock list timeout')), fresh ? 90000 : 15000))
     const old = blocker
     const next = await Promise.race([full ? ElectronBlocker.fromPrebuiltFull(fetchImpl, caching) : ElectronBlocker.fromPrebuiltAdsAndTracking(fetchImpl, caching), timeout])
+    if (fresh) { await fs.promises.rename(tmp, cache); log('adblock: fresh filter lists in use') }
+    D.settings.set({ adblockUpdatedAt: fresh ? Date.now() : (D.settings.get('adblockUpdatedAt') || (() => { try { return fs.statSync(cache).mtimeMs } catch { return Date.now() } })()) })
     if (old) for (const ses of sessionsReady) { try { if (old.isBlockingEnabled(ses)) old.disableBlockingInSession(ses) } catch {} }
     blocker = next
     allowSites(blocker)
@@ -161,7 +178,13 @@ async function setupAdblock() {
       if (w) w.pushStateSoon()
     })
     if (D.settings.get('adblock')) for (const ses of sessionsReady) { try { blocker.enableBlockingInSession(ses) } catch {} }
-  } catch (e) { console.error('adblock unavailable:', e.message); blocker = null }
+    return true
+  } catch (e) {
+    // a failed refresh keeps the lists already in use
+    if (fresh) log('adblock: could not refresh the lists, keeping the current ones:', e.message)
+    else { console.error('adblock unavailable:', e.message); blocker = null }
+    return false
+  }
 }
 // ---- sites where the ad blocker is turned off (it broke something there)
 const siteKey = u => { try { const h = new URL(u).hostname.replace(/^www\./, ''); return /^(https?)$/.test(new URL(u).protocol.slice(0, -1)) ? h : '' } catch { return '' } }
@@ -1597,7 +1620,7 @@ function setSetting(k, v) {
   if (k === 'darkStyle' && !DARK_STYLES[v]) return
   if (k === 'forceDark' || k === 'darkOffSites' || k === 'darkStyle') setTimeout(darkAll, 0)
   if (k === 'soundActiveOnly' && !v) for (const w of windows) for (const t of w.tabs.values()) if (t.autoMuted && t.view) { t.view.webContents.setAudioMuted(!!t.muted); t.autoMuted = false }
-  if (k === 'hideCookieBanners') setupAdblock().then(() => setAdblock(!!D.settings.get('adblock')))
+  if (k === 'hideCookieBanners') setupAdblock().then(() => { setAdblock(!!D.settings.get('adblock')); refreshAdblock().catch(() => {}) })
   if (k === 'theme') nativeTheme.themeSource = v
   if (k === 'autoUpdate') Updater.setEnabled(!!v)
   if (k === 'tabLayout') buildMenu()
@@ -1633,6 +1656,17 @@ ipcMain.on('pw:submit', (e, { username, password }) => {
   w.send('prompt', { id, kind: 'password', tabId: tab && tab.id, host: new URL(origin).host, text: (updating ? 'Update password for ' : 'Save password for ') + (username || 'this site') + '?' })
 })
 ipcMain.handle('pw:generate', () => genPassword())
+const ytFix = new Map()   // webContents id -> { at, offered }
+ipcMain.on('yt:stuck', async e => {
+  const wc = e.sender, w = winForWc(wc.id); if (!w || !D.settings.get('adblock') || adAllowed(wc.getURL())) return
+  const prev = ytFix.get(wc.id)
+  if (!prev || Date.now() - prev.at > 10 * 60e3) {
+    ytFix.set(wc.id, { at: Date.now() })
+    log('youtube: a video is stuck, getting fresh ad-block lists')
+    await refreshAdblock(adblockAge() > 30 * 60e3).catch(() => {})
+    if (!wc.isDestroyed()) { wc.reload(); w.send('toast', 'The video was stuck, so Lumen got fresh ad-block lists and reloaded it') }
+  } else if (!prev.offered) { prev.offered = true; w.send('yt-stuck', siteKey(wc.getURL())) }
+})
 ipcMain.on('nav:swipe', (e, dir) => {
   if (!D.settings.get('swipeNav')) return
   const h = e.sender.navigationHistory
@@ -1711,6 +1745,8 @@ ipcMain.handle('lumen', async (e, action, ...a) => {
       case 'setSetting': return setSetting(a[0], a[1])
       case 'topSites': return D.topSites(8)
       case 'stats': return { blocked: blockedTotal, since: D.settings.get('statsSince') || 0 }
+      case 'adblockInfo': return { updatedAt: D.settings.get('adblockUpdatedAt') || 0, refreshing: !!adRefreshing }
+      case 'adblockRefresh': return refreshAdblock(true)
       case 'wallpaper': {
         if (a[0] === undefined) return wallpaperStore.get('image') || ''
         const img = String(a[0] || '')
@@ -2183,7 +2219,9 @@ app.whenReady().then(async () => {
   }
   buildMenu()
   await Promise.race([setupExtensions(), new Promise(r => setTimeout(r, 4000))])
-  setupAdblock() // loads in the background; blocking turns on as soon as lists are ready
+  setupAdblock().then(() => setTimeout(() => refreshAdblock().catch(() => {}), 20000)) // loads in the background; blocking turns on as soon as lists are ready, fresh lists follow
+  setInterval(() => refreshAdblock().catch(() => {}), 30 * 60e3)
+  powerMonitor.on('resume', () => setTimeout(() => refreshAdblock().catch(() => {}), 15000))
   const saved = D.session.get().windows || []
   const restore = D.settings.get('restoreSession')
   const argUrls = process.argv.slice(1).filter(a => /^(https?|file):/.test(a))
@@ -2216,4 +2254,4 @@ app.whenReady().then(async () => {
   powerMonitor.on('resume', () => Sync.syncNow().catch(() => {}))
 })
 
-module.exports = { windows, createWindow, D, allowSites, toggleSiteAdblock, __hl_add: addHighlight, __hl_recolor: recolorHighlight, __addToNTP: addToNTP, __checkParcels: checkParcels, __appOpen: appOpen }
+module.exports = { windows, createWindow, D, allowSites, toggleSiteAdblock, __refreshAdblock: refreshAdblock, __adblockAge: adblockAge, __hl_add: addHighlight, __hl_recolor: recolorHighlight, __addToNTP: addToNTP, __checkParcels: checkParcels, __appOpen: appOpen }

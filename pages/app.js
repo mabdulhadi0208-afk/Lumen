@@ -319,12 +319,28 @@ function appearance(m) {
 }
 
 const PERM_NAMES = { 'media-audio': 'Microphone', 'media-video': 'Camera', 'media-audio+video': 'Camera and microphone', geolocation: 'Location', notifications: 'Notifications', 'clipboard-read': 'Clipboard', 'display-capture': 'Screen sharing', midi: 'MIDI', midiSysex: 'MIDI control', 'idle-detection': 'Idle detection', 'window-management': 'Window management' }
+// the ad blocker's filter lists: how fresh they are, and a button to fetch them now (they refresh every 8 hours anyway)
+const ago = t => { const m = Math.round((Date.now() - t) / 60000); return m < 1 ? 'just now' : m < 60 ? m + (m === 1 ? ' minute' : ' minutes') + ' ago' : m < 1440 ? Math.round(m / 60) + (Math.round(m / 60) === 1 ? ' hour' : ' hours') + ' ago' : Math.round(m / 1440) + (Math.round(m / 1440) === 1 ? ' day' : ' days') + ' ago' }
+async function adblockFreshness(m) {
+  const when = m.querySelector('#abl-when'), b = m.querySelector('#abl-go'); if (!when || !b) return
+  const paint = i => { when.textContent = i.updatedAt ? `Updated ${ago(i.updatedAt)}. Lumen gets fresh lists every 8 hours, so sites like YouTube keep working.` : 'Lumen gets fresh lists every 8 hours, so sites like YouTube keep working.'; b.classList.toggle('busy', !!i.refreshing) }
+  paint(await L.invoke('adblockInfo'))
+  b.onclick = async () => {
+    if (b.classList.contains('busy')) return
+    b.classList.add('busy'); b.querySelector('.abl-t').textContent = 'Updating'
+    const ok = await L.invoke('adblockRefresh').catch(() => false)
+    b.classList.remove('busy'); b.classList.add(ok ? 'done' : 'fail'); b.querySelector('.abl-t').textContent = ok ? 'Up to date' : 'Could not update'
+    paint(await L.invoke('adblockInfo'))
+    setTimeout(() => { b.classList.remove('done', 'fail'); b.querySelector('.abl-t').textContent = 'Update now' }, 2600)
+  }
+}
 async function privacy(m) {
   const perms = await L.invoke('permissions')
   const sites = Object.entries(perms)
   m.innerHTML = `<h2>Privacy and security</h2><p class="lead">Ads and trackers are blocked out of the box. No account, no telemetry.</p>
   <div class="card">
     ${row('Block ads and trackers', 'Built in, works on every site, faster pages and less data. No extension needed.', sw('adblock', S.adblock))}
+    ${row('Filter lists', '<span id="abl-when">Checking</span>', '<button class="btn sm abl-btn" id="abl-go"><span class="abl-spin"></span><span class="abl-t">Update now</span></button>')}
     ${row('Sites where the ad blocker is off', (S.adblockAllow || []).length ? 'If a site looks broken or is missing things, turn the blocker off just there from the shield in the address bar.' : 'None yet. If a site looks broken or is missing things, click the shield in the address bar and turn the blocker off just for that site.', '')}
     ${(S.adblockAllow || []).map(h => `<div class="row"><div class="grow"><div class="t" style="font-weight:500">${esc(h)}</div></div><button class="btn sm" data-unallow="${esc(h)}">Block ads again</button></div>`).join('')}
     ${row('Ask sites not to track you', 'Sends Global Privacy Control and Do Not Track with every request.', sw('doNotTrack', S.doNotTrack))}
@@ -341,7 +357,7 @@ async function privacy(m) {
   <div class="card"><h3>SITE PERMISSIONS</h3>
     ${sites.length ? sites.map(([origin, p]) => Object.entries(p).map(([k, v]) => `<div class="row"><div class="grow"><div class="t">${esc(hostOf(origin))}</div><div class="d">${esc(PERM_NAMES[k] || k)}</div></div>${seg('', [['allow', 'Allow'], ['deny', 'Block']], v).replace('data-seg=""', `data-origin="${esc(origin)}" data-perm="${esc(k)}"`)}<button class="ib" data-del-origin="${esc(origin)}" data-del-perm="${esc(k)}" title="Remove">${ICONS.close}</button></div>`).join('')).join('') : '<div class="row"><div class="d">Sites you allow or block camera, location, notifications and more will show up here.</div></div>'}
   </div>`
-  bindSettings(m)
+  bindSettings(m); adblockFreshness(m)
   m.querySelectorAll('[data-unallow]').forEach(b => b.onclick = async () => { S.adblockAllow = (S.adblockAllow || []).filter(x => x !== b.dataset.unallow); await L.invoke('setSetting', 'adblockAllow', S.adblockAllow); privacy(m) })
   $('#clear').onclick = async () => {
     const b = $('#clear'); b.disabled = true; b.textContent = 'Clearing...'

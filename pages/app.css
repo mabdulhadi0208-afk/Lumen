@@ -501,3 +501,11 @@ a.btn { display: inline-flex; align-items: center; color: var(--fg); text-decora
 .appkeys { display: flex; flex-wrap: wrap; gap: 8px 16px; font-size: 12.5px; color: var(--fg2); }
 .appkeys kbd { display: inline-block; margin-right: 6px; padding: 2px 7px; border-radius: 6px; font: 600 11.5px var(--font, inherit); color: var(--fg); background: var(--hover); box-shadow: inset 0 -1px 0 var(--line); }
 .appacts { display: flex; gap: 8px; margin-top: 16px; }
+
+/* filter lists: Update now, with a spinner while it works and a green tick when it is done */
+.abl-btn { display: inline-flex; align-items: center; gap: 7px; transition: background .3s, color .3s, transform .45s cubic-bezier(.34,1.56,.64,1); }
+.abl-btn .abl-spin { width: 0; height: 12px; border-radius: 50%; border: 2px solid currentColor; border-right-color: transparent; opacity: 0; transition: width .3s cubic-bezier(.34,1.56,.64,1), opacity .2s; box-sizing: border-box; }
+.abl-btn.busy .abl-spin { width: 12px; opacity: .9; animation: ablspin .8s linear infinite; }
+.abl-btn.done { background: color-mix(in srgb, #2fb67c 16%, transparent); color: #1f9d68; transform: scale(1.04); }
+.abl-btn.fail { background: color-mix(in srgb, #e5487d 14%, transparent); color: #d23d6f; }
+@keyframes ablspin { to { transform: rotate(360deg); } }

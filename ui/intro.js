@@ -5,12 +5,12 @@
 ;(function () {
   // ---- edit this list every release: it is the "New in Lumen" act of the film
   const WHATS_NEW = {
-    version: '1.20',
+    version: '1.21',
     items: [
-      { icon: 'key', title: 'Hold-to-open Koi works', text: 'Set Koi to just Cmd Opt, or any two modifier keys, and holding them opens the fan.' },
-      { icon: 'shield', title: 'One clear permission', text: 'If Lumen needs Accessibility, Koi says so, opens the right page and turns green once it is on.' },
-      { icon: 'bolt', title: 'Never freezes Lumen', text: 'Koi listens for keys in its own process, and brings itself back if it ever stops.' },
-      { icon: 'sparkle', title: 'Updates in your color', text: 'The update card takes your accent color, with an aurora, a shine and a burst when it is ready.' },
+      { icon: 'play', title: 'YouTube plays again', text: 'The ad blocker gets fresh lists every 8 hours, so YouTube changes do not stop your videos.' },
+      { icon: 'reload', title: 'Stuck videos fix themselves', text: 'If a video never starts, Lumen grabs fresh lists and reloads it. Still stuck? One click pauses the blocker there.' },
+      { icon: 'shield', title: 'See how fresh it is', text: 'Settings, Privacy shows when the filter lists were updated, with an Update now button.' },
+      { icon: 'sparkle', title: 'Sharper film and card', text: 'The logo forms through a lens split, a widescreen streak crosses the light, and the new version rolls in.' },
     ],
   }
   const FEATURES = [
@@ -336,6 +336,11 @@
       g.addColorStop(0, `rgba(235,240,255,${sky.orb})`); g.addColorStop(.18, `hsla(${sky.hue},100%,75%,${.55 * sky.orb})`); g.addColorStop(1, 'rgba(100,120,255,0)')
       cx.fillStyle = g; cx.fillRect(cxm - R, oyc - R, R * 2, R * 2)
       cx.fillStyle = `rgba(255,255,255,${sky.orb})`; cx.beginPath(); cx.arc(cxm, oyc, sky.orbR, 0, 6.283); cx.fill()
+      // anamorphic streak: the long blue line a widescreen lens draws through a bright light
+      const st = cx.createLinearGradient(0, 0, W, 0), sa = .55 * sky.orb * (.85 + Math.sin(performance.now() / 700) * .15)
+      st.addColorStop(0, 'rgba(90,140,255,0)'); st.addColorStop(.5, `rgba(170,200,255,${sa})`); st.addColorStop(1, 'rgba(90,140,255,0)')
+      cx.fillStyle = st; cx.fillRect(0, oyc - 1.2, W, 2.4)
+      cx.fillStyle = `rgba(120,160,255,${sa * .25})`; cx.fillRect(W * .2, oyc - 5, W * .6, 10)
       if (sky.ring > .01) {
         cx.save(); cx.translate(cxm, oyc); cx.rotate(-.42)
         // a chromatic ring: red, green and blue drawn a hair apart, like a real lens
@@ -417,8 +422,9 @@
     tween(sky, 'orbR', 18, 1400); tween(sky, 'oy', -Math.min(H * .26, 220), 1800, k => 1 - Math.pow(1 - k, 4))
     const letters = s.querySelectorAll('.logo span')
     letters.forEach((l, i) => anim(l, [
-      { opacity: 0, transform: `translate3d(${(i - 2) * 90}px, ${(i % 2 ? -1 : 1) * 40}px, 600px) rotateY(${(i - 2) * 25}deg) scale(1.6)`, filter: 'blur(18px)' },
-      { opacity: 1, transform: 'none', filter: 'blur(0)' }], { duration: 1500, delay: 80 + i * 90, easing: 'cubic-bezier(.16,1,.3,1)' }))
+      { opacity: 0, transform: `translate3d(${(i - 2) * 90}px, ${(i % 2 ? -1 : 1) * 40}px, 600px) rotateY(${(i - 2) * 25}deg) scale(1.6)`, filter: 'blur(18px) drop-shadow(-16px 0 0 rgba(255,70,130,.85)) drop-shadow(16px 0 0 rgba(70,200,255,.85))' },
+      { opacity: 1, filter: 'blur(2px) drop-shadow(-5px 0 0 rgba(255,70,130,.5)) drop-shadow(5px 0 0 rgba(70,200,255,.5))', offset: .55 },
+      { opacity: 1, transform: 'none', filter: 'blur(0) drop-shadow(0 0 0 rgba(255,70,130,0)) drop-shadow(0 0 0 rgba(70,200,255,0))' }], { duration: 1500, delay: 80 + i * 90, easing: 'cubic-bezier(.16,1,.3,1)' }))
     anim(s.querySelector('.logo'), [{ letterSpacing: '.18em' }, { letterSpacing: '-.05em' }], { duration: 2400, easing: 'cubic-bezier(.16,1,.3,1)' })
     setTimeout(() => { if (skip) return; s.querySelector('.glint').animate([{ opacity: 1, backgroundPosition: '120% 0' }, { opacity: 1, backgroundPosition: '-20% 0', offset: .92 }, { opacity: 0, backgroundPosition: '-20% 0' }], { duration: 1500, easing: 'cubic-bezier(.4,0,.2,1)', fill: 'forwards' }); SFX.shimmer() }, 1300)
     words(s.querySelector('.tag'), short ? 'Fresh from an update.' : "Chrome's engine. A lighter feel.", 1500, 90)

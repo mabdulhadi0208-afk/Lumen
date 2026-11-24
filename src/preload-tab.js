@@ -137,6 +137,23 @@ if (location.protocol === 'lumen:') {
     } catch {}
   }
 
+  // ------------------------------------------------------------ YouTube: notice a video that never starts (an error on the
+  // player, or no picture after 20 seconds while it is meant to be playing) and tell Lumen once per video
+  if (/(^|\.)youtube\.com$/.test(location.hostname)) {
+    let key = '', since = 0, told = ''
+    setInterval(() => {
+      if (document.hidden || !/^\/(watch|shorts\/)/.test(location.pathname)) { since = 0; return }
+      const k = location.pathname + location.search
+      if (k !== key) { key = k; since = Date.now(); return }
+      const v = document.querySelector('#movie_player video, #shorts-player video, video')
+      const err = document.querySelector('.ytp-error'), errOn = !!(err && err.offsetParent !== null && err.getClientRects().length)
+      const ad = !!document.querySelector('.ad-showing')
+      const waiting = !v || (v.currentTime < 0.5 && !(v.paused && v.readyState >= 1))
+      if (!(errOn || (waiting && !ad))) { since = Date.now(); return }
+      if (told !== k && Date.now() - since > (errOn ? 4000 : 20000)) { told = k; ipcRenderer.send('yt:stuck') }
+    }, 2000)
+  }
+
   // ------------------------------------------------------------ passkeys (Lumen's own authenticator)
   try {
     contextBridge.exposeInMainWorld('__lumenPasskeys', {

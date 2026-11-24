@@ -11,7 +11,7 @@
       { icon: 'play', title: 'A friendlier intro', text: 'A tour that shows what every feature does, with a brighter, softer sound.' },
       { icon: 'globe', title: '440 carriers', text: 'Couriers and post offices worldwide, most found from the number alone.' },
       { icon: 'search', title: 'Track from anywhere', text: 'Paste a tracking number in the address bar, or right-click one on any page.' },
-      { icon: 'clock', title: 'Arrival dates', text: 'Parcels show when they arrive. Edit names, carriers and dates any time.' },
+      { icon: 'key', title: 'Google sign-in fixed', text: 'Lumen signs in to Google like any Chrome, and retries in another mode if Google ever says no.' },
       { icon: 'sparkle', title: 'A fresh coat of paint', text: 'Calmer tabs, a richer command bar, nicer menus and dark mode fixes.' },
     ],
   }

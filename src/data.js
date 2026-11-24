@@ -42,6 +42,7 @@ const settings = new Store('settings', {
   homeTiles: true,
   archiveTabsAfterH: 0,       // 0 = never
   parcelsAuto: null,          // null = not asked yet
+  googleSignInMode: 'chrome', // chrome | firefox (compatibility)
   whatsNewSeen: '',           // last version whose what's-new film was shown
 })
 

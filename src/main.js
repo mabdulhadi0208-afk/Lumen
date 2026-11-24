@@ -28,15 +28,18 @@ protocol.registerSchemesAsPrivileged([
 
 // Clean, plain-Chrome user agent so sites (and Google sign-in) treat Lumen like Chrome.
 const winBg = () => nativeTheme.shouldUseDarkColors ? '#1b1c20' : '#e6e9f0'
-function chromeUA(ua) { return ua.replace(/\sElectron\/\S+/, '').replace(/\s(Lumen|lumen)\/\S+/, '') }
-// Google blocks sign-in from browsers built on Electron ("This browser or app may not be secure"), but allows Firefox.
-// On Google's sign-in pages only, Lumen presents itself as the current Firefox release.
+// Lumen is Chromium, so it says so, exactly the way Chrome does: no Electron or app tokens, and the reduced version
+// form real Chrome sends (Chrome/140.0.0.0). A full Electron build number or a mixed identity is what makes Google's
+// sign-in say "This browser or app may not be secure".
+function chromeUA(ua) { return ua.replace(/\sElectron\/\S+/, '').replace(/\s(Lumen|lumen)\/\S+/, '').replace(/Chrome\/(\d+)\.[\d.]+/, 'Chrome/$1.0.0.0') }
+// Compatibility mode, the fallback: on Google's sign-in pages only, present as the current Firefox release.
 function firefoxUA() {
   const v = 128 + Math.floor((Date.now() - Date.UTC(2024, 6, 9)) / (28 * 864e5)) - 1
   const os = isMac ? 'Macintosh; Intel Mac OS X 10.15' : 'Windows NT 10.0; Win64; x64'
   return `Mozilla/5.0 (${os}; rv:${v}.0) Gecko/20100101 Firefox/${v}.0`
 }
 const isGoogleSignIn = url => /^https:\/\/accounts\.google\.com\//.test(url || '')
+const googleCompat = () => D.settings.get('googleSignInMode') === 'firefox'
 
 // boot / error log (Logs folder), used by the release gate and for support
 function log(...a) { try { fs.mkdirSync(app.getPath('logs'), { recursive: true }); fs.appendFileSync(path.join(app.getPath('logs'), 'lumen.log'), `[${new Date().toISOString()}] ${a.join(' ')}\n`) } catch {} }
@@ -113,7 +116,7 @@ function setupSession(ses, { incognito = false } = {}) {
   ses.registerPreloadScript({ id: 'lumen-tab', type: 'frame', filePath: path.join(__dirname, 'preload-tab.js') })
   ses.webRequest.onBeforeSendHeaders((d, cb) => {
     const h = d.requestHeaders
-    if (isGoogleSignIn(d.url)) {
+    if (googleCompat() && isGoogleSignIn(d.url)) {
       h['User-Agent'] = firefoxUA()
       for (const k of Object.keys(h)) if (/^sec-ch-ua/i.test(k)) delete h[k]
     }
@@ -452,7 +455,8 @@ class BrowserWin {
     wc.on('page-favicon-updated', (e, icons) => { t.favicon = icons[icons.length - 1] || icons[0] || ''; upd() })
     wc.on('did-start-loading', () => { t.loading = true; t.crashed = false; upd() })
     wc.on('did-stop-loading', () => { t.loading = false; upd() })
-    wc.on('did-finish-load', () => { offerTranslate(this, t).catch(() => {}); darkPage(wc); paintHighlights(wc); readingTime(this, t); parcelPage(this, t) })
+    wc.on('did-finish-load', () => { offerTranslate(this, t).catch(() => {}); darkPage(wc); paintHighlights(wc); readingTime(this, t); parcelPage(this, t); googleBlockCheck(this, t) })
+    wc.on('did-navigate-in-page', () => googleBlockCheck(this, t))
     wc.on('did-navigate', () => darkKeys.delete(wc.id))
     wc.on('did-stop-loading', () => setTimeout(() => { if (this.activeId === t.id) snapTab(t) }, 350))
     wc.once('destroyed', () => darkKeys.delete(wc.id))
@@ -965,6 +969,26 @@ async function offerTranslate(w, t) {
     else if (ans.never) D.settings.set({ neverTranslate: [...new Set([...(D.settings.get('neverTranslate') || []), lang])] })
   })
   w.send('trask', { id, tabId: t.id, host: new URL(wc.getURL()).host, from: lang, fromName: Translate.langName(lang), to, toName: Translate.langName(to), rtl: Translate.dirOf(lang) === 'rtl' })
+}
+
+// ---------------------------------------------------------------- Google sign-in
+// If Google still says "This browser or app may not be secure", switch to the other sign-in mode once and start the
+// sign-in again, so it just works on the second try. The mode that worked is kept.
+let googleRetried = false
+async function googleBlockCheck(w, t) {
+  const wc = t.view && t.view.webContents
+  if (!wc || wc.isDestroyed() || !isGoogleSignIn(wc.getURL())) return
+  await new Promise(r => setTimeout(r, 900))
+  if (wc.isDestroyed() || !isGoogleSignIn(wc.getURL())) return
+  const blocked = /\/signin\/rejected/.test(wc.getURL()) || await wc.executeJavaScriptInIsolatedWorld(1024, [{ code: `/(browser or app may not be secure|this browser or app may not be secure|try using a different browser)/i.test((document.body && document.body.innerText || '').slice(0, 4000))` }]).catch(() => false)
+  if (!blocked) return
+  log('google sign-in blocked, mode', D.settings.get('googleSignInMode') || 'chrome')
+  if (googleRetried) { w.send('toast', 'Google is still blocking this sign-in. Try the other mode in Settings, Privacy.'); return }
+  googleRetried = true
+  setSetting('googleSignInMode', googleCompat() ? 'chrome' : 'firefox')
+  let cont = ''; try { cont = new URL(wc.getURL()).searchParams.get('continue') || '' } catch {}
+  w.send('toast', 'Google blocked that sign-in. Trying again in another mode.')
+  wc.loadURL('https://accounts.google.com/ServiceLogin' + (cont ? '?continue=' + encodeURIComponent(cont) : ''))
 }
 
 // ---------------------------------------------------------------- highlights
@@ -1517,7 +1541,7 @@ function downloadAction(id, what) {
   broadcast('downloads', listDownloads())
 }
 
-const PUBLIC_SETTINGS = ['ntpParcels', 'parcelsAuto', 'whatsNewSeen', 'archiveTabsAfterH', 'bookmarksBar', 'ntpStats', 'ntpRecent', 'ntpReadLater', 'darkStyle', 'uiSounds', 'darkOffSites', 'translateFlipDir', 'searchShortcuts', 'rememberZoom', 'soundActiveOnly', 'linksBackground', 'confirmQuit', 'wheelTabs', 'adblockAllow', 'aiModel', 'aiTabGroups', 'browserTheme', 'themeCustom', 'compact', 'appIcon', 'cleanLinks', 'swipeNav', 'videoSpeedKeys', 'hideCookieBanners', 'blockNotifications', 'forceDark', 'translateTo', 'offerTranslate', 'autoPip', 'ntpShortcuts', 'ntpWallpaper', 'ntpClock', 'searchEngine', 'motion', 'theme', 'accent', 'adblock', 'blockTrackers', 'httpsOnly', 'sleepTabsAfterMin', 'restoreSession', 'sidebarCollapsed', 'sidebarWidth', 'tabLayout', 'introSeen', 'autoUpdate', 'askWhereToSave', 'doNotTrack', 'showSuggestions', 'homeTiles']
+const PUBLIC_SETTINGS = ['googleSignInMode', 'ntpParcels', 'parcelsAuto', 'whatsNewSeen', 'archiveTabsAfterH', 'bookmarksBar', 'ntpStats', 'ntpRecent', 'ntpReadLater', 'darkStyle', 'uiSounds', 'darkOffSites', 'translateFlipDir', 'searchShortcuts', 'rememberZoom', 'soundActiveOnly', 'linksBackground', 'confirmQuit', 'wheelTabs', 'adblockAllow', 'aiModel', 'aiTabGroups', 'browserTheme', 'themeCustom', 'compact', 'appIcon', 'cleanLinks', 'swipeNav', 'videoSpeedKeys', 'hideCookieBanners', 'blockNotifications', 'forceDark', 'translateTo', 'offerTranslate', 'autoPip', 'ntpShortcuts', 'ntpWallpaper', 'ntpClock', 'searchEngine', 'motion', 'theme', 'accent', 'adblock', 'blockTrackers', 'httpsOnly', 'sleepTabsAfterMin', 'restoreSession', 'sidebarCollapsed', 'sidebarWidth', 'tabLayout', 'introSeen', 'autoUpdate', 'askWhereToSave', 'doNotTrack', 'showSuggestions', 'homeTiles']
 function publicSettings() { const s = D.settings.get(); return Object.fromEntries(PUBLIC_SETTINGS.map(k => [k, s[k]])) }
 function setSetting(k, v) {
   if (!PUBLIC_SETTINGS.includes(k)) return
@@ -1571,7 +1595,7 @@ ipcMain.on('nav:swipe', (e, dir) => {
 })
 ipcMain.on('peek:open', (e, url) => { const w = winForWc(e.sender.id); if (w && /^https?:/.test(url)) w.openPeek(url) })
 ipcMain.on('lumen:qol', e => { e.returnValue = { swipe: !!D.settings.get('swipeNav'), speed: !!D.settings.get('videoSpeedKeys') } })
-ipcMain.on('lumen:auth-ua', e => { e.returnValue = isGoogleSignIn(e.senderFrame && e.senderFrame.url) ? firefoxUA() : '' })
+ipcMain.on('lumen:auth-ua', e => { e.returnValue = googleCompat() && isGoogleSignIn(e.senderFrame && e.senderFrame.url) ? firefoxUA() : '' })
 
 // ---------------------------------------------------------------- passkeys
 function passkeyFrame(e) {

@@ -328,6 +328,7 @@ async function privacy(m) {
     ${row('Sites where the ad blocker is off', (S.adblockAllow || []).length ? 'If a site looks broken or is missing things, turn the blocker off just there from the shield in the address bar.' : 'None yet. If a site looks broken or is missing things, click the shield in the address bar and turn the blocker off just for that site.', '')}
     ${(S.adblockAllow || []).map(h => `<div class="row"><div class="grow"><div class="t" style="font-weight:500">${esc(h)}</div></div><button class="btn sm" data-unallow="${esc(h)}">Block ads again</button></div>`).join('')}
     ${row('Ask sites not to track you', 'Sends Global Privacy Control and Do Not Track with every request.', sw('doNotTrack', S.doNotTrack))}
+    ${row('Google sign-in', 'If Google says this browser may not be secure, switch modes and sign in again. Lumen also switches by itself once when that happens.', seg('googleSignInMode', [['chrome', 'Standard'], ['firefox', 'Compatibility']], S.googleSignInMode || 'chrome'))}
     ${row('Always use secure connections', 'Upgrades sites to HTTPS when they support it.', sw('httpsOnly', S.httpsOnly))}
   </div>
   <div class="card"><h3>CLEAR BROWSING DATA</h3>

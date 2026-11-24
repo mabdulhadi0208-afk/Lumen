@@ -9,6 +9,9 @@ Their code stays as it was. Only these things change on the way in:
   - their own updaters are replaced by stand-ins that hand off to Lumen's updater
   - their window colors follow your Lumen accent color (--lumen-a and --lumen-b, set by Lumen)
   - Surge's menu can open under Lumen's toolbar button as well as under its menu bar icon
+  - Glow-up 2.0 (tools/glow): real liquid glass (lumen-glass.js: an SVG lens per glass surface, a pointer glint),
+    hero banners, the Dock clock and date, Nova capsules on screen, Nova dialogs instead of system alerts, Nova
+    menu-bar icons (drawn by tools/glow/draw-trays.py) and a refined charge chip
   - every Surge and Koi window is redesigned in Lumen Nova (docs/NOVA.md) by one layer per tool (tools/glow/*.css,
     copied in as lumen-glow.css and linked last): ink and porcelain with an accent nebula, liquid glass with a
     refractive edge, halo rings, rounded heavy headings, calm springs, and no rubber-banding on scroll
@@ -108,11 +111,51 @@ def glow(path, tag):
     s = open(path, encoding='utf-8').read()
     if '<html' not in s or '</head>' not in s: raise SystemExit(f'{path}: no <html> or </head> to add the glow layer to')
     s = s.replace('<html', f'<html data-lg="{tag}"', 1)
-    i = s.index('</head>'); s = s[:i] + '<link rel="stylesheet" href="lumen-glow.css">' + s[i:]
+    i = s.index('</head>'); s = s[:i] + '<link rel="stylesheet" href="lumen-glow.css"><script defer src="lumen-glass.js"></script>' + s[i:]
     open(path, 'w', encoding='utf-8').write(s)
-shutil.copy2(os.path.join(GLOW, 'surge.css'), os.path.join(S, 'lumen-glow.css'))
 for f, tag in (('settings.html', 'settings'), ('popover.html', 'popover'), ('notes.html', 'notes'), ('clip.html', 'clip'), ('launchpad.html', 'launchpad'), ('dock.html', 'dock')):
     glow(os.path.join(S, f), tag)
+
+# ---- Glow-up 2.0: real liquid glass, hero banners, the Dock clock, Nova capsules, Nova dialogs, Nova tray icons
+def sheet(dst, *names):
+    with open(dst, 'w', encoding='utf-8') as out:
+        for n in names: out.write(open(os.path.join(GLOW, n), encoding='utf-8').read() + '\n')
+sheet(os.path.join(S, 'lumen-glow.css'), 'surge.css', 'surge2.css', 'hero.css')
+for f in ('lumen-glass.js', 'lumen-dialog.js', 'lumen-dialog-preload.js', 'lumen-dialog.html', 'lumen-dialog-page.js'):
+    shutil.copy2(os.path.join(GLOW, f), os.path.join(S, f))
+# the Dock clock: rolling glass digits, a ring of light for the hour, a bar for the month; the CPU graph in your accent
+edit(os.path.join(S, 'dock.html'), [
+    ("c.innerHTML=t.replace(':','<i>:</i>');", "if(window.lumenRoll) lumenRoll(c,t); else c.innerHTML=t.replace(':','<i>:</i>');"),
+    ("$('#dmon').textContent=n.toLocaleDateString([], {month:'long'});", "$('#dmon').textContent=n.toLocaleDateString([], {month:'long'}); { const dim=new Date(n.getFullYear(),n.getMonth()+1,0).getDate(), w=$('#wdate'); w&&w.style.setProperty('--mp',(n.getDate()/dim).toFixed(3)); }"),
+    ("hs[2].style.transform=`rotate(${(s/3600)*30}deg)`;", "hs[2].style.transform=`rotate(${(s/3600)*30}deg)`; hs[0].parentNode.style.setProperty('--hp',((n.getMinutes()*60+n.getSeconds())/3600).toFixed(4));"),
+    ("x.strokeStyle='#5b8cff'; x.lineWidth=3;", "const LA=(getComputedStyle(document.documentElement).getPropertyValue('--lumen-a').trim()||'#5b8cff'), LH=/^#[0-9a-f]{6}$/i.test(LA)?LA:'#5b8cff'; x.strokeStyle=LH; x.lineWidth=3;"),
+    ("g.addColorStop(0,'rgba(91, 140, 255,.35)'); g.addColorStop(1,'rgba(91, 140, 255,0)');", "g.addColorStop(0,LH+'66'); g.addColorStop(1,LH+'00');"),
+])
+# the on-screen capsules ("CAPS LOCK ON", "Copied", "Break time", the hourly chime...) become Nova glass pills
+e = os.path.join(S, 'engine.js'); es = open(e, encoding='utf-8').read()
+a, b = es.index('    function capsule('), es.index('    function frame(now) {')
+open(e, 'w', encoding='utf-8').write(es[:a] + open(os.path.join(GLOW, 'capsule.js'), encoding='utf-8').read() + es[b:])
+# Surge's questions: a Nova dialog of its own instead of a system alert. "Move Surge to Applications" is meaningless
+# inside Lumen (Surge lives inside Lumen), so that one is not asked at all.
+d19 = os.path.join(S, 'modules', '19-dock.js'); ds = open(d19, encoding='utf-8').read()
+if ds.count('dialog.showMessageBox(') != 2: raise SystemExit('19-dock.js: expected two dialogs')
+open(d19, 'w', encoding='utf-8').write(ds.replace('dialog.showMessageBox(', "require('../lumen-dialog.js')("))
+edit(os.path.join(S, 'main.js'), [
+    ("if (process.platform === 'darwin' && app.isPackaged) {", "if (false && process.platform === 'darwin' && app.isPackaged) {   // inside Lumen there is no Surge app to move to Applications"),
+    # the menu-bar icon: Surge's Nova template icon (crisp at 1x and 2x)
+    ("  if (!b || b.level == null) {\n", "  if (!b || b.level == null) {\n    try { const t = nativeImage.createFromPath(path.join(__dirname, 'assets', 'tray', 'surgeTemplate.png')); if (!t.isEmpty()) { t.setTemplateImage(true); return t; } } catch {}\n"),
+])
+for f in os.listdir(os.path.join(GLOW, 'tray')):
+    if not f.startswith('trayFrame'): shutil.copy2(os.path.join(GLOW, 'tray', f), os.path.join(S, 'assets', 'tray', f))
+# the menu-bar charge chip, refined in Nova: ink glass body, a specular top, a rim of light, bolder digits
+edit(os.path.join(S, 'traychip.js'), [
+    ("let c0 = 16, c1 = 20, c2 = 29, al = .94;", "let c0 = 11, c1 = 13, c2 = 25, al = .95;"),
+    ("if (y < H / 2) { c0 += (255 - c0) * .07; c1 += (255 - c1) * .07; c2 += (255 - c2) * .07; }",
+     "{ const sp = y < H * .45 ? .16 * Math.pow(1 - y / (H * .45), 1.5) : 0, dk = y > H * .6 ? .22 * (y - H * .6) / (H * .4) : 0; c0 += (255 - c0) * sp; c1 += (255 - c1) * sp; c2 += (255 - c2) * sp; c0 *= 1 - dk; c1 *= 1 - dk; c2 *= 1 - dk; }"),
+    ("if (sd > -1) { c0 += (255 - c0) * .22; c1 += (255 - c1) * .22; c2 += (255 - c2) * .22; al += (1 - al) * .22; }",
+     "if (sd > -1.2) { const k2 = .42 * (1 + sd / 1.2) * (y < H / 2 ? 1 : .55), rc = x < W * .45 ? [Math.min(255, col[0] + 90), Math.min(255, col[1] + 90), Math.min(255, col[2] + 90)] : [255, 255, 255]; c0 += (rc[0] - c0) * k2; c1 += (rc[1] - c1) * k2; c2 += (rc[2] - c2) * k2; al += (1 - al) * k2; }"),
+    ("if (d < .82) a++; if (d < 1.45) sh++;", "if (d < .92) a++; if (d < 1.6) sh++;"),
+])
 # no rubber-banding on scroll (a Lumen rule): Surge's stretchy list ends stay off unless a window asks for them
 edit(os.path.join(S, 'fluid.js'), [("{ let el = null, off = 0, v = 0, rb = 0, lastW = 0; const RB = C.rubber || '.pane.on,.list,.grid,.sp .list';",
                                     "if (C.rubber) { let el = null, off = 0, v = 0, rb = 0, lastW = 0; const RB = C.rubber;")])
@@ -210,9 +253,15 @@ const actions = {
 module.exports = { start() {}, actions, snapshot: state, _swapScript: () => '', _newer: () => false }
 """)
 # Lumen's glow layer for Koi's popover, Hotkeys window, tour and app fan
-shutil.copy2(os.path.join(GLOW, 'koi.css'), os.path.join(K, 'renderer', 'lumen-glow.css'))
-for f, tag in (('popover.html', 'kpop'), ('settings.html', 'ksettings'), ('app.html', 'kapp')):
+sheet(os.path.join(K, 'renderer', 'lumen-glow.css'), 'koi.css', 'koi2.css', 'hero.css')
+shutil.copy2(os.path.join(GLOW, 'lumen-glass.js'), os.path.join(K, 'renderer', 'lumen-glass.js'))
+for f, tag in (('popover.html', 'kpop'), ('settings.html', 'ksettings'), ('app.html', 'kapp'), ('update.html', 'kupdate')):
     glow(os.path.join(K, 'renderer', f), tag)
+# the tour window opens on Nova ink, not Koi's old near-black
+edit(os.path.join(K, 'main.js'), [("backgroundColor:'#04050c'", "backgroundColor:'#0a0c15'")])
+# the menu-bar koi: crisper Nova frames (same 7 frames and names, template images at 1x and 2x)
+for f in os.listdir(os.path.join(GLOW, 'tray')):
+    if f.startswith('trayFrame'): shutil.copy2(os.path.join(GLOW, 'tray', f), os.path.join(K, 'assets', f))
 # their app icons, for the Surge and Koi page in Lumen Settings
 for src, name in ((os.path.join(SURGE_SRC, 'build', 'icon.png'), 'app-surge.png'), (os.path.join(KOI_SRC, 'build', 'icon.png'), 'app-koi.png')):
     if not os.path.exists(src): continue

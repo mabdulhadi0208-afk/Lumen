@@ -244,3 +244,189 @@ html,body,*{overscroll-behavior:none}
 @media (prefers-reduced-motion:reduce){
   [data-lg] .aura,[data-lg] .go,[data-lg] .btn.pr,[data-lg] .perm::after,[data-lg] .perm .pi::after,[data-lg] .btns button.pr{animation:none!important}
 }
+
+
+/* ═══════════════════════════════════════════════════════════════════════════════════════════════════════════════
+   Glow-up 2.0 for Koi: real liquid glass (tools/glow/koi2.css, appended to lumen-glow.css by tools/import-apps.py)
+   Glass in the Hotkeys window and the tour bends the nebula behind it (--nv-lens from lumen-glass.js); the menu and
+   the update card, which float over the desktop, get rich layered glass: rim light, specular top, caustic pool and a
+   glint that follows the pointer. Light and dark.
+   ═══════════════════════════════════════════════════════════════════════════════════════════════════════════════ */
+:root{
+  --nv-glint:radial-gradient(240px circle at var(--gx,24%) var(--gy,-40%),rgb(255 255 255 / calc(.1 + var(--go,0) * .2)),transparent 62%);
+  --nv-glint-sm:radial-gradient(110px circle at var(--gx,30%) var(--gy,-30%),rgb(255 255 255 / calc(.08 + var(--go,0) * .22)),transparent 60%);
+  --nv-rim:linear-gradient(150deg,rgba(255,255,255,.9),rgb(from var(--nv-a) r g b / .55) 18%,rgba(255,255,255,.2) 40%,rgba(255,255,255,.05) 55%,rgba(255,255,255,.2) 72%,rgb(from var(--nv-a3) r g b / .6) 92%,rgba(255,255,255,.6));
+  --nv-fringe:inset 1.5px 0 0 -.5px rgba(255,96,170,.16),inset -1.5px 0 0 -.5px rgba(96,214,255,.2),inset 0 1px 0 rgba(255,255,255,.7);
+  --nv-caustic:inset 0 -30px 44px -34px rgb(from var(--nv-a) r g b / .45),inset 0 0 34px -22px rgb(from var(--nv-a3) r g b / .3);
+  --nv-tick:linear(0,.06 4%,.25 10%,.55 18%,.82 26%,.98 34%,1.07 42%,1.09 48%,1.07 55%,1.02 66%,.995 78%,1);
+}
+[data-lg=kpop] body.dk,[data-lg=kapp] body.dk,[data-lg=kupdate]{
+  --nv-rim:linear-gradient(150deg,rgba(255,255,255,.5),rgb(from var(--nv-a) r g b / .6) 18%,rgba(255,255,255,.06) 40%,transparent 55%,rgba(255,255,255,.05) 70%,rgb(from var(--nv-a3) r g b / .6) 92%,rgba(255,255,255,.3));
+  --nv-fringe:inset 1.5px 0 0 -.5px rgba(255,96,170,.2),inset -1.5px 0 0 -.5px rgba(96,214,255,.22),inset 0 1px 0 rgba(255,255,255,.2);
+  --nv-caustic:inset 0 -30px 44px -34px rgb(from var(--nv-a) r g b / .7),inset 0 0 34px -20px rgb(from var(--nv-a3) r g b / .45);
+  --nv-glint:radial-gradient(240px circle at var(--gx,24%) var(--gy,-40%),rgb(255 255 255 / calc(.05 + var(--go,0) * .15)),transparent 62%);
+}
+@media(prefers-color-scheme:dark){[data-lg=ksettings]{
+  --nv-rim:linear-gradient(150deg,rgba(255,255,255,.5),rgb(from var(--nv-a) r g b / .6) 18%,rgba(255,255,255,.06) 40%,transparent 55%,rgba(255,255,255,.05) 70%,rgb(from var(--nv-a3) r g b / .6) 92%,rgba(255,255,255,.3));
+  --nv-fringe:inset 1.5px 0 0 -.5px rgba(255,96,170,.2),inset -1.5px 0 0 -.5px rgba(96,214,255,.22),inset 0 1px 0 rgba(255,255,255,.2);
+  --nv-glint:radial-gradient(240px circle at var(--gx,24%) var(--gy,-40%),rgb(255 255 255 / calc(.05 + var(--go,0) * .15)),transparent 62%)}}
+@keyframes nvSpin{to{transform:rotate(1turn)}}
+@keyframes nvShimmer{to{background-position:-200% 0}}
+@keyframes nvBorder{to{--nv-ang:360deg}}
+@property --nv-ang{syntax:'<angle>';inherits:false;initialValue:0deg}
+@keyframes nvBar{to{background-position:-60px 0,0 0}}
+
+/* ═════════════════════════ Menu 2.0 ═════════════════════════ */
+[data-lg=kpop] #panel{background:var(--nv-glint) padding-box,linear-gradient(180deg,rgba(255,255,255,.14),rgba(255,255,255,0) 22%) padding-box,var(--nv-stars-pb),linear-gradient(180deg,var(--nv-glass2),var(--nv-glass)) padding-box,linear-gradient(var(--nv-bg),var(--nv-bg)) padding-box,var(--nv-rim) border-box;
+  box-shadow:var(--nv-fringe),var(--nv-caustic),var(--nv-depth),0 0 60px -30px var(--nv-a)}
+[data-lg=kpop] .aura{opacity:.7}
+[data-lg=kpop] .lg{position:relative;background:radial-gradient(circle at 32% 22%,rgba(255,255,255,.6),transparent 44%),var(--nova);box-shadow:inset 0 1px 0 rgba(255,255,255,.55),inset 0 -6px 12px -6px rgba(0,0,40,.4),0 0 0 4px rgb(from var(--nv-a) r g b / .16),0 12px 26px -8px var(--nv-a)}
+[data-lg=kpop] .hd b{font-size:28px}
+[data-lg=kpop] .go{position:relative;overflow:hidden;background:linear-gradient(110deg,transparent 30%,rgba(255,255,255,.45) 48%,transparent 66%) no-repeat -160% 0/60% 100%,radial-gradient(90% 140% at 25% -30%,rgba(255,255,255,.5),transparent 55%),var(--nova);box-shadow:inset 0 1px 0 rgba(255,255,255,.55),inset 0 -8px 16px -8px rgba(0,0,40,.35),0 16px 34px -12px var(--nv-a),0 0 50px -16px var(--nv-a3)}
+[data-lg=kpop] .seg{background:rgba(0,0,30,.06);box-shadow:inset 0 2px 4px rgba(0,0,30,.12),inset 0 0 0 1px var(--nv-line)}
+[data-lg=kpop] body.dk .seg{background:rgba(0,0,12,.35);box-shadow:inset 0 2px 4px rgba(0,0,0,.5),inset 0 0 0 1px rgba(255,255,255,.07)}
+[data-lg=kpop] .seg .th,[data-lg=kpop] body.dk .seg .th{background:radial-gradient(90% 140% at 30% -20%,rgba(255,255,255,.5),transparent 55%),var(--nova);transition-timing-function:var(--nv-tick)!important}
+[data-lg=kpop] .row:hover{background:var(--nv-glint-sm),var(--nv-fill)}
+[data-lg=kpop] .row .ic{background:radial-gradient(circle at 35% 20%,rgba(255,255,255,.45),transparent 50%),rgb(from var(--nv-a) r g b / .14);box-shadow:var(--nv-fringe)}
+[data-lg=kpop] .row:hover .ic{background:radial-gradient(circle at 35% 20%,rgba(255,255,255,.55),transparent 46%),var(--nova)}
+[data-lg=kpop] .tg{background:rgba(0,0,30,.1);box-shadow:inset 0 2px 4px rgba(0,0,30,.18),inset 0 0 0 1px var(--nv-line)}
+[data-lg=kpop] body.dk .tg{background:rgba(0,0,12,.4);box-shadow:inset 0 2px 5px rgba(0,0,0,.55),inset 0 0 0 1px rgba(255,255,255,.08)}
+[data-lg=kpop] .tg.on{background:radial-gradient(80% 120% at 30% -10%,rgba(255,255,255,.45),transparent 55%),var(--nova)!important}
+[data-lg=kpop] .tg i{background:radial-gradient(circle at 40% 28%,#fff 0 30%,#eef1fa 60%,#cfd5e6);box-shadow:inset 0 -2px 3px rgba(0,0,40,.18),0 3px 8px rgba(0,0,30,.35)}
+/* the update block: a living card. A ring of light runs round its edge, a liquid bar fills while it downloads,
+   and the button glows and sweeps when the update is ready */
+[data-lg=kpop] .up-b{position:relative;isolation:isolate;overflow:hidden;margin:14px 0 4px;padding:14px 14px 14px 16px;border-radius:22px;border:1.5px solid transparent;gap:12px;
+  background:var(--nv-glint-sm) padding-box,radial-gradient(130% 160% at 0% 0%,rgb(from var(--nv-a) r g b / .3),transparent 60%) padding-box,radial-gradient(100% 140% at 100% 100%,rgb(from var(--nv-a3) r g b / .22),transparent 60%) padding-box,linear-gradient(var(--nv-glass2),var(--nv-glass2)) padding-box,
+    conic-gradient(from var(--nv-ang),rgb(from var(--nv-a) r g b / .25),var(--nv-a) 12%,#fff 16%,var(--nv-a3) 20%,rgb(from var(--nv-a3) r g b / .25) 34%,rgb(from var(--nv-a) r g b / .25)) border-box;
+  box-shadow:var(--nv-fringe),var(--nv-caustic),0 0 0 4px rgb(from var(--nv-a) r g b / .1),0 18px 40px -16px var(--nv-a);animation:nvBorder 4s linear infinite}
+[data-lg=kpop] .up-b::before{content:"";flex:none;width:38px;height:38px;border-radius:13px;order:-1;
+  background:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'><path d='M12 4v11M7 10l5 5 5-5M5 20h14'/></svg>") center/19px no-repeat,radial-gradient(circle at 32% 22%,rgba(255,255,255,.55),transparent 44%),var(--nova);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.55),0 0 0 4px rgb(from var(--nv-a) r g b / .16),0 8px 20px -6px var(--nv-a)}
+[data-lg=kpop] .up-b::after{content:"";position:absolute;left:16px;right:16px;bottom:7px;height:3px;border-radius:3px;background:linear-gradient(90deg,transparent,rgba(255,255,255,.7),transparent) 0 0/60px 100% repeat-x,var(--nova);opacity:.85;box-shadow:0 0 10px var(--nv-a);animation:nvBar 1.4s linear infinite}
+[data-lg=kpop] .up-b b{font:800 15.5px/1.2 var(--nv-head);letter-spacing:-.02em;background:linear-gradient(100deg,var(--nv-tx) 50%,color-mix(in oklab,var(--nv-a) 80%,var(--nv-tx)));-webkit-background-clip:text;background-clip:text;color:transparent}
+[data-lg=kpop] .up-b small{font-weight:600}
+[data-lg=kpop] .bt{padding:9px 16px;font:800 13px var(--nv-head);background:linear-gradient(110deg,transparent 30%,rgba(255,255,255,.5) 48%,transparent 66%) no-repeat -160% 0/60% 100%,radial-gradient(90% 140% at 30% -20%,rgba(255,255,255,.5),transparent 55%),var(--nova);box-shadow:inset 0 1px 0 rgba(255,255,255,.5),0 0 0 4px rgb(from var(--nv-a) r g b / .18),0 10px 22px -8px var(--nv-a);animation:nvSweep 2.6s cubic-bezier(.3,.6,.2,1) .4s infinite}
+[data-lg=kpop] .ft{font:700 11.5px var(--nv-head)}
+
+/* ═════════════════════════ Hotkeys 2.0 ═════════════════════════ */
+[data-lg=ksettings] .card,[data-lg=ksettings] .perm{backdrop-filter:var(--nv-lens,) blur(20px) saturate(1.8)!important}
+[data-lg=ksettings] .card{background:var(--nv-glint) padding-box,linear-gradient(180deg,rgba(255,255,255,.16),rgba(255,255,255,0) 30%) padding-box,linear-gradient(180deg,color-mix(in oklab,var(--nv-glass2) 70%,transparent),color-mix(in oklab,var(--nv-glass) 70%,transparent)) padding-box,var(--nv-rim) border-box;box-shadow:var(--nv-fringe),var(--nv-caustic),var(--nv-depth)}
+[data-lg=ksettings] .rec{background:var(--nv-glint-sm),linear-gradient(180deg,rgba(255,255,255,.2),rgba(255,255,255,0) 50%),var(--nv-glass2);box-shadow:var(--nv-fringe),inset 0 -2px 0 rgba(0,0,20,.1),0 8px 18px -12px rgba(0,0,20,.5)}
+[data-lg=ksettings] .rec.on{background:radial-gradient(90% 140% at 30% -20%,rgba(255,255,255,.5),transparent 55%),var(--nova)}
+[data-lg=ksettings] .btn{background:var(--nv-glint-sm),var(--nv-fill)}
+
+/* ═════════════════════════ Tour and fan 2.0 ═════════════════════════ */
+[data-lg=kapp] .ctl,[data-lg=kapp] #cap,[data-lg=kapp] .wn>div,[data-lg=kapp] #toast{backdrop-filter:var(--nv-lens,) blur(22px) saturate(1.8)!important}
+[data-lg=kapp] .ctl,[data-lg=kapp] body.dk .ctl{background:var(--nv-glint) padding-box,linear-gradient(180deg,rgba(255,255,255,.18),rgba(255,255,255,0) 50%) padding-box,linear-gradient(color-mix(in oklab,var(--nv-glass2) 70%,transparent),color-mix(in oklab,var(--nv-glass) 70%,transparent)) padding-box,var(--nv-rim) border-box;box-shadow:var(--nv-fringe),var(--nv-caustic),var(--nv-depth)}
+[data-lg=kapp] #cap{background:var(--nv-glint) padding-box,linear-gradient(180deg,rgba(255,255,255,.12),rgba(255,255,255,0) 35%) padding-box,radial-gradient(120% 100% at 0% 0%,rgb(from var(--nv-a) r g b / .3),transparent 60%) padding-box,linear-gradient(180deg,rgba(24,28,48,.7),rgba(12,14,26,.78)) padding-box,var(--nv-rim) border-box;box-shadow:var(--nv-fringe),var(--nv-caustic),0 24px 60px rgba(0,0,10,.5),0 0 60px -20px var(--nv-a)}
+[data-lg=kapp] .wn>div{background:var(--nv-glint) padding-box,linear-gradient(180deg,rgba(255,255,255,.1),rgba(255,255,255,0) 40%) padding-box,linear-gradient(180deg,rgba(28,32,54,.66),rgba(14,16,28,.72)) padding-box,var(--nv-rim) border-box;box-shadow:var(--nv-fringe),var(--nv-caustic),0 16px 40px -20px rgba(0,0,10,.8)}
+[data-lg=kapp] .hero h1,[data-lg=kapp] body.dk .hero h1{font-size:54px}
+[data-lg=kapp] .wall .pn,[data-lg=kapp] body.dk .wall .pn{opacity:.75;background:var(--nv-glint) padding-box,linear-gradient(180deg,rgba(255,255,255,.12),transparent 40%) padding-box,linear-gradient(180deg,var(--nv-glass),transparent) padding-box,var(--nv-rim) border-box;box-shadow:var(--nv-fringe),0 30px 60px -40px rgba(0,0,30,.5)}
+[data-lg=kapp] #film #bk{background:var(--nv-stars),radial-gradient(40% 40% at 30% 30%,rgb(from var(--nv-a) r g b / .3),transparent 70%),radial-gradient(40% 40% at 75% 70%,rgb(from var(--nv-a3) r g b / .24),transparent 70%),radial-gradient(60% 60% at 50% 45%,rgb(from var(--nv-a2) r g b / .14),transparent 70%),#0a0c15}
+[data-lg=kapp] #q{background:var(--nv-glint-sm),linear-gradient(180deg,rgba(255,255,255,.3),rgba(255,255,255,0) 60%),var(--nv-glass2)}
+[data-lg=kapp] #lab{background:linear-gradient(180deg,rgba(255,255,255,.14),rgba(255,255,255,0) 55%),rgba(16,18,32,.9);box-shadow:var(--nv-fringe),0 0 0 1px rgb(from var(--nv-a) r g b / .45),0 10px 24px -8px rgba(0,0,20,.5),0 0 20px -6px var(--nv-a)}
+[data-lg=kapp] .chip,[data-lg=kapp] body.dk .chip{background:var(--nv-glint-sm),linear-gradient(180deg,rgba(255,255,255,.2),rgba(255,255,255,0) 55%),var(--nv-glass2)}
+[data-lg=kapp] .w.sel svg{filter:drop-shadow(0 0 22px rgb(from var(--nv-a) r g b / .7)) drop-shadow(0 10px 18px rgba(0,0,20,.25))}
+
+/* ═════════════════════════ Koi's update card (renderer/update.html) ═════════════════════════ */
+[data-lg=kupdate]{--nv-dust:rgba(255,255,255,.42);--nv-dust2:rgba(255,255,255,.24);--nv-dust3:rgb(from var(--nv-a3) r g b / .45);--a:var(--nv-a);--b:var(--nv-a3);--mut:rgba(226,230,250,.62)}
+[data-lg=kupdate] body{font-family:-apple-system,"SF Pro Text",system-ui,sans-serif}
+[data-lg=kupdate] .card{border-radius:30px;border:1.5px solid transparent;
+  background:var(--nv-glint) padding-box,linear-gradient(180deg,rgba(255,255,255,.1),rgba(255,255,255,0) 28%) padding-box,var(--nv-stars),radial-gradient(80% 70% at 100% 0%,rgb(from var(--nv-a) r g b / .36),transparent 70%) padding-box,radial-gradient(70% 60% at 0% 100%,rgb(from var(--nv-a3) r g b / .26),transparent 70%) padding-box,linear-gradient(180deg,rgba(22,26,44,.98),rgba(9,11,20,.98)) padding-box,
+    conic-gradient(from var(--nv-ang),rgb(from var(--nv-a) r g b / .3),var(--nv-a) 12%,#fff 16%,var(--nv-a3) 20%,rgb(from var(--nv-a3) r g b / .3) 34%,rgb(from var(--nv-a) r g b / .3)) border-box;
+  box-shadow:var(--nv-fringe),var(--nv-caustic),0 34px 80px -22px rgba(0,0,10,.95),0 0 70px -26px var(--nv-a);animation:nvBorder 5s linear infinite}
+[data-lg=kupdate] .aura{opacity:.13;background:conic-gradient(from 0deg,var(--nv-a),var(--nv-a2),var(--nv-a3),var(--nv-a))}
+[data-lg=kupdate] .card.ready .aura{opacity:.22}
+[data-lg=kupdate] .ic{width:54px;height:54px;border-radius:18px;background:radial-gradient(circle at 32% 22%,rgba(255,255,255,.6),transparent 44%),var(--nova);box-shadow:inset 0 1px 0 rgba(255,255,255,.55),inset 0 -8px 14px -6px rgba(0,0,40,.4),0 0 0 5px rgb(from var(--nv-a) r g b / .16),0 12px 28px -8px var(--nv-a)}
+[data-lg=kupdate] .busy .ic:after{display:none}
+[data-lg=kupdate] .busy .ic{animation:kuPulse 1.6s ease-in-out infinite}
+@keyframes kuPulse{50%{box-shadow:inset 0 1px 0 rgba(255,255,255,.55),0 0 0 9px rgb(from var(--nv-a) r g b / .1),0 12px 32px -6px var(--nv-a)}}
+[data-lg=kupdate] .t b{font:800 18.5px/1.2 var(--nv-head);letter-spacing:-.025em;background:linear-gradient(100deg,#fff 50%,color-mix(in oklab,var(--nv-a3) 60%,#fff));-webkit-background-clip:text;background-clip:text;color:transparent}
+[data-lg=kupdate] .ver{font:800 11px var(--nv-head);background:rgb(from var(--nv-a) r g b / .18);box-shadow:inset 0 0 0 1px rgb(from var(--nv-a) r g b / .4);color:color-mix(in oklab,var(--nv-a3) 50%,#fff)}
+[data-lg=kupdate] .bar{height:12px;border-radius:99px;background:rgba(0,0,12,.45);box-shadow:inset 0 2px 4px rgba(0,0,0,.6),inset 0 0 0 1px rgba(255,255,255,.06)}
+[data-lg=kupdate] .bar i{border-radius:99px;background:linear-gradient(180deg,rgba(255,255,255,.45),rgba(255,255,255,0) 60%),linear-gradient(90deg,transparent,rgba(255,255,255,.5),transparent) 0 0/60px 100% repeat-x,var(--nova);box-shadow:0 0 16px var(--nv-a);animation:nvBar 1.2s linear infinite}
+[data-lg=kupdate] .meta{font-weight:650}
+[data-lg=kupdate] .btn{font:800 13.5px var(--nv-head);padding:11px 20px;background:linear-gradient(110deg,transparent 30%,rgba(255,255,255,.5) 48%,transparent 66%) no-repeat -160% 0/60% 100%,radial-gradient(90% 140% at 30% -20%,rgba(255,255,255,.5),transparent 55%),var(--nova);box-shadow:inset 0 1px 0 rgba(255,255,255,.5),0 0 0 4px rgb(from var(--nv-a) r g b / .18),0 12px 28px -8px var(--nv-a);animation:nvSweep 2.6s cubic-bezier(.3,.6,.2,1) .4s infinite}
+[data-lg=kupdate] .lnk{border-radius:99px;font-weight:650}
+[data-lg=kupdate] .ok{font:800 18px var(--nv-head);background:radial-gradient(60% 60% at 50% 50%,rgb(from var(--nv-a) r g b / .3),transparent 70%),rgba(9,11,20,.9)}
+
+@media (prefers-reduced-motion:reduce){
+  [data-lg] .up-b,[data-lg] .up-b::after,[data-lg] .bt,[data-lg=kupdate] .card,[data-lg=kupdate] .bar i,[data-lg=kupdate] .btn,[data-lg=kupdate] .ic{animation:none!important}
+}
+
+
+/* ═════════════════════════ hero banners (tools/glow/hero.css, shared by Surge and Koi) ═════════════════════════
+   Lumen's Settings hero energy: a big glass banner with drifting saturated colour blobs, a large faint outline of the
+   page's icon, a glowing gradient icon tile, a huge bold title and one light sweep when the page opens.
+   The decoration is put in by lumen-glass.js (.lg-deco, .lg-hic). */
+.lg-deco{position:absolute;inset:0;z-index:-1;border-radius:inherit;overflow:hidden;pointer-events:none}
+.lg-orb{position:absolute;border-radius:50%;filter:blur(34px);will-change:transform}
+.lg-orb.a{width:260px;height:260px;left:-70px;top:-140px;background:color-mix(in oklab,var(--ic,var(--nv-a)) 70%,transparent);animation:lgOrbA 14s ease-in-out infinite alternate}
+.lg-orb.b{width:300px;height:220px;right:6%;bottom:-160px;background:color-mix(in oklab,var(--nv-a3) 62%,transparent);animation:lgOrbB 17s ease-in-out infinite alternate}
+.lg-orb.c{width:180px;height:180px;left:42%;top:-90px;background:color-mix(in oklab,var(--nv-a2) 55%,transparent);animation:lgOrbC 21s ease-in-out infinite alternate;opacity:.8}
+@keyframes lgOrbA{to{transform:translate(110px,50px) scale(1.18)}}
+@keyframes lgOrbB{to{transform:translate(-90px,-34px) scale(1.12)}}
+@keyframes lgOrbC{to{transform:translate(-60px,60px) scale(1.25)}}
+.lg-art{position:absolute;right:14px;top:50%;width:190px;height:190px;margin-top:-95px;color:#fff;opacity:.13;transform:rotate(-12deg);display:block}
+.lg-art svg{width:100%;height:100%;fill:none!important;stroke:currentColor!important;stroke-width:1!important;stroke-linecap:round;stroke-linejoin:round}
+.lg-sweep{position:absolute;inset:0;background:linear-gradient(105deg,transparent 35%,rgba(255,255,255,.42) 50%,transparent 65%);transform:translateX(-110%);animation:lgSweep 1.6s .3s ease-out both}
+@keyframes lgSweep{to{transform:translateX(110%)}}
+.lg-hic{width:72px;height:72px;flex:none;display:grid;place-items:center;border-radius:23px;color:#fff;position:relative;
+  background:radial-gradient(circle at 32% 22%,rgba(255,255,255,.55),transparent 42%),linear-gradient(145deg,color-mix(in oklab,var(--ic,var(--nv-a)) 70%,#fff),var(--ic,var(--nv-a)) 55%,color-mix(in oklab,var(--ic,var(--nv-a)) 72%,#000));
+  box-shadow:0 16px 34px color-mix(in oklab,var(--ic,var(--nv-a)) 55%,transparent),0 0 0 5px rgba(255,255,255,.12),inset 0 1px 0 rgba(255,255,255,.55),inset 0 -3px 8px rgba(0,0,0,.18);animation:lgPop .9s var(--spring,cubic-bezier(.34,1.56,.64,1)) .1s both}
+.lg-hic svg{width:34px;height:34px;fill:#fff;filter:drop-shadow(0 2px 3px rgba(0,0,0,.25))}
+@keyframes lgPop{from{opacity:0;transform:scale(.5) rotate(-14deg)}}
+
+/* Surge: the All modules and Welcome banners */
+[data-lg=settings] .hero{display:flex;align-items:center;gap:24px;min-height:150px;padding:30px 34px!important}
+[data-lg=settings] .hero>div:not(.lg-deco):not(.lg-hic):not(.n){flex:1;min-width:0;padding-right:120px;animation:lgTx .8s var(--spring) .08s both}
+[data-lg=settings] .hero h2{font-size:40px!important;line-height:1.05!important}
+[data-lg=settings] .hero .n{position:relative;z-index:1}
+[data-lg=settings] #pane-all .hero>div:not(.lg-deco):not(.lg-hic):not(.n){padding-right:0}
+[data-lg=settings] #pane-all .lg-art{right:150px}
+@keyframes lgTx{from{opacity:0;transform:translateY(12px)}}
+/* Surge: every module page opens with a hero in its own colour */
+[data-lg=settings] .card.mh{min-height:150px;padding:28px 30px!important;
+  background:radial-gradient(120% 150% at 0% 0%,color-mix(in oklab,var(--ic,var(--nv-a)) 42%,transparent),transparent 58%) padding-box,radial-gradient(90% 140% at 100% 100%,rgb(from var(--nv-a3) r g b / .3),transparent 60%) padding-box,var(--nv-glint) padding-box,var(--nv-glass-hi) padding-box,linear-gradient(135deg,color-mix(in oklab,var(--ic,var(--nv-a)) 80%,#fff),rgba(255,255,255,.1) 30%,transparent 55%,rgb(from var(--nv-a3) r g b / .6)) border-box!important;
+  box-shadow:var(--nv-fringe),var(--nv-caustic),0 30px 70px -30px color-mix(in oklab,var(--ic,var(--nv-a)) 80%,transparent),0 0 0 1px rgba(255,255,255,.04)!important}
+[data-lg=settings] .card.mh::before{display:none}
+[data-lg=settings] .card.mh .lg-orb.a{background:color-mix(in oklab,var(--ic,var(--nv-a)) 75%,transparent)}
+[data-lg=settings] .card.mh .lg-art{color:var(--ic,var(--nv-a));opacity:.2;right:90px}
+[data-lg=settings] .mh .mic,[data-lg=settings] .mh.on .mic{width:76px;height:76px;border-radius:24px;
+  background:radial-gradient(circle at 32% 22%,rgba(255,255,255,.55),transparent 42%),linear-gradient(145deg,color-mix(in oklab,var(--ic,var(--nv-a)) 70%,#fff),var(--ic,var(--nv-a)) 55%,color-mix(in oklab,var(--ic,var(--nv-a)) 72%,#000));
+  box-shadow:0 16px 34px color-mix(in oklab,var(--ic,var(--nv-a)) 55%,transparent),0 0 0 5px rgba(255,255,255,.1),inset 0 1px 0 rgba(255,255,255,.55),inset 0 -3px 8px rgba(0,0,0,.18);animation:lgPop .9s var(--spring) .1s both}
+[data-lg=settings] .mh:not(.on) .mic{filter:saturate(.55) brightness(.85)}
+[data-lg=settings] .mh .mic svg,[data-lg=settings] .mh.on .mic svg{width:34px;height:34px;stroke:#fff!important;filter:drop-shadow(0 2px 3px rgba(0,0,0,.25))}
+[data-lg=settings] .mh h2{font-size:38px!important;line-height:1.05}
+[data-lg=settings] .mh .mt{animation:lgTx .8s var(--spring) .08s both;padding-right:40px}
+[data-lg=settings] .mh.on .mst{background:linear-gradient(135deg,color-mix(in oklab,var(--ic,var(--nv-a)) 80%,#fff),var(--ic,var(--nv-a)));box-shadow:0 0 0 3px color-mix(in oklab,var(--ic,var(--nv-a)) 22%,transparent),0 0 14px color-mix(in oklab,var(--ic,var(--nv-a)) 60%,transparent)}
+[data-lg=settings] .mh.on .tg.on{background:radial-gradient(80% 120% at 30% -10%,rgba(255,255,255,.45),transparent 55%),linear-gradient(135deg,var(--ic,var(--nv-a)),var(--nv-a3))}
+/* section headings: a short glowing bar of colour */
+[data-lg=settings] .sech{display:flex;align-items:center;gap:10px;font-size:19px!important}
+[data-lg=settings] .sech::after{content:"";flex:1;height:1px;background:linear-gradient(90deg,rgb(from var(--nv-a) r g b / .45),transparent 60%)}
+
+/* Koi: the Hotkeys window opens with a hero */
+[data-lg=ksettings] .lg-khero{position:relative;isolation:isolate;overflow:hidden;display:grid;grid-template-columns:auto 1fr;grid-template-rows:auto auto;column-gap:20px;align-items:center;margin:0 0 22px;padding:26px 28px;border-radius:28px;border:1px solid transparent;
+  background:radial-gradient(120% 150% at 0% 0%,rgb(from var(--nv-a) r g b / .4),transparent 58%) padding-box,radial-gradient(90% 140% at 100% 100%,rgb(from var(--nv-a3) r g b / .3),transparent 60%) padding-box,linear-gradient(180deg,var(--nv-glass2),var(--nv-glass)) padding-box,var(--nv-edge) border-box;
+  backdrop-filter:var(--nv-lens,) blur(24px) saturate(1.6);box-shadow:var(--nv-spec),0 30px 60px -30px var(--nv-a),0 0 0 1px rgba(255,255,255,.04);animation:nvRise .7s var(--nv-spring) both}
+[data-lg=ksettings] .lg-khero .lg-hic{grid-row:1/3}
+[data-lg=ksettings] .lg-khero .lg-hic svg{fill:none;stroke:#fff;stroke-width:2;stroke-linecap:round}
+[data-lg=ksettings] .lg-khero .lg-hic svg circle{fill:#fff}
+[data-lg=ksettings] .lg-khero h1{font-size:44px!important;margin:0 0 4px!important;align-self:end;animation:lgTx .8s var(--nv-spring) .08s both!important}
+[data-lg=ksettings] .lg-khero .sub{margin:0!important;align-self:start;padding-right:110px;animation:lgTx .8s var(--nv-spring) .14s both!important}
+[data-lg=ksettings] .lg-khero .lg-art{color:var(--nv-a);opacity:.11;right:-10px}
+/* Koi menu: the header is a small hero */
+[data-lg=kpop] .hd{position:relative;isolation:isolate;overflow:hidden;margin:0 0 6px;padding:16px 16px!important;border-radius:22px;
+  background:radial-gradient(120% 160% at 0% 0%,rgb(from var(--nv-a) r g b / .34),transparent 58%),radial-gradient(90% 140% at 100% 100%,rgb(from var(--nv-a3) r g b / .26),transparent 60%),var(--nv-fill);box-shadow:inset 0 0 0 1px rgb(from var(--nv-a) r g b / .25),var(--nv-spec),0 16px 34px -22px var(--nv-a)}
+[data-lg=kpop] .hd .lg-art{width:120px;height:120px;margin-top:-60px;right:auto;left:38%;color:var(--nv-a);opacity:.18}
+[data-lg=kpop] .hd .lg-orb.a{width:160px;height:160px;top:-90px}
+[data-lg=kpop] .hd .lg-orb.b{width:170px;height:140px;bottom:-110px}
+[data-lg=kpop] .hd .lg-orb.c{display:none}
+
+/* Surge pauses animations while its window is in the background: entrances must never stay stuck at their first frame */
+html.fl-idle .lg-hic,html.fl-idle .lg-sweep,html.fl-idle [data-lg] .mh .mic,html.fl-idle .mh .mt,html.fl-idle .hero>div,html.fl-idle .lg-khero *{animation-play-state:running!important}
+@media (prefers-reduced-motion:reduce){
+  .lg-orb,.lg-sweep,.lg-hic,[data-lg] .mh .mic,[data-lg] .mh .mt,[data-lg] .hero>div{animation:none!important}
+  .lg-sweep{display:none}
+}
+

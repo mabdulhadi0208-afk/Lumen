@@ -374,6 +374,7 @@ function trayIconRaw(b) {
   }
   // Menu-bar battery: live fill level, bolt while charging, hollow + warning tick when low. Template image → follows light/dark menu bar.
   if (!b || b.level == null) {
+    try { const t = nativeImage.createFromPath(path.join(__dirname, 'assets', 'tray', 'surgeTemplate.png')); if (!t.isEmpty()) { t.setTemplateImage(true); return t; } } catch {}
     const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="36" height="36" viewBox="0 0 24 24"><path fill="black" d="M13 2 4 14h7l-1 8 9-12h-7z"/></svg>`;
     const img = nativeImage.createFromDataURL('data:image/svg+xml;base64,' + Buffer.from(svg).toString('base64')).resize({ width: 18, height: 18 }); img.setTemplateImage(true); return img;
   }
@@ -536,7 +537,7 @@ app.whenReady().then(async () => {
   try { const f = path.join(app.getPath('userData'), 'ax-prompt'); if (fs.existsSync(f)) { fs.rmSync(f); setTimeout(() => { try { systemPreferences.isTrustedAccessibilityClient(true); } catch {} }, 1500); } } catch {}
   log('boot', app.getVersion(), process.platform, process.arch, 'electron', process.versions.electron, process.execPath);
   if (IS_MAC) try { require('child_process').execFile('codesign', ['-d', '-r-', app.getAppPath().replace(/\/Contents\/Resources\/app(\.asar)?$/, '')], (e, o, er) => log('codesign', ((o || '') + (er || '')).replace(/\s+/g, ' '))); } catch {}
-  if (process.platform === 'darwin' && app.isPackaged) {
+  if (false && process.platform === 'darwin' && app.isPackaged) {   // inside Lumen there is no Surge app to move to Applications
     const translocated = process.execPath.includes('/AppTranslocation/');
     if (translocated || !app.isInApplicationsFolder()) {
       const r = await dialog.showMessageBox({ type: 'info', buttons: ['Move to Applications', 'Not now'], defaultId: 0, cancelId: 1, message: 'Move Surge to your Applications folder?',

@@ -17,7 +17,7 @@ Lumen is an Electron (Chromium) browser for Mac and Windows, with Surge and Koi 
 7. Tabs are on top by default. Cmd T opens a new tab. Cmd K opens the command bar.
 8. Never commit signing keys, `.p12` files or secrets.
 9. Always run commands in the background.
-10. Everything gets a glow-up: every website, app, feature, screen and release, whenever it is touched.
+10. EVERYTHING gets a MASSIVE glow-up: absolutely every part of Lumen (every screen, page, popover, menu, button, animation and window, Surge and Koi included), the website, and every release. Not a small polish: a big, obvious level-up every time.
 11. Every Lumen update:
     - Update the website.
     - Rewrite `WHATS_NEW` in `ui/intro.js` with only that version's changes; remove everything from older versions.

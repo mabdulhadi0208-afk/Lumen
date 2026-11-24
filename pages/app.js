@@ -142,7 +142,7 @@ async function newTab() {
 
 // ======================================================================= settings shell
 const SECTIONS = [
-  ['general', 'General', 'gear'], ['appearance', 'Appearance', 'moon'], ['ai', 'Lumen AI', 'bolt'], ['privacy', 'Privacy and security', 'shield'],
+  ['general', 'General', 'gear'], ['appearance', 'Appearance', 'moon'], ['apps', 'Surge and Koi', 'sparkle'], ['ai', 'Lumen AI', 'bolt'], ['privacy', 'Privacy and security', 'shield'],
   ['passwords', 'Passwords', 'key'], ['sync', 'Sync', 'reload'], ['import', 'Move from Chrome', 'arrowRight'],
   ['extensions', 'Extensions', 'puzzle'], ['history', 'History', 'clock'], ['bookmarks', 'Bookmarks', 'star'],
   ['parcels', 'Parcels', 'box'], ['downloads', 'Downloads', 'download'], ['about', 'About Lumen', 'info'],
@@ -576,6 +576,46 @@ async function parcelsPage(m) {
   draw()
 }
 
+// ======================================================================= Surge and Koi
+const APP_INFO = {
+  surge: { tag: 'Your Mac, with superpowers', text: 'Charge glow, keyboard and mouse sounds, click ripples, cursor spotlight, night tint, a new Dock, caffeine, clipboard history, a focus timer, quick notes and more. Each one is a switch in Surge settings.',
+    keys: [['Ctrl Opt G', 'Preview the glow'], ['Ctrl Opt N', 'Quick notes'], ['Ctrl Opt S', 'Cursor spotlight'], ['Ctrl Opt K', 'Keyboard sounds'], ['Ctrl Opt V', 'Clipboard history'], ['Ctrl Opt D', 'Surge Dock']],
+    actions: [['settings', 'Open Surge'], ['notes', 'Quick notes']] },
+  koi: { tag: 'Every app, one key away', text: 'Press Option Space and your apps bloom around the cursor in a springy fan. Hover, type a letter, scroll for more, and press Return to open.',
+    keys: [['Opt Space', 'Open the fan'], ['Your own', 'Jump straight to any app']],
+    actions: [['open', 'Open the fan'], ['hotkeys', 'Hotkeys'], ['tour', 'Take the tour']] },
+}
+async function appsPage(m) {
+  const r = await L.invoke('apps')
+  const draw = d => {
+    m.innerHTML = `<h2>Surge and Koi</h2><p class="lead">Two tools that used to be separate apps now live inside Lumen. They work just like before, update with Lumen, and keep your old settings.</p>
+    ${d.list.map(a => { const i = APP_INFO[a.id]; return `<div class="card appcard ${a.running ? 'on' : ''} ${a.supported ? '' : 'na'}" data-app="${a.id}">
+      <div class="apphead"><img class="appicon" src="lumen://assets/app-${a.id}.png" alt="" onerror="this.style.visibility='hidden'"><div class="grow"><div class="appname">${esc(a.name)} <span class="appstate">${!a.supported ? 'Mac only' : a.running ? 'Running' : a.enabled ? 'Starting after restart' : 'Off'}</span></div><div class="apptag">${esc(i.tag)}</div></div>
+      ${a.supported ? `<label class="switch"><input type="checkbox" data-appsw="${a.id}" ${a.enabled ? 'checked' : ''}><span></span></label>` : ''}</div>
+      <p class="apptext">${esc(i.text)}</p>
+      <div class="appkeys">${i.keys.map(([k, t]) => `<span><kbd>${esc(k)}</kbd>${esc(t)}</span>`).join('')}</div>
+      ${a.running ? `<div class="appacts">${i.actions.map(([k, t], n) => `<button class="btn ${n ? '' : 'primary'}" data-open="${k}">${esc(t)}</button>`).join('')}</div>` : ''}
+    </div>` }).join('')}
+    <div class="card">
+      ${row('Start Lumen when you log in', 'Lumen opens quietly in the background so Surge and Koi are ready, without opening a window.', sw('openAtLogin', d.openAtLogin))}
+      ${row('Keyboard and mouse access', 'Keyboard sounds, click ripples and typing stats need macOS to allow Lumen in Privacy and Security, Accessibility and Input Monitoring. Surge asks when you turn one of them on.', '')}
+    </div>`
+    bindSettings(m)
+  }
+  draw(r)
+  m.onclick = async e => {
+    const b = e.target.closest('[data-open]'), c = e.target.closest('[data-app]')
+    if (b && c) L.invoke('appOpen', c.dataset.app, b.dataset.open)
+  }
+  m.onchange = async e => {
+    const s = e.target.closest('[data-appsw]'); if (!s) return
+    const res = await L.invoke('appSet', s.dataset.appsw, s.checked)
+    if (res && res.restart) { if (confirm('Restart Lumen to turn it back on now?')) L.invoke('restart') }
+    else flash(s.checked ? 'Turned on' : 'Turned off')
+    draw(await L.invoke('apps'))
+  }
+}
+
 async function highlightsPage(m) {
   let list = await L.invoke('highlights')
   m.innerHTML = `<h2>Highlights</h2><p class="lead">Select text on any page, right-click and pick Highlight. It stays there every time you come back.</p>
@@ -735,8 +775,8 @@ function errorPage() {
     passwords: () => passwords(shell('passwords')), extensions: () => extensionsPage(shell('extensions')), about: () => about(shell('about')),
     settings: () => {
       const s = sub || 'general'
-      const fn = { general, appearance, ai: aiPage, privacy, passwords, sync, import: importPage, extensions: extensionsPage, about, history: historyPage, bookmarks: bookmarksPage, downloads: downloadsPage }[s] || general
-      fn(shell(s in { general: 1, appearance: 1, ai: 1, privacy: 1, passwords: 1, sync: 1, import: 1, extensions: 1, about: 1 } ? s : 'general'))
+      const fn = { apps: appsPage, general, appearance, ai: aiPage, privacy, passwords, sync, import: importPage, extensions: extensionsPage, about, history: historyPage, bookmarks: bookmarksPage, downloads: downloadsPage }[s] || general
+      fn(shell(s in { apps: 1, general: 1, appearance: 1, ai: 1, privacy: 1, passwords: 1, sync: 1, import: 1, extensions: 1, about: 1 } ? s : 'general'))
     },
   }
   ;(routes[page] || routes.newtab)()

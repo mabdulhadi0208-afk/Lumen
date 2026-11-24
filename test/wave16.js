@@ -37,7 +37,7 @@ app.whenReady().then(async () => {
 
   // ---- the tour is in the film
   await wait(12500)
-  ok(await ex(`!!document.querySelector('#intro .mw') && /\\d\\d  \\/  08/.test(document.querySelector('#intro .tourcap .n').textContent)`), 'the intro tours the features with live demos')
+  ok(await ex(`!!document.querySelector('#intro .mw') && /\\d\\d  \\/  \\d\\d/.test(document.querySelector('#intro .tourcap .n').textContent)`), 'the intro tours the features with live demos')
   await ex(`document.querySelector('#intro .skip').click()`); await wait(2500)
   await ex(`document.querySelector('#intro .go').click()`); await wait(1500)
   ok(await ex(`!document.getElementById('intro')`), 'intro done')

@@ -1,0 +1,103 @@
+{
+  "name": "surge",
+  "productName": "Surge",
+  "version": "2.20.0",
+  "description": "Surge \u2014 a 17-in-1 Mac toolbox: charge glow, keyboard & mouse sounds, click ripple, spotlight, night tint, caffeine, clipboard, focus timer and more.",
+  "main": "main.js",
+  "author": "Surge",
+  "license": "MIT",
+  "scripts": {
+    "start": "electron .",
+    "build": "electron-builder --mac dmg zip",
+    "dmg": "./build-dmg.sh"
+  },
+  "devDependencies": {
+    "electron": "^33.4.11",
+    "electron-builder": "^25.0.0"
+  },
+  "build": {
+    "appId": "app.surge.glow",
+    "productName": "Surge",
+    "mac": {
+      "category": "public.app-category.utilities",
+      "target": [
+        "dmg",
+        "zip"
+      ],
+      "extendInfo": {
+        "LSUIElement": true,
+        "NSAppleEventsUsageDescription": "Surge switches dark mode on your schedule."
+      },
+      "hardenedRuntime": false,
+      "identity": null,
+      "icon": "build/icon.png"
+    },
+    "files": [
+      "main.js",
+      "preload.js",
+      "engine.js",
+      "sounds.js",
+      "glow.html",
+      "settings.html",
+      "audio.html",
+      "notes.html",
+      "popover.html",
+      "dock.html",
+      "launchpad.html",
+      "update.html",
+      "modules/**",
+      "package.json",
+      "assets/**",
+      "winapps.js",
+      "hookhost.js",
+      "hookworker.js",
+      "clip.html",
+      "traychip.js",
+      "haptics.js",
+      "fluid.css",
+      "fluid.js",
+      "fx.css",
+      "fx.js"
+    ],
+    "dmg": {
+      "title": "Surge",
+      "window": {
+        "width": 540,
+        "height": 380
+      },
+      "contents": [
+        {
+          "x": 140,
+          "y": 190
+        },
+        {
+          "x": 400,
+          "y": 190,
+          "type": "link",
+          "path": "/Applications"
+        }
+      ],
+      "icon": "build/icon.png"
+    },
+    "npmRebuild": false,
+    "artifactName": "${productName}-mac-${arch}.${ext}",
+    "win": {
+      "target": [
+        "nsis"
+      ],
+      "icon": "build/icon.png",
+      "artifactName": "${productName}-win-${arch}.${ext}"
+    },
+    "nsis": {
+      "oneClick": true,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": false,
+      "runAfterFinish": true,
+      "deleteAppDataOnUninstall": false,
+      "artifactName": "${productName}-win-${arch}.${ext}"
+    }
+  },
+  "dependencies": {
+    "uiohook-napi": "^1.5.5"
+  }
+}

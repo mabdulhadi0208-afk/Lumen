@@ -546,6 +546,10 @@ const COMMANDS = [
   { t: 'Sort Tabs into Groups', s: () => `${K.opt} ${K.cmd} G`, k: ['group', 'sort tabs', 'organize', 'tidy'], i: 'tabs', run: () => api.do('autoGroup') },
   { t: 'Ungroup All Tabs', k: ['ungroup', 'remove groups'], i: 'tabs', run: () => api.do('ungroupAll') },
   { t: 'Reader Mode', s: () => `${K.sh} ${K.cmd} E`, k: ['reader', 'read'], i: 'book', run: () => api.do('reader') },
+  { t: 'Surge', k: ['surge', 'glow', 'keyboard sounds', 'mouse sounds', 'ripple', 'spotlight', 'caffeine', 'dock', 'night tint', 'focus timer'], i: 'bolt', run: () => api.do('appOpen', 'surge', 'settings').then(ok => { if (!ok) api.do('openPage', 'settings/apps') }) },
+  { t: 'Quick Notes', s: () => IS_MAC ? 'Ctrl Opt N' : 'Ctrl Alt N', k: ['notes', 'scratchpad', 'jot'], i: 'book', run: () => api.do('appOpen', 'surge', 'notes').then(ok => { if (!ok) api.do('openPage', 'settings/apps') }) },
+  { t: 'Koi App Switcher', s: () => 'Opt Space', k: ['koi', 'app switcher', 'apps', 'launcher', 'fan'], i: 'sparkle', run: () => api.do('appOpen', 'koi', 'open').then(ok => { if (!ok) api.do('openPage', 'settings/apps') }) },
+  { t: 'Surge and Koi Settings', k: ['surge', 'koi', 'tools', 'super app'], i: 'sparkle', run: () => api.do('openPage', 'settings/apps') },
   { t: 'Parcels', s: () => `${K.opt} ${K.cmd} P`, k: ['parcels', 'packages', 'orders', 'delivery', 'shipping', 'tracking'], i: 'box', run: () => api.do('openPage', 'parcels') },
   { t: 'Track a Parcel', k: ['track', 'tracking number', 'parcel', 'package', 'ups', 'fedex', 'dhl', 'aramex', 'smsa'], i: 'box', run: () => api.do('openPage', 'parcels') },
   { t: 'Focus Mode', s: () => `${K.sh} ${K.cmd} F`, k: ['focus', 'zen', 'distraction', 'hide tabs', 'full'], i: 'sidebar', run: () => api.do('focusMode') },
@@ -894,6 +898,7 @@ async function openMainMenu() {
     ${item('print', 'printer', 'Print', `${K.cmd} P`)}
     <div class="sep"></div>
     ${item('tabgrid', 'layers', 'Tab overview', `${K.sh} ${K.cmd} O`)}
+    ${item('apps', 'sparkle', 'Surge and Koi', '', (info.apps || []).length ? `<span class="mm-count">${info.apps.length}</span>` : '')}
     ${item('parcels', 'box', 'Parcels', `${K.opt} ${K.cmd} P`, info.parcels ? `<span class="mm-count">${info.parcels}</span>` : '')}
     ${item('ai', 'bolt', 'Lumen AI', `${K.sh} ${K.cmd} A`)}
     ${item('focus', 'sidebar', 'Focus mode', `${K.sh} ${K.cmd} F`)}
@@ -929,7 +934,7 @@ async function openMainMenu() {
       find: () => openFind(), translate: () => api.do('translate'), reader: () => api.do('reader'), pip: () => api.do('pip').then(ok => { if (ok === false) toast('No video on this page') }),
       split: () => toggleSplit(), screenshot: () => api.do('screenshot'), print: () => api.do('print'),
       layout: () => api.do('setSetting', 'tabLayout', TOP ? 'side' : 'top'), intro: () => playIntro(),
-      tabgrid: () => setTimeout(openTabGrid, 80), ai: () => openAI(), focus: () => api.do('focusMode'), parcels: () => api.do('openPage', 'parcels'), autogroup: () => api.do('autoGroup'), ungroup: () => api.do('ungroupAll'),
+      tabgrid: () => setTimeout(openTabGrid, 80), ai: () => openAI(), focus: () => api.do('focusMode'), parcels: () => api.do('openPage', 'parcels'), apps: () => api.do('openPage', 'settings/apps'), autogroup: () => api.do('autoGroup'), ungroup: () => api.do('ungroupAll'),
     }[a]
     if (run) run()
   }

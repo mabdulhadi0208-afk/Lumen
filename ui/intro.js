@@ -5,14 +5,14 @@
 ;(function () {
   // ---- edit this list every release: it is the "New in Lumen" act of the film
   const WHATS_NEW = {
-    version: '1.17',
+    version: '1.18',
     items: [
+      { icon: 'bolt', title: 'Surge is built in', text: 'Charge glow, keyboard sounds, click ripples, a new Dock and more. Settings, Surge and Koi.' },
+      { icon: 'sparkle', title: 'Koi is built in', text: 'Press Option Space and your apps bloom around the cursor in a springy fan.' },
+      { icon: 'reload', title: 'One app, one update', text: 'Surge and Koi update with Lumen and keep the settings you already had.' },
       { icon: 'download', title: 'A better updater', text: 'See what is new before you update. Every download is checked before it installs.' },
       { icon: 'key', title: 'Google sign-in fixed', text: 'Lumen signs in to Google like any Chrome, and retries in another mode if Google says no.' },
       { icon: 'close', title: 'Less in your way', text: 'No popup after you close a tab. Shift Cmd T still brings it back.' },
-      { icon: 'box', title: 'Your carrier, your link', text: 'Parcels open on the carrier you pick, or on the tracking link you paste.' },
-      { icon: 'globe', title: '440 carriers', text: 'Couriers and post offices worldwide, most found from the number alone.' },
-      { icon: 'play', title: 'A friendlier intro', text: 'A tour that shows what every feature does, with a brighter, softer sound.' },
     ],
   }
   const FEATURES = [
@@ -95,6 +95,22 @@
   #intro .mw.dark{background:#1d1f26;color:#eee}
   #intro .mw.dark .pg{background:#121318;color:#eee}#intro .mw.dark .ln{background:#2a2d36}#intro .mw.dark .h{background:#3a3f52}
   #intro .mw.dark .ub{background:#2a2c33;color:#aaa}#intro .mw.dark .t.on{background:#2f3139;color:#fff}
+  #intro .desk{position:relative;width:min(700px,74vw);height:min(400px,46vh);border-radius:18px;overflow:hidden;background:radial-gradient(120% 90% at 30% 20%,#2a2f5a,#12142a 60%,#0b0c18);box-shadow:0 50px 120px rgba(0,0,0,.55),0 0 0 1px rgba(255,255,255,.1)}
+  #intro .desk .menubar{height:24px;background:rgba(255,255,255,.08);display:flex;align-items:center;justify-content:flex-end;gap:12px;padding:0 12px;font:600 11px -apple-system,system-ui,sans-serif;color:rgba(255,255,255,.75)}
+  #intro .desk .edge{position:absolute;inset:0;border-radius:18px;box-shadow:inset 0 0 0 0 rgba(0,255,133,0);transition:box-shadow 1.1s cubic-bezier(.2,.9,.3,1)}
+  #intro .desk.lit .edge{box-shadow:inset 0 0 40px 10px rgba(0,255,133,.55),inset 0 0 120px 20px rgba(0,212,255,.25)}
+  #intro .desk .chg{position:absolute;left:50%;top:58px;transform:translateX(-50%) scale(.6);opacity:0;padding:9px 16px;border-radius:999px;background:rgba(20,22,36,.85);color:#fff;font:700 13px system-ui;display:flex;gap:10px;align-items:center;box-shadow:0 10px 30px rgba(0,0,0,.4);transition:all .7s cubic-bezier(.3,1.5,.5,1)}
+  #intro .desk.lit .chg{transform:translateX(-50%) scale(1);opacity:1}
+  #intro .desk .chg i{width:44px;height:14px;border-radius:5px;border:2px solid rgba(255,255,255,.6);position:relative}
+  #intro .desk .chg i::after{content:'';position:absolute;left:1px;top:1px;bottom:1px;width:0;border-radius:2px;background:#00FF85;transition:width 1.6s ease}
+  #intro .desk.lit .chg i::after{width:68%}
+  #intro .desk .rip{position:absolute;width:20px;height:20px;margin:-10px 0 0 -10px;border-radius:50%;border:3px solid #5b8cff;opacity:0}
+  #intro .desk .keys{position:absolute;left:50%;bottom:26px;transform:translateX(-50%);display:flex;gap:6px}
+  #intro .desk .keys b{width:34px;height:34px;border-radius:8px;background:rgba(255,255,255,.1);box-shadow:inset 0 -3px 0 rgba(0,0,0,.35);display:grid;place-items:center;color:#fff;font:700 13px system-ui;transition:transform .12s,background .12s}
+  #intro .desk .keys b.dn{transform:translateY(2px);background:rgba(91,140,255,.55)}
+  #intro .desk .fan{position:absolute;left:50%;top:58%}
+  #intro .desk .fan i{position:absolute;width:52px;height:52px;margin:-26px 0 0 -26px;border-radius:14px;box-shadow:0 10px 24px rgba(0,0,0,.4);opacity:0;display:grid;place-items:center;color:#fff;font:800 18px system-ui}
+  #intro .desk .cur{position:absolute;left:50%;top:58%;width:14px;height:20px;margin:-2px 0 0 -2px;background:#fff;clip-path:polygon(0 0,0 100%,30% 72%,55% 100%,70% 92%,47% 66%,85% 66%);filter:drop-shadow(0 2px 4px rgba(0,0,0,.5))}
   #intro .tourcap{position:absolute;left:0;right:0;bottom:calc(10.5vh + 30px);text-align:center;z-index:7}
   #intro .tourcap .n{display:inline-block;font:700 11px/1 var(--font);letter-spacing:.22em;color:#9fb3ff;margin-bottom:10px}
   #intro .tourcap h2{font:750 clamp(24px,3vw,38px)/1.1 "SF Pro Display",-apple-system,system-ui,sans-serif;letter-spacing:-.03em;margin:0 0 8px}
@@ -418,6 +434,22 @@
     { title: 'Two pages, side by side.', text: '<kbd>Shift Cmd \\</kbd> opens split view. Reader mode, picture in picture and screenshots are one shortcut away too.', build: () => MW(`<div class="split"><div class="pp">${LINES(5)}</div><div class="pp">${LINES(5)}</div></div>`), play: async s => {
       const ps = s.querySelectorAll('.pp'); anim(ps[0], [{ transform: 'translateX(50%)' }, { transform: 'none' }], { duration: 900 }); anim(ps[1], [{ transform: 'translateX(-50%)', opacity: 0 }, { transform: 'none', opacity: 1 }], { duration: 900 }); if (!skip) SFX.whoosh()
     } },
+    { title: 'Surge, built in.', text: 'Your Mac lights up when it charges. Keys and clicks get sounds, clicks get ripples, and there is a new Dock, a focus timer and more.', build: () => `<div class="desk"><div class="menubar"><span>Surge</span><span>67%</span><span>9:41</span></div><div class="edge"></div><div class="chg"><i></i>Charging  67%</div><div class="keys">${'LUMEN'.split('').map(k => `<b>${k}</b>`).join('')}</div></div>`, play: async s => {
+      const d = s.querySelector('.desk'); await sleep(300); d.classList.add('lit'); if (!skip) SFX.shimmer()
+      const keys = s.querySelectorAll('.keys b')
+      for (const k of keys) { await sleep(170); k.classList.add('dn'); if (!skip) SFX.key(); setTimeout(() => k.classList.remove('dn'), 130) }
+      for (const [x, y] of [[30, 45], [70, 38], [52, 70]]) { const r = document.createElement('i'); r.className = 'rip'; r.style.left = x + '%'; r.style.top = y + '%'; d.appendChild(r); anim(r, [{ transform: 'scale(.4)', opacity: 1 }, { transform: 'scale(4)', opacity: 0 }], { duration: 800, easing: 'cubic-bezier(.2,.8,.3,1)' }); if (!skip) SFX.pop(1.1); await sleep(260) }
+    } },
+    { title: 'Koi, one key away.', text: 'Press <kbd>Option Space</kbd> and your apps bloom around the cursor in a springy fan. Type a letter or click to open one.', build: () => `<div class="desk"><div class="menubar"><span>Koi</span><span>9:41</span></div><div class="fan"></div><div class="cur"></div></div>`, play: async s => {
+      const fan = s.querySelector('.fan'), apps = [['#ff5f57', 'M'], ['#febc2e', 'N'], ['#28c840', 'F'], ['#5b8cff', 'S'], ['#8a63f2', 'C'], ['#e9609c', 'P'], ['#20c997', 'T']]
+      apps.forEach(([c, l], i) => {
+        const el = document.createElement('i'); el.style.background = `linear-gradient(135deg, ${c}, ${c}aa)`; el.textContent = l; fan.appendChild(el)
+        const a = (-160 + i * (140 / (apps.length - 1))) * Math.PI / 180, R = 120
+        anim(el, [{ opacity: 0, transform: 'translate(0,0) scale(.3)' }, { opacity: 1, transform: `translate(${Math.cos(a) * R}px, ${Math.sin(a) * R}px) scale(1)` }], { duration: 900, delay: 200 + i * 60, easing: 'cubic-bezier(.3,1.5,.5,1)' })
+        setTimeout(() => !skip && SFX.pop(.9 + i * .07), 200 + i * 60)
+      })
+      await sleep(1500); const pick = fan.children[3]; anim(pick, [{ scale: 1 }, { scale: 1.35 }, { scale: 1.2 }], { duration: 500, composite: 'add' }); if (!skip) SFX.ding()
+    } },
     { title: 'Every parcel, until it arrives.', text: 'Track any delivery, and the orders you place are saved. One click takes you straight back to your order.', build: () => MW(`<div class="pg" style="background:#f4f5fa"><div class="pcard"><div class="k">${ICONS.box || ''}</div><div style="flex:1"><b>New headphones</b><span class="st">Order placed  ·  UPS</span><div class="steps"><s class="on"></s><s></s><s></s><s></s></div></div></div></div>`), play: async s => {
       const st = s.querySelector('.st'), steps = s.querySelectorAll('.steps s'), k = s.querySelector('.pcard .k')
       for (const [i, t] of ['On the way', 'Out for delivery', 'Delivered'].entries()) { await sleep(620); steps[i + 1].classList.add('on'); st.textContent = t + '  ·  UPS'; if (!skip) SFX.tick(i * 2) }
@@ -428,7 +460,7 @@
     const cap = document.createElement('div'); cap.className = 'tourcap'; cap.innerHTML = '<span class="n"></span><h2></h2><p></p>'; root.appendChild(cap)
     for (let i = 0; i < TOUR.length && !skip; i++) {
       const f = TOUR[i], s = scene(f.build())
-      const mw = s.querySelector('.mw')
+      const mw = s.querySelector('.mw, .desk')
       mw.animate([{ opacity: 0, transform: 'perspective(1400px) translateY(40px) rotateX(14deg) scale(.92)', filter: 'blur(10px)' }, { opacity: 1, transform: 'perspective(1400px) translateY(-6vh) rotateX(4deg) scale(1)', filter: 'blur(0)' }], { duration: 1000, easing: 'cubic-bezier(.16,1,.3,1)', fill: 'forwards' })
       cap.querySelector('.n').textContent = String(i + 1).padStart(2, '0') + '  /  ' + String(TOUR.length).padStart(2, '0')
       words(cap.querySelector('h2'), f.title, 60, 45)
@@ -510,7 +542,7 @@
     root.querySelector('.grain').style.background = `url(${grainURL()})`
     root.querySelector('.grain').animate([{ transform: 'translate(0,0)' }, { transform: 'translate(-3%,2%)' }, { transform: 'translate(2%,-3%)' }, { transform: 'translate(0,0)' }], { duration: 600, iterations: Infinity, easing: 'steps(4)' })
     stars = Array.from({ length: Math.round(Math.min(900, W * H / 1600)) }, () => newStar())
-    t0 = performance.now(); total = wn ? 12500 : 52000
+    t0 = performance.now(); total = wn ? 12500 : 61000
     raf = requestAnimationFrame(draw)
     root.querySelector('.skip').onclick = () => { skip = true }
     root.querySelector('.mute').onclick = () => { root.querySelector('.mute').textContent = SFX.toggleMute() ? 'Sound off' : 'Sound on' }

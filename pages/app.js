@@ -25,7 +25,7 @@ function applyLook(s) {
   document.body.dataset.motion = s.motion
   Jelly.setMode(s.motion === 'lively' ? 'jelly' : s.motion)
 }
-Jelly.init({ buttons: '.btn, .ib, .seg button, .swatches button, .nav a, .ntp .foot a, .customize', cards: '.tile, .err .ico, .key, .wpb, .thb, .icb', press: '.list .row' })
+Jelly.init({ buttons: '.btn, .ib, .seg button, .swatches button, .nav a, .ntp .foot a, .customize', cards: '.tile, .err .ico, .key, .wpb, .thb, .icb, .rc, .pcard', press: '.list .row' })
 Jelly.smoothScroll(window)
 
 // ======================================================================= new tab
@@ -68,7 +68,7 @@ async function newTab() {
   const img = wp === 'custom' ? await L.invoke('wallpaper') : ''
   root.innerHTML = `<div class="ntp wp-${esc(wp)}" id="ntp">
     <div class="ntp-bg" style="${wp === 'custom' && img ? `background-image:url('${img}')` : WALLPAPERS[wp] && WALLPAPERS[wp].css ? `background:${WALLPAPERS[wp].css}` : ''}"></div>
-    ${S.ntpClock !== false ? `<div class="clock rise" id="clock"></div><div class="date rise" style="animation-delay:.04s" id="date"></div>` : '<div style="height:40px"></div>'}
+    ${S.ntpClock !== false ? `<div class="clock rise" id="clock" data-jl-grad></div><div class="date rise" style="animation-delay:.04s" id="date"></div>` : '<div style="height:40px"></div>'}
     <form class="searchbox rise" style="animation-delay:.08s" id="sf">${ICONS.search}<input id="q" autofocus placeholder="Search ${esc(ENGINES[S.searchEngine] || 'Google')} or type an address" spellcheck="false" autocomplete="off"></form>
     <div class="tiles" id="tiles">${sites.map((s, i) => `<div class="tile rise" style="animation-delay:${0.12 + i * 0.03}s" data-url="${esc(s.url)}" data-i="${i}"><div class="ti">${fav(s.url)}</div><span>${esc(s.title || hostOf(s.url))}</span><button class="tx" title="Remove">${ICONS.close}</button></div>`).join('')}${sites.length < 12 ? `<div class="tile add rise" style="animation-delay:${0.12 + sites.length * 0.03}s" id="addtile"><div class="ti">${ICONS.plus}</div><span>Add</span></div>` : ''}</div>
     ${stats && stats.blocked > 0 ? `<div class="nstats rise" style="animation-delay:.26s"><span class="ns-i">${ICONS.shield}</span><b>${stats.blocked.toLocaleString('en-US')}</b> ads and trackers blocked${stats.blocked > 400 ? `<i></i>about <b>${stats.blocked * 0.05 < 90 ? Math.round(stats.blocked * 0.05) + ' sec' : Math.round(stats.blocked * 0.05 / 60) + ' min'}</b> saved` : ''}</div>` : ''}
@@ -95,7 +95,8 @@ async function newTab() {
     const d = new Date()
     const tt = d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }).replace(/\s?[AP]M/i, '')
     if (c.dataset.t !== tt) { c.dataset.t = tt; c.textContent = tt; Jelly.letters(c) }
-    $('#date').textContent = greeting() + '  ·  ' + d.toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric' })
+    const dl = `<b>${greeting()}</b><i></i><span>${esc(d.toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric' }))}</span>`
+    if ($('#date').innerHTML !== dl) $('#date').innerHTML = dl
   }
   tick(); clearInterval(window.__clk); window.__clk = setInterval(tick, 5000)
   if (!window.__trail) window.__trail = Jelly.trail({ size: 26, style: 'border:1.5px solid color-mix(in srgb, var(--accent) 70%, transparent);background:color-mix(in srgb, var(--accent) 10%, transparent)' })
@@ -147,11 +148,20 @@ const SECTIONS = [
   ['extensions', 'Extensions', 'puzzle'], ['history', 'History', 'clock'], ['bookmarks', 'Bookmarks', 'star'],
   ['parcels', 'Parcels', 'box'], ['downloads', 'Downloads', 'download'], ['about', 'About Lumen', 'info'],
 ]
+const NAV_GROUPS = { general: 'Browser', passwords: 'You', history: 'Library' }
+// Nova: the page's cards come in one after another, 50ms apart, and pop in as they scroll into view
+function stagger(main) {
+  const mo = new MutationObserver(() => {
+    [...main.children].forEach((c, i) => c.style.setProperty('--i', Math.min(i, 10)))
+    clearTimeout(stagger.t); stagger.t = setTimeout(() => Jelly.entrances('#main .card'), 60)
+  })
+  mo.observe(main, { childList: true })
+}
 function shell(active) {
-  CUR_SECTION = active
-  root.innerHTML = `<div class="shell"><nav class="nav"><div class="brandrow"><img src="lumen://assets/icon-${esc(S.appIcon || 'default')}.png" alt=""><div><h1>Lumen</h1><small>Version ${esc(VERSION)}</small></div></div><div class="navsearch">${ICONS.search}<input type="search" id="setq" placeholder="Search settings" spellcheck="false" autocomplete="off"></div>${SECTIONS.map(([id, label, icon], n) => `<a href="${id === 'history' || id === 'bookmarks' || id === 'downloads' || id === 'passwords' || id === 'extensions' || id === 'parcels' ? 'lumen://' + id : 'lumen://settings/' + id}" class="${id === active ? 'on' : ''}" style="--n:${n}">${ICONS[icon]}${label}</a>`).join('')}</nav><main class="main rise" id="main"></main></div>`
+  root.innerHTML = `<div class="shell"><nav class="nav"><h1>Lumen</h1><div class="navsearch">${ICONS.search}<input type="search" id="setq" placeholder="Search settings" spellcheck="false" autocomplete="off"></div>${SECTIONS.map(([id, label, icon]) => `${NAV_GROUPS[id] ? `<div class="navgrp">${NAV_GROUPS[id]}</div>` : ''}<a title="${label}" href="${id === 'history' || id === 'bookmarks' || id === 'downloads' || id === 'passwords' || id === 'extensions' || id === 'parcels' ? 'lumen://' + id : 'lumen://settings/' + id}" class="${id === active ? 'on' : ''}">${ICONS[icon]}${label}</a>`).join('')}</nav><main class="main rise" id="main"></main></div>`
   document.title = active === 'general' ? 'Settings' : (SECTIONS.find(s => s[0] === active) || [, 'Settings'])[1]
   bindSettingsSearch(active)
+  stagger($('#main'))
   // arriving from a search result: scroll to that setting and make it glow
   if (location.hash.length > 1) setTimeout(() => {
     const want = decodeURIComponent(location.hash.slice(1)).toLowerCase()
@@ -780,56 +790,6 @@ function errorPage() {
   if (kind === 'offline') addEventListener('online', () => L.invoke('retry', url), { once: true })
 }
 
-// ======================================================================= glow-up: section heroes, springy segmented controls
-// Pages keep writing a plain <h2> and lead; this dresses them up as a lit hero with the section's icon and color.
-let CUR_SECTION = ''
-const HERO_COLORS = ['var(--accent)', '#8a63f2', '#e9609c', '#f08a3c', '#22a6b3', '#3fb37f', '#dcae22']
-const HERO_ICON = { Search: 'search', Highlights: 'book', 'Archived tabs': 'layers' }
-let heroSeen = ''
-function springPop(el, from) {
-  // the hero icon lands with a real Jelly spring: scale and a small turn settle together
-  if (!window.Jelly || Jelly.getMode() === 'off') return
-  const s = new Jelly.Spring(from, 'jelly', v => { el.style.transform = `scale(${v.toFixed(4)}) rotate(${((1 - v) * -40).toFixed(2)}deg)` })
-  s.to(1)
-}
-function buildHero(main) {
-  const h2 = main.querySelector(':scope > h2'); if (!h2) return
-  const lead = h2.nextElementSibling && h2.nextElementSibling.matches('p.lead') ? h2.nextElementSibling : null
-  const title = h2.textContent.trim()
-  const idx = Math.max(0, SECTIONS.findIndex(s => s[0] === CUR_SECTION))
-  const icon = HERO_ICON[title] || (SECTIONS[idx] || [])[2] || 'gear'
-  const hero = document.createElement('header'); hero.className = 'hero'
-  hero.style.setProperty('--ic', HERO_COLORS[idx % HERO_COLORS.length])
-  hero.innerHTML = `<i class="hero-orb a"></i><i class="hero-orb b"></i><span class="hero-art" aria-hidden="true">${ICONS[icon] || ''}</span><span class="hero-ic" aria-hidden="true">${ICONS[icon] || ''}</span><div class="hero-tx"></div>`
-  main.insertBefore(hero, h2)
-  const tx = hero.querySelector('.hero-tx'); tx.append(h2); if (lead) tx.append(lead)
-  // a page that redraws itself keeps its hero still; a new page gets the full entrance
-  if (heroSeen !== title) { hero.classList.add('enter'); springPop(hero.querySelector('.hero-ic'), 0.45) }
-  heroSeen = title
-}
-function segIndicator(g) {
-  g.classList.add('has-ind')
-  const ind = document.createElement('i'); ind.className = 'seg-ind'; ind.setAttribute('aria-hidden', 'true'); g.prepend(ind)
-  let sx = null, sw = null
-  const render = () => { ind.style.transform = `translateX(${sx.v.toFixed(2)}px)`; ind.style.width = Math.max(0, sw.v).toFixed(2) + 'px' }
-  const place = animate => {
-    const b = g.querySelector('button.on'); if (!b || !b.offsetWidth) { ind.style.opacity = '0'; return }
-    const x = b.offsetLeft, w = b.offsetWidth
-    if (!sx) { sx = new Jelly.Spring(x, 'jelly', render); sw = new Jelly.Spring(w, 'jelly', render); render() }
-    if (animate) { sx.to(x); sw.to(w) } else { sx.set(x); sw.set(w) }
-    ind.style.opacity = '1'
-  }
-  place(false)
-  g.addEventListener('click', () => requestAnimationFrame(() => place(true)))
-  if (window.ResizeObserver) new ResizeObserver(() => place(false)).observe(g)
-}
-function decorate() {
-  const v = location.hash === '#highlights' || location.hash === '#archive' ? location.hash.slice(1) : page === 'settings' ? (sub || 'general') : page
-  if (document.body.dataset.view !== v) document.body.dataset.view = v
-  const main = document.getElementById('main'); if (main) buildHero(main)
-  if (window.Jelly) root.querySelectorAll('.seg:not(.has-ind)').forEach(segIndicator)
-}
-new MutationObserver(decorate).observe(root, { childList: true, subtree: true })
 
 // ======================================================================= boot
 ;(async () => {

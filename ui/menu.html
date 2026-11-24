@@ -123,6 +123,31 @@ html, body { margin: 0; height: 100%; overflow: hidden; background: transparent;
 .row .sw.cur { box-shadow: inset 0 0 0 1px rgba(0, 0, 0, .12), 0 0 0 2px var(--tint-solid), 0 0 0 3.5px var(--accent); }
 .sep { height: 1px; margin: 5px 10px; background: linear-gradient(90deg, transparent, var(--line) 14%, color-mix(in srgb, var(--accent) 20%, var(--line)) 50%, var(--line) 86%, transparent); }
 .row .lb b { font-weight: 700; color: var(--accent); }
+
+/* ------------------------------------------------------------- Lumen 4.0 */
+/* dark and private glass reads as deep ink, never grey, even over a bright page */
+.dark { --tint: color-mix(in srgb, var(--accent) 11%, rgba(11, 13, 26, .8)); --tint-solid: color-mix(in srgb, var(--accent) 8%, rgba(11, 13, 26, .97)); }
+.incognito { --tint: rgba(30, 14, 58, .84); --tint-solid: rgba(26, 12, 50, .97); --hi: rgba(162, 89, 255, .3); --line: rgba(220, 180, 255, .12); }
+.panel { border-radius: 18px; padding: 7px; }
+.panel::after { border-radius: 17px; }
+/* a lit band along the top of the glass */
+.glass .sheen { background: linear-gradient(180deg, rgba(255, 255, 255, .5), rgba(255, 255, 255, 0) 30%), radial-gradient(80% 40% at 0% 0%, color-mix(in srgb, var(--accent) 16%, transparent), transparent 70%); }
+.dark .glass .sheen { background: linear-gradient(180deg, rgba(255, 255, 255, .08), rgba(255, 255, 255, 0) 30%), radial-gradient(80% 40% at 0% 0%, color-mix(in srgb, var(--accent) 22%, transparent), transparent 70%); }
+.row { height: 32px; border-radius: 11px; gap: 11px; }
+.hl { height: 32px; border-radius: 11px; }
+/* the icon sits in a small glass tile that lights up with the row */
+.row .ic { width: 22px; height: 22px; border-radius: 7px; transition: color .14s, background .18s, box-shadow .2s, transform .3s cubic-bezier(.3, 1.5, .5, 1); }
+.row .ic svg { width: 15px; height: 15px; }
+.row.on .ic { color: #fff; background: radial-gradient(120% 100% at 30% 0%, rgba(255, 255, 255, .5), transparent 55%), var(--nova); box-shadow: inset 0 1px 0 rgba(255, 255, 255, .5), 0 3px 10px -2px color-mix(in srgb, var(--accent) 60%, transparent); }
+.dark .row.on .ic { color: #fff; }
+/* each row's tile takes the next colour on the accent wheel */
+.row:nth-of-type(3n+1).on .ic { background: radial-gradient(120% 100% at 30% 0%, rgba(255, 255, 255, .5), transparent 55%), linear-gradient(140deg, var(--accent2), var(--accent3)); }
+.row:nth-of-type(3n+2).on .ic { background: radial-gradient(120% 100% at 30% 0%, rgba(255, 255, 255, .5), transparent 55%), linear-gradient(140deg, var(--accent3), var(--accent)); }
+.row.on kbd { color: var(--accent); }
+.dark .row.on kbd { color: #fff; }
+/* the glass holds still while the menu is open: the colour settles once and stays */
+.glass .caustic { animation-iteration-count: 1; }
+.glass .orb.a, .glass .orb.b { animation-iteration-count: 2; }
 </style>
 </head>
 <body>

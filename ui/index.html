@@ -13,9 +13,9 @@
         <div class="spacer"></div>
         <button class="ib no-drag" id="btn-sidebar" title="Hide sidebar (Shift+Cmd+S)"></button>
         <div class="navbtns no-drag">
-          <button class="ib" id="btn-back" title="Back"></button>
-          <button class="ib" id="btn-forward" title="Forward"></button>
-          <button class="ib" id="btn-reload" title="Reload"></button>
+          <button class="ib" id="btn-back" title="Back (Cmd+[)"></button>
+          <button class="ib" id="btn-forward" title="Forward (Cmd+])"></button>
+          <button class="ib" id="btn-reload" title="Reload (Cmd+R)"></button>
           <button class="ib" id="btn-translate" title="Translate page (Opt Cmd T)"></button>
           <button class="ib appbtn" id="btn-surge" title="Surge" hidden></button>
           <button class="ib appbtn" id="btn-koi" title="Koi app switcher" hidden></button>
@@ -23,8 +23,9 @@
       </div>
 
       <div class="urlbar no-drag" id="urlbar">
-        <button class="site" id="btn-site" title="Site settings"></button>
+        <button class="site" id="btn-site" title="Site settings and permissions"></button>
         <div class="urltext" id="urltext"><span class="host"></span><span class="path"></span></div>
+        <span class="uhint" id="uhint" aria-hidden="true"></span>
         <div class="urlactions">
           <span class="privchip" id="privchip" title="Private window: nothing you do here is saved"></span>
           <span class="readpill" id="readpill" title="Estimated reading time"></span>
@@ -39,7 +40,7 @@
 
       <div class="pins no-drag" id="pins"></div>
 
-      <button class="newtab no-drag" id="btn-newtab"><span class="plus"></span><span>New Tab</span><kbd id="kbd-newtab"></kbd></button>
+      <button class="newtab no-drag" id="btn-newtab" title="New tab (Cmd+T)"><span class="plus"></span><span>New Tab</span><kbd id="kbd-newtab"></kbd></button>
 
       <div class="tablist no-drag" id="tablist">
         <div class="pill" id="pill"></div>
@@ -53,12 +54,12 @@
       <div class="bottombar no-drag">
         <div class="hoverurl" id="hoverurl"></div>
         <div class="bottomrow">
-          <button class="ib" id="btn-settings" title="Settings"></button>
-          <button class="ib" id="btn-downloads" title="Downloads"><svg class="ring" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10.5"/></svg></button>
+          <button class="ib" id="btn-settings" title="Settings (Cmd+,)"></button>
+          <button class="ib" id="btn-downloads" title="Downloads (Shift+Cmd+J)"><svg class="ring" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10.5"/></svg></button>
           <button class="ib" id="btn-split" title="Split view (Shift+Cmd+\)"></button>
           <div class="spacer"></div>
           <button class="update" id="btn-update">Restart to update</button>
-          <button class="ib" id="btn-menu" title="More"></button>
+          <button class="ib" id="btn-menu" title="More from Lumen"></button>
         </div>
       </div>
     </aside>
@@ -71,7 +72,7 @@
     <div id="loadbar"><i></i></div>
     <div id="tabcard"><div class="tc-thumb"><img alt=""></div><div class="tc-body"><div class="tc-title"></div><div class="tc-host"><img class="tc-fav" alt=""><span></span></div><div class="tc-meta"></div></div></div>
     <aside id="aipanel" class="no-drag" aria-label="Lumen AI">
-      <div class="ai-head chero"><i class="hb a"></i><i class="hb b"></i><span class="hart" id="ai-hart"></span><div class="ai-mark"></div><div class="grow"><div class="ai-title">Lumen AI</div><div class="ai-page" id="ai-page"></div></div><button class="ib sm" id="ai-clear" title="New chat"></button><button class="ib sm" id="ai-close" title="Close"></button></div>
+      <div class="ai-head chero"><i class="hb a"></i><i class="hb b"></i><span class="hart" id="ai-hart"></span><div class="ai-mark"></div><div class="grow"><div class="ai-title">Lumen AI</div><div class="ai-page" id="ai-page"></div></div><button class="ib sm" id="ai-clear" title="New chat"></button><button class="ib sm" id="ai-close" title="Close Lumen AI (Shift+Cmd+A)"></button></div>
       <div class="ai-actions"><button class="ai-chip" data-ai="summarize">Summarize page</button><button class="ai-chip" data-ai="keypoints">Key points</button><button class="ai-chip" data-ai="explain">Explain selection</button></div>
       <div class="ai-log" id="ai-log"></div>
       <div class="ai-nokey" id="ai-nokey"><div class="ai-mark big"></div><h4>Bring your own Claude key</h4><p>Lumen AI uses the Claude API with your own key, so your chats stay between you and Anthropic. Add a key once and you are set.</p><button class="btn primary" id="ai-addkey">Add API key</button></div>
@@ -81,9 +82,9 @@
       <span class="find-ic" id="find-ic"></span>
       <input id="find-input" placeholder="Find in page" spellcheck="false">
       <span id="find-count"></span>
-      <button class="ib sm" id="find-prev" title="Previous"></button>
-      <button class="ib sm" id="find-next" title="Next"></button>
-      <button class="ib sm" id="find-close" title="Close"></button>
+      <button class="ib sm" id="find-prev" title="Previous match (Shift+Cmd+G)"></button>
+      <button class="ib sm" id="find-next" title="Next match (Cmd+G)"></button>
+      <button class="ib sm" id="find-close" title="Close (esc)"></button>
     </div>
     <div id="dragstrip" class="drag"></div>
   </div>

@@ -63,8 +63,32 @@ if (location.protocol === 'lumen:') {
   }, true)
 
   // ------------------------------------------------------------ trackpad swipe back / forward, and video speed keys
-  let QOL = { swipe: true, speed: true }
-  try { QOL = ipcRenderer.sendSync('lumen:qol') || QOL } catch {}
+  let QOL = { swipe: true, speed: true, accent: '#5b8cff', motion: 'jelly' }
+  try { QOL = { ...QOL, ...(ipcRenderer.sendSync('lumen:qol') || {}) } } catch {}
+  const ACC = QOL.accent || '#5b8cff'
+  const STILL = QOL.motion === 'off' || (window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches)
+  // Nova tokens for the bits Lumen draws inside pages (all in closed shadow roots, so the page cannot restyle them)
+  const NOVA_CSS = `:host{all:initial}
+    *{box-sizing:border-box}
+    .nv{--accent:${ACC};--accent2:oklch(from var(--accent) calc(l - .02) c calc(h + 40));--accent3:oklch(from var(--accent) calc(l + .04) c calc(h + 95));
+      --nova:linear-gradient(135deg,var(--accent),var(--accent2) 55%,var(--accent3));
+      --fg:#141722;--fg2:rgba(20,23,34,.62);--fg3:rgba(20,23,34,.4);--line:rgba(20,24,48,.09);
+      --glass:linear-gradient(180deg,rgba(255,255,255,.82),rgba(250,251,255,.72));
+      --edge:linear-gradient(135deg,color-mix(in srgb,var(--accent) 75%,transparent),rgba(255,255,255,.7) 36%,rgba(255,255,255,.18) 64%,color-mix(in srgb,var(--accent3) 65%,transparent));
+      --shadow:0 2px 6px rgba(14,18,40,.08),0 16px 40px color-mix(in srgb,var(--accent) 24%,rgba(14,18,40,.14)),0 0 40px color-mix(in srgb,var(--accent) 14%,transparent);
+      --spec:inset 0 1px 0 rgba(255,255,255,.8);
+      font:13px/1.35 -apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI Variable Text","Segoe UI",system-ui,sans-serif;color:var(--fg);-webkit-font-smoothing:antialiased;letter-spacing:normal;text-align:left}
+    @media (prefers-color-scheme:dark){.nv{--fg:#eef0fa;--fg2:rgba(238,240,250,.66);--fg3:rgba(238,240,250,.4);--line:rgba(255,255,255,.1);
+      --glass:linear-gradient(180deg,color-mix(in srgb,var(--accent) 8%,rgba(28,32,50,.86)),color-mix(in srgb,var(--accent) 5%,rgba(16,19,31,.84)));
+      --edge:linear-gradient(135deg,color-mix(in srgb,var(--accent) 90%,transparent),rgba(255,255,255,.18) 36%,rgba(255,255,255,.05) 64%,color-mix(in srgb,var(--accent3) 80%,transparent));
+      --shadow:0 2px 6px rgba(0,0,0,.4),0 16px 40px color-mix(in srgb,var(--accent) 26%,rgba(0,0,0,.42)),0 0 46px color-mix(in srgb,var(--accent) 20%,transparent);
+      --spec:inset 0 1px 0 rgba(255,255,255,.16)}}
+    .glass{position:relative;isolation:isolate;background:radial-gradient(120% 90% at 0% 0%,color-mix(in srgb,var(--accent) 16%,transparent),transparent 60%),radial-gradient(90% 90% at 100% 100%,color-mix(in srgb,var(--accent3) 14%,transparent),transparent 60%),var(--glass);
+      -webkit-backdrop-filter:blur(26px) saturate(1.9);backdrop-filter:blur(26px) saturate(1.9);box-shadow:var(--spec),var(--shadow)}
+    .glass::before{content:'';position:absolute;inset:0;border-radius:inherit;padding:1px;pointer-events:none;background:var(--edge);-webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask-composite:exclude}
+    .glass::after{content:'';position:absolute;inset:0;border-radius:inherit;pointer-events:none;background:linear-gradient(180deg,rgba(255,255,255,.35),transparent 40%);mix-blend-mode:soft-light}
+    ${STILL ? '*{animation:none!important;transition:none!important}' : ''}`
+  globalThis.__lumenNovaCSS = NOVA_CSS
   if (QOL.swipe && window === window.top) {
     let acc = 0, timer = null, ind = null, sh = null
     const canScrollX = (el, dir) => {
@@ -81,14 +105,27 @@ if (location.protocol === 'lumen:') {
       if (!ind) {
         ind = document.createElement('div'); ind.style.cssText = 'position:fixed;top:50%;z-index:2147483647;pointer-events:none'
         sh = ind.attachShadow({ mode: 'closed' })
-        sh.innerHTML = '<style>.c{width:44px;height:44px;margin-top:-22px;border-radius:50%;background:rgba(30,32,40,.82);display:grid;place-items:center;color:#fff;box-shadow:0 8px 24px rgba(0,0,0,.25);transition:background .15s}.c.go{background:#5b8cff}</style><div class="c"><svg width="18" height="18" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 3.5 5.5 8l4.5 4.5"/></svg></div>'
+        // a liquid glass bead slides in from the edge; its ring fills as you swipe and it lights up when letting go will go
+        sh.innerHTML = `<style>${NOVA_CSS}
+          .c{width:56px;height:56px;margin-top:-28px;border-radius:50%;display:grid;place-items:center;color:var(--fg);transition:transform .35s cubic-bezier(.3,1.5,.5,1),color .2s}
+          .c .fill{position:absolute;inset:4px;border-radius:50%;background:var(--nova);opacity:0;transform:scale(.4);transition:opacity .2s,transform .45s cubic-bezier(.3,1.6,.5,1);box-shadow:0 8px 24px color-mix(in srgb,var(--accent) 50%,transparent),inset 0 1px 0 rgba(255,255,255,.5)}
+          .c.go{color:#fff}.c.go .fill{opacity:1;transform:none}
+          .c svg.ar{position:relative;z-index:2;width:22px;height:22px;transition:transform .35s cubic-bezier(.3,1.6,.5,1)}
+          .c.go svg.ar{transform:scale(1.12);color:#fff;filter:drop-shadow(0 1px 2px rgba(0,0,0,.3))}
+          .ring{position:absolute;inset:-3px;width:62px;height:62px;z-index:1;transform:rotate(-90deg)}
+          .ring circle{fill:none;stroke:var(--accent);stroke-width:2.5;stroke-linecap:round;stroke-dasharray:182;stroke-dashoffset:182;filter:drop-shadow(0 0 4px var(--accent))}
+          .lb{position:absolute;top:64px;left:50%;translate:-50% 0;padding:4px 10px;border-radius:999px;font:700 11px/1.2 -apple-system,"Segoe UI",system-ui,sans-serif;letter-spacing:.02em;white-space:nowrap;opacity:0;transition:opacity .2s,transform .35s cubic-bezier(.3,1.5,.5,1);transform:translateY(-4px);color:var(--fg)}
+          .c.go+.lb{opacity:1;transform:none}</style>
+          <div class="nv"><div class="c glass"><span class="fill"></span><svg class="ring" viewBox="0 0 62 62"><circle cx="31" cy="31" r="29"/></svg><svg class="ar" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 3.5 5.5 8l4.5 4.5"/></svg></div><div class="lb glass"></div></div>`
         document.documentElement.appendChild(ind)
       }
       const back = p < 0, k = Math.min(1, Math.abs(p) / 220)
-      ind.style.left = back ? (k * 60 - 44) + 'px' : ''
-      ind.style.right = back ? '' : (k * 60 - 44) + 'px'
+      ind.style.left = back ? (k * 74 - 56) + 'px' : ''
+      ind.style.right = back ? '' : (k * 74 - 56) + 'px'
       const c = sh.querySelector('.c'); c.classList.toggle('go', k >= 1)
-      c.style.transform = `scale(${0.6 + k * 0.4}) rotate(${back ? 0 : 180}deg)`; c.style.opacity = k
+      c.style.transform = `scale(${0.62 + k * 0.38}) rotate(${back ? 0 : 180}deg)`; c.style.opacity = Math.min(1, k * 1.6)
+      sh.querySelector('.ring circle').style.strokeDashoffset = String(182 * (1 - k))
+      const lb = sh.querySelector('.lb'); lb.textContent = back ? 'Back' : 'Forward'; lb.style.marginLeft = back ? '0' : '0'
     }
     const reset = () => { acc = 0; if (ind) { ind.remove(); ind = null } }
     addEventListener('wheel', e => {
@@ -112,12 +149,30 @@ if (location.protocol === 'lumen:') {
       if (!v) return
       e.preventDefault(); e.stopPropagation()
       v.playbackRate = Math.max(0.25, Math.min(4, Math.round((v.playbackRate + (e.key === '>' ? 0.25 : -0.25)) * 100) / 100))
+      // a glass speed pill over the video: the big number, and a meter from 0.25x to 4x
       let b = document.getElementById('__lumen_speed')
-      if (!b) { b = document.createElement('div'); b.id = '__lumen_speed'; b.style.cssText = 'position:fixed;z-index:2147483647;padding:8px 14px;border-radius:999px;background:rgba(20,22,30,.85);color:#fff;font:600 15px -apple-system,Segoe UI,sans-serif;pointer-events:none;transition:opacity .4s'; document.documentElement.appendChild(b) }
-      const r = v.getBoundingClientRect()
-      b.style.left = (r.left + r.width / 2 - 30) + 'px'; b.style.top = (r.top + 20) + 'px'
-      b.textContent = v.playbackRate + 'x'; b.style.opacity = '1'
-      clearTimeout(b._t); b._t = setTimeout(() => { b.style.opacity = '0' }, 900)
+      if (!b) {
+        b = document.createElement('div'); b.id = '__lumen_speed'; b.style.cssText = 'position:fixed;z-index:2147483647;pointer-events:none;transform:translateX(-50%)'
+        const sh = b.attachShadow({ mode: 'closed' })
+        sh.innerHTML = `<style>${NOVA_CSS}
+          .p{display:flex;align-items:center;gap:12px;padding:10px 16px 10px 10px;border-radius:999px;opacity:0;transform:translateY(-8px) scale(.9);transition:opacity .25s,transform .45s cubic-bezier(.3,1.5,.5,1)}
+          .p.on{opacity:1;transform:none}
+          .ic{width:34px;height:34px;border-radius:50%;display:grid;place-items:center;color:#fff;background:var(--nova);box-shadow:0 6px 16px color-mix(in srgb,var(--accent) 45%,transparent),inset 0 1px 0 rgba(255,255,255,.45)}
+          .ic svg{width:16px;height:16px;transition:transform .45s cubic-bezier(.3,1.6,.5,1)}
+          .n{font:800 22px/1 ui-rounded,"SF Pro Rounded",system-ui,sans-serif;letter-spacing:-.03em;min-width:62px;background:linear-gradient(120deg,var(--fg) 40%,var(--accent));-webkit-background-clip:text;background-clip:text;color:transparent}
+          .m{width:86px;height:6px;border-radius:9px;background:var(--line);overflow:hidden}
+          .m i{display:block;height:100%;border-radius:inherit;background:var(--nova);box-shadow:0 0 8px var(--accent);transition:width .4s cubic-bezier(.3,1.4,.5,1)}
+          .pop .n{animation:pop .4s cubic-bezier(.3,1.6,.5,1)}@keyframes pop{from{transform:scale(1.25)}}</style>
+          <div class="nv"><div class="p glass"><span class="ic"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 11.5a5.5 5.5 0 1 1 11 0"/><path d="m8 11.5 3-4"/></svg></span><span class="n"></span><span class="m"><i></i></span></div></div>`
+        b._sh = sh; document.documentElement.appendChild(b)
+      }
+      const r = v.getBoundingClientRect(), sh = b._sh, pill = sh.querySelector('.p')
+      b.style.left = Math.round(r.left + r.width / 2) + 'px'; b.style.top = Math.max(8, Math.round(r.top + 20)) + 'px'
+      sh.querySelector('.n').textContent = v.playbackRate + 'x'
+      sh.querySelector('.m i').style.width = Math.round((v.playbackRate - 0.25) / 3.75 * 100) + '%'
+      sh.querySelector('.ic svg').style.transform = `rotate(${(v.playbackRate - 1) * 30}deg)`
+      pill.classList.remove('pop'); void pill.offsetWidth; pill.classList.add('on', 'pop')
+      clearTimeout(b._t); b._t = setTimeout(() => { pill.classList.remove('on') }, 1100)
     }, true)
   }
 
@@ -249,29 +304,69 @@ if (location.protocol === 'lumen:') {
   }
   async function getCreds() { if (!creds) { try { creds = await ipcRenderer.invoke('pw:get') } catch { creds = [] } } return creds }
 
-  let menu = null
-  function closeMenu() { if (menu) { menu.remove(); menu = null } }
+  let menu = null, menuKeys = null
+  function closeMenu() {
+    if (menu) { const m = menu; menu = null; const card = m._card; if (card && !STILL) { card.classList.remove('on'); setTimeout(() => m.remove(), 140) } else m.remove() }
+    if (menuKeys) { menuKeys.el.removeEventListener('keydown', menuKeys.fn, true); menuKeys = null }
+  }
+  // the autofill dropdown: a liquid glass card under the field, a row per saved account with its initial,
+  // arrow keys and Enter to pick, Esc to close
   function showMenu(anchor, list) {
     closeMenu()
     const host = document.createElement('div')
     host.style.cssText = 'position:fixed;z-index:2147483647;top:0;left:0'
     const sh = host.attachShadow({ mode: 'closed' })
     const r = anchor.getBoundingClientRect()
-    sh.innerHTML = `<style>
-      .m{position:fixed;left:${Math.round(r.left)}px;top:${Math.round(r.bottom + 6)}px;min-width:${Math.max(220, Math.round(r.width))}px;background:rgba(250,250,252,.96);backdrop-filter:blur(20px);border:1px solid rgba(0,0,0,.08);border-radius:12px;box-shadow:0 12px 40px rgba(0,0,0,.18);font:13px -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#1d1d1f;padding:6px;transform-origin:top left;animation:p .32s cubic-bezier(.2,1.25,.4,1)}
-      @keyframes p{from{opacity:0;transform:scale(.96) translateY(-4px)}to{opacity:1;transform:none}}
-      @media (prefers-color-scheme:dark){.m{background:rgba(40,41,46,.96);color:#f2f2f4;border-color:rgba(255,255,255,.1)}}
-      .h{font-size:11px;opacity:.55;padding:4px 8px 6px;letter-spacing:.02em}
-      .i{padding:8px 10px;border-radius:8px;cursor:pointer;display:flex;flex-direction:column;gap:1px}
-      .i:hover{background:rgba(91,140,255,.14)}
-      .u{font-weight:600}.d{opacity:.5;letter-spacing:2px;font-size:11px}
-    </style><div class="m"><div class="h">Lumen Passwords</div>${list.map((c, i) => `<div class="i" data-i="${i}"><span class="u"></span><span class="d">••••••••</span></div>`).join('')}</div>`
-    sh.querySelectorAll('.i').forEach((el, i) => {
-      el.querySelector('.u').textContent = list[i].username || '(no username)'
-      el.addEventListener('mousedown', e => { e.preventDefault(); const pw = anchor.type === 'password' ? anchor : pwFields(anchor.form || document)[0]; if (pw) fill(list[i], pw); closeMenu() })
+    const below = r.bottom + 8 + Math.min(list.length, 5) * 52 + 60 < innerHeight
+    const top = below ? Math.round(r.bottom + 8) : null, bottom = below ? null : Math.round(innerHeight - r.top + 8)
+    const left = Math.round(Math.max(8, Math.min(r.left, innerWidth - Math.max(260, r.width) - 8)))
+    const site = location.hostname.replace(/^www\./, '')
+    sh.innerHTML = `<style>${globalThis.__lumenNovaCSS || ''}
+      .m{position:fixed;left:${left}px;${below ? 'top:' + top : 'bottom:' + bottom}px;width:${Math.max(268, Math.min(360, Math.round(r.width)))}px;border-radius:18px;padding:8px;
+        transform-origin:${below ? 'top' : 'bottom'} left;opacity:0;transform:translateY(${below ? -6 : 6}px) scale(.94);transition:opacity .18s,transform .5s cubic-bezier(.3,1.45,.5,1);overflow:hidden}
+      .m.on{opacity:1;transform:none}
+      .orb{position:absolute;z-index:-1;width:160px;height:160px;left:-60px;top:-80px;border-radius:50%;filter:blur(26px);background:color-mix(in srgb,var(--accent) 34%,transparent);animation:drift 12s ease-in-out infinite alternate}
+      @keyframes drift{to{transform:translate(70px,40px) scale(1.15)}}
+      .h{display:flex;align-items:center;gap:9px;padding:4px 6px 10px}
+      .k{width:26px;height:26px;border-radius:9px;display:grid;place-items:center;color:#fff;background:var(--nova);box-shadow:0 6px 14px color-mix(in srgb,var(--accent) 45%,transparent),inset 0 1px 0 rgba(255,255,255,.45)}
+      .k svg{width:14px;height:14px}
+      .t{font:800 13.5px/1.1 ui-rounded,"SF Pro Rounded",system-ui,sans-serif;letter-spacing:-.02em}
+      .s{font-size:11px;color:var(--fg3);margin-top:1px}
+      .i{position:relative;display:flex;align-items:center;gap:11px;padding:8px 10px;border-radius:12px;cursor:default;transition:background .15s,transform .35s cubic-bezier(.3,1.5,.5,1)}
+      .i.cur{background:linear-gradient(90deg,color-mix(in srgb,var(--accent) 20%,transparent),color-mix(in srgb,var(--accent3) 12%,transparent));box-shadow:0 0 0 1px color-mix(in srgb,var(--accent) 18%,transparent),0 4px 14px color-mix(in srgb,var(--accent) 20%,transparent);transform:translateX(2px)}
+      .i:active{transform:scale(.97)}
+      .av{width:32px;height:32px;flex:none;border-radius:50%;display:grid;place-items:center;color:#fff;font:800 14px ui-rounded,system-ui,sans-serif;background:var(--nova);box-shadow:inset 0 1px 0 rgba(255,255,255,.45),0 4px 10px color-mix(in srgb,var(--accent) 32%,transparent)}
+      .tx{display:flex;flex-direction:column;gap:2px;min-width:0}
+      .u{font-weight:650;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+      .d{color:var(--fg3);letter-spacing:2.5px;font-size:10px;line-height:1}
+      .f{display:flex;gap:6px;align-items:center;padding:8px 8px 2px;margin-top:4px;border-top:1px solid var(--line);color:var(--fg3);font-size:11px}
+      kbd{font:650 10px -apple-system,"Segoe UI",system-ui,sans-serif;padding:1px 5px;border-radius:5px;background:var(--line);color:var(--fg2)}
+    </style><div class="nv"><div class="m glass"><span class="orb"></span>
+      <div class="h"><span class="k"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="5.5" cy="10.5" r="3"/><path d="m7.6 8.4 5.65-5.65M11 5l1.5 1.5M12.5 3.5 14 5"/></svg></span><span><div class="t">Lumen Passwords</div><div class="s"></div></span></div>
+      ${list.map((c, i) => `<div class="i" data-i="${i}"><span class="av"></span><span class="tx"><span class="u"></span><span class="d">&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;</span></span></div>`).join('')}
+      <div class="f"><kbd>&#8593;</kbd><kbd>&#8595;</kbd> to choose, <kbd>Enter</kbd> to fill</div></div></div>`
+    sh.querySelector('.s').textContent = (list.length === 1 ? '1 saved account' : list.length + ' saved accounts') + (site ? ' for ' + site : '')
+    const items = [...sh.querySelectorAll('.i')]
+    const pick = i => { const pw = anchor.type === 'password' ? anchor : pwFields(anchor.form || document)[0]; if (pw) fill(list[i], pw); closeMenu() }
+    let cur = -1
+    const setCur = i => { cur = i; items.forEach((el, j) => el.classList.toggle('cur', j === i)) }
+    items.forEach((el, i) => {
+      const name = list[i].username || 'No username'
+      el.querySelector('.u').textContent = name
+      el.querySelector('.av').textContent = (name.trim()[0] || '?').toUpperCase()
+      el.addEventListener('mouseenter', () => setCur(i))
+      el.addEventListener('mousedown', e => { e.preventDefault(); pick(i) })
     })
+    const fn = e => {
+      if (!menu) return
+      if (e.key === 'ArrowDown' || e.key === 'ArrowUp') { e.preventDefault(); e.stopPropagation(); setCur(((cur < 0 && e.key === 'ArrowUp' ? 0 : cur) + (e.key === 'ArrowDown' ? 1 : -1) + items.length) % items.length) }
+      else if (e.key === 'Enter' && cur >= 0) { e.preventDefault(); e.stopPropagation(); pick(cur) }
+      else if (e.key === 'Escape') { e.stopPropagation(); closeMenu() }
+    }
+    anchor.addEventListener('keydown', fn, true); menuKeys = { el: anchor, fn }
     document.documentElement.appendChild(host)
-    menu = host
+    menu = host; host._card = sh.querySelector('.m')
+    requestAnimationFrame(() => requestAnimationFrame(() => host._card && host._card.classList.add('on')))
   }
 
   async function scan() {

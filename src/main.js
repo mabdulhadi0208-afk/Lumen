@@ -12,6 +12,7 @@ const Updater = require('./updater')
 const Passkeys = require('./passkeys')
 const Translate = require('./translate')
 const Groups = require('./groups')
+const Nova = require('./nova')
 const { Store: WStore } = require('./store')
 let wallpaperStore
 app.whenReady().then(() => { wallpaperStore = new WStore('wallpaper', { image: '' }) })
@@ -251,11 +252,11 @@ async function setupExtensions() {
     await installChromeWebStore({
       session: mainSession,
       async beforeInstall(d) {
-        const r = await dialog.showMessageBox({
-          type: 'question', buttons: ['Add extension', 'Cancel'], defaultId: 0, cancelId: 1,
+        const r = await novaDialog(lastFocused(), {
+          type: 'question', buttons: ['Add extension', 'Cancel'], defaultId: 0, cancelId: 1, kind: 'extension', title: 'Extension',
           message: `Add "${d.localizedName}" to Lumen?`,
           detail: 'It will be able to read and change data on the sites it asks for.',
-          icon: d.icon,
+          icon: d.icon || 'puzzle',
         })
         return { action: r.response === 0 ? 'allow' : 'deny' }
       },
@@ -300,7 +301,7 @@ function onPermissionRequest(wc, permission, callback, details) {
   if (AUTO_ALLOW.includes(permission)) {
     if (permission === 'openExternal') {
       const ext = details.externalURL || ''
-      dialog.showMessageBox({ type: 'question', buttons: ['Open', 'Cancel'], message: 'Open this link in another app?', detail: ext }).then(r => callback(r.response === 0))
+      novaDialog(winForWc(wc.id) || lastFocused(), { type: 'question', buttons: ['Open', 'Cancel'], defaultId: 0, cancelId: 1, kind: 'external', icon: 'link', message: 'Open this link in another app?', detail: ext }).then(r => callback(r.response === 0), () => callback(false))
       return
     }
     return callback(true)
@@ -434,7 +435,7 @@ class BrowserWin {
       windows.splice(windows.indexOf(this), 1)
       saveSession()
     })
-    this.ui.webContents.once('did-finish-load', () => { this.win.show(); this.pushState() })
+    this.ui.webContents.once('did-finish-load', () => { this.win.show(); this.pushState(); setTimeout(() => Nova.prewarm(this), 1500) })
     this.ui.webContents.on('render-process-gone', () => { setTimeout(() => { if (!this.ui.webContents.isDestroyed()) this.ui.webContents.reload() }, 300) })
     this.ui.webContents.on('before-input-event', (e, input) => this.handleKeys(e, input))
     windows.push(this)
@@ -511,7 +512,18 @@ class BrowserWin {
       t.loading = false
       wc.loadURL(`lumen://error/?code=${code}&desc=${encodeURIComponent(desc)}&url=${encodeURIComponent(url)}`)
     })
-    wc.on('render-process-gone', (e, d) => { if (d.reason !== 'clean-exit') { t.crashed = true; t.loading = false; upd() } })
+    wc.on('render-process-gone', (e, d) => {
+      if (d.reason === 'clean-exit') return
+      t.crashed = true; t.loading = false; upd()
+      // show Lumen's crashed page in the tab, with the address it was on, so one click brings it back
+      const was = (() => { try { return wc.getURL() } catch { return '' } })() || t.url || ''
+      if (/^lumen:\/\/crashed/.test(was)) return
+      t.crashedUrl = was
+      setTimeout(() => {
+        if (wc.isDestroyed() || !this.tabs.has(t.id) || t.view !== view) return
+        wc.loadURL('lumen://crashed/?url=' + encodeURIComponent(was) + '&reason=' + encodeURIComponent(d.reason || '')).then(() => { t.crashed = true; upd() }, () => {})
+      }, 120)
+    })
     wc.on('unresponsive', () => { t.hung = true; upd() })
     wc.on('responsive', () => { t.hung = false; upd() })
     wc.on('audio-state-changed', e => { t.audible = e.audible; upd() })
@@ -533,15 +545,36 @@ class BrowserWin {
     wc.setWindowOpenHandler(d => {
       if (d.url.startsWith('lumen://') && !wc.getURL().startsWith('lumen://')) return { action: 'deny' }
       if (d.disposition === 'new-window' && d.features) {
-        return { action: 'allow', overrideBrowserWindowOptions: { width: 520, height: 680, autoHideMenuBar: true, webPreferences: { session: this.ses } } }
+        return { action: 'allow', overrideBrowserWindowOptions: { width: 520, height: 680, autoHideMenuBar: true, backgroundColor: winBg(), webPreferences: { session: this.ses } } }
       }
       const bg = d.disposition === 'background-tab' || (D.settings.get('linksBackground') && d.disposition === 'foreground-tab')
       this.createTab(d.url, { active: !bg, openerId: t.id })
       return { action: 'deny' }
     })
+    // "Leave this page?": when Lumen itself started the navigation (address bar, Back, Forward, Reload) the page stays
+    // put for now, a Nova dialog asks, and Leave redoes the navigation. A link the page itself follows has no target
+    // Lumen can redo, so that one still asks the quick system way.
+    for (const fn of ['loadURL', 'reload', 'reloadIgnoringCache']) {
+      const orig = wc[fn].bind(wc)
+      wc[fn] = (...a) => { t.intent = { at: Date.now(), redo: () => orig(...a) }; return orig(...a) }
+    }
+    const nh = wc.navigationHistory
+    for (const fn of ['goBack', 'goForward', 'goToIndex', 'goToOffset']) {
+      if (!nh || typeof nh[fn] !== 'function') continue
+      const orig = nh[fn].bind(nh)
+      try { nh[fn] = (...a) => { t.intent = { at: Date.now(), redo: () => orig(...a) }; return orig(...a) } } catch {}
+    }
     wc.on('will-prevent-unload', e => {
-      const r = dialog.showMessageBoxSync({ type: 'question', buttons: ['Leave', 'Stay'], message: 'Leave this page?', detail: 'Changes you made may not be saved.', defaultId: 0, cancelId: 1 })
-      if (r === 0) e.preventDefault()
+      if (t.leaveOK && Date.now() - t.leaveOK < 5000) { t.leaveOK = 0; e.preventDefault(); return }
+      const it = t.intent && Date.now() - t.intent.at < 2000 ? t.intent : null
+      t.intent = null
+      if (!it) {
+        const r = dialog.showMessageBoxSync(this.win, { type: 'question', buttons: ['Leave', 'Stay'], message: 'Leave this page?', detail: 'Changes you made may not be saved.', defaultId: 0, cancelId: 1 })
+        if (r === 0) e.preventDefault()
+        return
+      }
+      novaDialog(this, { buttons: ['Leave', 'Stay'], defaultId: 0, cancelId: 1, kind: 'leave', icon: 'leave', message: 'Leave this page?', detail: 'Changes you made may not be saved.' })
+        .then(r => { if (r.response === 0 && !wc.isDestroyed()) { t.leaveOK = Date.now(); try { it.redo() } catch {} } }).catch(() => {})
     })
     wc.loadURL(upgradeURL(t.url) || 'lumen://newtab').catch(() => {})
     return view
@@ -624,6 +657,7 @@ class BrowserWin {
     }
     if (this.overlay) this.win.contentView.addChildView(this.ui) // keep UI on top while an overlay is open
     if (this.peek) { this.win.contentView.addChildView(this.peek); this.peek.setBounds(this.peekRect()) }
+    Nova.restack(this)
   }
 
   // ---- Peek: a floating preview of a link above the current page
@@ -666,7 +700,7 @@ class BrowserWin {
   setOverlay(on, quiet = false) {
     if (this.overlay === on) return
     this.overlay = on
-    if (on) { this.win.contentView.addChildView(this.ui); this.quietOverlay = quiet; if (!quiet) this.ui.webContents.focus() }
+    if (on) { this.win.contentView.addChildView(this.ui); Nova.restack(this); this.quietOverlay = quiet; if (!quiet) this.ui.webContents.focus() }
     else {
       this.win.contentView.addChildView(this.ui, 0)
       this.layout()
@@ -836,7 +870,7 @@ class BrowserWin {
       if (web) items.push({ label: 'Highlight', submenu: Object.keys(HL.COLORS).map(c => ({ label: c[0].toUpperCase() + c.slice(1), click: () => addHighlight(this, t, c) })) })
       if (/^https?:/.test(wc.getURL()) && p.selectionText.trim().length < 300) items.push({ label: 'Copy Link to Highlight', click: () => { const u = cleanURL(wc.getURL()).split('#')[0]; const txt = p.selectionText.trim().replace(/\s+/g, ' '); const words = txt.split(' '); const frag = words.length > 8 ? encodeURIComponent(words.slice(0, 4).join(' ')).replace(/-/g, '%2D') + ',' + encodeURIComponent(words.slice(-4).join(' ')).replace(/-/g, '%2D') : encodeURIComponent(txt).replace(/-/g, '%2D'); clipboard.writeText(u + '#:~:text=' + frag); this.send('toast', 'Link to highlight copied') } })
       items.push({ label: 'Explain with Lumen AI', click: () => this.send('command', { ai: 'explain', text: p.selectionText.slice(0, 6000) }) })
-      items.push({ label: `Translate to ${Translate.langName(Translate.target(D.settings))}`, click: () => Translate.bubble(wc, p.selectionText.slice(0, 4000), Translate.target(D.settings)).catch(e => this.send('toast', 'Translation failed')) })
+      items.push({ label: `Translate to ${Translate.langName(Translate.target(D.settings))}`, click: () => Translate.bubble(wc, p.selectionText.slice(0, 4000), Translate.target(D.settings), { accent: D.settings.get('accent'), dark: nativeTheme.shouldUseDarkColors, motion: D.settings.get('motion') }).catch(e => this.send('toast', 'Translation failed')) })
       items.push({ label: `Search ${(SEARCH[D.settings.get('searchEngine')] || SEARCH.google).name} for "${q.length > 30 ? q.slice(0, 30) + '...' : q}"`, click: () => this.createTab(toURL(q), { openerId: t.id }) })
       sep()
     }
@@ -868,7 +902,9 @@ class BrowserWin {
     }
     sep()
     items.push({ label: 'Inspect', click: () => { wc.inspectElement(p.x, p.y); if (wc.isDevToolsOpened()) wc.devToolsWebContents && wc.devToolsWebContents.focus() } })
-    Menu.buildFromTemplate(items).popup({ window: this.win })
+    let at
+    try { const b = t.view.getBounds(); at = { x: b.x + p.x, y: b.y + p.y } } catch {}
+    Nova.popupMenu(this, items, { at, wc, source: wc, kind: 'page' })
   }
 
   handleKeys(e, input) {
@@ -918,7 +954,7 @@ function saveSessionNow() {
       bounds: w.win.getBounds(),
       active: Math.max(0, w.order.indexOf(w.activeId)),
       groups: [...w.groups.values()],
-      tabs: w.order.map(id => { const t = w.tabs.get(id); return { url: (t.view && !t.view.webContents.isDestroyed() ? t.view.webContents.getURL() : t.url) || t.url, title: t.title, pinned: t.pinned, favicon: t.favicon, group: t.group || null } }),
+      tabs: w.order.map(id => { const t = w.tabs.get(id); return { url: crashedOrigin((t.view && !t.view.webContents.isDestroyed() ? t.view.webContents.getURL() : t.url) || t.url), title: t.title, pinned: t.pinned, favicon: t.favicon, group: t.group || null } }),
     })),
   }
   // once the last window has closed (the normal way to quit on Windows) keep the tabs it saved on close
@@ -1003,7 +1039,7 @@ function startApps() {
       onStopped: () => { setTimeout(() => broadcast('settings', publicSettings()), 60); if (!windows.length && !appsRunning() && (!isMac || inBackground)) quitEverything() },
       onSeparate: async ids => {
         const names = ids.map(i => Apps.APPS[i].name), both = names.length > 1, n = names.join(' and ')
-        const r = await dialog.showMessageBox({ type: 'info', buttons: [both ? 'Quit them' : 'Quit it', 'Keep running'], defaultId: 0, cancelId: 1,
+        const r = await novaDialog(lastFocused(), { type: 'info', buttons: [both ? 'Quit them' : 'Quit it', 'Keep running'], defaultId: 0, cancelId: 1, kind: 'apps', icon: 'apps',
           message: `${n} ${both ? 'are' : 'is'} part of Lumen now`,
           detail: `The separate ${n} ${both ? 'apps are' : 'app is'} still running, so you would hear and see everything twice. Lumen can quit ${both ? 'them' : 'it'} and stop ${both ? 'them' : 'it'} opening at login. You can then delete the old ${both ? 'apps' : 'app'} from Applications.` })
         if (r.response === 0) Apps.quitSeparate(ids)
@@ -1260,7 +1296,10 @@ function applyAppIcon() {
 
 // ---------------------------------------------------------------- page tools
 function readerMode(wc) {
-  wc.executeJavaScript(fs.readFileSync(path.join(__dirname, 'reader.js'), 'utf8')).catch(() => {})
+  const acc = String(D.settings.get('accent') || '#5b8cff'), motion = String(D.settings.get('motion') || 'jelly')
+  const code = fs.readFileSync(path.join(__dirname, 'reader.js'), 'utf8')
+    .replace('__LUMEN_ACCENT__', /^#[0-9a-f]{3,8}$/i.test(acc) ? acc : '#5b8cff').replace('__LUMEN_MOTION__', /^[a-z]+$/.test(motion) ? motion : 'jelly')
+  wc.executeJavaScript(code).catch(() => {})
 }
 async function screenshot(wc) {
   try {
@@ -1431,7 +1470,7 @@ ipcMain.handle('ui', async (e, action, ...a) => {
       case 'groupRename': return w.setGroup(a[0], { name: String(a[1] || '').slice(0, 40) || 'Group' })
       case 'groupMenu': {
         const g = w.groups.get(a[0]); if (!g) return
-        Menu.buildFromTemplate([
+        Nova.popupMenu(w, [
           { label: g.collapsed ? 'Expand' : 'Collapse', click: () => w.setGroup(g.id, { collapsed: !g.collapsed }) },
           { label: 'Rename', click: () => w.send('command', 'rename-group:' + g.id) },
           { label: 'Color', submenu: Groups.COLORS.map(c => ({ label: c[0].toUpperCase() + c.slice(1), type: 'radio', checked: g.color === c, click: () => w.setGroup(g.id, { color: c }) })) },
@@ -1439,7 +1478,7 @@ ipcMain.handle('ui', async (e, action, ...a) => {
           { type: 'separator' },
           { label: 'Ungroup', click: () => w.ungroup(g.id) },
           { label: 'Close Group', click: () => w.closeGroup(g.id) },
-        ]).popup({ window: w.win })
+        ], { kind: 'group' })
         return
       }
       case 'peekClose': return w.closePeek(a[0])
@@ -1537,7 +1576,7 @@ function reopenClosed(w) {
 function tabMenu(w, id) {
   const t = w.tabs.get(id); if (!t) return
   const others = w.order.filter(i => i !== id)
-  Menu.buildFromTemplate([
+  Nova.popupMenu(w, [
     { label: 'New Tab Below', click: () => w.createTab('lumen://newtab', { index: w.order.indexOf(id) + 1 }) },
     { label: 'Duplicate', click: () => w.createTab(t.view ? t.view.webContents.getURL() : t.url, { index: w.order.indexOf(id) + 1 }) },
     { label: t.pinned ? 'Unpin' : 'Pin', click: () => { t.pinned = !t.pinned; const pc = w.order.filter(i => i !== id && w.tabs.get(i).pinned).length; w.moveTab(id, pc) } },
@@ -1568,10 +1607,10 @@ function tabMenu(w, id) {
     { label: D.settings.get('tabLayout') === 'top' ? 'Close Tabs to the Right' : 'Close Tabs Below', click: () => w.order.slice(w.order.indexOf(id) + 1).filter(i => !w.tabs.get(i).pinned).forEach(i => w.closeTab(i)) },
     { type: 'separator' },
     { label: 'Mute Other Tabs', enabled: others.length > 0, click: () => { for (const i of others) { const o = w.tabs.get(i); if (o && o.view && !o.muted) { o.muted = true; o.view.webContents.setAudioMuted(true) } } w.pushState() } },
-  ]).popup({ window: w.win })
+  ], { kind: 'tab' })
 }
 function appMenuPopup(w) {
-  Menu.buildFromTemplate([
+  Nova.popupMenu(w, [
     { label: 'New Tab', accelerator: 'CmdOrCtrl+T', click: () => w.send('command', 'newtab') },
     { label: 'New Window', accelerator: 'CmdOrCtrl+N', click: () => createWindow({}) },
     { label: 'New Private Window', accelerator: 'CmdOrCtrl+Shift+N', click: () => createWindow({ incognito: true }) },
@@ -1589,7 +1628,7 @@ function appMenuPopup(w) {
     { label: 'Print...', accelerator: 'CmdOrCtrl+P', click: () => { const t = w.active(); if (t && t.view) t.view.webContents.print() } },
     { type: 'separator' },
     { label: 'Settings', accelerator: 'CmdOrCtrl+,', click: () => openSettings(w) },
-  ]).popup({ window: w.win })
+  ], { kind: 'app' })
 }
 function openSettings(w, sub = '') {
   const url = 'lumen://settings/' + sub
@@ -1675,7 +1714,7 @@ ipcMain.on('nav:swipe', (e, dir) => {
   if (dir === 'forward' && h.canGoForward()) h.goForward()
 })
 ipcMain.on('peek:open', (e, url) => { const w = winForWc(e.sender.id); if (w && /^https?:/.test(url)) w.openPeek(url) })
-ipcMain.on('lumen:qol', e => { e.returnValue = { swipe: !!D.settings.get('swipeNav'), speed: !!D.settings.get('videoSpeedKeys') } })
+ipcMain.on('lumen:qol', e => { const a = String(D.settings.get('accent') || '#5b8cff'); e.returnValue = { swipe: !!D.settings.get('swipeNav'), speed: !!D.settings.get('videoSpeedKeys'), accent: /^#[0-9a-f]{3,8}$/i.test(a) ? a : '#5b8cff', motion: D.settings.get('motion') || 'jelly' } })
 ipcMain.on('lumen:auth-ua', e => { e.returnValue = googleCompat() && isGoogleSignIn(e.senderFrame && e.senderFrame.url) ? firefoxUA() : '' })
 
 // ---------------------------------------------------------------- passkeys
@@ -1695,14 +1734,13 @@ async function verifyUser(reason) {
 }
 function passkeyAsk(e) {
   const w = winForWc(e.sender.id) || lastFocused()
-  const parent = w ? w.win : undefined
   return {
     async create({ rp, user }) {
       if (w && w.incognito) {
-        const r = await dialog.showMessageBox(parent, { type: 'question', buttons: ['Save passkey', 'Cancel'], defaultId: 0, cancelId: 1, message: `Save a passkey for ${rp}?`, detail: 'You are in a private window. The passkey is still saved in Lumen.' })
+        const r = await novaDialog(w, { type: 'question', buttons: ['Save passkey', 'Cancel'], defaultId: 0, cancelId: 1, kind: 'passkey', icon: 'key', title: 'Passkey', message: `Save a passkey for ${rp}?`, detail: 'You are in a private window. The passkey is still saved in Lumen.' })
         if (r.response !== 0) return false
       } else if (!(isMac && systemPreferences.canPromptTouchID && systemPreferences.canPromptTouchID())) {
-        const r = await dialog.showMessageBox(parent, { type: 'question', buttons: ['Save passkey', 'Cancel'], defaultId: 0, cancelId: 1, message: `Save a passkey for ${rp}?`, detail: `Account: ${user || 'this account'}. Lumen keeps it with your passwords and syncs it if Sync is on.` })
+        const r = await novaDialog(w, { type: 'question', buttons: ['Save passkey', 'Cancel'], defaultId: 0, cancelId: 1, kind: 'passkey', icon: 'key', title: 'Passkey', message: `Save a passkey for ${rp}?`, detail: `Account: ${user || 'this account'}. Lumen keeps it with your passwords and syncs it if Sync is on.` })
         return r.response === 0
       }
       return verifyUser(`save a passkey for ${user || 'your account'} on ${rp}`)
@@ -1710,11 +1748,11 @@ function passkeyAsk(e) {
     async choose({ rp, accounts }) {
       let i = 0
       if (accounts.length > 1) {
-        const r = await dialog.showMessageBox(parent, { type: 'question', buttons: [...accounts.slice(0, 6), 'Cancel'], cancelId: Math.min(accounts.length, 6), message: `Sign in to ${rp} with a passkey`, detail: 'Choose an account.' })
+        const r = await novaDialog(w, { type: 'question', buttons: [...accounts.slice(0, 6), 'Cancel'], defaultId: 0, cancelId: Math.min(accounts.length, 6), list: true, kind: 'passkey-choose', icon: 'key', title: 'Passkey', message: `Sign in to ${rp} with a passkey`, detail: 'Choose an account.' })
         if (r.response >= Math.min(accounts.length, 6)) return -1
         i = r.response
       } else if (!(isMac && systemPreferences.canPromptTouchID && systemPreferences.canPromptTouchID())) {
-        const r = await dialog.showMessageBox(parent, { type: 'question', buttons: ['Sign in', 'Cancel'], defaultId: 0, cancelId: 1, message: `Sign in to ${rp} as ${accounts[0]}?`, detail: 'Using a passkey saved in Lumen.' })
+        const r = await novaDialog(w, { type: 'question', buttons: ['Sign in', 'Cancel'], defaultId: 0, cancelId: 1, kind: 'passkey', icon: 'key', title: 'Passkey', message: `Sign in to ${rp} as ${accounts[0]}?`, detail: 'Using a passkey saved in Lumen.' })
         return r.response === 0 ? 0 : -1
       }
       return (await verifyUser(`sign in to ${rp} as ${accounts[i]}`)) ? i : -1
@@ -2096,6 +2134,32 @@ function toggleSiteDark(w, on) {
 
 app.on('before-quit', () => { try { if (blockedTotal) D.settings.set({ blockedTotal }) } catch {} })
 
+// ---------------------------------------------------------------- Nova dialogs and HTTP sign-in
+// parent: a Lumen window (or its BaseWindow). Without one, or if the Nova sheet cannot load, the system dialog asks.
+function novaDialog(parent, opts) {
+  const host = parent && (windows.includes(parent) ? parent : windows.find(w => w.win === parent))
+  return Nova.novaDialog(host && !host.win.isDestroyed() ? host : null, opts)
+}
+function crashedOrigin(u) { try { const x = new URL(u); if (x.protocol === 'lumen:' && x.host === 'crashed' && x.searchParams.get('url')) return x.searchParams.get('url') } catch {} return u }
+// sites that use HTTP sign-in (basic and digest auth, and proxies) ask for a username and password in a Nova sheet
+app.on('login', (event, wc, details, authInfo, callback) => {
+  const w = wc ? winForWc(wc.id) : null
+  if (!w) return   // nothing to ask in: Electron's default cancels the sign-in
+  event.preventDefault()
+  const host = authInfo && authInfo.host ? authInfo.host + (authInfo.port && ![80, 443].includes(authInfo.port) ? ':' + authInfo.port : '') : (() => { try { return new URL(details.url).host } catch { return '' } })()
+  const realm = authInfo && authInfo.realm ? `It says: "${String(authInfo.realm).slice(0, 120)}". ` : ''
+  novaDialog(w, {
+    buttons: ['Sign in', 'Cancel'], defaultId: 0, cancelId: 1, kind: 'login', icon: 'lock', title: authInfo && authInfo.isProxy ? 'Proxy sign-in' : 'Sign in',
+    message: `Sign in to ${host}`,
+    detail: realm + (/^http:/.test((details && details.url) || '') && !(authInfo && authInfo.isProxy) ? 'This connection is not private, so the password is sent without encryption.' : 'Your username and password go only to this site.'),
+    error: details && details.firstAuthAttempt === false ? 'That username or password was not accepted. Try again.' : '',
+    fields: [{ name: 'user', label: 'Username' }, { name: 'pass', label: 'Password', type: 'password' }],
+  }).then(r => {
+    if (r.response === 0 && r.values) callback(String(r.values.user || ''), String(r.values.pass || ''))
+    else callback()
+  }, () => callback())
+})
+
 // ---------------------------------------------------------------- quit guard (only for Cmd+Q, never for updates or shutdown)
 // with Surge or Koi on, Cmd+Q puts Lumen in the background: the windows close (tabs saved), the Dock icon goes,
 // and Surge and Koi keep working from the menu bar. Opening Lumen again brings the tabs back.
@@ -2138,7 +2202,7 @@ function confirmQuit() {
   const n = windows.reduce((a, w) => a + w.tabs.size, 0)
   if (!D.settings.get('confirmQuit') || n < 2) return app.quit()
   const fw = windows.find(w => w.win.isFocused()) || windows[0]
-  dialog.showMessageBox(fw ? fw.win : undefined, { type: 'question', buttons: ['Quit', 'Cancel'], defaultId: 0, cancelId: 1, message: `Quit Lumen with ${n} tabs open?`, detail: D.settings.get('restoreSession') !== false ? 'Your tabs will be back next time you open Lumen.' : 'Your tabs will be closed.', checkboxLabel: 'Do not ask again', checkboxChecked: false })
+  novaDialog(fw, { type: 'question', buttons: ['Quit', 'Cancel'], defaultId: 0, cancelId: 1, kind: 'quit', icon: 'quit', message: `Quit Lumen with ${n} tabs open?`, detail: D.settings.get('restoreSession') !== false ? 'Your tabs will be back next time you open Lumen.' : 'Your tabs will be closed.', checkboxLabel: 'Do not ask again', checkboxChecked: false })
     .then(({ response, checkboxChecked }) => { if (response !== 0) return; if (checkboxChecked) D.settings.set({ confirmQuit: false }); app.quit() })
 }
 
@@ -2250,6 +2314,7 @@ process.on('unhandledRejection', err => { console.error('unhandled', err); log('
 
 app.whenReady().then(async () => {
   nativeTheme.themeSource = D.settings.get('theme') || 'system'
+  Nova.configure({ accent: () => D.settings.get('accent'), motion: () => D.settings.get('motion'), dark: () => nativeTheme.shouldUseDarkColors, log })
   app.userAgentFallback = chromeUA(app.userAgentFallback)
   mainSession = session.fromPartition('persist:lumen')
   setupSession(mainSession)
@@ -2288,4 +2353,4 @@ app.whenReady().then(async () => {
   powerMonitor.on('resume', () => Sync.syncNow().catch(() => {}))
 })
 
-module.exports = { windows, createWindow, D, allowSites, toggleSiteAdblock, __refreshAdblock: refreshAdblock, __adblockAge: adblockAge, __hl_add: addHighlight, __hl_recolor: recolorHighlight, __addToNTP: addToNTP, __checkParcels: checkParcels, __appOpen: appOpen, __goBackground: goBackground, __comeBack: comeBack, __isBackground: () => inBackground, __quitLumen: quitLumen }
+module.exports = { windows, createWindow, D, allowSites, toggleSiteAdblock, __refreshAdblock: refreshAdblock, __adblockAge: adblockAge, __hl_add: addHighlight, __hl_recolor: recolorHighlight, __addToNTP: addToNTP, __checkParcels: checkParcels, __appOpen: appOpen, __goBackground: goBackground, __comeBack: comeBack, __isBackground: () => inBackground, __quitLumen: quitLumen, __nova: Nova, __novaDialog: novaDialog, __tabMenu: tabMenu, __appMenu: appMenuPopup, __confirmQuit: confirmQuit }

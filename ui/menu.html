@@ -1,0 +1,470 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Lumen menu</title>
+<!-- Lumen's own right-click menus (docs/NOVA.md): liquid glass, Jelly springs, keycaps, submenus. No emoji. -->
+<style>
+:root {
+  --accent: #5b8cff;
+  --accent2: oklch(from var(--accent) calc(l - .02) c calc(h + 40));
+  --accent3: oklch(from var(--accent) calc(l + .04) c calc(h + 95));
+  --nova: linear-gradient(135deg, var(--accent), var(--accent2) 55%, var(--accent3));
+  --fg: #141722; --fg2: rgba(20, 23, 34, .62); --fg3: rgba(20, 23, 34, .40);
+  --tint: rgba(250, 251, 255, .55); --tint-solid: rgba(250, 251, 255, .955);
+  --line: rgba(20, 24, 48, .09);
+  --spec: inset 0 1px 0 rgba(255, 255, 255, .75);
+  --hi: color-mix(in srgb, var(--accent) 15%, rgba(255, 255, 255, .5));
+  --edge: linear-gradient(135deg, color-mix(in srgb, var(--accent) 70%, transparent), rgba(255, 255, 255, .55) 38%, rgba(255, 255, 255, .15) 62%, color-mix(in srgb, var(--accent3) 60%, transparent));
+  --shadow: 0 1px 2px rgba(14, 18, 40, .08), 0 10px 28px color-mix(in srgb, var(--accent) 24%, rgba(14, 18, 40, .12)), 0 30px 70px color-mix(in srgb, var(--accent) 22%, rgba(14, 18, 40, .12)), 0 0 0 1px color-mix(in srgb, var(--accent) 10%, transparent), 0 0 46px color-mix(in srgb, var(--accent) 14%, transparent);
+  --font: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI Variable Text", "Segoe UI", Inter, system-ui, sans-serif;
+  --display: ui-rounded, "SF Pro Rounded", "Nunito", system-ui, var(--font);
+  color-scheme: light;
+}
+.dark {
+  --fg: #eef0fa; --fg2: rgba(238, 240, 250, .64); --fg3: rgba(238, 240, 250, .38);
+  --tint: color-mix(in srgb, var(--accent) 7%, rgba(16, 19, 31, .58)); --tint-solid: color-mix(in srgb, var(--accent) 5%, rgba(16, 19, 31, .955));
+  --line: rgba(255, 255, 255, .09);
+  --spec: inset 0 1px 0 rgba(255, 255, 255, .16);
+  --hi: color-mix(in srgb, var(--accent) 26%, rgba(255, 255, 255, .06));
+  --edge: linear-gradient(135deg, color-mix(in srgb, var(--accent) 85%, transparent), rgba(255, 255, 255, .16) 38%, rgba(255, 255, 255, .05) 62%, color-mix(in srgb, var(--accent3) 75%, transparent));
+  --shadow: 0 1px 2px rgba(0, 0, 0, .4), 0 12px 30px color-mix(in srgb, var(--accent) 26%, rgba(0, 0, 0, .4)), 0 32px 80px color-mix(in srgb, var(--accent) 22%, rgba(0, 0, 0, .38)), 0 0 54px color-mix(in srgb, var(--accent) 20%, transparent);
+  color-scheme: dark;
+}
+.incognito { --accent: #a77dff; }
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; overflow: hidden; background: transparent; font: 13px/1.3 var(--font); color: var(--fg); -webkit-font-smoothing: antialiased; user-select: none; cursor: default; -webkit-app-region: no-drag; }
+
+/* ------------------------------------------------------------- the glass panel */
+.panel {
+  position: fixed; min-width: 236px; max-width: 380px; padding: 6px; border-radius: 16px; isolation: isolate;
+  box-shadow: var(--spec), var(--shadow); transform-origin: var(--ox, 0) var(--oy, 0); will-change: transform, opacity;
+  --gx: 50%; --gy: 0%;
+}
+.panel > .glass { position: absolute; inset: 0; border-radius: inherit; overflow: hidden; z-index: -1; pointer-events: none; }
+/* refraction: the real window underneath, bent at the rim by the lens map, blurred and saturated */
+.glass .refract { position: absolute; inset: -24px; filter: blur(8px) saturate(2) brightness(1.05); opacity: 0; transition: opacity .22s ease-out; }
+.lens .glass .refract { filter: blur(6px) saturate(2) brightness(1.05) var(--lensf, none); }
+.glass .refract.on { opacity: 1; }
+.glass .refract img { position: absolute; display: block; }
+/* before the picture arrives, a soft accent nebula stands in for it */
+.glass .nebula { position: absolute; inset: -20%; background:
+  radial-gradient(42% 38% at 18% 12%, color-mix(in srgb, var(--accent) 30%, transparent), transparent 70%),
+  radial-gradient(40% 40% at 88% 92%, color-mix(in srgb, var(--accent3) 26%, transparent), transparent 70%),
+  radial-gradient(30% 30% at 80% 20%, color-mix(in srgb, var(--accent2) 18%, transparent), transparent 70%); }
+.glass .tint { position: absolute; inset: 0; background: var(--tint-solid); transition: background .25s; }
+.panel.seen .glass .tint { background: var(--tint); }
+/* caustic: light gathering inside the glass, drifting slowly */
+.glass .caustic { position: absolute; inset: -30%; mix-blend-mode: plus-lighter; opacity: .55; background:
+  radial-gradient(26% 20% at 22% 8%, color-mix(in srgb, var(--accent) 22%, transparent), transparent 70%),
+  radial-gradient(30% 24% at 78% 100%, color-mix(in srgb, var(--accent3) 24%, transparent), transparent 72%);
+  animation: drift 9s ease-in-out infinite alternate; }
+.dark .glass .caustic { opacity: .8; }
+@keyframes drift { from { transform: translate(-3%, -2%) rotate(-2deg); } to { transform: translate(3%, 2%) rotate(2deg); } }
+/* drifting saturated colour inside the glass, like the Settings heroes */
+.glass .orb { position: absolute; border-radius: 50%; filter: blur(26px); mix-blend-mode: normal; }
+.glass .orb.a { width: 180px; height: 180px; left: -70px; top: -80px; background: color-mix(in srgb, var(--accent) 34%, transparent); animation: orba 13s ease-in-out infinite alternate; }
+.glass .orb.b { width: 200px; height: 170px; right: -80px; bottom: -90px; background: color-mix(in srgb, var(--accent3) 30%, transparent); animation: orbb 16s ease-in-out infinite alternate; }
+.dark .glass .orb.a { background: color-mix(in srgb, var(--accent) 42%, transparent); }
+@keyframes orba { to { transform: translate(60px, 50px) scale(1.15); } }
+@keyframes orbb { to { transform: translate(-50px, -40px) scale(1.1); } }
+.glass .sweep { position: absolute; inset: 0; background: linear-gradient(105deg, transparent 35%, rgba(255, 255, 255, .34) 50%, transparent 65%); transform: translateX(-110%); animation: sweepin 1.1s .12s ease-out both; }
+.dark .glass .sweep { background: linear-gradient(105deg, transparent 35%, rgba(255, 255, 255, .10) 50%, transparent 65%); }
+@keyframes sweepin { to { transform: translateX(110%); } }
+.off .glass .orb, .off .glass .caustic, .off .glass .sweep { animation: none; }
+.off .glass .sweep { display: none; }
+/* specular glint that follows the pointer */
+.glass .glint { position: absolute; inset: 0; opacity: 0; transition: opacity .25s; mix-blend-mode: soft-light;
+  background: radial-gradient(180px circle at var(--gx) var(--gy), rgba(255, 255, 255, .9), transparent 62%); }
+.panel:hover .glass .glint { opacity: 1; }
+.dark .glass .glint { mix-blend-mode: plus-lighter; background: radial-gradient(160px circle at var(--gx) var(--gy), rgba(255, 255, 255, .10), transparent 62%); }
+/* top sheen and inner glow */
+.glass .sheen { position: absolute; inset: 0; border-radius: inherit;
+  background: linear-gradient(180deg, rgba(255, 255, 255, .42), rgba(255, 255, 255, 0) 38%);
+  box-shadow: inset 0 0 22px color-mix(in srgb, var(--accent) 12%, transparent), inset 0 -10px 24px color-mix(in srgb, var(--accent3) 8%, transparent); }
+.dark .glass .sheen { background: linear-gradient(180deg, rgba(255, 255, 255, .07), rgba(255, 255, 255, 0) 34%); }
+/* the rim: a refractive 1px edge, brighter where the light is, with a chromatic fringe */
+.panel::before { content: ''; position: absolute; inset: 0; border-radius: inherit; padding: 1px; pointer-events: none; z-index: 3;
+  background: radial-gradient(140px circle at var(--gx) var(--gy), rgba(255, 255, 255, .95), transparent 70%), var(--edge);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor; mask-composite: exclude; }
+.panel::after { content: ''; position: absolute; inset: 1px; border-radius: 15px; pointer-events: none; z-index: 3;
+  box-shadow: inset 1.5px 0 0 rgba(255, 60, 120, .10), inset -1.5px 0 0 rgba(40, 170, 255, .12), inset 0 -1.5px 0 rgba(120, 255, 210, .06); }
+.dark .panel::after { box-shadow: inset 1.5px 0 0 rgba(255, 80, 140, .14), inset -1.5px 0 0 rgba(60, 180, 255, .16), inset 0 -1.5px 0 rgba(120, 255, 210, .08); }
+
+.scroll { position: relative; overflow-y: auto; overflow-x: hidden; max-height: var(--maxh, none); scrollbar-width: none; }
+.scroll::-webkit-scrollbar { display: none; }
+
+/* ------------------------------------------------------------- rows */
+.hl { position: absolute; left: 0; right: 0; top: 0; height: 30px; border-radius: 10px; pointer-events: none; opacity: 0; z-index: 0;
+  background: linear-gradient(90deg, color-mix(in srgb, var(--accent) 22%, transparent), color-mix(in srgb, var(--accent3) 14%, transparent));
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 16%, transparent), 0 4px 16px color-mix(in srgb, var(--accent) 22%, transparent), inset 0 1px 0 rgba(255, 255, 255, .35); }
+.dark .hl { background: linear-gradient(90deg, color-mix(in srgb, var(--accent) 38%, transparent), color-mix(in srgb, var(--accent3) 22%, transparent)); box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 30%, transparent), 0 4px 18px color-mix(in srgb, var(--accent) 30%, transparent), inset 0 1px 0 rgba(255, 255, 255, .12); }
+.row { position: relative; z-index: 1; display: flex; align-items: center; gap: 10px; height: 30px; padding: 0 10px 0 8px; border-radius: 10px; white-space: nowrap; }
+.row .ic { width: 18px; height: 18px; flex: none; display: grid; place-items: center; color: var(--fg2); transition: color .14s, transform .3s cubic-bezier(.3, 1.5, .5, 1); }
+.row .ic svg { width: 16px; height: 16px; }
+.row .ic img { width: 16px; height: 16px; border-radius: 4px; }
+.row .lb { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; font-weight: 500; letter-spacing: -.005em; }
+.row .kc { display: flex; gap: 3px; margin-left: 14px; }
+.row kbd { display: inline-grid; place-items: center; min-width: 19px; height: 19px; padding: 0 5px; border-radius: 6px; font: 650 10.5px var(--font); color: var(--fg2);
+  background: linear-gradient(180deg, rgba(255, 255, 255, .7), rgba(255, 255, 255, .35)); box-shadow: inset 0 -1px 0 var(--line), inset 0 0 0 1px var(--line), 0 1px 2px rgba(14, 18, 40, .06); }
+.dark .row kbd { background: linear-gradient(180deg, rgba(255, 255, 255, .10), rgba(255, 255, 255, .04)); }
+.row .chev { margin-left: 12px; color: var(--fg3); display: grid; transition: transform .3s cubic-bezier(.3, 1.5, .5, 1), color .14s; }
+.row.on { color: var(--fg); }
+.row.on .ic { color: var(--accent); transform: scale(1.08); }
+.dark .row.on .ic { color: color-mix(in srgb, var(--accent) 50%, #fff); }
+.row.on .chev { color: var(--accent); transform: translateX(2px); }
+.row.on kbd { color: var(--fg); }
+.row.open .chev { color: var(--accent); }
+.row.off { color: var(--fg3); }
+.row.off .ic { color: var(--fg3); opacity: .7; }
+.row.press { transform: scale(.97); transition: transform .08s; }
+.row .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--nova); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 20%, transparent), 0 0 10px var(--accent); }
+.row .sw { width: 13px; height: 13px; border-radius: 50%; box-shadow: inset 0 0 0 1px rgba(0, 0, 0, .12), 0 0 0 2.5px transparent; }
+.row .sw.cur { box-shadow: inset 0 0 0 1px rgba(0, 0, 0, .12), 0 0 0 2px var(--tint-solid), 0 0 0 3.5px var(--accent); }
+.sep { height: 1px; margin: 5px 10px; background: linear-gradient(90deg, transparent, var(--line) 14%, color-mix(in srgb, var(--accent) 20%, var(--line)) 50%, var(--line) 86%, transparent); }
+.row .lb b { font-weight: 700; color: var(--accent); }
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs id="defs">
+    <!-- lens filters are added per panel by lensFilter() below -->
+  </defs>
+</svg>
+<script>
+'use strict'
+// ---------------------------------------------------------------- springs (Jelly, toned down: zeta ~0.64)
+const PRE = { jelly: { k: 300, c: 22 }, calm: { k: 240, c: 25.5 }, snappy: { k: 520, c: 38 } }
+let MOTION = 'jelly'
+const live = new Set(); let raf = 0, last = 0
+function frame(t) { const dt = Math.min(0.04, (t - (last || t)) / 1000); last = t; for (const s of [...live]) s.step(dt); if (live.size) raf = requestAnimationFrame(frame); else { raf = 0; last = 0 } }
+class Spring {
+  constructor(v, cb, kind = 'jelly') { this.v = v; this.t = v; this.vel = 0; this.cb = cb; this.kind = kind }
+  to(t, vel) { this.t = t; if (vel !== undefined) this.vel = vel; if (MOTION === 'off') return this.set(t); live.add(this); if (!raf) raf = requestAnimationFrame(frame); return this }
+  set(v) { this.v = this.t = v; this.vel = 0; live.delete(this); this.cb(v); return this }
+  step(dt) {
+    const c = MOTION === 'calm' && this.kind === 'jelly' ? PRE.calm : PRE[this.kind]
+    for (let i = 0; i < 4; i++) { const h = dt / 4, a = -c.k * (this.v - this.t) - c.c * this.vel; this.vel += a * h; this.v += this.vel * h }
+    if (Math.abs(this.v - this.t) < 0.0005 && Math.abs(this.vel) < 0.002) { this.v = this.t; this.vel = 0; live.delete(this) }
+    this.cb(this.v)
+  }
+}
+
+// ---------------------------------------------------------------- the lens map: displacement strongest at the rim
+function lensMap(w, h, r, rim, pad) {
+  const S = 0.5, W = Math.max(2, Math.round(w * S)), H = Math.max(2, Math.round(h * S))
+  const c = document.createElement('canvas'); c.width = W; c.height = H
+  const ctx = c.getContext('2d'), img = ctx.createImageData(W, H), d = img.data
+  const iw = (w - 2 * pad) / 2, ih = (h - 2 * pad) / 2
+  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+    const px = x / S - w / 2, py = y / S - h / 2
+    const qx = Math.abs(px) - (iw - r), qy = Math.abs(py) - (ih - r)
+    const ox = Math.max(qx, 0), oy = Math.max(qy, 0)
+    const dist = Math.hypot(ox, oy) + Math.min(Math.max(qx, qy), 0) - r   // < 0 inside the shape
+    let nx = 0, ny = 0
+    if (qx > 0 && qy > 0) { const l = Math.hypot(qx, qy) || 1; nx = qx / l; ny = qy / l } else if (qx > qy) nx = 1; else ny = 1
+    nx *= Math.sign(px) || 1; ny *= Math.sign(py) || 1
+    const inward = -dist
+    let f = inward < 0 ? 1 : inward < rim ? Math.pow(1 - inward / rim, 2.2) : 0
+    const i = (y * W + x) * 4
+    d[i] = 128 - nx * 127 * f; d[i + 1] = 128 - ny * 127 * f; d[i + 2] = 128; d[i + 3] = 255
+  }
+  ctx.putImageData(img, 0, 0)
+  return c.toDataURL()
+}
+let lensOK = true, lensSeq = 0
+// the lens: the rim map displaces the picture, once per colour channel at a slightly different strength, which
+// splits the colours at the very edge into a thin chromatic fringe
+function lensFilter(id, href, w, h, scale) {
+  const ns = 'http://www.w3.org/2000/svg'
+  const f = document.createElementNS(ns, 'filter')
+  f.setAttribute('id', id); f.setAttribute('x', '0'); f.setAttribute('y', '0'); f.setAttribute('width', '100%'); f.setAttribute('height', '100%'); f.setAttribute('color-interpolation-filters', 'sRGB')
+  const ch = (n, m) => `<feDisplacementMap in="SourceGraphic" in2="map" scale="${scale * m}" xChannelSelector="R" yChannelSelector="G" result="d${n}"/><feColorMatrix in="d${n}" type="matrix" values="${n === 'r' ? '1 0 0 0 0  0 0 0 0 0  0 0 0 0 0' : n === 'g' ? '0 0 0 0 0  0 1 0 0 0  0 0 0 0 0' : '0 0 0 0 0  0 0 0 0 0  0 0 1 0 0'}  0 0 0 1 0" result="${n}"/>`
+  f.innerHTML = `<feImage href="${href}" x="0" y="0" width="${w}" height="${h}" preserveAspectRatio="none" result="map"/>` + ch('r', 1) + ch('g', 1.1) + ch('b', 1.2) +
+    '<feBlend in="r" in2="g" mode="screen" result="rg"/><feBlend in="rg" in2="b" mode="screen"/>'
+  document.getElementById('defs').appendChild(f)
+  return f
+}
+function applyLens(el, w, h) {
+  if (!lensOK || MOTION === 'off') return
+  try {
+    if (el._lens) el._lens.remove()
+    const id = 'lens' + (++lensSeq)
+    el._lens = lensFilter(id, lensMap(w, h, 16, 26, 24), w, h, 46)
+    document.body.classList.add('lens'); el.style.setProperty('--lensf', `url(#${id})`)
+  } catch { lensOK = false }
+}
+
+// ---------------------------------------------------------------- icons (Nova line icons, 16px grid)
+const I = d => `<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">${d}</svg>`
+const IC = {
+  back: I('<path d="M9.75 3.25 5 8l4.75 4.75"/>'), forward: I('<path d="M6.25 3.25 11 8l-4.75 4.75"/>'),
+  reload: I('<path d="M13.25 8.25a5.25 5.25 0 1 1-1.6-4.05"/><path d="M13.25 2.25V5.5H10"/>'),
+  copy: I('<rect x="5.25" y="5.25" width="8" height="8" rx="2"/><path d="M10.75 5.25V4a1.5 1.5 0 0 0-1.5-1.5H4A1.5 1.5 0 0 0 2.5 4v5.25a1.5 1.5 0 0 0 1.5 1.5h1.25"/>'),
+  cut: I('<circle cx="4.5" cy="11.5" r="2"/><circle cx="11.5" cy="11.5" r="2"/><path d="M6 10 12 2.5M10 10 4 2.5"/>'),
+  paste: I('<rect x="3" y="3" width="10" height="11" rx="2"/><path d="M6 3V2h4v1M5.75 7.5h4.5M5.75 10h3"/>'),
+  undo: I('<path d="M5.5 6.5H10a3.25 3.25 0 0 1 0 6.5H7"/><path d="M7.5 4 5 6.5 7.5 9"/>'), redo: I('<path d="M10.5 6.5H6a3.25 3.25 0 0 0 0 6.5h3"/><path d="M8.5 4 11 6.5 8.5 9"/>'),
+  selectAll: I('<path d="M2.5 5V3.5a1 1 0 0 1 1-1H5M11 2.5h1.5a1 1 0 0 1 1 1V5M13.5 11v1.5a1 1 0 0 1-1 1H11M5 13.5H3.5a1 1 0 0 1-1-1V11"/><rect x="5.5" y="5.5" width="5" height="5" rx="1"/>'),
+  plus: I('<path d="M8 3.25v9.5M3.25 8h9.5"/>'), close: I('<path d="m4.75 4.75 6.5 6.5m0-6.5-6.5 6.5"/>'),
+  link: I('<path d="M6.5 9.5 9.5 6.5"/><path d="M7.5 4.5 9 3a2.5 2.5 0 0 1 3.5 3.5L11 8"/><path d="M8.5 11.5 7 13a2.5 2.5 0 0 1-3.5-3.5L5 8"/>'),
+  tab: I('<rect x="2" y="4.75" width="12" height="8.75" rx="2.6"/><path d="M4.5 2.5h7"/>'),
+  window: I('<rect x="1.75" y="2.75" width="12.5" height="10.5" rx="2.5"/><path d="M1.75 5.75h12.5"/><path d="M4 4.25h.5M6 4.25h.5"/>'),
+  mask: I('<path d="M2 6.5c2-.8 4-1 6-1s4 .2 6 1c0 3-1.5 4.5-3.25 4.5-1.4 0-2-1.25-2.75-1.25S6.65 11 5.25 11C3.5 11 2 9.5 2 6.5z"/><circle cx="5.25" cy="7.75" r=".75" fill="currentColor"/><circle cx="10.75" cy="7.75" r=".75" fill="currentColor"/>'),
+  eye: I('<path d="M1.75 8S4 3.75 8 3.75 14.25 8 14.25 8 12 12.25 8 12.25 1.75 8 1.75 8z"/><circle cx="8" cy="8" r="2"/>'),
+  split: I('<rect x="1.75" y="2.75" width="12.5" height="10.5" rx="3"/><path d="M8 2.75v10.5"/>'),
+  image: I('<rect x="2" y="2.75" width="12" height="10.5" rx="2.2"/><circle cx="5.75" cy="6.25" r="1.2"/><path d="m2.5 11.5 3.5-3.25 2.5 2.25 2-1.75 3 2.75"/>'),
+  search: I('<circle cx="7.25" cy="7.25" r="4.5"/><path d="m10.6 10.6 3.15 3.15"/>'),
+  lens: I('<path d="M2.5 5.5V4a1.5 1.5 0 0 1 1.5-1.5h1.5M10.5 2.5H12A1.5 1.5 0 0 1 13.5 4v1.5M13.5 10.5V12a1.5 1.5 0 0 1-1.5 1.5h-1.5M5.5 13.5H4A1.5 1.5 0 0 1 2.5 12v-1.5"/><circle cx="8" cy="8" r="2.4"/>'),
+  download: I('<path d="M8 2.5v8M4.75 7.5 8 10.75l3.25-3.25M3 13.25h10"/>'),
+  printer: I('<path d="M4.5 6V2.5h7V6"/><rect x="2" y="6" width="12" height="5.5" rx="1.5"/><path d="M4.5 9.5h7V14h-7z"/>'),
+  code: I('<path d="M5.5 4.5 2 8l3.5 3.5M10.5 4.5 14 8l-3.5 3.5M9 3 7 13"/>'),
+  inspect: I('<path d="M13 7V4a1.5 1.5 0 0 0-1.5-1.5h-7A1.5 1.5 0 0 0 3 4v7a1.5 1.5 0 0 0 1.5 1.5H7"/><path d="m9 9 5.25 2-2.25.9-.9 2.25z"/>'),
+  sparkle: I('<path d="M8 1.75c.5 3.2 1.85 4.6 5.25 5.25-3.4.65-4.75 2.05-5.25 5.25C7.5 9.05 6.15 7.65 2.75 7 6.15 6.35 7.5 4.95 8 1.75z"/><path d="M13 11.5v2.5M11.75 12.75h2.5"/>'),
+  translate: I('<path d="M2 3.5h7M5.5 2v1.5M3.5 3.5c.6 2.4 2.2 4.2 4.5 5.2M7.5 3.5C7 5.8 5.4 7.8 2.5 9"/><path d="M8.5 14l3-7.5 3 7.5M9.6 11.5h3.8"/>'),
+  book: I('<path d="M2.5 3.5c1.8-.7 3.6-.6 5.5.5v9c-1.9-1.1-3.7-1.2-5.5-.5zM13.5 3.5c-1.8-.7-3.6-.6-5.5.5v9c1.9-1.1 3.7-1.2 5.5-.5z"/>'),
+  camera: I('<rect x="2" y="4.5" width="12" height="8.5" rx="2"/><path d="M5.5 4.5 6.5 3h3l1 1.5"/><circle cx="8" cy="8.75" r="2.25"/>'),
+  phone: I('<rect x="4.5" y="1.5" width="7" height="13" rx="1.6"/><path d="M7 12h2"/>'),
+  shield: I('<path d="M8 1.9 3 3.9v3.7c0 3 2.1 5.4 5 6.5 2.9-1.1 5-3.5 5-6.5V3.9z"/><path d="m5.9 8 1.5 1.5 2.8-3"/>'),
+  marker: I('<path d="m9.5 2.75 3.75 3.75-6 6H3.5v-3.75z"/><path d="M2.5 14h11"/>'),
+  trash: I('<path d="M2.5 4h11M6 4V2.5h4V4M4 4l.7 9.2a1 1 0 0 0 1 .8h4.6a1 1 0 0 0 1-.8L12 4"/>'),
+  key: I('<circle cx="5.5" cy="10.5" r="3"/><path d="m7.6 8.4 5.65-5.65M11 5l1.5 1.5M12.5 3.5 14 5"/>'),
+  pin: I('<path d="M9.75 2.25 13.75 6.25l-2 .75-2.5 2.5-.25 2.75-6-6 2.75-.25L8.25 3.5z"/><path d="m5 11-2.75 2.75"/>'),
+  speaker: I('<path d="M2.75 6.25h2.5L8.5 3.5v9l-3.25-2.75h-2.5z"/><path d="M11 5.75a3.2 3.2 0 0 1 0 4.5M12.75 4a5.7 5.7 0 0 1 0 8"/>'),
+  muted: I('<path d="M2.75 6.25h2.5L8.5 3.5v9l-3.25-2.75h-2.5z"/><path d="m11 6 3 3m0-3-3 3"/>'),
+  moon: I('<path d="M13 9.5A5.5 5.5 0 0 1 6.5 3a5.5 5.5 0 1 0 6.5 6.5z"/>'),
+  star: I('<path d="m8 2.25 1.75 3.55 3.9.57-2.83 2.75.67 3.9L8 11.17l-3.49 1.85.67-3.9-2.83-2.75 3.9-.57z"/>'),
+  folder: I('<path d="M2.5 4.5a1 1 0 0 1 1-1h3l1.5 1.5h4.5a1 1 0 0 1 1 1v6.5a1 1 0 0 1-1 1h-9a1 1 0 0 1-1-1z"/>'),
+  palette: I('<path d="M8 2a6 6 0 0 0 0 12c.9 0 1.25-.6 1-1.3-.3-.8.2-1.7 1.1-1.7H12a2 2 0 0 0 2-2A6 6 0 0 0 8 2z"/><circle cx="5" cy="7.5" r=".8" fill="currentColor"/><circle cx="7.5" cy="5" r=".8" fill="currentColor"/><circle cx="10.75" cy="6" r=".8" fill="currentColor"/>'),
+  clock: I('<circle cx="8" cy="8" r="5.75"/><path d="M8 5v3.25l2 1.25"/>'),
+  gear: I('<circle cx="8" cy="8" r="2"/><path d="M8 1.75v1.5M8 12.75v1.5M14.25 8h-1.5M3.25 8h-1.5M12.4 3.6l-1.05 1.05M4.65 11.35 3.6 12.4M12.4 12.4l-1.05-1.05M4.65 4.65 3.6 3.6"/>'),
+  pip: I('<rect x="2" y="3" width="12" height="10" rx="2"/><rect x="8" y="8" width="4.5" height="3.5" rx="1" fill="currentColor" stroke="none"/>'),
+  puzzle: I('<path d="M3 5.5h2.5a1.5 1.5 0 1 1 3 0H11v2.5a1.5 1.5 0 1 1 0 3V13H8.5a1.5 1.5 0 1 0-3 0H3z"/>'),
+  box: I('<path d="M8 1.8 13.6 4.6v6.8L8 14.2 2.4 11.4V4.6z"/><path d="M2.6 4.7 8 7.4l5.4-2.7M8 7.4v6.6"/>'),
+  find: I('<circle cx="7.25" cy="7.25" r="4.5"/><path d="m10.6 10.6 3.15 3.15M5.5 7.25h3.5"/>'),
+  layers: I('<path d="M8 2 14 5 8 8 2 5z"/><path d="m2 8 6 3 6-3"/><path d="m2 11 6 3 6-3"/>'),
+  ungroup: I('<rect x="2" y="2" width="7" height="7" rx="1.6"/><rect x="7" y="7" width="7" height="7" rx="1.6" stroke-dasharray="2 1.6"/>'),
+  collapse: I('<path d="M4.5 6.5 8 3l3.5 3.5M4.5 9.5 8 13l3.5-3.5"/>'), rename: I('<path d="M2.5 13.5h3l7.25-7.25-3-3L2.5 10.5z"/><path d="m8.5 4.5 3 3"/>'),
+  dict: I('<path d="M3.5 2.5h7.5a1.5 1.5 0 0 1 1.5 1.5v9.5H5a1.5 1.5 0 0 1-1.5-1.5z"/><path d="M3.5 12a1.5 1.5 0 0 1 1.5-1.5h7.5M7 5.25h3M8.5 3.75v3"/>'),
+  markdown: I('<rect x="1.75" y="3.5" width="12.5" height="9" rx="2"/><path d="M4 10V6l1.75 2L7.5 6v4M11 6v4M9.5 8.5 11 10l1.5-1.5"/>'),
+  qr: I('<rect x="2.5" y="2.5" width="4" height="4" rx="1"/><rect x="9.5" y="2.5" width="4" height="4" rx="1"/><rect x="2.5" y="9.5" width="4" height="4" rx="1"/><path d="M9.5 9.5h1.5v1.5M13.5 9.5v4h-4M11.5 12.25v1.25"/>'),
+  sleep: I('<path d="M13 9.5A5.5 5.5 0 0 1 6.5 3a5.5 5.5 0 1 0 6.5 6.5z"/><path d="M10 2.5h2.5L10 5h2.5"/>'),
+  check: I('<path d="m3.5 8.5 3 3 6-7"/>'), chev: I('<path d="M6.25 3.75 10.5 8l-4.25 4.25"/>'),
+}
+const RULES = [
+  [/^back$/i, 'back'], [/^forward$/i, 'forward'], [/^reload$|^reload every/i, 'reload'], [/^copy$|^copy image$/i, 'copy'], [/^cut$/i, 'cut'], [/^paste/i, 'paste'],
+  [/^undo$/i, 'undo'], [/^redo$/i, 'redo'], [/^select all/i, 'selectAll'], [/new private window|private window/i, 'mask'], [/new window|move to new window/i, 'window'],
+  [/split view/i, 'split'], [/peek/i, 'eye'], [/open link in new tab|new tab|duplicate/i, 'tab'], [/lens/i, 'lens'], [/image in new tab/i, 'image'],
+  [/save .*as|save image/i, 'download'], [/copy image address|copy link|copy all tab links|link to highlight/i, 'link'], [/markdown/i, 'markdown'], [/qr code|phone/i, 'qr'],
+  [/^search /i, 'search'], [/lumen ai/i, 'sparkle'], [/translate/i, 'translate'], [/reader/i, 'book'], [/screenshot/i, 'camera'], [/print/i, 'printer'],
+  [/page source/i, 'code'], [/^inspect/i, 'inspect'], [/ad blocker/i, 'shield'], [/highlight color|^color$/i, 'palette'], [/^highlight$/i, 'marker'], [/remove highlight|close group/i, 'trash'],
+  [/strong password|passwords/i, 'key'], [/dictionary/i, 'dict'], [/^pin$|^unpin$/i, 'pin'], [/^mute|mute other/i, 'muted'], [/^unmute/i, 'speaker'], [/sleep/i, 'sleep'],
+  [/bookmark/i, 'star'], [/^close tabs|^close other|^close tab/i, 'close'], [/new group|move to group|in group/i, 'folder'], [/remove from group|^ungroup/i, 'ungroup'],
+  [/history/i, 'clock'], [/downloads/i, 'download'], [/extensions/i, 'puzzle'], [/settings/i, 'gear'], [/find in page/i, 'find'], [/picture in picture/i, 'pip'],
+  [/track parcel/i, 'box'], [/new tab page/i, 'layers'], [/^expand$|^collapse$/i, 'collapse'], [/^rename$/i, 'rename'],
+]
+const SWATCH = { yellow: '#f5c53b', green: '#34c77b', blue: '#4c8dff', pink: '#ff5fa8', purple: '#9b6bff', orange: '#ff9a3c', teal: '#2ec4c4', gray: '#8a90a2', red: '#ff5a5f' }
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c])
+function iconFor(it, parent) {
+  if (it.icon) return `<img src="${esc(it.icon)}" alt="">`
+  const col = SWATCH[String(it.label).toLowerCase()]
+  if (col && parent && /colou?r|highlight/i.test(parent.label || '')) return `<span class="sw${it.checked ? ' cur' : ''}" style="background:${col}"></span>`
+  if (it.type === 'radio') return it.checked ? '<span class="dot"></span>' : ''
+  if (it.type === 'checkbox') return it.checked ? IC.check : ''
+  const r = RULES.find(([re]) => re.test(it.label))
+  return r ? IC[r[1]] : ''
+}
+
+// ---------------------------------------------------------------- the menu
+let panels = [], openedAt = 0, root = null, moved = false, typed = '', typedT = 0, shots = []
+const vw = () => innerWidth, vh = () => innerHeight
+
+function buildPanel(items, parentItem, level) {
+  const p = document.createElement('div'); p.className = 'panel'; p.dataset.level = level
+  p.innerHTML = '<div class="glass"><div class="nebula"></div><div class="refract"></div><div class="tint"></div><div class="orb a"></div><div class="orb b"></div><div class="caustic"></div><div class="sheen"></div><div class="sweep"></div><div class="glint"></div></div><div class="scroll"><div class="hl"></div></div>'
+  const sc = p.querySelector('.scroll')
+  for (const it of items) {
+    if (it.type === 'separator') { const s = document.createElement('div'); s.className = 'sep'; sc.appendChild(s); continue }
+    const r = document.createElement('div'); r.className = 'row' + (it.enabled ? '' : ' off'); r.dataset.id = it.id; r.setAttribute('role', 'menuitem')
+    r.innerHTML = `<span class="ic">${iconFor(it, parentItem)}</span><span class="lb"></span>` +
+      (it.type === 'submenu' ? `<span class="chev">${IC.chev}</span>` : it.keys ? `<span class="kc">${it.keys.map(k => `<kbd>${esc(k)}</kbd>`).join('')}</span>` : '')
+    r.querySelector('.lb').textContent = it.label
+    r._it = it
+    sc.appendChild(r)
+  }
+  p._items = items; p._level = level; p._cur = null
+  const hl = p.querySelector('.hl')
+  p._hy = new Spring(0, v => { hl.style.transform = `translateY(${v}px)` })
+  p._hs = new Spring(0, v => { hl.style.opacity = Math.max(0, Math.min(1, v)); hl.style.scale = `${0.94 + 0.06 * Math.min(1, v)} 1` }, 'snappy')
+  p.addEventListener('mousemove', e => { const b = p.getBoundingClientRect(); p.style.setProperty('--gx', (e.clientX - b.left) + 'px'); p.style.setProperty('--gy', (e.clientY - b.top) + 'px') })
+  document.body.appendChild(p)
+  return p
+}
+function rows(p) { return [...p.querySelectorAll('.row')] }
+function setCur(p, r, { kb = false } = {}) {
+  if (p._cur === r) return
+  if (p._cur) p._cur.classList.remove('on')
+  p._cur = r
+  if (!r) { p._hs.to(0); return }
+  r.classList.add('on')
+  const top = r.offsetTop
+  if (p._hs.v < 0.05) p._hy.set(top); else p._hy.to(top)
+  p._hs.to(1)
+  if (kb) r.scrollIntoView({ block: 'nearest' })
+}
+function place(p, x, y, { sub = false, from = null } = {}) {
+  const pad = 8
+  p.style.left = '0px'; p.style.top = '0px'
+  const sc = p.querySelector('.scroll'); sc.style.removeProperty('--maxh')
+  let w = p.offsetWidth, h = p.offsetHeight
+  if (h > vh() - pad * 2) { sc.style.setProperty('--maxh', (vh() - pad * 2 - 12) + 'px'); h = p.offsetHeight }
+  let left = x, top = y, ox = 'left', oy = 'top'
+  if (sub && from) {
+    const b = from.getBoundingClientRect()
+    left = b.right - 2; top = b.top - 7
+    if (left + w > vw() - pad) { left = b.left - w + 2; ox = 'right' }
+  } else if (left + w > vw() - pad) { left = left - w >= pad ? left - w : vw() - w - pad; ox = 'right' }
+  if (top + h > vh() - pad) { if (!sub && top - h >= pad) { top = top - h; oy = 'bottom' } else top = vh() - h - pad }
+  left = Math.max(pad, left); top = Math.max(pad, top)
+  p.style.left = left + 'px'; p.style.top = top + 'px'
+  p.style.setProperty('--ox', ox); p.style.setProperty('--oy', oy)
+  paintBackdrop(p)
+  applyLens(p.querySelector('.refract'), w + 48, h + 48)
+}
+function paintBackdrop(p) {
+  if (!shots.length) return
+  const rf = p.querySelector('.refract'), b = p.getBoundingClientRect()
+  rf.innerHTML = ''
+  for (const s of shots) {
+    const im = new Image(); im.src = s.src
+    im.style.cssText = `left:${s.x - b.left + 24}px;top:${s.y - b.top + 24}px;width:${s.w}px;height:${s.h}px`
+    rf.appendChild(im)
+  }
+  requestAnimationFrame(() => { rf.classList.add('on'); p.classList.add('seen') })
+}
+function enter(p, { sub = false } = {}) {
+  const sc = p.querySelector('.scroll'), list = [...sc.children].filter(n => !n.classList.contains('hl'))
+  if (MOTION === 'off') return
+  const s = new Spring(0, v => {
+    const k = Math.min(1.2, v)
+    p.style.opacity = Math.min(1, v * 1.6)
+    p.style.transform = `scale(${(sub ? 0.94 : 0.9) + (sub ? 0.06 : 0.1) * k}, ${(sub ? 0.92 : 0.86) + (sub ? 0.08 : 0.14) * k})`
+    p.style.filter = v < 0.6 ? `blur(${(0.6 - v) * 6}px)` : ''
+  })
+  s.to(1)
+  // rows arrive 12ms apart: quick enough for a menu, still alive
+  // if frames were held back, land on the final state anyway
+  setTimeout(() => { if (!p.isConnected || p._closing) return; s.set(1); list.forEach(n => { n.style.opacity = '1'; n.style.transform = 'none' }) }, 700)
+  list.slice(0, 18).forEach((n, i) => {
+    n.style.opacity = '0'
+    const r = new Spring(0, v => { n.style.opacity = Math.min(1, v * 1.4); n.style.transform = `translateY(${(1 - v) * 5}px)` })
+    setTimeout(() => r.to(1), 16 + i * 12)
+  })
+}
+function openSub(p, r) {
+  closeFrom(p._level + 1)
+  if (!r || !r._it.submenu || !r._it.enabled) return null
+  r.classList.add('open')
+  const sp = buildPanel(r._it.submenu, r._it, p._level + 1)
+  sp._from = r
+  place(sp, 0, 0, { sub: true, from: r })
+  panels.push(sp)
+  enter(sp, { sub: true })
+  return sp
+}
+function closeFrom(level) {
+  while (panels.length > level) { const p = panels.pop(); if (p._from) p._from.classList.remove('open'); const rf = p.querySelector('.refract'); if (rf && rf._lens) rf._lens.remove(); p.remove() }
+}
+function activate(r) {
+  if (!r || r.classList.contains('off')) return
+  if (r._it.type === 'submenu') { const p = r.closest('.panel'); const sp = openSub(p, r); if (sp) setCur(sp, rows(sp).find(x => !x.classList.contains('off')), { kb: true }); return }
+  r.classList.add('press')
+  window.nova.send('pick', r._it.id)
+}
+function close(why) { window.nova.send('close', why) }
+
+function open(d) {
+  clearTimeout(exitT)
+  closeFrom(0); shots = []
+  document.documentElement.className = (d.theme.dark || d.theme.incognito ? 'dark' : '') + (d.theme.incognito ? ' incognito' : '') + (d.theme.motion === 'off' ? ' off' : '')
+  document.documentElement.style.setProperty('--accent', d.theme.incognito ? '#a77dff' : d.theme.accent)
+  MOTION = d.theme.motion === 'off' || matchMedia('(prefers-reduced-motion: reduce)').matches ? 'off' : d.theme.motion === 'calm' ? 'calm' : 'jelly'
+  document.body.style.opacity = '1'
+  root = buildPanel(d.items, null, 0)
+  panels = [root]
+  place(root, d.x + 2, d.y + 2)
+  enter(root)
+  openedAt = performance.now(); moved = false
+}
+let exitT = 0
+function exit() {
+  const ps = panels.slice(); panels = []; root = null
+  ps.forEach(p => { p._closing = true })
+  if (MOTION === 'off' || !ps.length) { ps.forEach(p => { const rf = p.querySelector('.refract'); if (rf && rf._lens) rf._lens.remove(); p.remove() }); return }
+  ps.forEach(p => { p.style.transition = 'opacity .1s ease-in, transform .1s ease-in'; p.style.opacity = '0'; p.style.transform = 'scale(.97)' })
+  exitT = setTimeout(() => ps.forEach(p => { const rf = p.querySelector('.refract'); if (rf && rf._lens) rf._lens.remove(); p.remove() }), 120)
+}
+
+// ---------------------------------------------------------------- pointer
+let hoverT = 0
+document.addEventListener('mousemove', e => {
+  moved = true
+  const r = e.target.closest && e.target.closest('.row'); const p = e.target.closest && e.target.closest('.panel')
+  if (!p) return
+  if (r && !r.classList.contains('off')) setCur(p, r); else if (!r) setCur(p, null)
+  // the parent row of an open submenu stays lit
+  for (let l = 0; l < p._level; l++) { const child = panels[l + 1]; if (child && child._from && panels[l]._cur !== child._from) setCur(panels[l], child._from) }
+  clearTimeout(hoverT)
+  if (r && r._it.type === 'submenu') { if (!r.classList.contains('open')) hoverT = setTimeout(() => openSub(p, r), 110) }
+  else if (r) hoverT = setTimeout(() => closeFrom(p._level + 1), 220)
+})
+document.addEventListener('mousedown', e => {
+  const p = e.target.closest && e.target.closest('.panel')
+  if (!p) { close('outside'); return }
+  const r = e.target.closest('.row'); if (r && !r.classList.contains('off')) r.classList.add('press')
+})
+document.addEventListener('mouseup', e => {
+  document.querySelectorAll('.row.press').forEach(r => r.classList.remove('press'))
+  const r = e.target.closest && e.target.closest('.row')
+  // the release of the right-click that opened the menu must not pick anything
+  if (!r || (!moved && performance.now() - openedAt < 300)) return
+  if (r._it.type === 'submenu') { const p = r.closest('.panel'); clearTimeout(hoverT); if (!r.classList.contains('open')) openSub(p, r); return }
+  activate(r)
+})
+document.addEventListener('contextmenu', e => { e.preventDefault(); if (!(e.target.closest && e.target.closest('.panel'))) close('outside') })
+document.addEventListener('wheel', e => { if (!(e.target.closest && e.target.closest('.panel'))) close('outside') }, { passive: true })
+addEventListener('blur', () => {})
+
+// ---------------------------------------------------------------- keyboard (arrows, Enter, Esc, type to select)
+function key(k, shift) {
+  if (!panels.length) return
+  const p = panels[panels.length - 1]
+  const list = rows(p).filter(r => !r.classList.contains('off'))
+  const i = list.indexOf(p._cur)
+  if (k === 'Escape') { if (panels.length > 1) { const from = p._from; closeFrom(panels.length - 1); setCur(panels[panels.length - 1], from, { kb: true }) } else close('escape'); return }
+  if (k === 'ArrowDown' || (k === 'Tab' && !shift)) return setCur(p, list[(i + 1) % list.length], { kb: true })
+  if (k === 'ArrowUp' || (k === 'Tab' && shift)) return setCur(p, list[(i - 1 + list.length) % list.length] || list[list.length - 1], { kb: true })
+  if (k === 'Home') return setCur(p, list[0], { kb: true })
+  if (k === 'End') return setCur(p, list[list.length - 1], { kb: true })
+  if (k === 'ArrowRight') { if (p._cur && p._cur._it.type === 'submenu') activate(p._cur); return }
+  if (k === 'ArrowLeft') { if (panels.length > 1) { const from = p._from; closeFrom(panels.length - 1); setCur(panels[panels.length - 1], from, { kb: true }) } return }
+  if (k === 'Enter' || k === ' ') { if (p._cur) activate(p._cur); else if (k === 'Enter') close('enter'); return }
+  if (k.length === 1 && /\S/.test(k)) {
+    const now = performance.now(); typed = now - typedT > 700 ? k.toLowerCase() : typed + k.toLowerCase(); typedT = now
+    const start = typed.length === 1 ? i + 1 : Math.max(0, i)
+    const order = [...list.slice(start), ...list.slice(0, start)]
+    const hit = order.find(r => r._it.label.toLowerCase().startsWith(typed))
+    if (hit) setCur(p, hit, { kb: true })
+  }
+}
+document.addEventListener('keydown', e => { e.preventDefault(); key(e.key, e.shiftKey) })
+
+window.nova.on('nova:menu-open', open)
+window.nova.on('nova:menu-close', exit)
+window.nova.on('nova:menu-key', d => key(d.key, d.shift))
+window.nova.on('nova:menu-backdrop', s => { shots = s || []; panels.forEach(paintBackdrop) })
+// for tests: find a row by label and pick it the way a click does
+window.__novaPick = label => { const r = [...document.querySelectorAll('.row')].find(x => x._it.label === label); if (!r) return false; activate(r); return true }
+window.__novaRows = () => [...document.querySelectorAll('.panel')].map(p => rows(p).map(r => ({ label: r._it.label, on: r.classList.contains('on'), off: r.classList.contains('off') })))
+</script>
+</body>
+</html>

@@ -34,6 +34,8 @@ if (INCOGNITO) { const pc = $('#privchip'); pc.innerHTML = `${ICONS.mask}<span>P
 $('#btn-update').innerHTML = `<i class="up-orb">${ICONS.download}</i><span class="up-l">Restart</span><span class="up-more">&nbsp;to update</span>`
 $('#btn-update').title = 'A new Lumen is ready. Restart to update.'
 $('#kbd-newtab').textContent = IS_MAC ? 'Cmd T' : 'Ctrl T'
+$('#uhint').innerHTML = IS_MAC ? '<kbd>⌘</kbd><kbd>K</kbd>' : '<kbd>Ctrl</kbd><kbd>K</kbd>'
+$('#uhint').addEventListener('click', e => { e.stopPropagation(); openCmd('newtab') })
 if (!IS_MAC) {
   $('#wincontrols').innerHTML = `<button data-w="close" class="x" title="Close">${ICONS.winClose}</button><button data-w="min" title="Minimize">${ICONS.winMin}</button><button data-w="max" title="Maximize">${ICONS.winMax}</button>`
   $('#wincontrols').addEventListener('click', e => { const b = e.target.closest('button'); if (b) api.do('windowControl', b.dataset.w) })
@@ -719,6 +721,7 @@ function renderQuick() {
 }
 function renderResults() {
   renderQuick(); $('#cmd-quick').classList.toggle('show', !cmdInput.value.trim())
+  cmd.classList.toggle('typed', !!cmdInput.value.trim())
   let html = '', lastSec = null
   results.forEach((r, i) => {
     if (r.sec !== lastSec && r.sec) html += `<div class="sec">${esc(r.sec)}</div>`
@@ -818,7 +821,11 @@ function openPopover(html, anchor, { above = false, wide = false, mini = false }
   if (overlayOpen === 'cmd') closeCmd(true)
   pop.innerHTML = html
   pop.classList.toggle('wide', wide); pop.classList.remove('sheet'); pop.classList.toggle('mini', mini)
-  const r = anchor.getBoundingClientRect()
+  // a hidden anchor (Downloads before the first download) measures as nothing: open from the More button instead
+  let r = anchor.getBoundingClientRect()
+  if (!r.width && !r.height) { const m = $('#btn-menu'); if (m) r = m.getBoundingClientRect() }
+  // the anchor sits in the top bar (tabs on top): open downward, whatever the caller asked
+  if (above && r.top < innerHeight / 2) above = false
   overlay.classList.add('show')   // the overlay must be visible to measure the popover
   pop.classList.add('show')
   pop.style.maxHeight = ''
@@ -834,7 +841,7 @@ function openPopover(html, anchor, { above = false, wide = false, mini = false }
   scrimS.to(0.35)
   popG.set({ s: 0.88, o: 0, y: above ? 12 : -12 }).to({ s: 1, o: 1, y: 0 })
   glassUnder(pop)
-  novaStagger(pop.querySelectorAll(':scope > h3, :scope > .sub, :scope > .chero, :scope > .mm-head, :scope > .mm-update, :scope > .mm-tiles > .mm-tile, :scope > .mm-zoom, :scope > .item'), { step: 40, max: 12, y: above ? -6 : 6 })
+  novaStagger(pop.querySelectorAll(':scope > h3, :scope > .sub, :scope > .chero, :scope > .mm-head, :scope > .mm-update, :scope > .mm-tiles > .mm-tile, :scope > .mm-zoom, :scope > .mm-card, :scope > .item'), { step: 40, max: 12, y: above ? -6 : 6 })
   api.do('focusUI')
 }
 function closePopover(instant) {
@@ -857,17 +864,18 @@ async function openSiteInfo() {
   const html = `
     <div class="si-head chero ${info.secure ? 'ok' : 'bad'}">${heroBits('shield')}<span class="si-lock">${info.secure ? ICONS.lock : ICONS.unlock}</span><div class="grow"><h3>${esc(info.host)}</h3>
     <div class="sub">${info.secure ? 'Connection is secure' : 'Connection is not secure'}</div></div>${S.blocked > 0 ? `<span class="si-count"><b>${S.blocked > 999 ? '999+' : S.blocked}</b>blocked</span>` : ''}</div>
+    <div class="mm-card" data-c="0"><div class="mm-label">This site</div>
     ${info.forceDark ? `<div class="item" data-act="dark"><span class="ri">${ICONS.moon}</span><div class="grow">Dark mode on this site<div class="small">${info.darkOff ? 'Off here, showing the site as designed' : 'Light pages are shown dark'}</div></div><label class="switch sm"><input type="checkbox" ${info.darkOff ? '' : 'checked'} tabindex="-1"><span></span></label></div>` : ''}
     ${info.adblock ? `<div class="item" data-act="adblock"><span class="ri">${ICONS.shield}</span><div class="grow">Ad blocker on this site<div class="small">${info.adOff ? 'Off here. Ads can show on this site.' : `${info.blocked} blocked on this page`}</div></div><label class="switch sm"><input type="checkbox" ${info.adOff ? '' : 'checked'} tabindex="-1"><span></span></label></div>` : ''}
     <div class="item"><span class="ri">${ICONS.search}</span><div class="grow">Zoom</div><div class="zoom stepper"><button class="ib sm" data-z="-0.5" title="Zoom out">${ICONS.minus}</button><span id="zv">${S.zoom}%</span><button class="ib sm" data-z="0.5" title="Zoom in">${ICONS.plus}</button></div></div>
-    ${perms.length ? '<div class="sep"></div>' + perms.map(([k, v]) => `<div class="item perm"><span class="ri">${ICONS[/geo/.test(k) ? 'location' : /video|display/.test(k) ? 'camera' : /audio|midi/.test(k) ? 'speaker' : /notif/.test(k) ? 'bolt' : /clip/.test(k) ? 'link' : 'shield']}</span><div class="grow">${esc(PERM_NAMES[k] || k)}</div><span class="pstate ${v === 'allow' ? 'on' : 'off'}">${v === 'allow' ? 'Allowed' : 'Blocked'}</span></div>`).join('') + `<div class="item" data-act="reset"><span class="ri">${ICONS.reload}</span><div class="grow">Reset permissions</div></div>` : ''}
-    <div class="sep"></div>
+    ${perms.length ? '<div class="mm-label">Permissions</div>' + perms.map(([k, v]) => `<div class="item perm"><span class="ri">${ICONS[/geo/.test(k) ? 'location' : /video|display/.test(k) ? 'camera' : /audio|midi/.test(k) ? 'speaker' : /notif/.test(k) ? 'bolt' : /clip/.test(k) ? 'link' : 'shield']}</span><div class="grow">${esc(PERM_NAMES[k] || k)}</div><span class="pstate ${v === 'allow' ? 'on' : 'off'}">${v === 'allow' ? 'Allowed' : 'Blocked'}</span></div>`).join('') + `<div class="item" data-act="reset"><span class="ri">${ICONS.reload}</span><div class="grow">Reset permissions</div></div>` : ''}
+    </div><div class="mm-card" data-c="1"><div class="mm-label">Do more with this page</div>
     <div class="item" data-act="reader"><span class="ri">${ICONS.book}</span><div class="grow">Reader mode<div class="small" id="rtime"></div></div></div>
     <div class="item" data-act="qr"><span class="ri">${ICONS.phone}</span><div class="grow">Send to phone<div class="small">Show a QR code for this page</div></div></div>
     <div class="item" data-act="pip"><span class="ri">${ICONS.pip}</span><div class="grow">Picture in picture</div></div>
     <div class="item" data-act="shot"><span class="ri">${ICONS.camera}</span><div class="grow">Take screenshot</div></div>
-    <div class="sep"></div>
-    <div class="item" data-act="clear"><span class="ri">${ICONS.trash}</span><div class="grow">Clear data for this site<div class="small">Cookies and storage. Signs you out here.</div></div></div>`
+    </div><div class="mm-card danger" data-c="3">
+    <div class="item danger" data-act="clear"><span class="ri">${ICONS.trash}</span><div class="grow">Clear data for this site<div class="small">Cookies and storage. Signs you out here.</div></div></div></div>`
   openPopover(html, $('#urlbar'))
   api.do('pageStats').then(st => { const el = $('#rtime'); if (el && st && st.words > 120) el.textContent = `${st.mins} min read, ${st.words.toLocaleString('en-US')} words` })
   pop.onclick = async e => {
@@ -965,14 +973,14 @@ async function openMainMenu() {
       <button class="mm-tile" data-mm="private">${ICONS.mask}<span>Private</span></button>
     </div>
     <div class="mm-zoom"><span class="ri">${ICONS.search}</span><span class="grow">Zoom</span><button class="ib sm" data-mm="zoomout">${ICONS.minus}</button><span id="mm-z">${info.zoom || 100}%</span><button class="ib sm" data-mm="zoomin">${ICONS.plus}</button><button class="ib sm" data-mm="fullscreen" title="Full screen">${ICONS.split}</button></div>
-    <div class="sep"></div>
+    <div class="mm-card" data-c="0"><div class="mm-label">Your things</div>
     ${item('history', 'clock', 'History', `${K.cmd} Y`)}
     ${item('downloads', 'download', 'Downloads', `${K.sh} ${K.cmd} J`)}
     ${item('bookmarks', 'star', 'Bookmarks', `${K.opt} ${K.cmd} B`)}
     ${item('readlater', 'book', info.saved ? 'Remove from Read later' : 'Save to Read later', `${K.sh} ${K.cmd} D`, info.readLaterCount ? `<span class="mm-count">${info.readLaterCount}</span>` : '')}
     ${item('passwords', 'key', 'Passwords and passkeys', '', `<span class="mm-count">${(info.passwords || 0) + (info.passkeys || 0) || ''}</span>`)}
     ${item('extensions', 'puzzle', 'Extensions', '')}
-    <div class="sep"></div>
+    </div><div class="mm-card" data-c="1"><div class="mm-label">This page</div>
     ${item('find', 'search', 'Find in page', `${K.cmd} F`)}
     ${item('translate', 'globe', 'Translate page', `${K.opt} ${K.cmd} T`)}
     ${item('reader', 'book', 'Reader mode', `${K.sh} ${K.cmd} E`)}
@@ -980,7 +988,7 @@ async function openMainMenu() {
     ${item('split', 'split', S.splitId ? 'Exit split view' : 'Split view', `${K.sh} ${K.cmd} \\`)}
     ${item('screenshot', 'camera', 'Take screenshot', `${K.sh} ${K.cmd} 2`)}
     ${item('print', 'printer', 'Print', `${K.cmd} P`)}
-    <div class="sep"></div>
+    </div><div class="mm-card" data-c="2"><div class="mm-label">Tabs and tools</div>
     ${item('tabgrid', 'layers', 'Tab overview', `${K.sh} ${K.cmd} O`)}
     ${item('apps', 'sparkle', 'Surge and Koi', '', (info.apps || []).length ? `<span class="mm-count">${info.apps.length}</span>` : '')}
     ${item('parcels', 'box', 'Parcels', `${K.opt} ${K.cmd} P`, info.parcels ? `<span class="mm-count">${info.parcels}</span>` : '')}
@@ -988,14 +996,15 @@ async function openMainMenu() {
     ${item('focus', 'sidebar', 'Focus mode', `${K.sh} ${K.cmd} F`)}
     ${item('autogroup', 'tabs', 'Sort tabs into groups', `${K.opt} ${K.cmd} G`)}
     ${(S.groups || []).length ? item('ungroup', 'close', 'Ungroup all tabs', '') : ''}
-    <div class="sep"></div>
+    </div><div class="mm-card" data-c="3"><div class="mm-label">Sessions</div>
     ${item('savesession', 'layers', 'Save all tabs as a session', '')}
     ${(info.sessions || []).map(x => `<div class="item mm" data-mm="restore" data-id="${esc(x.id)}"><span class="ri">${ICONS.tabs}</span><div class="grow">${esc(x.name)}<div class="small">${x.count} tabs</div></div><button class="ib sm" data-mm="delsession" data-id="${esc(x.id)}" title="Delete">${ICONS.close}</button></div>`).join('')}
-    ${(info.readLater || []).length ? `<div class="sep"></div><div class="mm-label">Read later</div>` + info.readLater.map(r => `<div class="item mm" data-mm="rlopen" data-url="${esc(r.url)}"><span class="ri">${favHTML({ url: r.url })}</span><div class="grow" style="min-width:0"><div style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(r.title || hostOf(r.url))}</div><div class="small">${esc(hostOf(r.url).replace(/^www\./, ''))}</div></div><button class="ib sm" data-mm="rldel" data-url="${esc(r.url)}" title="Remove">${ICONS.close}</button></div>`).join('') : ''}
-    ${(info.closed || []).length ? `<div class="sep"></div><div class="mm-label">Recently closed</div>` + info.closed.map((c, i) => `<div class="item mm" data-mm="reopen" data-i="${i}"><span class="ri">${favHTML({ url: c.url })}</span><div class="grow" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(c.title)}</div></div>`).join('') : ''}
-    <div class="sep"></div>
+    </div>
+    ${(info.readLater || []).length ? `<div class="mm-card" data-c="4"><div class="mm-label">Read later</div>` + info.readLater.map(r => `<div class="item mm" data-mm="rlopen" data-url="${esc(r.url)}"><span class="ri">${favHTML({ url: r.url })}</span><div class="grow" style="min-width:0"><div style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(r.title || hostOf(r.url))}</div><div class="small">${esc(hostOf(r.url).replace(/^www\./, ''))}</div></div><button class="ib sm" data-mm="rldel" data-url="${esc(r.url)}" title="Remove">${ICONS.close}</button></div>`).join('')  + '</div>' : ''}
+    ${(info.closed || []).length ? `<div class="mm-card" data-c="5"><div class="mm-label">Recently closed</div>` + info.closed.map((c, i) => `<div class="item mm" data-mm="reopen" data-i="${i}"><span class="ri">${favHTML({ url: c.url })}</span><div class="grow" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(c.title)}</div></div>`).join('') + '</div>' : ''}
+    <div class="mm-card" data-c="0">
     ${item('layout', info.tabLayout === 'top' ? 'sidebarL' : 'tabsTop', info.tabLayout === 'top' ? 'Move tabs to the sidebar' : 'Move tabs to the top', `${K.opt} ${K.cmd} S`)}
-    ${item('intro', 'play', 'Replay intro', '')}`
+    ${item('intro', 'play', 'Replay intro', '')}</div>`
   openPopover(html, $('#btn-menu'), { above: !TOP, wide: true })
   pop.onclick = async e => {
     const b = e.target.closest('[data-mm]'); if (!b) return
@@ -1141,24 +1150,51 @@ function addPrompt(p) {
 const toastEl = $('#toast')
 const toastG = new SpringGroup({ y: 10, o: 0 }, 'calm', v => { toastEl.style.transform = `translateY(${v.y}px)`; toastEl.style.opacity = Math.max(0, Math.min(1, v.o)) })
 let toastT
-// toast(message) or toast(message, { label: 'Undo', run }) for one action button
+// toast(message) or toast(message, { label: 'Undo', run }) for one action button; kind 'bad' for a problem.
+// 4.0: a glass capsule with an icon gem that says what happened and a hairline timer along its foot. With tabs on top
+// Lumen shows it in its own small view over the page (src/nova.js) so it never covers the tab strip; this element
+// stays the source of truth (its button still runs the action).
+function toastIcon(msg, kind) {
+  if (kind === 'bad' || /fail|could not|couldn|error|blocked|no video/i.test(msg)) return { icon: 'warn', kind: 'bad' }
+  if (/cop(y|ied)/i.test(msg)) return { icon: 'link' }
+  if (/bookmark/i.test(msg)) return { icon: 'starFill' }
+  if (/read later/i.test(msg)) return { icon: 'book' }
+  if (/download/i.test(msg)) return { icon: 'download' }
+  if (/closed|removed|deleted/i.test(msg)) return { icon: 'close' }
+  if (/parcel|order|track/i.test(msg)) return { icon: 'box' }
+  if (/updat/i.test(msg)) return { icon: 'sparkle' }
+  return { icon: 'check' }
+}
 function toast(msg, action, kind) {
-  toastEl.innerHTML = `<span class="t-orb"></span><span class="t-msg"></span>`
+  const ti = toastIcon(String(msg || ''), kind)
+  kind = ti.kind || kind
+  const ms = action ? 5000 : 2200
+  toastEl.innerHTML = `<span class="t-orb">${ICONS[ti.icon] || ICONS.check || ''}</span><span class="t-msg"></span><span class="t-time"><i></i></span>`
   toastEl.querySelector('.t-msg').textContent = msg
   toastEl.classList.toggle('act', !!action)
   toastEl.classList.toggle('bad', kind === 'bad')
   requestAnimationFrame(() => Jelly.kick && Jelly.kick(toastEl.querySelector('.t-orb'), 0.8, 0.6))
   if (action) {
     const b = document.createElement('button'); b.className = 'toast-btn'; b.textContent = action.label
-    b.onclick = () => { clearTimeout(toastT); toastG.to({ y: 10, o: 0 }); toastEl.classList.remove('act'); action.run() }
+    b.onclick = () => { clearTimeout(toastT); toastG.to({ y: 10, o: 0 }); toastEl.classList.remove('act'); if (TOP) api.do('toastView', null); action.run() }
     toastEl.appendChild(b)
     requestAnimationFrame(() => Jelly.kick && Jelly.kick(b, 0.7, 0.6))
   }
+  // the timer: one transition from full to empty (nothing loops)
+  const bar = toastEl.querySelector('.t-time i')
+  if (bar && getMotion() !== 'off') { bar.style.transition = 'none'; bar.style.transform = 'scaleX(1)'; requestAnimationFrame(() => requestAnimationFrame(() => { bar.style.transition = `transform ${ms - 250}ms linear`; bar.style.transform = 'scaleX(0)' })) }
   toastEl.style.left = TOP ? '' : (collapsed && !peeking ? 16 : 14) + 'px'   // tabs on top: the stylesheet centers it
+  toastEl.classList.remove('viewed')
+  if (TOP) {
+    Promise.resolve(api.do('toastView', { msg: String(msg || ''), label: action ? action.label : '', kind: kind || '', icon: ICONS[ti.icon] || '', ms }))
+      .then(ok => { if (ok) toastEl.classList.add('viewed') }).catch(() => {})
+  }
   toastG.to({ y: 0, o: 1 })
   clearTimeout(toastT)
-  toastT = setTimeout(() => { toastG.to({ y: 10, o: 0 }); toastEl.classList.remove('act') }, action ? 5000 : 2000)
+  toastT = setTimeout(() => { toastG.to({ y: 10, o: 0 }); toastEl.classList.remove('act') }, ms)
 }
+// the toast view's button runs the action of this toast
+window.__toastAct = () => { const b = toastEl.querySelector('.toast-btn'); if (b) b.click() }
 
 // ---------------------------------------------------------------- IPC
 api.on('state', s => {
@@ -1617,7 +1653,7 @@ function tcHide() {
   tcShown = false
   tcG.to({ o: 0, y: -6, s: 0.96 })
   clearTimeout(tcHideT)
-  tcHideT = setTimeout(() => { if (!tcShown) { tcEl.classList.remove('show'); if (!overlayOpen && !peeking && !taCur && !trCard.classList.contains('show')) api.do('overlay', false) } }, 220)
+  tcHideT = setTimeout(() => { if (!tcShown) { tcEl.classList.remove('show'); if (!overlayOpen && !peeking && !taCur && !trCard.classList.contains('show') && !(window.Tips && Tips.raised())) api.do('overlay', false) } }, 220)
 }
 async function tcShow(id, el) {
   const t = S.tabs.find(x => x.id === id); if (!t || (drag && drag.active)) return
@@ -1784,3 +1820,111 @@ for (const id of ['surge', 'koi']) $('#btn-' + id).onclick = () => {
 renderAppButtons()
 api.on('settings', () => renderAppButtons())
 addEventListener('focus', () => renderAppButtons())
+
+// ---------------------------------------------------------------- tooltips, drawn by Lumen (4.0)
+// Every title= in the chrome becomes a Nova tooltip: a small glass label with the shortcut in keycaps. The system
+// tooltip never shows (the title moves to data-tip as soon as it is set). It waits a moment before it appears, then
+// springs in; moving to the next button while one is up shows the next one at once. Still under Motion Off.
+var Tips = window.Tips = (() => {
+  const tip = document.createElement('div'); tip.id = 'tip'; tip.setAttribute('role', 'tooltip')
+  document.body.appendChild(tip)
+  let tipX = 0, tipY = 0, cur = null, showT = 0, hideT = 0, warmUntil = 0, raised = false, shown = false
+  const g = new SpringGroup({ o: 0, y: -4, s: 0.94 }, 'jelly', v => { tip.style.opacity = Math.max(0, Math.min(1, v.o)); tip.style.transform = `translate(${tipX}px, ${tipY + v.y}px) scale(${v.s})` })
+  const KEYWORD = /^(cmd|ctrl|shift|opt|alt|option|esc|enter|tab|space|[a-z0-9]|[\[\]\\,./`=+-]|f\d+|up|down|left|right)$/i
+  const MAC = { cmd: '⌘', ctrl: '⌃', shift: '⇧', opt: '⌥', alt: '⌥', option: '⌥' }
+  const WIN = { cmd: 'Ctrl', ctrl: 'Ctrl', shift: 'Shift', opt: 'Alt', alt: 'Alt', option: 'Alt' }
+  const NAMED = { esc: 'esc', enter: 'Enter', tab: 'Tab', space: 'Space', up: '↑', down: '↓', left: '←', right: '→' }
+  // "Hide sidebar (Shift+Cmd+S)" -> { text: 'Hide sidebar', keys: ['⇧', '⌘', 'S'] }
+  function parse(s) {
+    const m = String(s || '').match(/^(.*?)\s*\(([^()]+)\)\s*$/)
+    if (m) {
+      const parts = m[2].trim().split(/[+\s]+/).filter(Boolean)
+      if (parts.length && parts.length <= 5 && parts.every(p => KEYWORD.test(p)) && parts.some(p => /^(cmd|ctrl|shift|opt|alt|option|esc|enter|tab|space)$/i.test(p))) return { text: m[1], keys: parts.map(key) }
+    }
+    return { text: String(s || ''), keys: [] }
+  }
+  function key(p) {
+    const l = p.toLowerCase()
+    if (NAMED[l]) return NAMED[l]
+    if ((IS_MAC ? MAC : WIN)[l]) return (IS_MAC ? MAC : WIN)[l]
+    return p.length === 1 ? p.toUpperCase() : p
+  }
+  // move a title into data-tip so the system never draws it; screen readers keep the words
+  function adopt(el) {
+    const t = el.getAttribute('title'); if (t == null) return
+    el.removeAttribute('title')
+    if (!t) { delete el.dataset.tip; return }
+    el.dataset.tip = t
+    if (!el.hasAttribute('aria-label') && !(el.textContent || '').trim()) el.setAttribute('aria-label', parse(t).text)
+    if (cur === el && shown) fill(el)
+  }
+  function scan(root) { if (root.nodeType !== 1) return; if (root.hasAttribute('title')) adopt(root); root.querySelectorAll('[title]').forEach(adopt) }
+  new MutationObserver(list => { for (const m of list) { if (m.type === 'attributes') adopt(m.target); else m.addedNodes.forEach(scan) } })
+    .observe(document.documentElement, { subtree: true, childList: true, attributes: true, attributeFilter: ['title'] })
+  scan(document.body)
+
+  function fill(el) {
+    const { text, keys } = parse(el.dataset.tip)
+    tip.innerHTML = `<i class="ar"></i><span class="tp-t"></span>${keys.length ? `<span class="tp-k">${keys.map(k => `<kbd>${esc(k)}</kbd>`).join('')}</span>` : ''}`
+    tip.querySelector('.tp-t').textContent = text
+    tip.classList.toggle('nokeys', !keys.length)
+  }
+  // a tab already shows its own preview card, so the tab itself gets no tooltip (its buttons still do)
+  const skip = el => el.classList.contains('tab') || (el.id === 'btn-newtab' && !TOP) || !document.contains(el)
+  function place(el) {
+    const r = el.getBoundingClientRect(), W = innerWidth, H = innerHeight
+    tip.classList.add('show'); tip.style.transform = 'none'
+    const w = tip.offsetWidth, h = tip.offsetHeight
+    let below = r.bottom + 8 + h <= H - 6
+    if (el.closest('.bottombar')) below = false
+    let x = Math.round(Math.max(6, Math.min(W - w - 6, r.left + r.width / 2 - w / 2)))
+    let y = Math.round(below ? r.bottom + 8 : r.top - h - 8)
+    if (y < 4) { y = Math.round(r.bottom + 8); below = true }
+    tipX = x; tipY = y
+    tip.classList.toggle('below', below); tip.classList.toggle('above', !below)
+    tip.style.setProperty('--ax', Math.round(Math.max(12, Math.min(w - 12, r.left + r.width / 2 - x))) + 'px')
+    tip.style.transformOrigin = `${Math.round(r.left + r.width / 2 - x)}px ${below ? 0 : h}px`
+    // over the page the chrome is behind the web view: raise it quietly (no focus change) while the tooltip is up
+    const overPage = pageRect && !(y + h < pageRect.y || y > pageRect.y + pageRect.height || x + w < pageRect.x || x > pageRect.x + pageRect.width)
+    if (overPage && !overlayOpen && !peeking && !raised) { raised = true; api.do('overlay', true, true) }
+    return below
+  }
+  function show(el) {
+    if (!el || skip(el) || !el.dataset.tip) return
+    cur = el; fill(el)
+    const below = place(el)
+    clearTimeout(hideT)
+    if (shown) { g.to({ o: 1, y: 0, s: 1 }); return }
+    shown = true
+    g.set({ o: 0, y: below ? -5 : 5, s: 0.92 }).to({ o: 1, y: 0, s: 1 })
+  }
+  function hide(now) {
+    clearTimeout(showT)
+    if (!shown) { cur = null; return }
+    shown = false; cur = null; warmUntil = Date.now() + 700
+    const done = () => {
+      if (shown) return
+      tip.classList.remove('show')
+      if (raised) { raised = false; if (!overlayOpen && !peeking && !tcShown && !taCur && !trCard.classList.contains('show')) api.do('overlay', false) }
+    }
+    if (now || getMotion() === 'off') { g.set({ o: 0 }); done(); return }
+    g.to({ o: 0, y: tip.classList.contains('below') ? -3 : 3, s: 0.96 })
+    clearTimeout(hideT); hideT = setTimeout(done, 160)
+  }
+  document.addEventListener('pointerover', e => {
+    const el = e.target.closest && e.target.closest('[data-tip]')
+    if (el === cur) return
+    if (!el || skip(el)) { if (cur || shown) hide(); return }
+    clearTimeout(showT)
+    if (e.buttons) return
+    if (shown || Date.now() < warmUntil) { show(el); return }
+    cur = el
+    showT = setTimeout(() => { if (cur === el && el.matches(':hover')) show(el) }, 520)
+  }, true)
+  document.addEventListener('pointerdown', () => hide(true), true)
+  document.addEventListener('keydown', () => hide(true), true)
+  document.addEventListener('wheel', () => hide(true), { capture: true, passive: true })
+  document.documentElement.addEventListener('pointerleave', () => hide())
+  addEventListener('blur', () => hide(true))
+  return { hide, parse, el: tip, raised: () => raised }
+})()

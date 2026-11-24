@@ -29,7 +29,16 @@ protocol.registerSchemesAsPrivileged([
 ])
 
 // Clean, plain-Chrome user agent so sites (and Google sign-in) treat Lumen like Chrome.
-const winBg = () => nativeTheme.shouldUseDarkColors ? '#1b1c20' : '#e6e9f0'
+// what a window or a view paints before its page does: the Nova porcelain or ink (docs/NOVA.md), never flat grey.
+// Private windows are always deep violet ink; Lumen's own pages paint porcelain or ink, web pages white or ink.
+const NOVA_BG = { light: '#f5f6fb', dark: '#0a0c15', private: '#0c081a' }
+const winBg = (incognito = false) => incognito ? NOVA_BG.private : nativeTheme.shouldUseDarkColors ? NOVA_BG.dark : NOVA_BG.light
+const tabBg = (url = '', incognito = false) => {
+  const own = !url || /^(lumen|about|chrome):/.test(url)
+  if (incognito && own) return NOVA_BG.private
+  if (nativeTheme.shouldUseDarkColors) return own ? NOVA_BG.dark : '#0a0c15'
+  return own ? NOVA_BG.light : '#ffffff'
+}
 // Lumen is Chromium, so it says so, exactly the way Chrome does: no Electron or app tokens, and the reduced version
 // form real Chrome sends (Chrome/140.0.0.0). A full Electron build number or a mixed identity is what makes Google's
 // sign-in say "This browser or app may not be secure".
@@ -404,7 +413,7 @@ class BrowserWin {
       titleBarStyle: isMac ? 'hiddenInset' : 'hidden',
       trafficLightPosition: { x: 16, y: 18 },
       // solid window: macOS vibrancy behind WebContentsViews breaks video layers (YouTube showed a blank player)
-      backgroundColor: winBg(),
+      backgroundColor: winBg(incognito),
       transparent: false, icon: ICON,
     })
     this.tabs = new Map()
@@ -470,9 +479,11 @@ class BrowserWin {
       webPreferences: { session: this.ses, sandbox: true, contextIsolation: true, plugins: true, spellcheck: true, scrollBounce: false, autoplayPolicy: 'no-user-gesture-required' },
     })
     view.setBorderRadius(this.fullscreenTab ? 0 : 10)
-    view.setBackgroundColor(nativeTheme.shouldUseDarkColors ? '#1e1f23' : '#ffffff')
+    view.setBackgroundColor(tabBg(t.url, this.incognito))
     t.view = view; t.asleep = false
     const wc = view.webContents
+    // the colour under the page follows what it is (a Lumen page or a web page), so nothing flashes on the way in
+    wc.on('did-start-navigation', e => { if (e.isMainFrame && !e.isSameDocument) { try { view.setBackgroundColor(tabBg(e.url, this.incognito)) } catch {} } })
     // the extensions library marks every added tab as active; ignore that so background tabs stay in the background
     if (extensions && !this.incognito) { addingTab = true; try { extensions.addTab(wc, this.win) } catch {} finally { addingTab = false } }
     const upd = () => this.pushStateSoon()
@@ -546,7 +557,7 @@ class BrowserWin {
     wc.setWindowOpenHandler(d => {
       if (d.url.startsWith('lumen://') && !wc.getURL().startsWith('lumen://')) return { action: 'deny' }
       if (d.disposition === 'new-window' && d.features) {
-        return { action: 'allow', overrideBrowserWindowOptions: { width: 520, height: 680, autoHideMenuBar: true, backgroundColor: winBg(), webPreferences: { session: this.ses } } }
+        return { action: 'allow', overrideBrowserWindowOptions: { width: 520, height: 680, autoHideMenuBar: true, backgroundColor: winBg(this.incognito), webPreferences: { session: this.ses } } }
       }
       const bg = d.disposition === 'background-tab' || (D.settings.get('linksBackground') && d.disposition === 'foreground-tab')
       this.createTab(d.url, { active: !bg, openerId: t.id })
@@ -671,7 +682,7 @@ class BrowserWin {
     this.closePeek()
     const v = new WebContentsView({ webPreferences: { session: this.ses, sandbox: true, contextIsolation: true, plugins: true } })
     v.setBorderRadius(14)
-    v.setBackgroundColor(nativeTheme.shouldUseDarkColors ? '#1e1f23' : '#ffffff')
+    v.setBackgroundColor(tabBg(url, this.incognito))
     this.peek = v
     this.setOverlay(true)
     this.win.contentView.addChildView(v)
@@ -1559,6 +1570,7 @@ ipcMain.handle('ui', async (e, action, ...a) => {
       case 'update': if (a[0] === 'check') return Updater.check(true); if (a[0] === 'install') return Updater.install(true); return Updater.getState()
       case 'trafficLights': if (isMac) { w.win.setWindowButtonVisibility(!!a[0]); if (a[1] && w.win.setWindowButtonPosition) { try { w.win.setWindowButtonPosition(a[1]) } catch {} } } return
       case 'focusUI': w.ui.webContents.focus(); return
+      case 'toastView': return w.win.isDestroyed() ? false : Nova.toast(w, a[0] && typeof a[0] === 'object' ? a[0] : null)
       case 'intro': w.introOn = !!a[0]; w.layout(); return
       case 'focusTab': if (wc && !w.overlay) wc.focus(); return
       case 'devtools': return wc && wc.toggleDevTools()
@@ -2386,7 +2398,7 @@ app.whenReady().then(async () => {
   log('boot ' + app.getVersion())
   startApps()
   Sync.start()
-  nativeTheme.on('updated', () => { broadcast('theme', nativeTheme.shouldUseDarkColors); for (const w of windows) { try { w.win.setBackgroundColor(winBg()) } catch {} } })
+  nativeTheme.on('updated', () => { broadcast('theme', nativeTheme.shouldUseDarkColors); for (const w of windows) { try { w.win.setBackgroundColor(winBg(w.incognito)); for (const t of w.tabs.values()) if (t.view && !t.view.webContents.isDestroyed()) t.view.setBackgroundColor(tabBg(t.view.webContents.getURL() || t.url, w.incognito)) } catch {} } })
   powerMonitor.on('resume', () => Sync.syncNow().catch(() => {}))
 })
 

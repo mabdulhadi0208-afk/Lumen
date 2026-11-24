@@ -62,7 +62,7 @@ const migratedFlag = () => path.join(app.getPath('userData'), 'migrated-' + app.
 const log = (...a) => { try { fs.appendFileSync(path.join(app.getPath('logs'), 'lumen.log'), `[${new Date().toISOString()}] updater: ${a.join(' ')}\n`) } catch {} }
 const updDir = () => path.join(app.getPath('userData'), 'update')
 function clearStaged() { try { fs.rmSync(updDir(), { recursive: true, force: true }) } catch {} state.staged = null; state.stagedTag = null }
-function snapshot() { let appIcon = 'default'; try { appIcon = (C && C.appIcon && C.appIcon()) || 'default' } catch {} return { ...state, appIcon, current: app.getVersion(), lastCheck, version: app.getVersion() } }
+function snapshot() { let appIcon = 'default', accent = '#5b8cff'; try { appIcon = (C && C.appIcon && C.appIcon()) || 'default' } catch {} try { const a = C && C.accent && C.accent(); if (/^#[0-9a-f]{6}$/i.test(a || '')) accent = a } catch {} return { ...state, appIcon, accent, current: app.getVersion(), lastCheck, version: app.getVersion() } }
 function push() {
   const s = snapshot()
   for (const fn of listeners) { try { fn(s) } catch {} }

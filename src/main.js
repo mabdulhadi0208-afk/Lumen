@@ -2206,6 +2206,7 @@ app.whenReady().then(async () => {
     flush: () => { quitting = true; flushAll() },
     toast: msg => broadcast('toast', msg),
     appIcon: () => D.settings.get('appIcon'),
+    accent: () => D.settings.get('accent'),
     notify: (title, body) => { try { const { Notification } = require('electron'); if (Notification.isSupported()) new Notification({ title, body, silent: true }).show() } catch {} },
   })
   log('boot ' + app.getVersion())

@@ -82,25 +82,35 @@ function canRegister(acc){if(modOnly(acc)){startHook(true);return hookLoaded}glo
 function launchApp(p,name){S.usage[name]=(S.usage[name]||0)+1;save();execFile('open',['-a',p])}
 
 // ---- modifier-only chords (e.g. ⌘⌥) via global key hook; needs Accessibility permission ----
-let uio=null;
+// inside Lumen: the key hook lives in its own process (koi-keys.js), so it cannot freeze Lumen and picks up a
+// fresh Accessibility permission right away
+let hookProc=null,hookStarting=false,hookErr='',koiOff=false;
+const trusted=prompt=>{if(process.platform!=='darwin')return true;try{return require('electron').systemPreferences.isTrustedAccessibilityClient(!!prompt)}catch(e){return false}};
+try{require.resolve('uiohook-napi');hookLoaded=true}catch(e){console.error('key hook unavailable',e&&e.message)}
+const M={56:'Alt',3640:'Alt',29:'Control',3613:'Control',42:'Shift',54:'Shift',3675:'Command',3676:'Command'};
+const held=new Set();let dirty=false,fired=false;
+const cur=()=>{const n=new Set([...held].map(x=>x.split(':')[0]));return ['Command','Control','Alt','Shift'].filter(x=>n.has(x)).join('+')};
+function onKey(type,keycode){const m=M[keycode];
+  if(type==='down'){if(!m){dirty=true;return}
+    held.add(m+':'+keycode);
+    if(!dirty&&!fired&&!recording){const acc=cur();if(acc.includes('+')){const c=chords.find(c=>c.acc===acc);if(c){fired=true;c.fn()}}}}
+  else{if(!m)return;held.delete(m+':'+keycode);if(held.size===0){dirty=false;fired=false}}}
+function stopHook(){const p=hookProc;hookProc=null;hookOk=false;hookStarting=false;try{p&&p.kill()}catch(e){}}
 function startHook(prompt){
-  if(hookOk||!uio)return hookOk;
-  try{const {systemPreferences}=require('electron');if(process.platform==='darwin'&&!systemPreferences.isTrustedAccessibilityClient(!!prompt))return false}catch(e){}
-  try{uio.start();hookOk=true;try{reg()}catch(e){}}catch(e){console.error('hook start failed',e&&e.message)}
-  return hookOk;
+  if(hookOk||hookStarting||!hookLoaded||koiOff)return hookOk;
+  if(!trusted(prompt)){hookErr='permission';return false}
+  hookStarting=true;hookErr='';
+  let p;try{p=require('electron').utilityProcess.fork(path.join(__dirname,'koi-keys.js'),[],{serviceName:'Koi Keys',stdio:'ignore'})}catch(e){hookStarting=false;hookErr='start';return false}
+  hookProc=p;
+  const t=setTimeout(()=>{if(hookProc===p&&!hookOk){hookErr='start';stopHook()}},8000);   // a hook that hangs is replaced on the next try
+  p.on('message',m=>{if(hookProc!==p||!m)return;
+    if(m.ev)onKey(m.ev,m.k);
+    else if(m.started){clearTimeout(t);hookOk=true;hookStarting=false;try{reg()}catch(e){}}
+    else if(m.error){clearTimeout(t);hookErr='start';stopHook()}});
+  p.on('exit',()=>{clearTimeout(t);if(hookProc===p){hookProc=null;hookOk=false;hookStarting=false}});
+  return false;
 }
-(function(){try{
-  const {uIOhook}=require('uiohook-napi');uio=uIOhook;hookLoaded=true;
-  const M={56:'Alt',3640:'Alt',29:'Control',3613:'Control',42:'Shift',54:'Shift',3675:'Command',3676:'Command'};
-  const held=new Set();let dirty=false,fired=false;
-  const cur=()=>{const n=new Set([...held].map(x=>x.split(':')[0]));return ['Command','Control','Alt','Shift'].filter(x=>n.has(x)).join('+')};
-  uIOhook.on('keydown',e=>{const m=M[e.keycode];
-    if(!m){dirty=true;return}
-    held.add(m+':'+e.keycode);
-    if(!dirty&&!fired&&!recording){const acc=cur();if(acc.includes('+')){const c=chords.find(c=>c.acc===acc);if(c){fired=true;c.fn()}}}});
-  uIOhook.on('keyup',e=>{const m=M[e.keycode];if(!m)return;held.delete(m+':'+e.keycode);if(held.size===0){dirty=false;fired=false}});
-}catch(e){console.error('key hook unavailable',e&&e.message)}})();
-setInterval(()=>{if(!hookOk&&hookLoaded&&chords.length)startHook(false)},3000);
+setInterval(()=>{if(!hookOk&&hookLoaded&&chords.length)startHook(false)},2000);
 let regStatus={main:false,hk:[]};
 function tryReg(acc,fn){if(modOnly(acc)){chords=chords.filter(c=>c.acc!==acc);chords.push({acc,fn});return hookOk}try{if(globalShortcut.isRegistered(acc))globalShortcut.unregister(acc);return globalShortcut.register(acc,fn)&&globalShortcut.isRegistered(acc)}catch(e){console.error('reg fail',acc,e&&e.message);return false}}
 function reg(){
@@ -184,7 +194,8 @@ ipcMain.on('koi:action',(_e,kind,p,name)=>{
   else if(kind==='quit')execFile('osascript',['-e',`tell application "${safe}" to quit`]);
 });
 const taken=(acc,skip)=>norm(acc)===norm(S.shortcut)&&skip!=='main'||S.hotkeys.some((h,i)=>i!==skip&&norm(h.acc)===norm(acc));
-ipcMain.handle('koi:s:get',()=>({status:regStatus,main:S.shortcut,hk:S.hotkeys,apps:scan().sort((a,b)=>a.name.localeCompare(b.name))}));
+ipcMain.handle('koi:s:get',()=>({status:regStatus,perm:{needed:modOnly(S.shortcut)||S.hotkeys.some(h=>modOnly(h.acc)),trusted:trusted(false),hook:hookOk,err:hookErr},main:S.shortcut,hk:S.hotkeys,apps:scan().sort((a,b)=>a.name.localeCompare(b.name))}));
+ipcMain.on('koi:s:openAccess',()=>{trusted(true);require('electron').shell.openExternal('x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility')});
 ipcMain.handle('koi:s:pause',()=>{recording=true;globalShortcut.unregisterAll()});
 ipcMain.handle('koi:s:resume',()=>{recording=false;reg()});
 ipcMain.handle('koi:s:setMain',(_e,acc)=>{
@@ -225,5 +236,5 @@ app.whenReady().then(()=>{
   if(!S.tourSeen)openTour();
 });
 app.on('second-instance',()=>showOverlay());
-app.on('will-quit',()=>globalShortcut.unregisterAll());
+app.on('will-quit',()=>{koiOff=true;globalShortcut.unregisterAll();stopHook()});
 app.on('window-all-closed',()=>{});

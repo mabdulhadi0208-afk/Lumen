@@ -105,6 +105,80 @@ KOI_COLORS = [(r'#0a84ff', '#5b8cff'), (r'#7c5cff', '#8a63f2'), (r'10,\s*132,\s*
 for f in os.listdir(os.path.join(K, 'renderer')):
     recolor(os.path.join(K, 'renderer', f), KOI_COLORS)
     if f.endswith(('.html', '.css')): varify(os.path.join(K, 'renderer', f))
+# Modifier-only shortcuts (hold Cmd Opt and the fan opens) listen to the keyboard through a key hook. Inside Lumen that
+# hook runs in its own small process: it can never freeze Lumen, it starts the moment Accessibility is turned on for
+# Lumen (no restart), and Koi's Hotkeys window says plainly when Lumen still needs that permission, with a button.
+km = os.path.join(K, 'main.js'); ks = open(km, encoding='utf-8').read()
+a = ks.index('let uio=null;'); b = ks.index("setInterval(()=>{if(!hookOk&&hookLoaded&&chords.length)startHook(false)},3000);")
+b = b + len("setInterval(()=>{if(!hookOk&&hookLoaded&&chords.length)startHook(false)},3000);")
+ks = ks[:a] + """// inside Lumen: the key hook lives in its own process (koi-keys.js), so it cannot freeze Lumen and picks up a
+// fresh Accessibility permission right away
+let hookProc=null,hookStarting=false,hookErr='',koiOff=false;
+const trusted=prompt=>{if(process.platform!=='darwin')return true;try{return require('electron').systemPreferences.isTrustedAccessibilityClient(!!prompt)}catch(e){return false}};
+try{require.resolve('uiohook-napi');hookLoaded=true}catch(e){console.error('key hook unavailable',e&&e.message)}
+const M={56:'Alt',3640:'Alt',29:'Control',3613:'Control',42:'Shift',54:'Shift',3675:'Command',3676:'Command'};
+const held=new Set();let dirty=false,fired=false;
+const cur=()=>{const n=new Set([...held].map(x=>x.split(':')[0]));return ['Command','Control','Alt','Shift'].filter(x=>n.has(x)).join('+')};
+function onKey(type,keycode){const m=M[keycode];
+  if(type==='down'){if(!m){dirty=true;return}
+    held.add(m+':'+keycode);
+    if(!dirty&&!fired&&!recording){const acc=cur();if(acc.includes('+')){const c=chords.find(c=>c.acc===acc);if(c){fired=true;c.fn()}}}}
+  else{if(!m)return;held.delete(m+':'+keycode);if(held.size===0){dirty=false;fired=false}}}
+function stopHook(){const p=hookProc;hookProc=null;hookOk=false;hookStarting=false;try{p&&p.kill()}catch(e){}}
+function startHook(prompt){
+  if(hookOk||hookStarting||!hookLoaded||koiOff)return hookOk;
+  if(!trusted(prompt)){hookErr='permission';return false}
+  hookStarting=true;hookErr='';
+  let p;try{p=require('electron').utilityProcess.fork(path.join(__dirname,'koi-keys.js'),[],{serviceName:'Koi Keys',stdio:'ignore'})}catch(e){hookStarting=false;hookErr='start';return false}
+  hookProc=p;
+  const t=setTimeout(()=>{if(hookProc===p&&!hookOk){hookErr='start';stopHook()}},8000);   // a hook that hangs is replaced on the next try
+  p.on('message',m=>{if(hookProc!==p||!m)return;
+    if(m.ev)onKey(m.ev,m.k);
+    else if(m.started){clearTimeout(t);hookOk=true;hookStarting=false;try{reg()}catch(e){}}
+    else if(m.error){clearTimeout(t);hookErr='start';stopHook()}});
+  p.on('exit',()=>{clearTimeout(t);if(hookProc===p){hookProc=null;hookOk=false;hookStarting=false}});
+  return false;
+}
+setInterval(()=>{if(!hookOk&&hookLoaded&&chords.length)startHook(false)},2000);""" + ks[b:]
+for old, new in [
+    ("app.on('will-quit',()=>globalShortcut.unregisterAll());", "app.on('will-quit',()=>{koiOff=true;globalShortcut.unregisterAll();stopHook()});"),
+    ("ipcMain.handle('koi:s:get',()=>({status:regStatus,main:S.shortcut,hk:S.hotkeys,", "ipcMain.handle('koi:s:get',()=>({status:regStatus,perm:{needed:modOnly(S.shortcut)||S.hotkeys.some(h=>modOnly(h.acc)),trusted:trusted(false),hook:hookOk,err:hookErr},main:S.shortcut,hk:S.hotkeys,"),
+    ("ipcMain.handle('koi:s:pause',", "ipcMain.on('koi:s:openAccess',()=>{trusted(true);require('electron').shell.openExternal('x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility')});\nipcMain.handle('koi:s:pause',"),
+]:
+    if old not in ks: raise SystemExit('koi main.js: could not find ' + old[:60])
+    ks = ks.replace(old, new)
+open(km, 'w', encoding='utf-8').write(ks)
+open(os.path.join(K, 'koi-keys.js'), 'w', encoding='utf-8').write("""// Koi's key hook, in its own process inside Lumen: reports which keys go down and up (key codes only, never text).
+const port = process.parentPort; const send = m => { try { port.postMessage(m) } catch {} }
+try {
+  const { uIOhook } = require('uiohook-napi')
+  uIOhook.on('keydown', e => send({ ev: 'down', k: e.keycode }))
+  uIOhook.on('keyup', e => send({ ev: 'up', k: e.keycode }))
+  uIOhook.start()
+  send({ started: true })
+} catch (e) { send({ error: String((e && e.message) || e) }); setTimeout(() => process.exit(1), 200) }
+""")
+edit(os.path.join(K, 'preload.js'), [("    removeHotkey:i=>ipcRenderer.invoke('koi:s:remove',i)", "    removeHotkey:i=>ipcRenderer.invoke('koi:s:remove',i),\n    openAccess:()=>ipcRenderer.send('koi:s:openAccess')")])
+# the Hotkeys window: a clear card when Lumen still needs Accessibility, that turns green by itself once it is on
+edit(os.path.join(K, 'renderer', 'settings.html'), [
+    ("needs Accessibility permission: System Settings → Privacy &amp; Security → Accessibility → Koi on)", "needs Accessibility permission for Lumen)"),
+    ('<div class="card"><h2>Open Koi</h2>', '<div class="perm" id="perm"><div class="pi"><svg viewBox="0 0 24 24"><path d="M12 3 4.5 6v5.5c0 4.6 3.2 8.4 7.5 9.5 4.3-1.1 7.5-4.9 7.5-9.5V6z"/><path d="m9 12 2.2 2.2L15.5 10"/></svg></div><div class="pt"><b id="permT">One step left</b><span id="permS">Holding just modifier keys needs Accessibility permission for Lumen. Turn on Lumen in System Settings, Privacy and Security, Accessibility. If Lumen is already on there, turn it off and on again.</span></div><button class="btn pr" id="permB">Open Settings</button></div>\n<div class="card"><h2>Open Koi</h2>'),
+    ('</style></head>', """.perm{display:none;align-items:center;gap:14px;padding:14px 16px;margin-bottom:16px;border-radius:16px;background:linear-gradient(135deg,rgb(from var(--lumen-a,#5b8cff) r g b / .14),rgb(from var(--lumen-b,#8a63f2) r g b / .12));border:1px solid rgb(from var(--lumen-a,#5b8cff) r g b / .35);box-shadow:0 10px 30px -12px rgb(from var(--lumen-a,#5b8cff) r g b / .5);animation:jin .8s cubic-bezier(.3,1.9,.5,1) both}
+.perm.show{display:flex}.perm .pi{width:36px;height:36px;flex:none;border-radius:11px;display:grid;place-items:center;background:linear-gradient(135deg,var(--lumen-a,#5b8cff),var(--lumen-b,#8a63f2));box-shadow:0 6px 16px -6px var(--lumen-a,#5b8cff)}
+.perm .pi svg{width:20px;height:20px;fill:none;stroke:#fff;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}.perm .pt{flex:1;display:flex;flex-direction:column;gap:3px;font-size:12.5px;color:var(--mut);line-height:1.4}.perm .pt b{font-size:13.5px;color:var(--tx)}
+.perm.ok{background:linear-gradient(135deg,rgba(48,209,88,.14),rgba(48,209,88,.06));border-color:rgba(48,209,88,.4);box-shadow:0 10px 30px -12px rgba(48,209,88,.5)}.perm.ok .pi{background:linear-gradient(135deg,#34c759,#20b26b);box-shadow:0 6px 16px -6px #34c759}.perm.ok .btn{display:none}
+</style></head>"""),
+    ("function render(){\n", """let wasOff=false;
+function renderPerm(){const p=st.perm||{},el=$('perm');if(!el)return;const off=p.needed&&!p.hook;
+ if(off){wasOff=true;el.className='perm show';$('permT').textContent=p.trusted?'Starting the key listener':'One step left';$('permS').textContent=p.trusted?'Lumen has Accessibility permission. Your shortcut will work in a moment.':'Holding just modifier keys needs Accessibility permission for Lumen. Turn on Lumen in System Settings, Privacy and Security, Accessibility. If Lumen is already on there, turn it off and on again.'}
+ else if(wasOff&&p.needed){el.className='perm show ok';$('permT').textContent='All set';$('permS').textContent='Your shortcut works now. Hold the keys anywhere to open the fan.';setTimeout(()=>{if(el.classList.contains('ok'))el.className='perm'},4000);wasOff=false}
+ else if(!p.needed)el.className='perm'}
+addEventListener('DOMContentLoaded',()=>{$('permB').onclick=()=>api.s.openAccess();
+ setInterval(async()=>{if(document.hidden||rec)return;const was=JSON.stringify(st.perm||{});st=await api.s.get();if(JSON.stringify(st.perm||{})!==was)render()},1500)});
+function render(){
+ renderPerm();
+"""),
+])
 open(os.path.join(K, 'updater.js'), 'w', encoding='utf-8').write("""// Inside Lumen, Koi updates together with Lumen. This stand-in keeps Koi's menu working and hands off to Lumen.
 const H = () => globalThis.__lumenApps || {}
 const state = () => (H().state ? H().state() : { status: 'idle' })

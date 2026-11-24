@@ -1,5 +1,5 @@
 <!DOCTYPE html><html><head><meta charset="utf-8"><style>
-  :root{--solid:#f7f8fc;--accent:#5b8cff;--grad:linear-gradient(135deg,#5b8cff,#8a63f2 55%,#e9609c);--bg:rgba(250,251,255,.94);--fg:#1c1d21;--fg2:rgba(28,29,33,.62);--fg3:rgba(28,29,33,.4);--line:rgba(20,24,40,.08);--hover:rgba(20,24,40,.06);--spring:cubic-bezier(.3,1.4,.5,1);--ease:cubic-bezier(.22,1,.36,1)}
+  :root{--solid:#f7f8fc;--accent:#5b8cff;--a2:oklch(from var(--accent) calc(l - .02) c calc(h + 40));--a3:oklch(from var(--accent) calc(l + .04) c calc(h + 95));--grad:linear-gradient(135deg,var(--accent),var(--a2) 55%,var(--a3));--bg:rgba(250,251,255,.94);--fg:#1c1d21;--fg2:rgba(28,29,33,.62);--fg3:rgba(28,29,33,.4);--line:rgba(20,24,40,.08);--hover:rgba(20,24,40,.06);--spring:cubic-bezier(.3,1.4,.5,1);--ease:cubic-bezier(.22,1,.36,1)}
   @media (prefers-color-scheme:dark){:root{--solid:#1e1f26;--bg:rgba(30,31,38,.94);--fg:#eeeef1;--fg2:rgba(238,238,241,.62);--fg3:rgba(238,238,241,.38);--line:rgba(255,255,255,.09);--hover:rgba(255,255,255,.07)}}
   html,body{margin:0;height:100%;background:transparent;font:13px/1.45 -apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI Variable Text","Segoe UI",system-ui,sans-serif;color:var(--fg);-webkit-font-smoothing:antialiased;-webkit-user-select:none;overflow:hidden}
   .card{position:absolute;inset:12px;border-radius:24px;background:var(--bg);backdrop-filter:blur(30px) saturate(1.6);box-shadow:0 28px 70px -18px rgba(10,14,30,.55),0 0 0 1px var(--line),inset 0 1px 0 rgba(255,255,255,.35);overflow:hidden;animation:pop .7s var(--spring)}
@@ -52,12 +52,47 @@
   .done .orb svg{width:22px;height:22px;stroke:#fff;fill:none;stroke-width:2.6;stroke-linecap:round;stroke-linejoin:round}
   @keyframes pulse{to{box-shadow:0 0 0 22px transparent}}
   .done small{font-size:12px;font-weight:500;color:var(--fg2)}
+
+  /* 1.20 glow-up: an aurora in your colors, a 3D entrance, a comet on the ring, a shining bar, a burst when it is ready */
+  .card{animation:pop3 .9s cubic-bezier(.2,1.25,.3,1);transform-style:preserve-3d;transition:transform .6s cubic-bezier(.2,1,.3,1)}
+  @keyframes pop3{from{opacity:0;transform:perspective(900px) translateY(-34px) rotateX(18deg) scale(.88)}to{opacity:1;transform:none}}
+  .aur{position:absolute;inset:-40px;pointer-events:none;filter:blur(38px);opacity:.5}
+  .aur i{position:absolute;width:260px;height:180px;border-radius:50%;mix-blend-mode:normal;animation:drift 14s ease-in-out infinite alternate}
+  .aur i:nth-child(1){left:-40px;top:-90px;background:color-mix(in srgb,var(--accent) 55%,transparent)}
+  .aur i:nth-child(2){right:-30px;top:-70px;background:color-mix(in srgb,var(--a2) 45%,transparent);animation-duration:17s;animation-delay:-5s}
+  .aur i:nth-child(3){left:40%;bottom:-120px;background:color-mix(in srgb,var(--a3) 30%,transparent);animation-duration:21s;animation-delay:-9s}
+  @keyframes drift{0%{transform:translate(0,0) scale(1)}50%{transform:translate(60px,26px) scale(1.15)}100%{transform:translate(-30px,40px) scale(.95)}}
+  @media (prefers-color-scheme:dark){.aur{opacity:.42}}
+  .glow{opacity:.35}
+  .sheen{position:absolute;inset:0;pointer-events:none;background:linear-gradient(105deg,transparent 35%,rgba(255,255,255,.22) 48%,transparent 60%);transform:translateX(-120%);animation:sheen 1.4s .35s cubic-bezier(.3,.7,.2,1) both}
+  @keyframes sheen{to{transform:translateX(120%)}}
+  .in{z-index:1}
+  .ic svg.ring .fg{filter:drop-shadow(0 0 4px color-mix(in srgb,var(--accent) 80%,transparent))}
+  .bar{height:7px;box-shadow:inset 0 0 0 1px var(--line)}
+  .bar i{position:relative;box-shadow:0 0 12px color-mix(in srgb,var(--accent) 70%,transparent)}
+  .bar i::after{content:'';position:absolute;inset:0;background:linear-gradient(90deg,transparent,rgba(255,255,255,.55),transparent);transform:translateX(-100%);animation:shine 1.6s ease-in-out infinite}
+  @keyframes shine{to{transform:translateX(100%)}}
+  .ready-now .ic img{animation:jelly 1s cubic-bezier(.3,1.6,.5,1)}
+  @keyframes jelly{0%{transform:scale(1)}25%{transform:scale(1.18,.86)}45%{transform:scale(.9,1.12)}65%{transform:scale(1.06,.96)}100%{transform:scale(1)}}
+  .btn{position:relative;overflow:hidden;isolation:isolate}
+  .btn::after{content:'';position:absolute;inset:0;background:linear-gradient(105deg,transparent 30%,rgba(255,255,255,.45) 50%,transparent 70%);transform:translateX(-130%);z-index:-1}
+  .ready-now .btn::after,.card:not(.busy):not(.error) .btn:hover::after{animation:btnshine 1.1s ease-out}
+  .ready .btn::after{animation:btnshine 2.6s 1s ease-in-out infinite}
+  @keyframes btnshine{to{transform:translateX(130%)}}
+  .fx{position:absolute;inset:0;pointer-events:none;z-index:2}
+  .fx b{position:absolute;width:7px;height:7px;border-radius:50%;background:var(--grad);box-shadow:0 0 10px color-mix(in srgb,var(--accent) 70%,transparent)}
+  .done{background:radial-gradient(120% 140% at 50% 0%,color-mix(in srgb,var(--accent) 16%,var(--solid)),var(--solid))}
+  .done .orb{position:relative}
+  .done .orb::before,.done .orb::after{content:'';position:absolute;inset:-2px;border-radius:50%;border:2px solid color-mix(in srgb,var(--accent) 60%,transparent);animation:ripple 1.8s ease-out infinite}
+  .done .orb::after{animation-delay:.9s}
+  @keyframes ripple{from{transform:scale(1);opacity:.9}to{transform:scale(2.6);opacity:0}}
+  @media (prefers-reduced-motion:reduce){.aur i,.bar i::after,.sheen,.ready .btn::after{animation:none}}
 </style></head><body>
 <div class="card" id="card">
-  <div class="glow"></div>
+  <div class="aur"><i></i><i></i><i></i></div><div class="glow"></div><div class="sheen"></div><div class="fx" id="fx"></div>
   <div class="in">
     <div class="top">
-      <div class="ic"><img id="icon" src="../pages/icon-default.png" alt=""><svg class="ring" viewBox="0 0 58 58"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#5b8cff"/><stop offset=".55" stop-color="#8a63f2"/><stop offset="1" stop-color="#e9609c"/></linearGradient></defs><circle class="bgc" cx="29" cy="29" r="27"/><circle class="fg" id="arc" cx="29" cy="29" r="27"/></svg></div>
+      <div class="ic"><img id="icon" src="../pages/icon-default.png" alt=""><svg class="ring" viewBox="0 0 58 58"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" style="stop-color:var(--accent)"/><stop offset=".55" style="stop-color:var(--a2)"/><stop offset="1" style="stop-color:var(--a3)"/></linearGradient></defs><circle class="bgc" cx="29" cy="29" r="27"/><circle class="fg" id="arc" cx="29" cy="29" r="27"/></svg></div>
       <div class="t"><b id="title">Update Lumen</b><small id="sub"></small></div>
       <div class="chips"><span class="chip ok" title="The download matched the fingerprint GitHub published for it">Verified</span><span class="chip" id="from"></span><span class="chip v" id="to"></span></div>
       <button class="x" id="close" title="Hide">
@@ -82,12 +117,26 @@ const fmt = b => (b / 1048576).toFixed(1) + ' MB', secs = s => s >= 90 ? Math.ro
 const v = x => String(x || '').replace(/^v/, '')
 const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c])
 let U = {}, notesKey = ''
+let lastStatus = ''
+function burst() {
+  const fx = $('#fx'), ic = $('.ic').getBoundingClientRect(), cr = $('#card').getBoundingClientRect()
+  const x0 = ic.left - cr.left + ic.width / 2, y0 = ic.top - cr.top + ic.height / 2
+  for (let i = 0; i < 22; i++) {
+    const d = document.createElement('b'), a = Math.random() * Math.PI * 2, r = 50 + Math.random() * 90, s = .5 + Math.random() * .8
+    d.style.left = x0 + 'px'; d.style.top = y0 + 'px'; fx.appendChild(d)
+    d.animate([{ transform: 'translate(-50%,-50%) scale(0)', opacity: 1 }, { transform: `translate(calc(-50% + ${Math.cos(a) * r}px), calc(-50% + ${Math.sin(a) * r}px)) scale(${s})`, opacity: 1, offset: .55 }, { transform: `translate(calc(-50% + ${Math.cos(a) * r * 1.25}px), calc(-50% + ${Math.sin(a) * r * 1.25 + 24}px)) scale(0)`, opacity: 0 }], { duration: 900 + Math.random() * 500, easing: 'cubic-bezier(.2,.9,.3,1)', fill: 'forwards' }).onfinish = () => d.remove()
+    setTimeout(() => d.remove(), 1600)   // also when the card is hidden and animations pause
+  }
+}
 function paint(u) {
   U = u
+  if (/^#[0-9a-f]{6}$/i.test(u.accent || '')) document.documentElement.style.setProperty('--accent', u.accent)
+  if (u.status === 'ready' && lastStatus && lastStatus !== 'ready') { const c = $('#card'); setTimeout(() => { c.classList.add('ready-now'); burst(); setTimeout(() => c.classList.remove('ready-now'), 1200) }, 30) }
+  lastStatus = u.status || ''
   const busy = ['checking', 'downloading', 'verifying', 'unpacking'].includes(u.status)
   const spin = u.status === 'checking' || u.status === 'verifying' || u.status === 'unpacking' || (u.status === 'downloading' && !u.size)
   const notes = (u.notes || []).slice(0, 6)
-  $('#card').className = 'card ' + [busy && 'busy', spin && 'spin', u.status === 'error' && 'error', u.status === 'installing' && 'installing', notes.length && 'has-notes', u.verified && 'verified'].filter(Boolean).join(' ')
+  $('#card').className = 'card ' + [busy && 'busy', spin && 'spin', u.status === 'error' && 'error', u.status === 'installing' && 'installing', u.status === 'ready' && 'ready', notes.length && 'has-notes', u.verified && 'verified'].filter(Boolean).join(' ')
   $('#from').textContent = u.latest && u.status !== 'uptodate' ? v(u.current) : ''
   $('#from').style.display = $('#from').textContent ? '' : 'none'
   $('#to').textContent = v(u.status === 'uptodate' ? u.current : u.latest || u.current)
@@ -131,6 +180,9 @@ $('#go').onclick = () => {
   else api.action('download')
 }
 $('#later').onclick = () => api.action('later'); $('#skip').onclick = () => api.action('skip'); $('#close').onclick = () => api.action('later')
+const card = $('#card')
+addEventListener('mousemove', e => { const r = card.getBoundingClientRect(), x = (e.clientX - r.left) / r.width - .5, y = (e.clientY - r.top) / r.height - .5; card.style.transform = `perspective(1000px) rotateX(${(-y * 2.4).toFixed(2)}deg) rotateY(${(x * 3.2).toFixed(2)}deg)` })
+addEventListener('mouseleave', () => { card.style.transform = '' })
 addEventListener('keydown', e => { if (e.key === 'Escape') api.action('later') })
 ;(async () => { const s = await api.action('state') || {}; if (s.appIcon) $('#icon').src = `../pages/icon-${s.appIcon}.png`; paint(s); api.on(paint) })()
 </script></body></html>

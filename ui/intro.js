@@ -5,12 +5,12 @@
 ;(function () {
   // ---- edit this list every release: it is the "New in Lumen" act of the film
   const WHATS_NEW = {
-    version: '1.19',
+    version: '1.20',
     items: [
-      { icon: 'bolt', title: 'Surge and Koi in the toolbar', text: 'Right next to Reload. Surge opens its menu under the button, Koi fans out your apps.' },
-      { icon: 'sparkle', title: 'Logos in your color', text: 'The Surge and Koi logos are drawn in the accent color you pick, and change with it.' },
-      { icon: 'moon', title: 'Their windows match too', text: 'Surge and Koi follow your Lumen accent color in every window, the moment you change it.' },
-      { icon: 'play', title: 'A proper first hello', text: 'New to Lumen? The intro shows what Lumen can do. What is new is only for updates.' },
+      { icon: 'key', title: 'Hold-to-open Koi works', text: 'Set Koi to just Cmd Opt, or any two modifier keys, and holding them opens the fan.' },
+      { icon: 'shield', title: 'One clear permission', text: 'If Lumen needs Accessibility, Koi says so, opens the right page and turns green once it is on.' },
+      { icon: 'bolt', title: 'Never freezes Lumen', text: 'Koi listens for keys in its own process, and brings itself back if it ever stops.' },
+      { icon: 'sparkle', title: 'Updates in your color', text: 'The update card takes your accent color, with an aurora, a shine and a burst when it is ready.' },
     ],
   }
   const FEATURES = [
@@ -122,7 +122,12 @@
   #intro .new{width:min(980px,86vw);text-align:center}
   #intro .new .eyebrow{display:inline-block;font:700 12px/1 var(--font);letter-spacing:.24em;text-transform:uppercase;color:#9fb3ff;padding:8px 14px;border-radius:999px;background:rgba(142,164,255,.12);box-shadow:inset 0 0 0 1px rgba(142,164,255,.3)}
   #intro .new h1{font:800 clamp(40px,5.4vw,76px)/1.02 "SF Pro Display",-apple-system,system-ui,sans-serif;letter-spacing:-.04em;margin:18px 0 34px;background:linear-gradient(100deg,#fff 30%,#b2c1ff 60%,#d3b2ff);-webkit-background-clip:text;background-clip:text;color:transparent}
-  #intro .new .grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px;text-align:left}
+  #intro .new h1.sweep{animation:nsweep 1.6s cubic-bezier(.3,.7,.2,1)}
+  @keyframes nsweep{0%{background-image:linear-gradient(100deg,#fff 30%,#b2c1ff 60%,#d3b2ff),linear-gradient(100deg,transparent 40%,rgba(255,255,255,.95) 50%,transparent 60%);background-size:100% 100%,250% 100%;background-position:0 0,120% 0}100%{background-image:linear-gradient(100deg,#fff 30%,#b2c1ff 60%,#d3b2ff),linear-gradient(100deg,transparent 40%,rgba(255,255,255,.95) 50%,transparent 60%);background-size:100% 100%,250% 100%;background-position:0 0,-20% 0}}
+  #intro .new .it{position:relative;overflow:hidden}
+  #intro .new .it::after{content:'';position:absolute;inset:0;background:linear-gradient(115deg,transparent 35%,rgba(255,255,255,.14) 50%,transparent 65%);transform:translateX(-120%);animation:itshine 1.4s 1.6s cubic-bezier(.3,.7,.2,1) forwards}
+  @keyframes itshine{to{transform:translateX(120%)}}
+  #intro .new .grid{display:grid;grid-template-columns:repeat(var(--cols,3),minmax(0,1fr));gap:16px;text-align:left}
   #intro .new .it{padding:18px;border-radius:20px;background:linear-gradient(150deg,rgba(255,255,255,.1),rgba(255,255,255,.02));box-shadow:inset 0 0 0 1px rgba(255,255,255,.12),0 24px 60px rgba(0,0,0,.45);opacity:0}
   #intro .new .it .k{width:38px;height:38px;border-radius:12px;display:grid;place-items:center;color:#fff;background:linear-gradient(135deg,#6f8bff,#a978ff);box-shadow:0 8px 22px rgba(111,139,255,.45)}
   #intro .new .it .k svg{width:18px;height:18px}
@@ -272,7 +277,8 @@
   }
 
   // ------------------------------------------------------------ the sky: 3D stars, warp streaks, the orb, shockwaves
-  const sky = { oy: 0, speed: .4, warp: 0, gather: 0, orb: 0, orbR: 0, ring: 0, shock: [], flash: 0, shake: 0, hue: 228 }
+  const sky = { oy: 0, speed: .4, warp: 0, gather: 0, orb: 0, orbR: 0, ring: 0, shock: [], flash: 0, shake: 0, hue: 228, rays: 0, bokeh: 0 }
+  let bokeh = []   // out-of-focus lights drifting in front of the camera
   let stars = []
   function size() {
     const scale = Math.min(1.25, devicePixelRatio || 1)
@@ -300,6 +306,28 @@
       cx.strokeStyle = s.c ? `rgba(200,170,255,${b})` : `rgba(215,225,255,${b})`
       cx.lineWidth = Math.max(.6, (1 - s.z) * 2.6)
       cx.beginPath(); cx.moveTo(px, py); cx.lineTo(x + (x === px ? .4 : 0), y); cx.stroke()
+    }
+    // bokeh: soft discs of light, like dust lit up right in front of the lens
+    if (sky.bokeh > .01) {
+      const t = performance.now() / 1000
+      for (const b of bokeh) {
+        const x = (b.x + Math.sin(t * b.sx + b.p) * .04) * W, y = (b.y + Math.cos(t * b.sy + b.p) * .03) * H - (t * b.v % 1.4) * H * .08
+        const g = cx.createRadialGradient(x, y, 0, x, y, b.r)
+        g.addColorStop(0, `hsla(${b.h},90%,78%,${.16 * b.a * sky.bokeh})`); g.addColorStop(.72, `hsla(${b.h},90%,72%,${.11 * b.a * sky.bokeh})`); g.addColorStop(.86, `hsla(${b.h},95%,82%,${.2 * b.a * sky.bokeh})`); g.addColorStop(1, `hsla(${b.h},90%,70%,0)`)
+        cx.fillStyle = g; cx.beginPath(); cx.arc(x, y, b.r, 0, 6.283); cx.fill()
+      }
+    }
+    // god rays: slow beams of light fanning out from the orb
+    if (sky.rays > .01 && sky.orb > .01) {
+      const t = performance.now() / 1000, L = Math.max(W, H) * 1.1
+      cx.save(); cx.translate(cxm, oyc)
+      for (let i = 0; i < 14; i++) {
+        const a = i / 14 * 6.283 + t * .05 + Math.sin(t * .3 + i) * .04, w = .05 + (i % 3) * .025
+        const g = cx.createLinearGradient(0, 0, Math.cos(a) * L, Math.sin(a) * L)
+        g.addColorStop(0, `hsla(${sky.hue + (i % 4) * 14},100%,80%,${.13 * sky.rays * sky.orb})`); g.addColorStop(1, 'hsla(230,100%,70%,0)')
+        cx.fillStyle = g; cx.beginPath(); cx.moveTo(0, 0); cx.arc(0, 0, L, a - w, a + w); cx.closePath(); cx.fill()
+      }
+      cx.restore()
     }
     // the orb of light
     if (sky.orb > .01) {
@@ -381,7 +409,7 @@
   async function ignite({ short = false } = {}) {
     boom()
     root.classList.add('lit')
-    tween(sky, 'ring', 1, 1500)
+    tween(sky, 'ring', 1, 1500); tween(sky, 'rays', 1, 1800)
     sky.gather = 0
     stars.forEach(s => { s.x = (Math.random() - .5) * 2; s.y = (Math.random() - .5) * 2; s.z = Math.random() * .9 + .1 })
     sky.speed = .25
@@ -395,7 +423,7 @@
     setTimeout(() => { if (skip) return; s.querySelector('.glint').animate([{ opacity: 1, backgroundPosition: '120% 0' }, { opacity: 1, backgroundPosition: '-20% 0', offset: .92 }, { opacity: 0, backgroundPosition: '-20% 0' }], { duration: 1500, easing: 'cubic-bezier(.4,0,.2,1)', fill: 'forwards' }); SFX.shimmer() }, 1300)
     words(s.querySelector('.tag'), short ? 'Fresh from an update.' : "Chrome's engine. A lighter feel.", 1500, 90)
     await sleep(short ? 2600 : 3800)
-    tween(sky, 'orb', 0, 900); tween(sky, 'ring', 0, 700)
+    tween(sky, 'orb', 0, 900); tween(sky, 'ring', 0, 700); tween(sky, 'rays', 0, 900)
     await leave(s)
   }
   // ------------------------------------------------------------ the tour: every feature shown doing its thing
@@ -456,6 +484,7 @@
     } },
   ]
   async function tour() {
+    tween(sky, 'bokeh', .45, 1800)
     const cap = document.createElement('div'); cap.className = 'tourcap'; cap.innerHTML = '<span class="n"></span><h2></h2><p></p>'; root.appendChild(cap)
     for (let i = 0; i < TOUR.length && !skip; i++) {
       const f = TOUR[i], s = scene(f.build())
@@ -492,20 +521,25 @@
   }
   async function whatsNew(version) {
     const items = WHATS_NEW.items
-    const s = scene(`<div class="new"><span class="eyebrow">New in Lumen ${version || WHATS_NEW.version}</span><h1>Fresh this version.</h1><div class="grid">${items.map(it => `<div class="it"><div class="k">${ICONS[it.icon] || ''}</div><b>${it.title}</b><span>${it.text}</span></div>`).join('')}</div></div>`)
+    tween(sky, 'bokeh', 1, 1600)
+    const s = scene(`<div class="new"><span class="eyebrow">New in Lumen ${version || WHATS_NEW.version}</span><h1>Fresh this version.</h1><div class="grid" style="--cols:${items.length === 4 ? 2 : 3}">${items.map(it => `<div class="it"><div class="k">${ICONS[it.icon] || ''}</div><b>${it.title}</b><span>${it.text}</span></div>`).join('')}</div></div>`)
     anim(s.querySelector('.eyebrow'), [{ opacity: 0, transform: 'translateY(-10px)', letterSpacing: '.6em' }, { opacity: 1, transform: 'none', letterSpacing: '.24em' }], { duration: 1200 })
     anim(s.querySelector('h1'), [{ opacity: 0, filter: 'blur(16px)', transform: 'scale(1.1)' }, { opacity: 1, filter: 'blur(0)', transform: 'none' }], { duration: 1300, delay: 150, easing: 'cubic-bezier(.16,1,.3,1)' })
     s.querySelectorAll('.it').forEach((el, i) => {
       anim(el, [{ opacity: 0, transform: 'translateY(40px) rotateX(30deg) scale(.9)', filter: 'blur(8px)' }, { opacity: 1, transform: 'none', filter: 'blur(0)' }], { duration: 1100, delay: 650 + i * 160 })
       setTimeout(() => !skip && SFX.pop(1 + i * .1), 650 + i * 160)
     })
-    await sleep(1400 + items.length * 160 + 3000)
+    const hold = 1400 + items.length * 160 + 3000
+    anim(s.querySelector('.new'), [{ transform: 'perspective(1200px) translateZ(0)' }, { transform: 'perspective(1200px) translateZ(46px)' }], { duration: hold + 800, easing: 'cubic-bezier(.3,0,.4,1)', fill: 'forwards' })
+    setTimeout(() => { if (!skip) { s.querySelector('h1').classList.add('sweep'); SFX.shimmer && SFX.shimmer() } }, 1500)
+    await sleep(hold)
+    tween(sky, 'bokeh', 0, 900)
     await leave(s, 800)
   }
   async function finale({ short = false, ask = !short } = {}) {
     if (!skip) SFX.chord()
     // the orb rises above the title so it never sits on top of the words
-    sky.orbR = 0; sky.oy = -Math.min(H * .3, 250); tween(sky, 'orb', .8, 1200); tween(sky, 'orbR', 14, 1200); tween(sky, 'ring', 1, 1600)
+    sky.orbR = 0; sky.oy = -Math.min(H * .3, 250); tween(sky, 'orb', .8, 1200); tween(sky, 'orbR', 14, 1200); tween(sky, 'ring', 1, 1600); tween(sky, 'rays', .7, 2000); tween(sky, 'bokeh', .5, 2000)
     flare(.6)
     const s = scene(`<div class="fin" style="margin-top:4vh"><div class="logo">${short ? 'You are up to date.' : 'Welcome to Lumen.'}</div>
       ${!ask ? '' : `<div class="ask"><div class="k">${ICONS.box || ''}</div><div><b>Keep track of your orders?</b><span>When you place an order on any shop, Lumen saves it to Parcels. One click takes you straight back to the order, and it stays there until it is delivered. Change it any time in Settings.</span></div></div>`}
@@ -541,6 +575,7 @@
     root.querySelector('.grain').style.background = `url(${grainURL()})`
     root.querySelector('.grain').animate([{ transform: 'translate(0,0)' }, { transform: 'translate(-3%,2%)' }, { transform: 'translate(2%,-3%)' }, { transform: 'translate(0,0)' }], { duration: 600, iterations: Infinity, easing: 'steps(4)' })
     stars = Array.from({ length: Math.round(Math.min(900, W * H / 1600)) }, () => newStar())
+    bokeh = Array.from({ length: 16 }, () => ({ x: Math.random(), y: .1 + Math.random() * .9, r: 30 + Math.random() * 90, h: [222, 252, 285, 320][Math.floor(Math.random() * 4)], a: .4 + Math.random() * .6, sx: .1 + Math.random() * .25, sy: .08 + Math.random() * .2, p: Math.random() * 6, v: .01 + Math.random() * .03 }))
     t0 = performance.now(); total = wn ? 12500 : 61000
     raf = requestAnimationFrame(draw)
     root.querySelector('.skip').onclick = () => { skip = true }

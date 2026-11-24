@@ -14,7 +14,8 @@ contextBridge.exposeInMainWorld('koiAPI',{
     setMain:a=>ipcRenderer.invoke('koi:s:setMain',a),
     addHotkey:(a,n,p)=>ipcRenderer.invoke('koi:s:add',a,n,p),
     updateHotkey:(i,a)=>ipcRenderer.invoke('koi:s:update',i,a),
-    removeHotkey:i=>ipcRenderer.invoke('koi:s:remove',i)
+    removeHotkey:i=>ipcRenderer.invoke('koi:s:remove',i),
+    openAccess:()=>ipcRenderer.send('koi:s:openAccess')
   },
   pop:{
     get:()=>ipcRenderer.invoke('pop:get'),

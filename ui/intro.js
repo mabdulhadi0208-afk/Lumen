@@ -206,14 +206,14 @@
   #intro .new h1{font:800 clamp(32px,4.4vw,64px)/1.04 ${HEAD};letter-spacing:-.04em;margin:14px 0 clamp(16px,3vh,28px);padding-bottom:.06em;background:linear-gradient(100deg,#fff 25%,var(--hi) 60%,var(--hi3));-webkit-background-clip:text;background-clip:text;color:transparent}
   #intro .new h1.shine{animation:nsweep 1.6s cubic-bezier(.3,.7,.2,1)}
   @keyframes nsweep{0%{background-image:linear-gradient(100deg,#fff 25%,var(--hi) 60%,var(--hi3)),linear-gradient(100deg,transparent 40%,rgba(255,255,255,.95) 50%,transparent 60%);background-size:100% 100%,250% 100%;background-position:0 0,120% 0}100%{background-image:linear-gradient(100deg,#fff 25%,var(--hi) 60%,var(--hi3)),linear-gradient(100deg,transparent 40%,rgba(255,255,255,.95) 50%,transparent 60%);background-size:100% 100%,250% 100%;background-position:0 0,-20% 0}}
-  #intro .new .grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;text-align:left}
+  #intro .new .grid{display:grid;grid-template-columns:repeat(var(--n,4),minmax(0,1fr));gap:14px;text-align:left;max-width:calc(var(--n,4) * 280px);margin-inline:auto}
   #intro .new .it{padding:16px 16px 18px;opacity:0;display:flex;flex-direction:column;gap:12px;border-radius:24px}
   #intro .new .it .hd{display:flex;align-items:center;justify-content:space-between}
   #intro .new .it .no2{font:800 11px/1 var(--font);letter-spacing:.2em;color:color-mix(in srgb,var(--hi) 80%,transparent);font-variant-numeric:tabular-nums}
   #intro .new .it .k,#intro .ask .k{flex:none;width:40px;height:40px;border-radius:13px;display:grid;place-items:center;color:#fff;background:var(--nova);box-shadow:inset 0 1px 0 rgba(255,255,255,.4),inset 0 -6px 12px rgba(0,0,0,.12),0 10px 26px color-mix(in srgb,var(--a) 50%,transparent)}
   #intro .new .it .k svg{width:19px;height:19px}
   #intro .new .it span{color:#e4e7fa;font:650 14px/1.45 var(--font);letter-spacing:-.005em}
-  @media (max-width:760px){#intro .new .grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}#intro .new .it{padding:12px;gap:8px}#intro .new .it span{font-size:12.5px}}
+  @media (max-width:760px){#intro .new .grid{grid-template-columns:repeat(min(2,var(--n,4)),minmax(0,1fr));gap:10px}#intro .new .it{padding:12px;gap:8px}#intro .new .it span{font-size:12.5px}}
   /* finale */
   #intro .fin{text-align:center;width:min(980px,94vw);display:flex;flex-direction:column;align-items:center}
   #intro .fin .ask{width:min(580px,90vw)}
@@ -870,7 +870,7 @@
   async function whatsNew(version) {
     const items = WHATS_NEW.items
     tween(sky, 'bokeh', .6, 1600); focus(2, 1200); leak(.6, -1, 2000)
-    const s = scene(`<div class="new"><span class="eyebrow chrome">New in Lumen ${version || WHATS_NEW.version}</span><h1>Fresh this version.</h1><div class="grid">${items.map((it, i) => `<div class="it glass sweep" style="--sd:${1.5 + i * .08}s"><div class="hd"><div class="k">${ICONS[it.icon] || ''}</div><span class="no2">${String(i + 1).padStart(2, '0')}</span></div><span>${it.text}</span></div>`).join('')}</div></div>`, 'flat')
+    const s = scene(`<div class="new"><span class="eyebrow chrome">New in Lumen ${version || WHATS_NEW.version}</span><h1>Fresh this version.</h1><div class="grid" style="--n:${Math.min(items.length, 4)}">${items.map((it, i) => `<div class="it glass sweep" style="--sd:${1.5 + i * .08}s"><div class="hd"><div class="k">${ICONS[it.icon] || ''}</div><span class="no2">${String(i + 1).padStart(2, '0')}</span></div><span>${it.text}</span></div>`).join('')}</div></div>`, 'flat')
     lensAll(s)
     anim(s.querySelector('.eyebrow'), [{ opacity: 0, transform: 'translateY(-10px)', letterSpacing: '.6em' }, { opacity: 1, transform: 'none', letterSpacing: '.24em' }], { duration: 1200 })
     anim(s.querySelector('h1'), [{ opacity: 0, filter: 'blur(16px)', transform: 'scale(1.1)' }, { opacity: 1, filter: 'none', transform: 'none' }], { duration: 1300, delay: 150, easing: 'cubic-bezier(.16,1,.3,1)' })

@@ -174,8 +174,8 @@ body.dk.ov #dim{background:rgba(0,0,0,.22)}
 <span class="koi" id="mbK"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#2a2d3f" stroke-width="2.2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3.2" fill="#2a2d3f"/></svg>Koi</span><span>76%</span><span id="clock"></span></div>
 <div class="hero"><h1>Zero-config app switching.</h1><p>Middle-click, tap <kbd>Right ⌘</kbd> or hit <kbd>Space</kbd>. The fan blooms around your cursor — move over a wedge or type its letter, then <kbd>Return</kbd>. Press the same letter again to cycle apps. Scroll to page through more. <kbd>Esc</kbd> closes.</p></div>
 <div id="dim"></div>
-<div id="stage"><div id="spot"></div><div id="q"></div><div id="lab"></div><div id="chips"></div><div id="rip"></div><div id="ctr"><div class="bi"></div><b></b><span>↩ TO OPEN</span></div></div>
-<div class="ctl"><label>Size</label><div class="seg" id="ss"><button data-v=".85">S</button><button data-v="1" class="on">M</button><button data-v="1.2">B</button><button data-v="1.4">XL</button></div><label>Theme</label><div class="seg" id="th"><button data-v="l" class="on">Light</button><button data-v="d">Dark</button></div><label>Speed</label><div class="seg" id="sp"><button data-v="1.3" class="on">Fast</button><button data-v="1">Normal</button><button data-v=".7">Soft</button></div><button class="go ghost" id="tour">▶ Tour</button><button class="go ghost" id="snd">Sound off</button><button class="go" id="go">Open Koi</button></div>
+<div id="stage"><div id="spot"></div><div id="q"></div><div id="lab"></div><div id="chips"></div><div id="rip"></div><div id="ctr"><div class="bi"></div><b></b><span>↩︎ TO OPEN</span></div></div>
+<div class="ctl"><label>Size</label><div class="seg" id="ss"><button data-v=".85">S</button><button data-v="1" class="on">M</button><button data-v="1.2">B</button><button data-v="1.4">XL</button></div><label>Theme</label><div class="seg" id="th"><button data-v="l" class="on">Light</button><button data-v="d">Dark</button></div><label>Speed</label><div class="seg" id="sp"><button data-v="1.3" class="on">Fast</button><button data-v="1">Normal</button><button data-v=".7">Soft</button></div><button class="go ghost" id="tour"><svg class="lg-play" viewBox="0 0 24 24" aria-hidden="true"><path d="M8.5 5.8v12.4a.8.8 0 0 0 1.2.7l9.6-6.2a.8.8 0 0 0 0-1.4L9.7 5.1a.8.8 0 0 0-1.2.7z"/></svg> Tour</button><button class="go ghost" id="snd">Sound off</button><button class="go" id="go">Open Koi</button></div>
 <div id="toast"></div>
 <div id="film"><div id="bk"></div><div id="vig"></div><div class="bar t"></div><div class="bar b"></div><div id="pg"></div><div id="scene"></div><div id="cap"><div class="n"></div><b></b><p></p></div><div id="kc"></div><svg id="fc" viewBox="0 0 24 24"><path d="M4 2.500v17l4.500-4 3 6.800 3.200-1.400-3-6.600H19z" fill="#111" stroke="#fff" stroke-width="1.600" stroke-linejoin="round"/></svg><button id="skip">Skip ▸▸</button></div>
 <script>
@@ -242,7 +242,7 @@ function filt(){
 }
 const slotAng=(i,n)=>10-(n*SPAN)/2+SPAN/2+i*SPAN;
 function selFx(){S.list.forEach((a,i)=>{if(!S.open)return;a.el.classList.toggle('sel',i===S.sel);a.push.t=i===S.sel?18:(Math.abs(i-S.sel)===1?5:0)});
- const sa=S.list[S.sel];if(S.open&&sa&&S.lastSel!==sa.name){S.lastSel=sa.name;$('#ctr span').textContent=(S.all&&S.all.length>CAP)?'↩ OPEN · SCROLL ↕':'↩ TO OPEN';const c=$('#ctr .bi');c.innerHTML=sa.el.querySelector('.ic').outerHTML;const r=$('#rip');r.style.animation='none';void r.offsetWidth;r.style.animation='rp .55s ease-out';tone(640+S.sel*55,.07,.035,'triangle',1.25)}
+ const sa=S.list[S.sel];if(S.open&&sa&&S.lastSel!==sa.name){S.lastSel=sa.name;$('#ctr span').textContent=(S.all&&S.all.length>CAP)?'↩︎ OPEN · SCROLL ↕︎':'↩︎ TO OPEN';const c=$('#ctr .bi');c.innerHTML=sa.el.querySelector('.ic').outerHTML;const r=$('#rip');r.style.animation='none';void r.offsetWidth;r.style.animation='rp .55s ease-out';tone(640+S.sel*55,.07,.035,'triangle',1.25)}
 }
 function targets(){
  const n=S.list.length;
@@ -256,7 +256,7 @@ selFx();
  qel.textContent=S.q;
 }
 function open(){
- if(S.open)return;S.open=true;S.q='';S.sel=0;S.off=0;filt();
+ if(S.open)return;S.open=true;if(frame.idle){frame.idle=0;requestAnimationFrame(frame)}S.q='';S.sel=0;S.off=0;filt();
  S.cx=Math.max(120,Math.min(innerWidth-300*S.size,S.mx||innerWidth*.42));S.cy=Math.max(240*S.size,Math.min(innerHeight-240*S.size,S.my||innerHeight*.5));
  const n=S.list.length;
  APPS.forEach(a=>{a.o.x=0;a.s.x=.5;a.s.v=0;a.ang.v=0;a.push.x=-46;a.push.v=0;a.rr.x=-40;a.rr.v=0;a.rr.t=0;a.ang.x=slotAng(0,n)-6;a.ang.t=a.ang.x;a.o.x=0;});
@@ -268,7 +268,7 @@ function open(){
  // cursor-follow hover from current mouse
  setTimeout(()=>hover(S.mx,S.my),60);
 }
-function close(){if(!S.open)return;tone(520,.12,.03,'sine',.6);S.lastSel='';S.open=false;dim.classList.remove('on');targets();if(MODE==='overlay'&&API)setTimeout(()=>API.hide(),460)}
+function close(){if(!S.open)return;tone(520,.12,.03,'sine',.6);S.lastSel='';S.open=false;S.closedAt=performance.now();dim.classList.remove('on');targets();if(MODE==='overlay'&&API)setTimeout(()=>API.hide(),460)}
 function launch(a){if(!a)return;if(API&&a.path)API.launch(a.path,a.name);a.freq+=5;a.run=1;$('#front').textContent=a.name;
  if(!a.el.querySelector('.run')){const r=document.createElement('i');r.className='run';a.el.querySelector('.ic').appendChild(r)}
  toast('Switched to '+a.name);tone(660,.12,.05);tone(990,.2,.045,'sine',0,.09);a.s.t=1.5;a.push.t=36;spark(a);a.ct.style.transition='';setTimeout(close,260)}
@@ -327,6 +327,7 @@ function frame(){
   {const cs=chipsEl.children,ang0=S.list[S.sel]?S.list[S.sel].ang.x:0,pu=S.list[S.sel]?S.list[S.sel].push.x:0;
   for(let i=0;i<cs.length;i++){const an=rad(ang0+(i-1)*17),rr=(R1+pu+62)*z;cs[i].style.left=(S.cx+Math.cos(an)*rr)+'px';cs[i].style.top=(S.cy+Math.sin(an)*rr)+'px';cs[i].classList.toggle('on',true);cs[i].style.transform='scale(1)'}}
   lab.style.opacity=0;lab.style.transform=`translate(${x-lw/2}px,${y-14}px)`}else{lab.style.opacity=0;[...chipsEl.children].forEach(c=>{c.classList.remove('on');c.style.transform='scale(.3)'})}
+ if(MODE==='overlay'&&!S.open&&!S.film&&performance.now()-(S.closedAt||0)>1500){frame.idle=1;return}
  requestAnimationFrame(frame);
 }
 function mv(d){const n=S.list.length;if(!n)return;S.sel=(S.sel+d+n)%n;targets();S.list[S.sel].s.v+=1.5}
@@ -401,7 +402,7 @@ function hit(f=110,vol=.5){if(!FSND||!AC||!MG)return;const t=AC.currentTime,o=AC
 function startChords(){clearInterval(chordT);const seq=['F','C','G','A'];let i=0;chordT=setInterval(()=>pad(CH[seq[i++%4]],6.5,.028),5200)}
 function stopAudio(fade=.7){clearInterval(chordT);if(MG&&AC){try{MG.gain.cancelScheduledValues(AC.currentTime);MG.gain.setValueAtTime(MG.gain.value,AC.currentTime);MG.gain.linearRampToValueAtTime(0,AC.currentTime+fade)}catch(e){}}if(S.sndPrev!==undefined){S.snd=S.sndPrev;S.sndPrev=undefined}}
 const later=(ms,f)=>setTimeout(()=>{if(!cancel)f()},ms);
-function gate(){S.film=true;F.style.display='block';bk.style.transition='none';bk.style.opacity=1;scene.innerHTML='<div class="glow"></div><div class="brand">'+logo(90).replace(/class="(rg|dt)"/g,'')+'<p style="animation:none;opacity:1;font-size:17px;margin-top:4px">The Koi film</p><div class="btns" style="animation:none;opacity:1"><button class="pr" id="g1">▶ Play with sound</button><button id="g0">Play without sound</button></div></div>';$('#g1').onclick=()=>play(true);$('#g0').onclick=()=>play(false)}
+function gate(){S.film=true;F.style.display='block';bk.style.transition='none';bk.style.opacity=1;scene.innerHTML='<div class="glow"></div><div class="brand">'+logo(90).replace(/class="(rg|dt)"/g,'')+'<p style="animation:none;opacity:1;font-size:17px;margin-top:4px">The Koi film</p><div class="btns" style="animation:none;opacity:1"><button class="pr" id="g1"><svg class="lg-play" viewBox="0 0 24 24" aria-hidden="true"><path d="M8.5 5.8v12.4a.8.8 0 0 0 1.2.7l9.6-6.2a.8.8 0 0 0 0-1.4L9.7 5.1a.8.8 0 0 0-1.2.7z"/></svg> Play with sound</button><button id="g0">Play without sound</button></div></div>';$('#g1').onclick=()=>play(true);$('#g0').onclick=()=>play(false)}
 
 const KV=(()=>{const v='__KOI_VERSION__';return v.indexOf('__')===0?'dev':v})();
 const WHATS_NEW=[['01','Springy menu-bar popover','A custom jelly panel replaces the stock macOS menu.'],['02','Your own hotkeys','Pick the summon key and bind any app to its own shortcut. Your choice now survives updates.'],['03','Auto-update','Koi finds, downloads and swaps itself in the background, and keeps its permissions.'],['04','Modifier-only hotkeys','Touch the two modifiers (like Command + Option) and Koi opens instantly.'],['05','Drift-style springs','Springy, fluid motion everywhere, tuned down a touch, and no wobble while you scroll.'],['06','Most-used apps first','Your favorites now sit at the top of the fan.'],['07','Fast by default','Koi opens at the quick speed out of the box.'],['08','A film that updates with Koi','This intro is rebuilt on every release.']];
@@ -451,7 +452,7 @@ async function tutorial(){
  say('05','Type to jump','Press a letter to filter the ring. Press it again to cycle matching apps.');
  await glide(S.cx,S.cy,800);key('M',1000);kd('m');await sleep(1500);key('M',900);kd('m');await sleep(1400);key('M',900);kd('m');await sleep(1200);key('⌫',800);kd('Backspace');await sleep(1600);
  say('06','Scroll for more','Eighteen apps (your most-used first), eight wedges — roll the wheel and the whole ring rotates.');
- key('Scroll ↕',3200);
+ key('Scroll ↕︎',3200);
  for(let i=0;i<4;i++){window.dispatchEvent(new WheelEvent('wheel',{deltaY:100,cancelable:true}));await sleep(520)}
  await sleep(600);
  for(let i=0;i<4;i++){window.dispatchEvent(new WheelEvent('wheel',{deltaY:-100,cancelable:true}));await sleep(420)}
@@ -518,7 +519,7 @@ if(MODE==='overlay'&&API){
  };
  API.onShow(d=>{const st=d.settings||{};document.body.classList.toggle('dk',st.theme==='dark');S.size=st.size||1;S.speed=st.speed||1.3;S.snd=!!st.sound;
   setApps(d.apps||[]);S.open=false;S.mx=d.x;S.my=d.y;S.hp=false;S.film=false;open()});
- API.onHide&&API.onHide(()=>{S.open=false;dim.classList.remove('on');targets()});
+ API.onHide&&API.onHide(()=>{S.open=false;S.closedAt=performance.now();dim.classList.remove('on');targets()});
 } else if(MODE!=='overlay'){if(API||window.__FS)play(!!API);else gate()}
 
 })();

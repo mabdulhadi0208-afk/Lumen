@@ -62,8 +62,8 @@ module.exports = {
     animT = setInterval(() => { const p = Math.min(1, (Date.now() - t0) / dur); const e = show ? 1 - Math.pow(1 - p, 3) : p * p; win.setPosition(g.x, Math.round(from + (to - from) * e), false); if (p >= 1) clearInterval(animT); }, 16);
   },
   _edgeTick(ctx) {
-    if (!win || win.isDestroyed()) return; const s = ctx.mod('dock'); if (!s.autohide) return;
-    const p = screen.getCursorScreenPoint(); const g = module.exports._geom(ctx); const [w, h] = win.getSize(); const [wx, wy] = win.getPosition();
+    if (!win || win.isDestroyed()) return 0; const s = ctx.mod('dock'); if (!s.autohide) return 0;
+    const p = screen.getCursorScreenPoint(); module.exports._near = revealed || Math.abs(p.y - module.exports._geom(ctx).edgeY) < 260; const g = module.exports._geom(ctx); const [w, h] = win.getSize(); const [wx, wy] = win.getPosition();
     const top = s.edge === 'top'; const atEdge = top ? p.y <= g.edgeY : p.y >= g.edgeY;
     const inWin = p.x >= wx && p.x <= wx + w && p.y >= wy && p.y <= wy + h;
     // "on the dock" = on the pill itself, or in the strip between the pill and the screen edge (so travelling edge → pill doesn't drop it),
@@ -148,8 +148,8 @@ module.exports = {
     try { ctx.globalShortcut.register('Control+Alt+D', () => module.exports._toggle(ctx)); ctx.globalShortcut.register('Control+Alt+L', () => module.exports._launchpad(ctx)); } catch {}
     if (!module.exports._dispHooked) { module.exports._dispHooked = true; screen.on('display-metrics-changed', () => module.exports._place(ctx)); }
     if (!IS_WIN && ctx.mod('dock').hideMacDock && !macDockHidden) module.exports._confirmMacDock(ctx).then(ok => ok && module.exports._macDock(true, ctx));
-    edgePoll = setInterval(() => module.exports._edgeTick(ctx), 25);
+    const edgeLoop = () => { if (!win || win.isDestroyed()) { edgePoll = null; return; } try { module.exports._edgeTick(ctx); } catch {} edgePoll = setTimeout(edgeLoop, !ctx.mod('dock').autohide ? 1000 : module.exports._near ? 25 : 120); }; clearTimeout(edgePoll); edgePoll = setTimeout(edgeLoop, 25);
   },
   onSettings(ctx) { if (win && !win.isDestroyed() && module.exports._fs !== !!ctx.mod('dock').fullscreen) { module.exports._fs = !!ctx.mod('dock').fullscreen; win.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: module.exports._fs }); } module.exports._place(ctx); const h = !IS_WIN && !!ctx.mod('dock').hideMacDock; if (h && !macDockHidden) module.exports._confirmMacDock(ctx).then(ok => ok && module.exports._macDock(true, ctx)); else if (!h && macDockHidden) module.exports._macDock(false, ctx); else if (h && macDockHidden && module.exports._dockEdge !== (ctx.mod('dock').edge || 'bottom')) module.exports._macDock(true, ctx); if (win && !win.isDestroyed()) win.webContents.send('settings:update', ctx.settings); },
-  stop(ctx) { clearInterval(poll); clearInterval(edgePoll); clearInterval(animT); clearTimeout(hideT); if (macDockHidden) module.exports._macDock(false, ctx); try { ctx.globalShortcut.unregister('Control+Alt+D'); ctx.globalShortcut.unregister('Control+Alt+L'); } catch {} if (pad && !pad.isDestroyed()) pad.destroy(); pad = null; if (win && !win.isDestroyed()) win.destroy(); win = null; },
+  stop(ctx) { clearInterval(poll); clearTimeout(edgePoll); edgePoll = null; clearInterval(animT); clearTimeout(hideT); if (macDockHidden) module.exports._macDock(false, ctx); try { ctx.globalShortcut.unregister('Control+Alt+D'); ctx.globalShortcut.unregister('Control+Alt+L'); } catch {} if (pad && !pad.isDestroyed()) pad.destroy(); pad = null; if (win && !win.isDestroyed()) win.destroy(); win = null; },
 };

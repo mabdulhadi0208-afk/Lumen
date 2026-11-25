@@ -11,10 +11,9 @@ module.exports = {
     { t: 'actions', label: 'Toggle', opts: [['toggle','Toggle spotlight']] },
   ],
   actions: { toggle: (ctx) => module.exports._toggle(ctx), state: () => ({ on }) },
-  _toggle(ctx) { on = !on; ctx.setOverlayPersistent('spotlight', on); ctx.overlaySend('spotlight', on ? { ...ctx.mod('spotlight'), on: true } : { on: false }); ctx.setTray('spotlight', { title: on ? '◎' : '' }); },
+  _toggle(ctx) { on = !on; clearInterval(timer); timer = on ? setInterval(() => { if (!on) return; const p = ctx.screen.getCursorScreenPoint(); ctx.overlaySend('cursor', p); }, 16) : null; ctx.setOverlayPersistent('spotlight', on); ctx.overlaySend('spotlight', on ? { ...ctx.mod('spotlight'), on: true } : { on: false }); ctx.setTray('spotlight', { title: on ? '◎' : '' }); },
   start(ctx) {
     try { ctx.globalShortcut.register('Control+Alt+S', () => module.exports._toggle(ctx)); } catch {}
-    timer = setInterval(() => { if (!on) return; const p = ctx.screen.getCursorScreenPoint(); ctx.overlaySend('cursor', p); }, 16);
   },
   onSettings(ctx) { if (on) ctx.overlaySend('spotlight', { ...ctx.mod('spotlight'), on: true }); },
   stop(ctx) { clearInterval(timer); if (on) module.exports._toggle(ctx); try { ctx.globalShortcut.unregister('Control+Alt+S'); } catch {} },

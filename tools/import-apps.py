@@ -15,6 +15,11 @@ Their code stays as it was. Only these things change on the way in:
   - every Surge and Koi window is redesigned in Lumen Nova (docs/NOVA.md) by one layer per tool (tools/glow/*.css,
     copied in as lumen-glow.css and linked last): ink and porcelain with an accent nebula, liquid glass with a
     refractive edge, halo rings, rounded heavy headings, calm springs, and no rubber-banding on scroll
+  - Lumen 4.0 (tools/glow/*40*, lumen-menu*, lumen-update.js, draw-appicons.py): a Nova right-click menu for Surge's
+    menu-bar icon, Lumen's real update (ring and bar that follow the download) in Surge's and Koi's menus and Surge's
+    Updates page, a new charge capsule and message capsules with icon tiles, drawn line icons in Koi's menu (no text
+    symbols that could turn into emoji), Nova app icons for Lumen Settings, and a second speed round: no animation
+    loops forever in any Surge or Koi window, and the timers that ran all day only run while they are needed
 """
 import os, re, shutil, sys
 
@@ -135,7 +140,7 @@ for f, tag in (('settings.html', 'settings'), ('popover.html', 'popover'), ('not
 def sheet(dst, *names):
     with open(dst, 'w', encoding='utf-8') as out:
         for n in names: out.write(open(os.path.join(GLOW, n), encoding='utf-8').read() + '\n')
-sheet(os.path.join(S, 'lumen-glow.css'), 'surge.css', 'surge2.css', 'hero.css')
+sheet(os.path.join(S, 'lumen-glow.css'), 'surge.css', 'surge2.css', 'hero.css', 'update40.css', 'surge40.css')   # 4.0 layers last
 for f in ('lumen-glass.js', 'lumen-dialog.js', 'lumen-dialog-preload.js', 'lumen-dialog.html', 'lumen-dialog-page.js'):
     shutil.copy2(os.path.join(GLOW, f), os.path.join(S, f))
 # the Dock clock: rolling glass digits, a ring of light for the hour, a bar for the month; the CPU graph in your accent
@@ -176,6 +181,70 @@ edit(os.path.join(S, 'fluid.js'), [("{ let el = null, off = 0, v = 0, rb = 0, la
                                     "if (C.rubber) { let el = null, off = 0, v = 0, rb = 0, lastW = 0; const RB = C.rubber;")])
 # the sparks fall back to Lumen's blue, not Surge's green
 edit(os.path.join(S, 'fx.js'), [("|| '#00FF85'", "|| '#5b8cff'")])
+
+# ---- Lumen 4.0 for Surge
+# The update card: Surge updates with Lumen, so its menu and its Updates page show Lumen's real update (version from and
+# to, a ring and a bar that follow the download, percent, speed and time left, one clear button). tools/glow/lumen-update.js
+shutil.copy2(os.path.join(GLOW, 'lumen-update.js'), os.path.join(S, 'lumen-update.js'))
+for f in ('popover.html', 'settings.html'):
+    edit(os.path.join(S, f), [('<script defer src="lumen-glass.js"></script>', '<script defer src="lumen-glass.js"></script><script defer src="lumen-update.js"></script>')])
+edit(os.path.join(S, 'popover.html'), [
+    ("if(['ready','available','downloading','unpacking'].includes(u.status)){ box.style.display='flex'; $('#updT').textContent=",
+     "if(['ready','available','downloading','verifying','unpacking','installing','error'].includes(u.status)&&(u.status!=='error'||u.latest)){ box.style.display='flex'; if(window.lumenUpd) lumenUpd(box,u,{text:$('#updT'),btn:$('#updBtn'),poll:state}); else { $('#updT').textContent="),
+    ("$('#updBtn').disabled=(u.status==='downloading'||u.status==='unpacking'); } else box.style.display='none'; }",
+     "$('#updBtn').disabled=(u.status==='downloading'||u.status==='unpacking'); } } else box.style.display='none'; }"),
+    ("$('#updBtn').onclick=async()=>{ const u=await api?.action('updater','state'); if(u?.status==='ready'){ api?.action('updater','install'); toast('Restarting…'); } else { api?.action('updater','download'); toast('Downloading…'); } };",
+     "$('#updBtn').onclick=async()=>{ const u=await api?.action('updater','state'); if(u?.status==='ready'){ api?.action('updater','install'); toast('Restarting Lumen'); } else if(u?.status==='error'){ api?.action('updater','check'); toast('Checking again'); } else { api?.action('updater','download'); toast('Downloading Lumen '+String(u?.latest||'').replace(/^v/,'')); } setTimeout(state,400); };"),
+    # Speed: the menu stays loaded while it is closed; it only asks for news while it is open
+    ("sndCheck(); setInterval(sndCheck,1000);", "sndCheck(); setInterval(()=>{ if(!document.hidden) sndCheck(); },1000);"),
+    ("  setInterval(()=>{ batt(); state(); },2000); })();", "  setInterval(()=>{ if(document.hidden) return; batt(); state(); },2000); })();"),
+])
+# The right-click menu on Surge's menu-bar icon: a Nova menu of Surge's own (tools/glow/lumen-menu*.js) instead of the
+# system menu, from the same items. The native menu is only built if the Nova one cannot open, and the items are no
+# longer rebuilt into a system menu every time the menu-bar title changes (the CPU module did that every 2 s).
+for f in ('lumen-menu.js', 'lumen-menu-preload.js', 'lumen-menu.html', 'lumen-menu-page.js'):
+    shutil.copy2(os.path.join(GLOW, f), os.path.join(S, f))
+edit(os.path.join(S, 'main.js'), [
+    ("  trayMenu = Menu.buildFromTemplate([\n", "  trayMenu = ([   // the template; drawn by the Nova menu on right-click\n"),
+    ("tray.on('right-click', () => trayMenu && tray.popUpContextMenu(trayMenu));",
+     "tray.on('right-click', () => { if (!trayMenu) return; try { require('./lumen-menu.js').popup(trayMenu, tray.getBounds(), { battery, on: running.size, muted: !!settings.muted, total: Object.keys(MODULES).length }); } catch (e) { log('nova menu ' + (e && e.message)); tray.popUpContextMenu(Menu.buildFromTemplate(trayMenu)); } });"),
+])
+# Speed, round two (4.0):
+#  - Cursor Spotlight read the cursor 60 times a second even while it was off; now only while it is on
+edit(os.path.join(S, 'modules', '05-spotlight.js'), [
+    ("_toggle(ctx) { on = !on;", "_toggle(ctx) { on = !on; clearInterval(timer); timer = on ? setInterval(() => { if (!on) return; const p = ctx.screen.getCursorScreenPoint(); ctx.overlaySend('cursor', p); }, 16) : null;"),
+    ("    timer = setInterval(() => { if (!on) return; const p = ctx.screen.getCursorScreenPoint(); ctx.overlaySend('cursor', p); }, 16);\n", ""),
+])
+#  - the Dock's auto-hide watched the cursor 40 times a second all day, even with auto-hide off. Now: once a second
+#    with auto-hide off, about 8 times a second while the cursor is far from the Dock's edge, and full speed only near it
+edit(os.path.join(S, 'modules', '19-dock.js'), [
+    ("    if (!win || win.isDestroyed()) return; const s = ctx.mod('dock'); if (!s.autohide) return;\n    const p = screen.getCursorScreenPoint();",
+     "    if (!win || win.isDestroyed()) return 0; const s = ctx.mod('dock'); if (!s.autohide) return 0;\n    const p = screen.getCursorScreenPoint(); module.exports._near = revealed || Math.abs(p.y - module.exports._geom(ctx).edgeY) < 260;"),
+    ("    edgePoll = setInterval(() => module.exports._edgeTick(ctx), 25);",
+     "    const edgeLoop = () => { if (!win || win.isDestroyed()) { edgePoll = null; return; } try { module.exports._edgeTick(ctx); } catch {} edgePoll = setTimeout(edgeLoop, !ctx.mod('dock').autohide ? 1000 : module.exports._near ? 25 : 120); }; clearTimeout(edgePoll); edgePoll = setTimeout(edgeLoop, 25);"),
+    ("stop(ctx) { clearInterval(poll); clearInterval(edgePoll);", "stop(ctx) { clearInterval(poll); clearTimeout(edgePoll); edgePoll = null;"),
+])
+#  - the Dock's tooltip followed its icon 25 times a second forever; now only while the pointer is on the Dock
+#  - the app list was read every 4 s on top of the Dock's own 5 s update (which reads it too); now once per update
+edit(os.path.join(S, 'dock.html'), [
+    ("setInterval(()=>{ if(tipTarget && tipTarget[0].isConnected && !dragging) showTip(tipTarget[0],tipTarget[1]); },40);",
+     "let tipIv=0; const tipOn=()=>{ if(!tipIv) tipIv=setInterval(()=>{ if(tipTarget && tipTarget[0].isConnected && !dragging) showTip(tipTarget[0],tipTarget[1]); else if(!tipTarget){ clearInterval(tipIv); tipIv=0; } },40); }; addEventListener('mousemove',tipOn,{passive:true});"),
+    ("setInterval(refreshApps,4000);", "/* the 5 s Dock update refreshes them too */ setInterval(()=>{ if(!document.hidden) refreshApps(); },15000);"),
+])
+#  - the battery was read (a helper program launch on a Mac) every 5 s, even on a Mac with no battery. Now the pace
+#    follows what can change: every 8 s while charging or close to the low-battery alert, every 20 s on battery,
+#    every 30 s when full on power or with no battery. Plugging in and out still shows at once (power events).
+edit(os.path.join(S, 'modules', '01-glow.js'), [("tick(); timer = setInterval(tick, 5000);   // plugging in and out still shows at once (power events)",
+    "const pace = () => { const b = ctx.battery; if (!b) return 30000; if (b.charging) return b.level >= 100 || b.charged ? 30000 : 8000; return b.level <= (s().lowAlert || 0) + 8 ? 8000 : 20000; };\n"
+    "    const loop = () => { if (!timer) return; tick(); timer = setTimeout(loop, pace()); };\n"
+    "    tick(); timer = setTimeout(loop, 5000);   // then at the pace above; plugging in and out still shows at once (power events)")])
+#  - the Settings battery line only updates while Settings is on screen
+edit(os.path.join(S, 'settings.html'), [("batt(); setInterval(batt, 3000);", "batt(); setInterval(()=>{ if(!document.hidden) batt(); }, 3000);")])
+# the glow overlay (charge capsule, Caps Lock and the other messages) gets the Nova layer too: it draws on a canvas,
+# but it reads your accent and the rounded display face from the page
+glow(os.path.join(S, 'glow.html'), 'overlay')
+# Quick Notes: the title gets its own element, so it can carry the gradient next to the new icon tile
+edit(os.path.join(S, 'notes.html'), [('<header><i></i>Quick Notes<', '<header><i></i><span class="lg-nt">Quick Notes</span><')])
 
 # ------------------------------------------------------------------ Koi
 K = os.path.join(LUMEN, 'apps', 'koi')
@@ -268,22 +337,77 @@ const actions = {
 module.exports = { start() {}, actions, snapshot: state, _swapScript: () => '', _newer: () => false }
 """)
 # Lumen's glow layer for Koi's popover, Hotkeys window, tour and app fan
-sheet(os.path.join(K, 'renderer', 'lumen-glow.css'), 'koi.css', 'koi2.css', 'hero.css')
+sheet(os.path.join(K, 'renderer', 'lumen-glow.css'), 'koi.css', 'koi2.css', 'hero.css', 'update40.css', 'koi40.css')
 shutil.copy2(os.path.join(GLOW, 'lumen-glass.js'), os.path.join(K, 'renderer', 'lumen-glass.js'))
 for f, tag in (('popover.html', 'kpop'), ('settings.html', 'ksettings'), ('app.html', 'kapp'), ('update.html', 'kupdate')):
     glow(os.path.join(K, 'renderer', f), tag)
+# ---- Lumen 4.0 for Koi
+# The menu's icons were text symbols (a music note, a power sign, a play triangle that macOS can draw as a coloured
+# emoji...). They become Nova line icons, so no symbol can ever turn into an emoji.
+KI = {
+    '♪': '<path d="M11 5 6.5 9H3.5v6h3L11 19z"/><path d="M15.5 8.5a5 5 0 0 1 0 7M18.5 5.5a9 9 0 0 1 0 13"/>',
+    '⏻': '<path d="M12 3.5v8"/><path d="M6.3 6.8a8 8 0 1 0 11.4 0"/>',
+    '⇩': '<path d="M12 4v11M7 10.5l5 5 5-5M5 20h14"/>',
+    '⌥': '<rect x="2.5" y="6" width="19" height="12" rx="3"/><path d="M6.5 10h.1M10 10h.1M13.5 10h.1M17.5 10h.1M7.5 14h9"/>',
+    '▶': '<path class="fill" d="M8.5 5.8v12.4a.8.8 0 0 0 1.2.7l9.6-6.2a.8.8 0 0 0 0-1.4L9.7 5.1a.8.8 0 0 0-1.2.7z"/>',
+    '↻': '<path d="M19.5 12a7.5 7.5 0 1 1-2.2-5.3"/><path d="M19.5 4.5v4.2h-4.2"/>',
+    '✕': '<path d="M7 7l10 10M17 7 7 17"/>',
+}
+kp = os.path.join(K, 'renderer', 'popover.html'); ks = open(kp, encoding='utf-8').read()
+for g, d in KI.items():
+    old = f'<div class="ic">{g}</div>'
+    if old not in ks: raise SystemExit('koi popover.html: no icon ' + g)
+    ks = ks.replace(old, f'<div class="ic"><svg viewBox="0 0 24 24" aria-hidden="true">{d}</svg></div>')
+# Speed: the menu's spring engine ran 60 times a second for as long as Koi ran, even with the menu closed (the window
+# stays loaded, hidden). Now it runs only while something is moving, and stops a moment after everything settles.
+for old, new in [
+    ("class Sp{constructor(x,k=240,c=15,cb){this.x=x;this.v=0;this.t=x;this.k=k;this.c=c;this.cb=cb;SP.add(this)}",
+     "class Sp{constructor(x,k=240,c=15,cb){this.x=x;this.v=0;this._t=x;this.k=k;this.c=c;this.cb=cb;SP.add(this)}\n get t(){return this._t} set t(v){this._t=v;wake()}"),
+    ("let last=performance.now();\n(function loop(now){const dt=Math.min(.033,(now-last)/1000);last=now;SP.forEach(s=>s.step(dt));requestAnimationFrame(loop)})(last);",
+     "let last=performance.now(),rafOn=0,still=0;\nfunction wake(){still=0;if(!rafOn){rafOn=1;last=performance.now();requestAnimationFrame(loop)}}\nfunction loop(now){const dt=Math.min(.033,(now-last)/1000);last=now;let mv=0;SP.forEach(s=>{s.step(dt);if(!mv&&(Math.abs(s.v)>.002||Math.abs(s._t-s.x)>.002))mv=1});still=mv?0:still+1;if(still>24){rafOn=0;return}requestAnimationFrame(loop)}\nwake();addEventListener('pointermove',wake,{passive:true});addEventListener('pointerdown',wake,{passive:true});setTimeout(()=>{if(!items.length)for(const a of document.getAnimations()){try{if(a.effect&&a.effect.getTiming().iterations!==1)a.finish()}catch(e){}}},1500);"),
+    # the update block: Lumen's real update with a bar that follows the download (lumen-update.js)
+    (" $('#ft').textContent=u.lastCheck?", " if(window.lumenUpd&&ub.classList.contains('show'))lumenUpd(ub,u,{text:ub.querySelector('div'),btn:$('#upgo'),poll:async()=>{if(!api)return;Object.assign(S,await api.get());render()}});\n $('#ft').textContent=u.lastCheck?"),
+    ("else if(st==='available'||st==='downloading'||st==='unpacking'){", "else if(st==='available'||st==='downloading'||st==='verifying'||st==='unpacking'||st==='installing'){"),
+    ("$('#upgo').onclick=()=>{const st=(S.upd||{}).status;api&&api.action(st==='ready'?'install':'download')};", "$('#upgo').onclick=()=>{const st=(S.upd||{}).status;if(['downloading','verifying','unpacking','installing'].includes(st))return;api&&api.action(st==='ready'?'install':'download');setTimeout(async()=>{if(api){Object.assign(S,await api.get());render()}},400)};"),
+    ('<script defer src="lumen-glass.js"></script>', '<script defer src="lumen-glass.js"></script><script defer src="lumen-update.js"></script>'),
+    # once the menu has closed, its slow background drift comes to rest at once instead of playing on, unseen
+    ("function hide(){ps.t=.9;py.t=-8;po.t=0;po.k=420;po.c=30}", "function hide(){ps.t=.9;py.t=-8;po.t=0;po.k=420;po.c=30;clearTimeout(hide.r);hide.r=setTimeout(()=>{for(const a of document.getAnimations()){try{if(a.effect&&a.effect.getTiming().iterations!==1)a.finish()}catch(e){}}},400)}"),
+]:
+    if old not in ks: raise SystemExit('koi popover.html: could not find ' + old[:60])
+    ks = ks.replace(old, new)
+open(kp, 'w', encoding='utf-8').write(ks)
+shutil.copy2(os.path.join(GLOW, 'lumen-update.js'), os.path.join(K, 'renderer', 'lumen-update.js'))
+# the fan's animation loop also ran nonstop in its hidden window; now it rests a moment after the fan closes
+edit(os.path.join(K, 'renderer', 'app.html'), [
+    (" requestAnimationFrame(frame);\n}\nfunction mv(d)", " if(MODE==='overlay'&&!S.open&&!S.film&&performance.now()-(S.closedAt||0)>1500){frame.idle=1;return}\n requestAnimationFrame(frame);\n}\nfunction mv(d)"),
+    (" if(S.open)return;S.open=true;", " if(S.open)return;S.open=true;if(frame.idle){frame.idle=0;requestAnimationFrame(frame)}"),
+    ("S.lastSel='';S.open=false;", "S.lastSel='';S.open=false;S.closedAt=performance.now();"),
+    ("API.onHide&&API.onHide(()=>{S.open=false;", "API.onHide&&API.onHide(()=>{S.open=false;S.closedAt=performance.now();"),
+    # the tour's play buttons: a drawn triangle, never a symbol that could become an emoji
+    ('>▶ Tour<', '><svg class="lg-play" viewBox="0 0 24 24" aria-hidden="true"><path d="M8.5 5.8v12.4a.8.8 0 0 0 1.2.7l9.6-6.2a.8.8 0 0 0 0-1.4L9.7 5.1a.8.8 0 0 0-1.2.7z"/></svg> Tour<'),
+    ('>▶ Play with sound<', '><svg class="lg-play" viewBox="0 0 24 24" aria-hidden="true"><path d="M8.5 5.8v12.4a.8.8 0 0 0 1.2.7l9.6-6.2a.8.8 0 0 0 0-1.4L9.7 5.1a.8.8 0 0 0-1.2.7z"/></svg> Play with sound<'),
+])
+# the Hotkeys window: shortcuts show as real keycaps (one key each), and each card gets a glowing icon tile
+edit(os.path.join(K, 'renderer', 'settings.html'), [
+    ("const pretty=a=>!a?'Not set':", "const caps=s=>/^Not set/.test(s)?s:s.split(' ').filter(Boolean).map(k=>'<kbd class=\"lg-kc\">'+k.replace(/[&<>]/g,'')+'</kbd>').join(' ');\nconst pretty=a=>!a?'Not set':"),
+    ("$('main').textContent=pretty(st.main)+(st.status&&!st.status.main?'  (!)':'');", "$('main').innerHTML=caps(pretty(st.main))+(st.status&&!st.status.main?' <span class=\"lg-warn\">(!)</span>':'');"),
+    ('<div class="card"><h2>Open Koi</h2>', '<div class="card lg-c1"><h2>Open Koi</h2>'),
+    ('<div class="card"><h2>App hotkeys</h2>', '<div class="card lg-c2"><h2>App hotkeys</h2>'),
+])
+ks2 = open(os.path.join(K, 'renderer', 'settings.html'), encoding='utf-8').read()
+if '${pretty(h.acc)}' not in ks2: raise SystemExit('koi settings.html: no app hotkey label')
+open(os.path.join(K, 'renderer', 'settings.html'), 'w', encoding='utf-8').write(ks2.replace('${pretty(h.acc)}', '${caps(pretty(h.acc))}'))
+# arrows that have an emoji form get the text-style selector (U+FE0E), so they always draw as plain arrows
+for f in (os.path.join(K, 'main.js'), os.path.join(K, 'renderer', 'app.html'), os.path.join(K, 'renderer', 'settings.html')):
+    s = open(f, encoding='utf-8').read()
+    s = re.sub('([\u21a9\u2195\u25b6])(?!\ufe0e)', '\\1\ufe0e', s)
+    open(f, 'w', encoding='utf-8').write(s)
 # the tour window opens on Nova ink, not Koi's old near-black
-edit(os.path.join(K, 'main.js'), [("backgroundColor:'#04050c'", "backgroundColor:'#0a0c15'")])
+edit(os.path.join(K, 'main.js'), [("backgroundColor:'#04050c'", "backgroundColor:'#0a0c15'"), ("backgroundColor:'#eef1fb'", "backgroundColor:'#f5f6fb'")])
 # the menu-bar koi: crisper Nova frames (same 7 frames and names, template images at 1x and 2x)
 for f in os.listdir(os.path.join(GLOW, 'tray')):
     if f.startswith('trayFrame'): shutil.copy2(os.path.join(GLOW, 'tray', f), os.path.join(K, 'assets', f))
-# their app icons, for the Surge and Koi page in Lumen Settings
-for src, name in ((os.path.join(SURGE_SRC, 'build', 'icon.png'), 'app-surge.png'), (os.path.join(KOI_SRC, 'build', 'icon.png'), 'app-koi.png')):
-    if not os.path.exists(src): continue
-    dst = os.path.join(LUMEN, 'pages', name)
-    try:
-        from PIL import Image
-        Image.open(src).resize((256, 256), Image.LANCZOS).save(dst, optimize=True)
-    except ImportError:
-        shutil.copy2(src, dst)
+# their app icons, for the Surge and Koi page in Lumen Settings: the Nova icons drawn by tools/glow/draw-appicons.py
+for name in ('app-surge.png', 'app-koi.png'):
+    shutil.copy2(os.path.join(GLOW, name), os.path.join(LUMEN, 'pages', name))
 print('imported Surge and Koi into', os.path.join(LUMEN, 'apps'))

@@ -72,7 +72,7 @@ function openTour(){
 
 // ---------- tray / settings ----------
 const SYM={Command:'⌘',CommandOrControl:'⌘',Control:'⌃',Alt:'⌥',Shift:'⇧'};
-const pretty=a=>(a||'').split('+').map(p=>SYM[p]||(p==='Return'?'↩':p)).join(' ');
+const pretty=a=>(a||'').split('+').map(p=>SYM[p]||(p==='Return'?'↩︎':p)).join(' ');
 const label=()=>pretty(S.shortcut);
 const norm=a=>String(a).replace('CommandOrControl','Command').toLowerCase();
 const modOnly=a=>typeof a==='string'&&/^(Command|Control|Alt|Shift)(\+(Command|Control|Alt|Shift))+$/.test(a);
@@ -122,7 +122,7 @@ function reg(){
 }
 function openSettings(){
   if(settingsWin&&!settingsWin.isDestroyed()){settingsWin.focus();return}
-  settingsWin=new BrowserWindow({width:560,height:660,minWidth:480,minHeight:500,titleBarStyle:'hiddenInset',backgroundColor:'#eef1fb',show:false,
+  settingsWin=new BrowserWindow({width:560,height:660,minWidth:480,minHeight:500,titleBarStyle:'hiddenInset',backgroundColor:'#f5f6fb',show:false,
     webPreferences:{preload:path.join(__dirname,'preload.js'),contextIsolation:true,nodeIntegration:false}});
   settingsWin.once('ready-to-show',()=>settingsWin.show());
   settingsWin.loadFile(path.join(__dirname,'renderer','settings.html'));

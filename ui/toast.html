@@ -52,6 +52,46 @@ html, body { margin: 0; height: 100%; overflow: hidden; background: transparent;
 .time { position: absolute; left: 26px; right: 26px; bottom: 1px; height: 2px; border-radius: 2px; overflow: hidden; }
 .time i { display: block; height: 100%; border-radius: 2px; background: linear-gradient(90deg, var(--accent), var(--accent3)); box-shadow: 0 0 6px var(--accent); transform-origin: left; }
 .bad .time i { background: linear-gradient(90deg, #ff7a6a, #e5484d); }
+
+/* ------------------------------------------------------------- Lumen 4.1: a bigger capsule with a spectral rim */
+#t { min-height: 50px; gap: 12px; padding: 8px 22px 8px 8px; }
+#t.act { padding-right: 7px; }
+#t::before { content: ''; position: absolute; inset: 0; border-radius: inherit; padding: 1.5px; pointer-events: none; z-index: 3;
+  background: linear-gradient(120deg, var(--accent), color-mix(in srgb, var(--accent2) 70%, #fff) 40%, rgba(255, 255, 255, .5) 55%, var(--accent3));
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor; mask-composite: exclude; opacity: .85; }
+.bad#t::before, #t.bad::before { background: linear-gradient(120deg, #ff7a6a, rgba(255, 255, 255, .5) 50%, #e5484d); }
+.orb { width: 34px; height: 34px; }
+.orb svg { width: 17px; height: 17px; }
+.glass .lit::after { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 55%; background: radial-gradient(60% 120% at 0% 50%, color-mix(in srgb, var(--accent) 30%, transparent), transparent 75%); }
+.msg { font: 800 14px var(--display); letter-spacing: -.015em; }
+.btn { padding: 9px 18px; font-size: 13.5px; }
+
+/* ------------------------------------------------------------- 4.1 palette: deep, saturated, many hues (not pink)
+   deep violet -> the accent -> electric cyan, an amber spark in the corner, a fine dot grain for detail */
+:root {
+  --c-cyan: oklch(from var(--accent) .74 .16 calc(h - 62));
+  --c-violet: oklch(from var(--accent) .46 .24 calc(h + 28));
+  --c-amber: oklch(from var(--accent) .82 .17 calc(h + 155));
+  --c-pink: oklch(from var(--accent) .6 .25 calc(h + 92));
+  --c-deep: oklch(from var(--accent) .34 .16 calc(h + 10));
+  --grain: radial-gradient(circle, rgba(255, 255, 255, .22) 1px, transparent 1.6px) 0 0 / 13px 13px;
+  --banner: var(--grain),
+    radial-gradient(55% 120% at 0% 0%, rgba(255, 255, 255, .3), transparent 60%),
+    radial-gradient(38% 110% at 100% 110%, color-mix(in srgb, var(--c-amber) 75%, transparent), transparent 70%),
+    radial-gradient(40% 120% at 70% -20%, color-mix(in srgb, var(--c-cyan) 80%, transparent), transparent 70%),
+    linear-gradient(118deg, var(--c-violet), var(--accent) 42%, var(--c-pink));
+  --rim41: linear-gradient(120deg, var(--c-cyan), rgba(255, 255, 255, .85) 22%, var(--accent) 45%, var(--c-violet) 66%, var(--c-pink));
+}
+.dark {
+  --banner: var(--grain),
+    radial-gradient(55% 120% at 0% 0%, rgba(255, 255, 255, .18), transparent 60%),
+    radial-gradient(38% 110% at 100% 110%, color-mix(in srgb, var(--c-amber) 60%, transparent), transparent 70%),
+    radial-gradient(40% 120% at 70% -20%, color-mix(in srgb, var(--c-cyan) 70%, transparent), transparent 70%),
+    linear-gradient(118deg, var(--c-deep), color-mix(in srgb, var(--accent) 85%, #000) 42%, color-mix(in srgb, var(--c-pink) 82%, #000));
+}
+.incognito { --banner: var(--grain), radial-gradient(55% 120% at 0% 0%, rgba(255, 220, 255, .2), transparent 60%), radial-gradient(38% 110% at 100% 110%, rgba(255, 140, 90, .55), transparent 70%), radial-gradient(40% 120% at 70% -20%, rgba(90, 200, 255, .5), transparent 70%), linear-gradient(118deg, #3a1580, #7a3cf0 50%, #c040d8); }
+#t::before { background: var(--rim41); }
+.orb { background: radial-gradient(120% 100% at 30% 0%, rgba(255, 255, 255, .55), transparent 55%), linear-gradient(135deg, var(--c-violet), var(--accent) 50%, var(--c-pink)); }
 </style>
 </head>
 <body>

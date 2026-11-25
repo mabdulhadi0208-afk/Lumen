@@ -1,0 +1,274 @@
+/* =====================================================================
+   LUMEN 4.1: the chrome, recomposed (docs/NOVA.md). Loaded after ui.css, so it is the last layer.
+   Not a polish pass: a new composition. One lit glass deck holds the whole toolbar with a glowing horizon under it,
+   the address bar is a tall centred capsule with a spectral rim, the command bar opens on a saturated aurora banner
+   with huge type, popovers lead with full-bleed colour banners, and the selected row is a solid gem of colour.
+   Still at rest: no loops behind the glass. Motion is entrance, hover and press only (ui/spring.js, ui/jelly.js).
+   No emoji anywhere.
+   ===================================================================== */
+:root {
+  --banner: radial-gradient(60% 120% at 0% 0%, rgba(255, 255, 255, .34), transparent 60%),
+            radial-gradient(50% 140% at 100% 100%, color-mix(in srgb, var(--accent3) 85%, transparent), transparent 70%),
+            linear-gradient(120deg, var(--accent), var(--accent2) 55%, var(--accent3));
+  --rim41: linear-gradient(120deg, var(--accent), color-mix(in srgb, var(--accent2) 70%, #fff) 40%, rgba(255, 255, 255, .5) 55%, var(--accent3));
+}
+@media (prefers-color-scheme: dark) {
+  :root { --banner: radial-gradient(60% 120% at 0% 0%, rgba(255, 255, 255, .2), transparent 60%),
+            radial-gradient(50% 140% at 100% 100%, color-mix(in srgb, var(--accent3) 70%, transparent), transparent 70%),
+            linear-gradient(120deg, color-mix(in srgb, var(--accent) 88%, #000), color-mix(in srgb, var(--accent2) 85%, #000) 55%, color-mix(in srgb, var(--accent3) 85%, #000)); }
+}
+body.incognito { --banner: radial-gradient(60% 120% at 0% 0%, rgba(255, 220, 255, .22), transparent 60%), radial-gradient(50% 140% at 100% 100%, rgba(255, 79, 184, .8), transparent 70%), linear-gradient(120deg, #6d3bd8, #a24bff 55%, #e0479f); }
+
+/* ------------------------------------------------------------- the toolbar: one lit deck, a taller row */
+body.toplayout:not(.compact) #sidebar { grid-template-rows: 44px 54px auto auto; }
+body.toplayout #sidebar::before {
+  content: ''; position: absolute; left: 0; right: 0; top: 0; bottom: 0; z-index: -1; pointer-events: none;
+  background:
+    radial-gradient(40% 90px at 50% 100%, color-mix(in srgb, var(--accent) 26%, transparent), transparent 75%),
+    linear-gradient(180deg, rgba(255, 255, 255, .5), rgba(255, 255, 255, .16));
+  box-shadow: inset 0 -1px 0 rgba(255, 255, 255, .7), 0 10px 30px -18px color-mix(in srgb, var(--accent) 60%, transparent);
+}
+/* the horizon: a thin line of light where the deck meets the page */
+body.toplayout #sidebar::after {
+  content: ''; position: absolute; left: 6%; right: 6%; bottom: 0; height: 2px; z-index: -1; pointer-events: none; border-radius: 2px;
+  background: linear-gradient(90deg, transparent, var(--accent) 22%, var(--accent2) 50%, var(--accent3) 78%, transparent);
+  box-shadow: 0 0 14px color-mix(in srgb, var(--accent) 70%, transparent), 0 0 3px var(--accent2); opacity: .8;
+}
+@media (prefers-color-scheme: dark) {
+  body.toplayout #sidebar::before { background: radial-gradient(40% 90px at 50% 100%, color-mix(in srgb, var(--accent) 30%, transparent), transparent 75%), linear-gradient(180deg, rgba(255, 255, 255, .06), rgba(255, 255, 255, .015)); box-shadow: inset 0 -1px 0 rgba(255, 255, 255, .08), 0 12px 34px -18px color-mix(in srgb, var(--accent) 70%, transparent); }
+}
+body.incognito.toplayout #sidebar::before { background: radial-gradient(40% 90px at 50% 100%, rgba(255, 79, 184, .3), transparent 75%), linear-gradient(180deg, rgba(255, 220, 255, .07), rgba(255, 255, 255, .01)); box-shadow: inset 0 -1px 0 rgba(220, 180, 255, .12); }
+body.incognito.toplayout #sidebar::after { background: linear-gradient(90deg, transparent, #a259ff 22%, #c45cff 50%, #ff4fb8 78%, transparent); box-shadow: 0 0 14px rgba(255, 79, 184, .7); }
+body.fullscreen-tab #sidebar::before, body.fullscreen-tab #sidebar::after, body.themed.toplayout #sidebar::before { display: none; }
+
+/* capsules: round beads of glass, bigger targets */
+body.toplayout:not(.compact) .navbtns, body.toplayout:not(.compact) .bottomrow { height: 44px; padding: 4px; border-radius: 999px; gap: 2px; }
+body.toplayout:not(.compact) .navbtns .ib, body.toplayout:not(.compact) .bottomrow .ib { width: 36px; height: 36px; border-radius: 50%; }
+body.toplayout .navbtns .ib svg, body.toplayout .bottomrow .ib svg { width: 17px; height: 17px; }
+body.toplayout .navbtns .ib:hover, body.toplayout .bottomrow .ib:hover {
+  background: radial-gradient(120% 100% at 30% 0%, rgba(255, 255, 255, .8), transparent 60%), color-mix(in srgb, var(--accent) 14%, rgba(255, 255, 255, .5));
+  box-shadow: inset 0 1px 0 #fff, 0 0 0 1px color-mix(in srgb, var(--accent) 26%, transparent), 0 6px 16px -6px color-mix(in srgb, var(--accent) 70%, transparent);
+}
+@media (prefers-color-scheme: dark) { body.toplayout .navbtns .ib:hover, body.toplayout .bottomrow .ib:hover { background: radial-gradient(120% 100% at 30% 0%, rgba(255, 255, 255, .2), transparent 60%), color-mix(in srgb, var(--accent) 26%, rgba(255, 255, 255, .04)); box-shadow: inset 0 1px 0 rgba(255, 255, 255, .2), 0 0 0 1px color-mix(in srgb, var(--accent) 40%, transparent), 0 6px 16px -6px color-mix(in srgb, var(--accent) 80%, transparent); } }
+
+/* the address bar: a tall centred capsule with a spectral rim and a pool of light under it */
+body.toplayout:not(.compact) .urlbar { height: 46px; border-radius: 999px; padding: 0 6px; gap: 8px; }
+body.toplayout:not(.compact) .site { width: 36px; height: 36px; border-radius: 50%; }
+body.toplayout .site svg { width: 16px; height: 16px; }
+body.toplayout .urlbar::before { padding: 1.5px; background: var(--rim41); opacity: .75; filter: none; }
+body.toplayout .urlbar:hover::before { opacity: 1; }
+body.toplayout .urlbar {
+  background: var(--glint), radial-gradient(60% 200% at 50% 130%, color-mix(in srgb, var(--accent) 22%, transparent), transparent 70%), linear-gradient(180deg, rgba(255, 255, 255, .55), rgba(255, 255, 255, .2)), var(--lg-tint-hi);
+  box-shadow: inset 0 1px 0 #fff, 0 0 0 5px color-mix(in srgb, var(--accent) 8%, transparent), 0 14px 32px -14px color-mix(in srgb, var(--accent) 70%, transparent), 0 2px 4px rgba(14, 18, 40, .06);
+}
+/* perf: hover swaps the glow instantly; only transform and opacity are ever animated */
+body.toplayout .urlbar, .res { transition: none; }
+body.toplayout .navbtns .ib, body.toplayout .bottomrow .ib, .popover .item { transition: transform .35s var(--ease), color .15s; }
+body.toplayout .urlbar::before { transition: opacity .2s; }
+body.toplayout .urlbar:hover { box-shadow: inset 0 1px 0 #fff, 0 0 0 6px color-mix(in srgb, var(--accent) 14%, transparent), 0 18px 40px -14px color-mix(in srgb, var(--accent) 85%, transparent), 0 2px 4px rgba(14, 18, 40, .06); }
+@media (prefers-color-scheme: dark) {
+  body.toplayout .urlbar { background: var(--glint), radial-gradient(60% 200% at 50% 130%, color-mix(in srgb, var(--accent) 34%, transparent), transparent 70%), linear-gradient(180deg, rgba(255, 255, 255, .09), rgba(255, 255, 255, .02)), var(--lg-tint-hi); box-shadow: inset 0 1px 0 rgba(255, 255, 255, .16), 0 0 0 5px color-mix(in srgb, var(--accent) 12%, transparent), 0 14px 34px -14px color-mix(in srgb, var(--accent) 85%, transparent); }
+  body.toplayout .urlbar:hover { box-shadow: inset 0 1px 0 rgba(255, 255, 255, .2), 0 0 0 6px color-mix(in srgb, var(--accent) 18%, transparent), 0 18px 40px -14px color-mix(in srgb, var(--accent) 95%, transparent); }
+}
+body.incognito.toplayout .urlbar { background: var(--glint), radial-gradient(60% 200% at 50% 130%, rgba(255, 79, 184, .3), transparent 70%), linear-gradient(180deg, rgba(255, 220, 255, .1), rgba(255, 255, 255, .02)), var(--lg-tint-hi); box-shadow: inset 0 1px 0 rgba(255, 220, 255, .18), 0 0 0 5px rgba(162, 89, 255, .14), 0 14px 34px -14px rgba(255, 79, 184, .8); }
+body.incognito.toplayout .urlbar::before { background: linear-gradient(120deg, #a259ff, rgba(255, 220, 255, .5) 50%, #ff4fb8); }
+/* the site sits in the middle, the way a title sits on a book */
+body.toplayout .urltext { display: flex; align-items: center; justify-content: safe center; mask-image: none; padding: 0 8px; }
+body.toplayout .urltext .host { flex: none; }
+body.toplayout .urltext .path { min-width: 0; overflow: hidden; text-overflow: ellipsis; font-size: 13.5px; }
+body.toplayout .urltext:not(.empty) .host { font: 800 14.5px/22px var(--display); letter-spacing: -.02em; padding: 1px 12px; border-radius: 999px; }
+body.toplayout .urltext.empty .host { font: 650 14.5px var(--display); letter-spacing: -.015em; }
+
+/* ------------------------------------------------------------- the command bar: an aurora banner and huge type */
+.cmdbar { width: min(800px, calc(100vw - 64px)); margin-left: calc(min(800px, calc(100vw - 64px)) / -2); border-radius: 34px; top: 9vh;
+  box-shadow: var(--lg-rim), 0 0 0 1px color-mix(in srgb, var(--accent) 30%, transparent), 0 0 0 10px color-mix(in srgb, var(--accent) 10%, transparent), var(--lg-drop-lg), 0 40px 160px -20px color-mix(in srgb, var(--accent) 55%, transparent); }
+.cmdbar::before { padding: 1.5px; background: var(--rim41); opacity: .8; filter: none; }
+.cmdinput {
+  height: 108px; margin: 9px 9px 0; padding: 0 26px 0 22px; gap: 18px; border-radius: 26px; color: #fff; overflow: hidden;
+  background: var(--banner);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .55), inset 0 -16px 30px -18px rgba(0, 0, 0, .3), 0 18px 40px -18px color-mix(in srgb, var(--accent) 90%, transparent);
+}
+.cmdinput::before {
+  background:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='%23fff' stroke-opacity='.3' stroke-width='.6' stroke-linecap='round'%3E%3Ccircle cx='7.2' cy='7.2' r='4.4'/%3E%3Cpath d='m10.5 10.5 3.2 3.2'/%3E%3C/svg%3E") right 80px top -34px / 180px no-repeat,
+    radial-gradient(30% 90% at 78% 0%, rgba(255, 255, 255, .3), transparent 70%),
+    radial-gradient(26% 80% at 30% 120%, color-mix(in srgb, var(--accent2) 80%, transparent), transparent 70%);
+}
+.cmdinput::after { display: none; }
+.cmdicon { width: 60px; height: 60px; border-radius: 20px; color: #fff; background: radial-gradient(120% 100% at 30% 0%, rgba(255, 255, 255, .55), rgba(255, 255, 255, .14) 60%), rgba(255, 255, 255, .12);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .8), inset 0 0 0 1px rgba(255, 255, 255, .35), 0 0 0 6px rgba(255, 255, 255, .1), 0 12px 28px -8px rgba(0, 0, 0, .35); }
+.cmdicon::before { display: none; }
+.cmdicon svg { width: 27px; height: 27px; filter: drop-shadow(0 2px 3px rgba(0, 0, 0, .25)); }
+.cmdinput input { font: 800 32px var(--display); letter-spacing: -.035em; color: #fff; caret-color: #fff; text-shadow: 0 2px 12px rgba(0, 0, 0, .18); }
+.cmdinput input::placeholder { color: rgba(255, 255, 255, .74); font-weight: 750; }
+.cmdinput input::placeholder { font-size: 27px; }
+body.toplayout .site::after { display: none; }
+.cmdinput input::selection { background: rgba(255, 255, 255, .32); }
+.cmdinput kbd { color: #fff; background: rgba(255, 255, 255, .2); box-shadow: inset 0 1px 0 rgba(255, 255, 255, .5), inset 0 0 0 1px rgba(255, 255, 255, .3), 0 4px 10px -4px rgba(0, 0, 0, .3); height: 26px; padding: 0 10px; border-radius: 9px; font-size: 11.5px; }
+.cmdquick { padding: 16px 18px 6px; gap: 10px; }
+.cmdquick.show { grid-template-columns: repeat(auto-fill, minmax(92px, 1fr)); }
+.qa { height: 96px; border-radius: 24px; gap: 10px; font-size: 12px; }
+.qa span, .qa:nth-child(3n+2) span, .qa:nth-child(3n) span { width: 46px; height: 46px; border-radius: 16px; }
+.qa span svg { width: 21px; height: 21px; }
+.qa:hover { transform: translateY(-4px) scale(1.03); }
+.cmdresults { padding: 4px 14px 14px; }
+.cmdresults .sec { font: 800 11px var(--display); padding: 16px 10px 8px; letter-spacing: .14em; color: var(--glow-ink); opacity: 1; }
+.cmdresults .sec::before { width: 8px; height: 8px; border-radius: 3px; }
+.res { height: 54px; border-radius: 18px; gap: 14px; padding: 0 12px 0 9px; }
+.res .ri { width: 36px; height: 36px; border-radius: 13px; }
+.res .rt { font-size: 14.5px; }
+/* the selected row is a solid gem of colour, white type on it */
+.res.sel, body.incognito .res.sel {
+  background: radial-gradient(60% 140% at 0% 0%, rgba(255, 255, 255, .3), transparent 60%), var(--banner);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .5), 0 0 0 4px color-mix(in srgb, var(--accent) 14%, transparent), 0 14px 30px -12px color-mix(in srgb, var(--accent) 90%, transparent);
+}
+@media (prefers-color-scheme: dark) { .res.sel { background: radial-gradient(60% 140% at 0% 0%, rgba(255, 255, 255, .2), transparent 60%), var(--banner); box-shadow: inset 0 1px 0 rgba(255, 255, 255, .3), 0 0 0 4px color-mix(in srgb, var(--accent) 18%, transparent), 0 14px 30px -12px color-mix(in srgb, var(--accent) 95%, transparent); } }
+.res.sel::before { display: none; }
+.res.sel .rt, .res.sel .ru { color: #fff; }
+.res.sel .ru { opacity: .85; }
+.res.sel .ri { background: rgba(255, 255, 255, .24); color: #fff; box-shadow: inset 0 1px 0 rgba(255, 255, 255, .7), inset 0 0 0 1px rgba(255, 255, 255, .3), 0 6px 14px -4px rgba(0, 0, 0, .3); }
+.res.sel .rk { background: rgba(255, 255, 255, .24); color: #fff; box-shadow: inset 0 1px 0 rgba(255, 255, 255, .6), inset 0 0 0 1px rgba(255, 255, 255, .3); }
+.cmdbar.typed .res[data-i="0"] { height: 66px; border-radius: 21px; }
+.cmdbar.typed .res[data-i="0"] .rt { font-size: 18px; }
+.cmdbar.typed .res[data-i="0"] .ri { width: 46px; height: 46px; border-radius: 16px; }
+.cmdfoot { height: 46px; margin: 0 9px 9px; border-radius: 0 0 26px 26px; background: linear-gradient(180deg, transparent, color-mix(in srgb, var(--accent) 10%, transparent)); }
+.cmdbrand { font: 850 13px var(--display); letter-spacing: -.02em; background: var(--nova); -webkit-background-clip: text; background-clip: text; color: transparent; }
+
+/* ------------------------------------------------------------- popovers: full-bleed colour banners at the top */
+.popover { border-radius: 30px; box-shadow: var(--lg-rim), 0 0 0 1px color-mix(in srgb, var(--accent) 26%, transparent), 0 0 0 8px color-mix(in srgb, var(--accent) 8%, transparent), var(--lg-drop-lg), 0 30px 110px -20px color-mix(in srgb, var(--accent) 45%, transparent); }
+.popover::before { padding: 1.5px; background: var(--rim41); opacity: .7; filter: none; }
+.popover > .chero:first-child {
+  margin-left: -4px; margin-right: -4px; margin-top: -4px; border-radius: 24px; color: #fff; background: var(--banner);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .5), inset 0 -14px 26px -18px rgba(0, 0, 0, .3), 0 14px 30px -16px color-mix(in srgb, var(--accent) 90%, transparent);
+}
+.popover > .si-head.chero.ok:first-child { background: radial-gradient(60% 120% at 0% 0%, rgba(255, 255, 255, .3), transparent 60%), linear-gradient(120deg, #1fae6e, #26c2a8 60%, #3aa8e0); box-shadow: inset 0 1px 0 rgba(255, 255, 255, .5), 0 14px 30px -16px rgba(34, 181, 115, .9); }
+.popover > .si-head.chero.bad:first-child { background: radial-gradient(60% 120% at 0% 0%, rgba(255, 255, 255, .3), transparent 60%), linear-gradient(120deg, #e5484d, #f0703c 60%, #f3a03a); box-shadow: inset 0 1px 0 rgba(255, 255, 255, .5), 0 14px 30px -16px rgba(229, 72, 77, .9); }
+.popover > .chero:first-child .hb { display: none; }
+.popover > .chero:first-child .hart { color: #fff; opacity: .22; }
+.popover > .chero:first-child :is(h3, .mm-title, .ai-title, .grow > b, .grow > div:first-child) { color: #fff; background: none; -webkit-text-fill-color: #fff; text-shadow: 0 2px 10px rgba(0, 0, 0, .18); }
+.popover > .chero:first-child :is(.sub, .mm-sub, .sc-sub, .small) { color: rgba(255, 255, 255, .88); -webkit-text-fill-color: rgba(255, 255, 255, .88); }
+.popover > .chero:first-child :is(.hero-ic, .si-lock, .sc-orb, .ic) { background: rgba(255, 255, 255, .22); box-shadow: inset 0 1px 0 rgba(255, 255, 255, .8), inset 0 0 0 1px rgba(255, 255, 255, .3), 0 10px 22px -8px rgba(0, 0, 0, .35); color: #fff; }
+.popover > .chero:first-child .ib { color: #fff; background: rgba(255, 255, 255, .2); box-shadow: inset 0 1px 0 rgba(255, 255, 255, .6); }
+.popover > .chero:first-child .mm-pill { background: rgba(255, 255, 255, .25); }
+.popover > .chero:first-child .si-count { background: rgba(255, 255, 255, .25); color: #fff; box-shadow: inset 0 1px 0 rgba(255, 255, 255, .6); }
+.popover > .chero:first-child .mm-logo.img { box-shadow: 0 0 0 5px rgba(255, 255, 255, .2), 0 12px 28px -6px rgba(0, 0, 0, .35); }
+
+/* ------------------------------------------------------------- toast and tooltips */
+#toast { min-height: 48px; padding: 8px 20px 8px 8px; font-size: 14px; box-shadow: var(--lg-rim), 0 0 0 1px color-mix(in srgb, var(--accent) 30%, transparent), 0 0 0 6px color-mix(in srgb, var(--accent) 10%, transparent), var(--lg-drop-lg), 0 20px 60px -16px color-mix(in srgb, var(--accent) 60%, transparent); }
+#toast::before { padding: 1.5px; background: var(--rim41); opacity: .8; filter: none; }
+#toast .t-orb { width: 32px; height: 32px; }
+#tip { min-height: 34px; padding: 6px 7px 6px 13px; border-radius: 14px; font: 700 12.5px/1.25 var(--display); }
+#tip::before { content: ''; position: absolute; left: 10px; right: 10px; top: 0; height: 1.5px; border-radius: 2px; background: linear-gradient(90deg, transparent, var(--accent), var(--accent3), transparent); opacity: .9; }
+#tip.nokeys { padding-right: 13px; }
+
+/* ------------------------------------------------------------- find bar, peek bar and tab preview share the banner rim */
+#findbar::before, .peekbar::before, #tabcard::before { padding: 1.5px; background: var(--rim41); opacity: .7; filter: none; }
+.find-ic { background: var(--banner); color: #fff; }
+
+/* ------------------------------------------------------------- ultra liquid glass, done cheaply
+   No live blur added and no displacement: a bright top-left specular edge, an inner glow, a fake-refraction sheen,
+   thick gradient rims, a faint chromatic tint at the edges and colour in the shadows. All static paint. */
+:root {
+  --liquid: inset 1.5px 1.5px 0 rgba(255, 255, 255, .95), inset -1px -1px 0 rgba(255, 255, 255, .3), inset 0 0 20px color-mix(in srgb, var(--accent) 16%, transparent),
+            inset 2.5px 0 0 -1px rgba(255, 60, 140, .16), inset -2.5px 0 0 -1px rgba(50, 180, 255, .2);
+  --sheen: linear-gradient(135deg, rgba(255, 255, 255, .62), rgba(255, 255, 255, .1) 32%, transparent 46%, transparent 70%, rgba(255, 255, 255, .22) 92%);
+}
+@media (prefers-color-scheme: dark) {
+  :root { --liquid: inset 1.5px 1.5px 0 rgba(255, 255, 255, .3), inset -1px -1px 0 rgba(255, 255, 255, .06), inset 0 0 22px color-mix(in srgb, var(--accent) 22%, transparent),
+            inset 2.5px 0 0 -1px rgba(255, 80, 150, .24), inset -2.5px 0 0 -1px rgba(60, 190, 255, .26);
+    --sheen: linear-gradient(135deg, rgba(255, 255, 255, .16), rgba(255, 255, 255, .03) 32%, transparent 46%, transparent 70%, rgba(255, 255, 255, .07) 92%); }
+}
+body.incognito { --liquid: inset 1.5px 1.5px 0 rgba(255, 220, 255, .34), inset -1px -1px 0 rgba(255, 220, 255, .07), inset 0 0 22px rgba(162, 89, 255, .26), inset 2.5px 0 0 -1px rgba(255, 79, 184, .28), inset -2.5px 0 0 -1px rgba(120, 140, 255, .26);
+  --sheen: linear-gradient(135deg, rgba(255, 220, 255, .18), rgba(255, 255, 255, .03) 32%, transparent 46%, transparent 70%, rgba(255, 220, 255, .08) 92%); }
+/* the sheen and the inner light sit under the content, inside each capsule */
+body.toplayout .urlbar::after, body.toplayout .navbtns::after, body.toplayout .bottomrow::after {
+  content: ''; position: absolute; inset: 0; border-radius: inherit; pointer-events: none; z-index: -1; background: var(--sheen); box-shadow: var(--liquid);
+}
+body.toplayout .urlbar, body.toplayout .navbtns, body.toplayout .bottomrow { isolation: isolate; }
+/* thick gradient rims */
+body.toplayout .urlbar::before, .cmdbar::before, .popover::before, #toast::before { padding: 2px; }
+body.toplayout .navbtns::before, body.toplayout .bottomrow::before { padding: 1.5px; background: var(--rim41); opacity: .55; filter: none; }
+/* the command bar and popovers carry the same liquid edge on top of their colour shadows */
+.cmdbar { box-shadow: var(--liquid), var(--lg-rim), 0 0 0 1px color-mix(in srgb, var(--accent) 30%, transparent), 0 0 0 10px color-mix(in srgb, var(--accent) 10%, transparent), var(--lg-drop-lg), 0 40px 160px -20px color-mix(in srgb, var(--accent) 55%, transparent); }
+.popover { box-shadow: var(--liquid), var(--lg-rim), 0 0 0 1px color-mix(in srgb, var(--accent) 26%, transparent), 0 0 0 8px color-mix(in srgb, var(--accent) 8%, transparent), var(--lg-drop-lg), 0 30px 110px -20px color-mix(in srgb, var(--accent) 45%, transparent); }
+.cmdinput, .popover > .chero:first-child { box-shadow: inset 1.5px 1.5px 0 rgba(255, 255, 255, .7), inset 0 0 26px rgba(255, 255, 255, .18), inset 0 -16px 30px -18px rgba(0, 0, 0, .3), 0 18px 40px -18px color-mix(in srgb, var(--accent) 90%, transparent); }
+
+/* ------------------------------------------------------------- round three: bolder identity
+   the site you are on is a solid jewel in the middle of the bar; the light deck carries a wash of the accent */
+body.toplayout .urltext:not(.empty) .host, body.incognito.toplayout .urltext:not(.empty) .host {
+  color: #fff; -webkit-text-fill-color: #fff; text-shadow: 0 1px 6px rgba(0, 0, 0, .2); padding: 2px 15px;
+  background: radial-gradient(80% 140% at 20% 0%, rgba(255, 255, 255, .4), transparent 60%), var(--banner);
+  box-shadow: inset 1px 1px 0 rgba(255, 255, 255, .7), inset 0 0 10px rgba(255, 255, 255, .2), 0 0 0 3px color-mix(in srgb, var(--accent) 14%, transparent), 0 6px 16px -6px color-mix(in srgb, var(--accent) 90%, transparent);
+}
+body.toplayout .urltext .path { margin-left: 8px; font-weight: 600; }
+body.toplayout:not(.incognito) #sidebar::before {
+  background:
+    radial-gradient(40% 90px at 50% 100%, color-mix(in srgb, var(--accent) 30%, transparent), transparent 75%),
+    radial-gradient(30% 120% at 0% 0%, color-mix(in srgb, var(--accent) 20%, transparent), transparent 70%),
+    radial-gradient(30% 120% at 100% 0%, color-mix(in srgb, var(--accent3) 18%, transparent), transparent 70%),
+    linear-gradient(180deg, rgba(255, 255, 255, .5), rgba(255, 255, 255, .16));
+}
+@media (prefers-color-scheme: dark) {
+  body.toplayout:not(.incognito) #sidebar::before { background: radial-gradient(40% 90px at 50% 100%, color-mix(in srgb, var(--accent) 34%, transparent), transparent 75%), radial-gradient(30% 120% at 0% 0%, color-mix(in srgb, var(--accent) 22%, transparent), transparent 70%), radial-gradient(30% 120% at 100% 0%, color-mix(in srgb, var(--accent3) 20%, transparent), transparent 70%), linear-gradient(180deg, rgba(255, 255, 255, .06), rgba(255, 255, 255, .015)); }
+}
+/* the light toolbar is not pale: colour washes through every capsule */
+body.toplayout:not(.incognito) .urlbar { background: var(--glint), radial-gradient(30% 160% at 0% 50%, color-mix(in srgb, var(--accent) 26%, transparent), transparent 75%), radial-gradient(30% 160% at 100% 50%, color-mix(in srgb, oklch(from var(--accent) .6 .25 calc(h + 92)) 22%, transparent), transparent 75%), radial-gradient(60% 200% at 50% 130%, color-mix(in srgb, var(--accent) 24%, transparent), transparent 70%), linear-gradient(180deg, rgba(255, 255, 255, .55), rgba(255, 255, 255, .2)), var(--lg-tint-hi); }
+body.toplayout:not(.incognito) .navbtns, body.toplayout:not(.incognito) .bottomrow { background: var(--glint), linear-gradient(135deg, color-mix(in srgb, var(--accent) 18%, transparent), color-mix(in srgb, oklch(from var(--accent) .6 .25 calc(h + 92)) 14%, transparent)), var(--lg-tint); }
+@media (prefers-color-scheme: dark) {
+  body.toplayout:not(.incognito) .urlbar { background: var(--glint), radial-gradient(30% 160% at 0% 50%, color-mix(in srgb, var(--accent) 30%, transparent), transparent 75%), radial-gradient(30% 160% at 100% 50%, color-mix(in srgb, oklch(from var(--accent) .6 .25 calc(h + 92)) 26%, transparent), transparent 75%), linear-gradient(180deg, rgba(255, 255, 255, .09), rgba(255, 255, 255, .02)), var(--lg-tint-hi); }
+  body.toplayout:not(.incognito) .navbtns, body.toplayout:not(.incognito) .bottomrow { background: var(--glint), linear-gradient(135deg, color-mix(in srgb, var(--accent) 22%, transparent), color-mix(in srgb, oklch(from var(--accent) .6 .25 calc(h + 92)) 18%, transparent)), var(--lg-tint); }
+}
+/* the command bar's type goes bigger still */
+.cmdinput { height: 116px; }
+.cmdinput input { font-size: 36px; letter-spacing: -.04em; }
+.cmdinput input::placeholder { font-size: 29px; }
+
+/* ------------------------------------------------------------- the Settings hero DNA, carried into the chrome
+   colour wash, a glowing tile, a light pool and a giant faded glyph bleeding off the edge */
+.res.sel { overflow: hidden; isolation: isolate; }
+.res.sel::after {
+  content: ''; position: absolute; z-index: -1; right: 70px; top: -26px; width: 104px; height: 104px; pointer-events: none; opacity: .22; transform: rotate(-12deg);
+  background: #fff; -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='1' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 12h14M13 6l6 6-6 6'/%3E%3C/svg%3E") center / contain no-repeat;
+}
+.cmdbar.typed .res[data-i="0"].sel::after { width: 130px; height: 130px; top: -32px; }
+/* a light pool under the command bar's banner, spilling onto the glass below it */
+.cmdresults { position: relative; isolation: isolate; }
+.cmdresults::before { content: ''; position: absolute; left: 10%; right: 10%; top: -20px; height: 90px; pointer-events: none; z-index: -1;
+  background: radial-gradient(50% 60% at 50% 0%, color-mix(in srgb, var(--accent) 22%, transparent), transparent 75%); }
+#toast { isolation: isolate; }
+#toast::after { content: ''; position: absolute; inset: 0; border-radius: inherit; z-index: -1; pointer-events: none;
+  background: radial-gradient(40% 140% at 0% 50%, color-mix(in srgb, var(--accent) 30%, transparent), transparent 75%), radial-gradient(30% 120% at 100% 0%, color-mix(in srgb, var(--accent3) 22%, transparent), transparent 75%); }
+
+/* ------------------------------------------------------------- 4.1 palette: deep, saturated, many hues (not pink)
+   deep violet -> the accent -> electric cyan, an amber spark in the corner, a fine dot grain for detail */
+:root {
+  --c-cyan: oklch(from var(--accent) .74 .16 calc(h - 62));
+  --c-violet: oklch(from var(--accent) .46 .24 calc(h + 28));
+  --c-amber: oklch(from var(--accent) .82 .17 calc(h + 155));
+  --c-pink: oklch(from var(--accent) .6 .25 calc(h + 92));
+  --c-deep: oklch(from var(--accent) .34 .16 calc(h + 10));
+  --grain: radial-gradient(circle, rgba(255, 255, 255, .22) 1px, transparent 1.6px) 0 0 / 13px 13px;
+  --banner: var(--grain),
+    radial-gradient(55% 120% at 0% 0%, rgba(255, 255, 255, .3), transparent 60%),
+    radial-gradient(38% 110% at 100% 110%, color-mix(in srgb, var(--c-amber) 75%, transparent), transparent 70%),
+    radial-gradient(40% 120% at 70% -20%, color-mix(in srgb, var(--c-cyan) 80%, transparent), transparent 70%),
+    linear-gradient(118deg, var(--c-violet), var(--accent) 42%, var(--c-pink));
+  --rim41: linear-gradient(120deg, var(--c-cyan), rgba(255, 255, 255, .85) 22%, var(--accent) 45%, var(--c-violet) 66%, var(--c-pink));
+}
+@media (prefers-color-scheme: dark) { :root {
+  --banner: var(--grain),
+    radial-gradient(55% 120% at 0% 0%, rgba(255, 255, 255, .18), transparent 60%),
+    radial-gradient(38% 110% at 100% 110%, color-mix(in srgb, var(--c-amber) 60%, transparent), transparent 70%),
+    radial-gradient(40% 120% at 70% -20%, color-mix(in srgb, var(--c-cyan) 70%, transparent), transparent 70%),
+    linear-gradient(118deg, var(--c-deep), color-mix(in srgb, var(--accent) 85%, #000) 42%, color-mix(in srgb, var(--c-pink) 82%, #000));
+} }
+body.incognito { --banner: var(--grain), radial-gradient(55% 120% at 0% 0%, rgba(255, 220, 255, .2), transparent 60%), radial-gradient(38% 110% at 100% 110%, rgba(255, 140, 90, .55), transparent 70%), radial-gradient(40% 120% at 70% -20%, rgba(90, 200, 255, .5), transparent 70%), linear-gradient(118deg, #3a1580, #7a3cf0 50%, #c040d8); }
+
+/* glass with real body: the light glass carries the colour too, deeper at the foot */
+.cmdbar, .popover { background-image: radial-gradient(70% 40% at 0% 0%, rgba(255, 255, 255, .4), transparent 70%), linear-gradient(180deg, color-mix(in srgb, var(--accent) 7%, transparent), color-mix(in srgb, var(--c-violet) 14%, transparent)); }
+@media (prefers-color-scheme: dark) { .cmdbar, .popover { background-image: linear-gradient(180deg, color-mix(in srgb, var(--accent) 10%, transparent), color-mix(in srgb, var(--c-deep) 40%, transparent)); } }
+body.toplayout #sidebar::after { background: linear-gradient(90deg, transparent, var(--c-cyan) 18%, var(--accent) 45%, var(--c-violet) 70%, var(--c-pink) 86%, transparent); box-shadow: 0 0 16px color-mix(in srgb, var(--accent) 80%, transparent), 0 0 4px var(--c-cyan); opacity: 1; }
+.cmdresults .sec::before { background: linear-gradient(135deg, var(--c-cyan), var(--c-violet)); box-shadow: 0 0 10px var(--c-cyan); }
+.cmdbrand { background: linear-gradient(120deg, var(--c-cyan), var(--accent), var(--c-violet)); -webkit-background-clip: text; background-clip: text; }
+.qa:nth-child(7n+1) { --qc: var(--accent); } .qa:nth-child(7n+2) { --qc: var(--c-cyan); } .qa:nth-child(7n+3) { --qc: var(--c-violet); } .qa:nth-child(7n+4) { --qc: var(--c-amber); }
+.qa:nth-child(7n+5) { --qc: oklch(from var(--accent) .7 .18 calc(h - 120)); } .qa:nth-child(7n+6) { --qc: oklch(from var(--accent) .64 .22 calc(h + 95)); } .qa:nth-child(7n) { --qc: oklch(from var(--accent) .62 .2 calc(h - 30)); }

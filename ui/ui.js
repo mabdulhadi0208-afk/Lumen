@@ -18,7 +18,7 @@ let GUT = 8
 Jelly.init({
   buttons: '.ib, .btn, .pin, .site, .update, .wincontrols button, .tab .x, .tab .add, .tab .audio, .tab .rl, .privchip, .tg-x, .popover .seg button, .mm-tile, .qa, .bm, .ai-chip, .ai-send, .tg-close, .trm-go',
   cards: '.prompt, .newtab',
-  press: '.popover .item',
+  press: '.popover .item, .res',
 })
 const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]))
 
@@ -515,7 +515,10 @@ function bindTab(v, id) {
     else if (e.target.closest('.rl')) { e.stopPropagation(); reloadTab(id) }
   })
   el.addEventListener('contextmenu', e => { e.preventDefault(); api.do('tabMenu', id) })
-  el.addEventListener('dblclick', e => { if (!e.target.closest('button')) api.do('pin', id) })
+  // a double-click on a tab does nothing (pin lives in the tab's right-click menu and the command bar); the second
+  // press must not start a text selection either
+  el.addEventListener('mousedown', e => { if (e.detail > 1) e.preventDefault() })
+  el.addEventListener('dblclick', e => e.stopPropagation())
 }
 
 pinsEl.addEventListener('click', e => {
@@ -630,7 +633,8 @@ async function openCmd(mode, prefill) {
   cmdInput.placeholder = mode === 'location' ? 'Search or enter address' : 'Search, enter address, or type a command'
   showOverlay('cmd')
   cmd.classList.add('show')
-  cmdG.set({ s: 0.9, o: 0, y: -14 }).to({ s: 1, o: 1, y: 0 })
+  cmdG.set({ s: 0.86, o: 0, y: -28 }).to({ s: 1, o: 1, y: 0 })
+  requestAnimationFrame(() => Jelly.kick && Jelly.kick($('#cmdicon'), 0.9, 0.7))
   scrimS.to(1)
   api.do('focusUI')
   requestAnimationFrame(() => { cmdInput.focus(); cmdInput.select() })

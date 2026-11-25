@@ -148,6 +148,82 @@ html, body { margin: 0; height: 100%; overflow: hidden; background: transparent;
 /* the glass holds still while the menu is open: the colour settles once and stays */
 .glass .caustic { animation-iteration-count: 1; }
 .glass .orb.a, .glass .orb.b { animation-iteration-count: 2; }
+
+/* ------------------------------------------------------------- Lumen 4.1: recomposed
+   Each group between separators sits in its own recessed glass card; every row carries a coloured gem tile at rest
+   (its own stop on the accent wheel); the row under the pointer turns into a solid banner of colour with white type. */
+.panel { border-radius: 24px; padding: 8px; min-width: 268px; }
+.panel::after { border-radius: 23px; }
+.panel::before { padding: 1.5px; background: radial-gradient(160px circle at var(--gx) var(--gy), rgba(255, 255, 255, .95), transparent 70%), linear-gradient(120deg, var(--accent), color-mix(in srgb, var(--accent2) 70%, #fff) 40%, rgba(255, 255, 255, .45) 55%, var(--accent3)); }
+:root { --shadow: 0 1px 2px rgba(14, 18, 40, .08), 0 0 0 6px color-mix(in srgb, var(--accent) 9%, transparent), 0 14px 34px color-mix(in srgb, var(--accent) 30%, rgba(14, 18, 40, .14)), 0 40px 90px color-mix(in srgb, var(--accent) 30%, rgba(14, 18, 40, .14)); }
+.dark { --shadow: 0 1px 2px rgba(0, 0, 0, .4), 0 0 0 6px color-mix(in srgb, var(--accent) 14%, transparent), 0 14px 34px color-mix(in srgb, var(--accent) 34%, rgba(0, 0, 0, .4)), 0 40px 96px color-mix(in srgb, var(--accent) 30%, rgba(0, 0, 0, .4)); }
+:root { --banner: radial-gradient(60% 140% at 0% 0%, rgba(255, 255, 255, .32), transparent 60%), linear-gradient(120deg, var(--accent), var(--accent2) 55%, var(--accent3));
+  --well: color-mix(in srgb, var(--accent) 6%, rgba(14, 18, 40, .045)); }
+.dark { --banner: radial-gradient(60% 140% at 0% 0%, rgba(255, 255, 255, .2), transparent 60%), linear-gradient(120deg, color-mix(in srgb, var(--accent) 88%, #000), color-mix(in srgb, var(--accent2) 85%, #000) 55%, color-mix(in srgb, var(--accent3) 85%, #000));
+  --well: rgba(0, 0, 0, .22); }
+.incognito { --banner: radial-gradient(60% 140% at 0% 0%, rgba(255, 220, 255, .22), transparent 60%), linear-gradient(120deg, #6d3bd8, #a24bff 55%, #e0479f); --well: rgba(0, 0, 0, .26); }
+.grp { margin: 0 0 6px; padding: 3px; border-radius: 17px; background: var(--well); box-shadow: inset 0 1px 2px rgba(14, 18, 40, .06), 0 1px 0 rgba(255, 255, 255, .6); }
+.dark .grp { box-shadow: inset 0 1px 2px rgba(0, 0, 0, .3), 0 1px 0 rgba(255, 255, 255, .04); }
+.grp:last-child { margin-bottom: 0; }
+.sep { display: none; }
+.hl { left: 3px; right: 3px; height: 36px; border-radius: 14px; z-index: 2; background: var(--banner);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .5), 0 0 0 3px color-mix(in srgb, var(--accent) 14%, transparent), 0 10px 24px -8px color-mix(in srgb, var(--accent) 90%, transparent); }
+.dark .hl { background: var(--banner); box-shadow: inset 0 1px 0 rgba(255, 255, 255, .26), 0 0 0 3px color-mix(in srgb, var(--accent) 20%, transparent), 0 10px 24px -8px color-mix(in srgb, var(--accent) 95%, transparent); }
+.row { z-index: 3; height: 36px; border-radius: 14px; gap: 12px; padding: 0 12px 0 6px; font-size: 13.5px; transition: color .12s; }
+.row .ic { transition: color .14s, transform .3s cubic-bezier(.3, 1.5, .5, 1); }
+.row .lb { font-weight: 600; }
+.row .ic { --tc: oklch(from var(--accent) calc(l + .02) c calc(h + var(--hs, 0))); width: 26px; height: 26px; border-radius: 9px; color: var(--tc);
+  background: radial-gradient(120% 100% at 30% 0%, rgba(255, 255, 255, .7), transparent 60%), color-mix(in srgb, var(--tc) 16%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--tc) 22%, transparent); }
+.dark .row .ic { color: oklch(from var(--tc) calc(l + .14) c h); background: radial-gradient(120% 100% at 30% 0%, rgba(255, 255, 255, .14), transparent 60%), color-mix(in srgb, var(--tc) 22%, transparent); }
+.row .ic:empty { background: none; box-shadow: none; }
+.row .ic svg { width: 15px; height: 15px; }
+.row.on, .dark .row.on { color: #fff; }
+.row.on .ic, .row:nth-of-type(3n+1).on .ic, .row:nth-of-type(3n+2).on .ic, .dark .row.on .ic { color: #fff; background: rgba(255, 255, 255, .24); box-shadow: inset 0 1px 0 rgba(255, 255, 255, .7), inset 0 0 0 1px rgba(255, 255, 255, .3), 0 4px 10px -3px rgba(0, 0, 0, .3); transform: scale(1.1) rotate(-5deg); }
+.row.on kbd, .dark .row.on kbd { color: #fff; background: rgba(255, 255, 255, .22); box-shadow: inset 0 1px 0 rgba(255, 255, 255, .5), inset 0 0 0 1px rgba(255, 255, 255, .28); }
+.row.on .chev, .row.open .chev { color: #fff; }
+.row.off .ic { background: none; box-shadow: none; }
+.row .lb b { color: inherit; }
+.row.on .lb b { color: #fff; }
+.row .sw { width: 15px; height: 15px; }
+.row .dot { width: 8px; height: 8px; }
+.row.on .dot { background: #fff; box-shadow: 0 0 0 3px rgba(255, 255, 255, .3); }
+.glass .sweep { background: linear-gradient(105deg, transparent 35%, rgba(255, 255, 255, .5) 50%, transparent 65%); }
+
+/* ultra liquid glass, cheaply: a bright top-left specular edge, inner glow, a fake-refraction sheen, chromatic edge tint */
+:root { --spec: inset 1.5px 1.5px 0 rgba(255, 255, 255, .95), inset -1px -1px 0 rgba(255, 255, 255, .3), inset 0 0 22px color-mix(in srgb, var(--accent) 16%, transparent), inset 3px 0 0 -1px rgba(255, 60, 140, .16), inset -3px 0 0 -1px rgba(50, 180, 255, .2); }
+.dark { --spec: inset 1.5px 1.5px 0 rgba(255, 255, 255, .3), inset -1px -1px 0 rgba(255, 255, 255, .06), inset 0 0 24px color-mix(in srgb, var(--accent) 24%, transparent), inset 3px 0 0 -1px rgba(255, 80, 150, .24), inset -3px 0 0 -1px rgba(60, 190, 255, .26); }
+.glass .sheen { background: linear-gradient(135deg, rgba(255, 255, 255, .6), rgba(255, 255, 255, .1) 30%, transparent 44%, transparent 72%, rgba(255, 255, 255, .2) 94%), radial-gradient(80% 40% at 0% 0%, color-mix(in srgb, var(--accent) 18%, transparent), transparent 70%); }
+.dark .glass .sheen { background: linear-gradient(135deg, rgba(255, 255, 255, .15), rgba(255, 255, 255, .03) 30%, transparent 44%, transparent 72%, rgba(255, 255, 255, .06) 94%), radial-gradient(80% 40% at 0% 0%, color-mix(in srgb, var(--accent) 24%, transparent), transparent 70%); }
+.panel::before { padding: 2px; }
+
+/* ------------------------------------------------------------- 4.1 palette: deep, saturated, many hues (not pink)
+   deep violet -> the accent -> electric cyan, an amber spark in the corner, a fine dot grain for detail */
+:root {
+  --c-cyan: oklch(from var(--accent) .74 .16 calc(h - 62));
+  --c-violet: oklch(from var(--accent) .46 .24 calc(h + 28));
+  --c-amber: oklch(from var(--accent) .82 .17 calc(h + 155));
+  --c-pink: oklch(from var(--accent) .6 .25 calc(h + 92));
+  --c-deep: oklch(from var(--accent) .34 .16 calc(h + 10));
+  --grain: radial-gradient(circle, rgba(255, 255, 255, .22) 1px, transparent 1.6px) 0 0 / 13px 13px;
+  --banner: var(--grain),
+    radial-gradient(55% 120% at 0% 0%, rgba(255, 255, 255, .3), transparent 60%),
+    radial-gradient(38% 110% at 100% 110%, color-mix(in srgb, var(--c-amber) 75%, transparent), transparent 70%),
+    radial-gradient(40% 120% at 70% -20%, color-mix(in srgb, var(--c-cyan) 80%, transparent), transparent 70%),
+    linear-gradient(118deg, var(--c-violet), var(--accent) 42%, var(--c-pink));
+  --rim41: linear-gradient(120deg, var(--c-cyan), rgba(255, 255, 255, .85) 22%, var(--accent) 45%, var(--c-violet) 66%, var(--c-pink));
+}
+.dark {
+  --banner: var(--grain),
+    radial-gradient(55% 120% at 0% 0%, rgba(255, 255, 255, .18), transparent 60%),
+    radial-gradient(38% 110% at 100% 110%, color-mix(in srgb, var(--c-amber) 60%, transparent), transparent 70%),
+    radial-gradient(40% 120% at 70% -20%, color-mix(in srgb, var(--c-cyan) 70%, transparent), transparent 70%),
+    linear-gradient(118deg, var(--c-deep), color-mix(in srgb, var(--accent) 85%, #000) 42%, color-mix(in srgb, var(--c-pink) 82%, #000));
+}
+.incognito { --banner: var(--grain), radial-gradient(55% 120% at 0% 0%, rgba(255, 220, 255, .2), transparent 60%), radial-gradient(38% 110% at 100% 110%, rgba(255, 140, 90, .55), transparent 70%), radial-gradient(40% 120% at 70% -20%, rgba(90, 200, 255, .5), transparent 70%), linear-gradient(118deg, #3a1580, #7a3cf0 50%, #c040d8); }
+.panel::before { background: radial-gradient(160px circle at var(--gx) var(--gy), rgba(255, 255, 255, .95), transparent 70%), var(--rim41); }
+.row .ic { --tc: oklch(from var(--accent) .62 .2 calc(h + var(--hs, 0) - 60)); }
+.glass .tint, .panel.seen .glass .tint { background-image: linear-gradient(180deg, color-mix(in srgb, var(--accent) 6%, transparent), color-mix(in srgb, var(--c-violet) 12%, transparent)); }
 </style>
 </head>
 <body>
@@ -197,7 +273,8 @@ function lensMap(w, h, r, rim, pad) {
   ctx.putImageData(img, 0, 0)
   return c.toDataURL()
 }
-let lensOK = true, lensSeq = 0
+// 4.1: no SVG displacement over content (perf). The glass look comes from rims, sheens and glows instead.
+let lensOK = false, lensSeq = 0
 // the lens: the rim map displaces the picture, once per colour channel at a slightly different strength, which
 // splits the colours at the very edge into a thin chromatic fringe
 function lensFilter(id, href, w, h, scale) {
@@ -307,14 +384,19 @@ function buildPanel(items, parentItem, level) {
   const p = document.createElement('div'); p.className = 'panel'; p.dataset.level = level
   p.innerHTML = '<div class="glass"><div class="nebula"></div><div class="refract"></div><div class="tint"></div><div class="orb a"></div><div class="orb b"></div><div class="caustic"></div><div class="sheen"></div><div class="sweep"></div><div class="glint"></div></div><div class="scroll"><div class="hl"></div></div>'
   const sc = p.querySelector('.scroll')
+  // each run of rows between separators becomes its own glass card
+  let grp = null, n = 0
+  const newGrp = () => { grp = document.createElement('div'); grp.className = 'grp'; sc.appendChild(grp) }
   for (const it of items) {
-    if (it.type === 'separator') { const s = document.createElement('div'); s.className = 'sep'; sc.appendChild(s); continue }
+    if (it.type === 'separator') { if (grp && grp.children.length) grp = null; continue }
+    if (!grp) newGrp()
     const r = document.createElement('div'); r.className = 'row' + (it.enabled ? '' : ' off'); r.dataset.id = it.id; r.setAttribute('role', 'menuitem')
     r.innerHTML = `<span class="ic">${iconFor(it, parentItem)}</span><span class="lb"></span>` +
       (it.type === 'submenu' ? `<span class="chev">${IC.chev}</span>` : it.keys ? `<span class="kc">${it.keys.map(k => `<kbd>${esc(k)}</kbd>`).join('')}</span>` : '')
     r.querySelector('.lb').textContent = it.label
     r._it = it
-    sc.appendChild(r)
+    r.querySelector('.ic').style.setProperty('--hs', String((n++ * 38) % 300))
+    grp.appendChild(r)
   }
   p._items = items; p._level = level; p._cur = null
   const hl = p.querySelector('.hl')
@@ -367,22 +449,23 @@ function paintBackdrop(p) {
   requestAnimationFrame(() => { rf.classList.add('on'); p.classList.add('seen') })
 }
 function enter(p, { sub = false } = {}) {
-  const sc = p.querySelector('.scroll'), list = [...sc.children].filter(n => !n.classList.contains('hl'))
+  const sc = p.querySelector('.scroll'), list = [...sc.querySelectorAll('.grp, .row')]
   if (MOTION === 'off') return
   const s = new Spring(0, v => {
     const k = Math.min(1.2, v)
     p.style.opacity = Math.min(1, v * 1.6)
-    p.style.transform = `scale(${(sub ? 0.94 : 0.9) + (sub ? 0.06 : 0.1) * k}, ${(sub ? 0.92 : 0.86) + (sub ? 0.08 : 0.14) * k})`
+    p.style.transform = `scale(${(sub ? 0.92 : 0.84) + (sub ? 0.08 : 0.16) * k}, ${(sub ? 0.9 : 0.78) + (sub ? 0.1 : 0.22) * k})`
     p.style.filter = v < 0.6 ? `blur(${(0.6 - v) * 6}px)` : ''
   })
   s.to(1)
   // rows arrive 12ms apart: quick enough for a menu, still alive
   // if frames were held back, land on the final state anyway
   setTimeout(() => { if (!p.isConnected || p._closing) return; s.set(1); list.forEach(n => { n.style.opacity = '1'; n.style.transform = 'none' }) }, 700)
-  list.slice(0, 18).forEach((n, i) => {
+  list.slice(0, 24).forEach((n, i) => {
     n.style.opacity = '0'
-    const r = new Spring(0, v => { n.style.opacity = Math.min(1, v * 1.4); n.style.transform = `translateY(${(1 - v) * 5}px)` })
-    setTimeout(() => r.to(1), 16 + i * 12)
+    const isRow = n.classList.contains('row')
+    const r = new Spring(0, v => { n.style.opacity = Math.min(1, v * 1.4); if (isRow) n.style.transform = `translateX(${(1 - v) * -10}px)` })
+    setTimeout(() => r.to(1), 16 + i * 11)
   })
 }
 function openSub(p, r) {

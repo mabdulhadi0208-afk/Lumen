@@ -202,7 +202,7 @@ body {
 
 /* ---------------------------------------------------------------- About: the app icon on its own stage */
 .main > .abouthero.abouthero.abouthero { margin: 54px 0 30px; }
-.abouthero > .hero-orb, .abouthero > .hero-art, .abouthero > .hero-grain { position: absolute; }
+.abouthero > .hero-orb, .abouthero > .hero-art, .abouthero > .hero-grain, .abouthero > .hero-dots { position: absolute; }
 .abouthero > .hero-orb { z-index: 0; } .abouthero > .hero-art { z-index: 1; }
 .abouthero > img, .abouthero > div:last-child { z-index: 3; }
 .abouthero::before { content: ''; position: absolute; inset: 0; left: 0; top: 0; width: auto; height: auto; z-index: 4; border-radius: inherit; padding: 1.5px; pointer-events: none; -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor; mask-composite: exclude;
@@ -360,3 +360,33 @@ body[data-motion="off"] .tries span, body[data-motion="off"] .hero-art, body[dat
   .hero-tx, .err .hero-tx { padding-right: 0; }
   .main { grid-template-columns: minmax(20px, 1fr) minmax(0, 1000px) minmax(20px, 1fr); }
 }
+
+/* ---------------------------------------------------------------- tiny drifting dots in the hero
+   The one loop on these pages, kept nearly free: two pre-painted layers (seeded per section in app.js:
+   fine and larger dots, and a tile of glowing specks and sparkles) drift and twinkle on the compositor,
+   transform and opacity only, 11 and 16 second cycles, over the right side of the hero only. Over them sits a faint
+   still constellation; a light glint runs along the rim once when the hero opens. Everything stops when
+   the hero is off screen (.dots-off), when the window is hidden (.lm-hidden), with Motion off, and under
+   reduced motion. The layers sit above the light pools and below the glyph, icon and title. */
+.hero-dots { position: absolute; inset: 0; z-index: 0; pointer-events: none; border-radius: inherit; overflow: hidden;
+  --hd1: color-mix(in srgb, var(--ic3, var(--ic)) 65%, #fff); --hd2: color-mix(in srgb, var(--ic2, var(--ic)) 50%, #fff); }
+/* the moving layers cover only the right side of the hero (behind the glyph), which keeps the redrawn area small */
+.hero-dots > i { position: absolute; top: -30px; bottom: -30px; left: 36%; right: -30px; will-change: transform, opacity; background-repeat: repeat; }
+.hero-dots .hd1 { animation: hd-a 16s ease-in-out infinite alternate; }
+.hero-dots .hd3 { animation: hd-c 11s ease-in-out infinite alternate; }
+/* the left side keeps a still field of fine dots, painted once */
+.hero-dots::before { content: ''; position: absolute; inset: 0; right: 64%; opacity: .5; background: radial-gradient(circle, color-mix(in srgb, var(--ic3, var(--ic)) 60%, #fff) 1px, transparent 1.8px) 0 0 / 34px 30px, radial-gradient(circle, rgba(255,255,255,.8) 1.2px, transparent 2px) 17px 13px / 97px 83px; -webkit-mask: linear-gradient(90deg, transparent, #000 60%); }
+@keyframes hd-a { 0% { transform: translate3d(0, 0, 0); opacity: .5; } 50% { opacity: .9; } 100% { transform: translate3d(-28px, -16px, 0); opacity: .6; } }
+@keyframes hd-c { 0% { transform: translate3d(0, 6px, 0); opacity: .3; } 45% { opacity: 1; } 100% { transform: translate3d(-14px, -12px, 0); opacity: .5; } }
+.hd-cons { position: absolute; inset: 0; background: center / cover no-repeat; opacity: .9; -webkit-mask: linear-gradient(90deg, transparent 38%, #000 70%); }
+:is(.hero, .abouthero).enter .hd-cons { animation: nv-fade 2s .6s both; }
+/* the glint: a short streak of light runs along the top rim, once */
+.hero-glint { position: absolute; left: 30px; right: 30px; top: 0; height: 2px; z-index: 6; pointer-events: none; overflow: hidden; }
+.hero-glint::before { content: ''; position: absolute; top: 0; bottom: 0; left: 0; width: 22%; border-radius: 2px; opacity: 0; transform: translateX(-110%);
+  background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--ic3, var(--ic)) 40%, #fff), #fff, transparent); }
+:is(.hero, .abouthero).enter .hero-glint::before { animation: rimglint 2.6s 1s cubic-bezier(.4, 0, .2, 1) both; }
+@keyframes rimglint { 0% { transform: translateX(-110%); opacity: 0; } 12% { opacity: 1; } 85% { opacity: 1; } 100% { transform: translateX(460%); opacity: 0; } }
+:is(.hero, .abouthero).dots-off .hero-dots > i, .lm-hidden .hero-dots > i { animation-play-state: paused; }
+body[data-motion="off"] .hero-dots > i, body[data-motion="off"] .hero-glint::before { animation: none; will-change: auto; }
+body[data-motion="off"] .hero-dots > i { opacity: .7; }
+@media (prefers-reduced-motion: reduce) { .hero-dots > i { animation: none !important; will-change: auto; opacity: .7; } }

@@ -892,7 +892,7 @@ async function about(m) {
   const st = await L.invoke('update', 'state')
   const desc = s => !s ? '' : s.status === 'checking' ? 'Checking for updates...' : s.status === 'downloading' ? `Downloading update... ${Math.round(s.progress || 0)}%` : s.status === 'ready' ? `Version ${esc(s.latest)} is ready. Restart to finish updating.` : s.status === 'available' ? (s.reason || `Version ${esc(s.latest)} is available.`) : s.status === 'uptodate' ? 'Lumen is up to date.' : s.status === 'unpacking' ? 'Unpacking the update...' : s.status === 'installing' ? 'Restarting...' : s.status === 'error' ? 'Could not check for updates. ' + esc(s.error || '') : ''
   const title = s => !s ? 'Updates' : s.status === 'ready' ? 'Ready to restart' : s.status === 'downloading' || s.status === 'unpacking' ? 'Getting the update' : s.status === 'checking' ? 'Checking' : s.status === 'uptodate' ? 'You have the latest Lumen' : s.status === 'available' ? 'An update is available' : s.status === 'error' ? 'Updates' : 'Updates'
-  m.innerHTML = `<div class="abouthero rise enter" style="--ic:var(--accent)">${heroBack(ICONS.info || '')}<img class="ahicon" src="lumen://assets/icon-${esc(S.appIcon || 'default')}.png" alt=""><div><h2>Lumen</h2><div class="ahver">Version ${esc(VERSION)}</div><p class="lead">A fast, private browser with Chrome's engine and a calmer feel.</p>
+  m.innerHTML = `<div class="abouthero rise enter" style="--ic:var(--accent)">${heroBack(ICONS.info || '', 'about')}<img class="ahicon" src="lumen://assets/icon-${esc(S.appIcon || 'default')}.png" alt=""><div><h2>Lumen</h2><div class="ahver">Version ${esc(VERSION)}</div><p class="lead">A fast, private browser with Chrome's engine and a calmer feel.</p>
     <div class="ahbtns"><button class="btn" id="replay">${ICONS.play}Replay the intro</button><a class="btn" href="lumen://settings/general">${ICONS.gear}Settings</a></div></div></div>
   <div class="card"><h3>UPDATES</h3>
     <div class="row updrow"><span class="updorb" id="udorb"></span><div class="grow"><div class="t" id="udt"></div><div class="d"><span id="ud">${desc(st)}</span></div><div class="bar hidden" id="udbar"><i></i></div></div><div class="updbtns"><button class="btn" id="chk">Check for updates</button><button class="btn primary ${st && st.status === 'ready' ? '' : 'hidden'}" id="rst">${ICONS.reload}Restart</button></div></div>
@@ -902,6 +902,7 @@ async function about(m) {
     ${row('Engine', 'Chromium, the same engine as Google Chrome, so every site works the same.', '<span class="pill">Chromium</span>')}
     <div class="builtins">${[['shield', 'Ad and tracker blocking'], ['key', 'Password manager'], ['lock', 'Encrypted sync'], ['split', 'Split view'], ['book', 'Reader mode'], ['pip', 'Picture in picture'], ['moon', 'Tab sleeping'], ['puzzle', 'Chrome extensions'], ['sparkle', 'Lumen AI'], ['box', 'Parcels'], ['translate', 'Translate'], ['bolt', 'Surge and Koi']].map(([i, t], n) => `<span style="--ic:${tint(n * 30)}">${ICONS[i] || ''}${t}</span>`).join('')}</div>
   </div>`
+  watchDots(m.querySelector('.abouthero'))
   bindSettings(m)
   let poll = 0
   const paint = s => {
@@ -951,7 +952,7 @@ const ERR_TRY = {
 }
 const errSvg = (art, w = 30) => `<svg viewBox="0 0 16 16" width="${w}" height="${w}" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">${art}</svg>`
 // error and crash pages open with the same stage as a settings section: lit glass, the icon tile, a huge title and a giant glyph
-const errHero = (art, why, code, title, text) => `<header class="hero errhero enter">${heroBack(errSvg(art, 16))}<div class="ico hero-ic" aria-hidden="true">${errSvg(art)}</div><div class="hero-tx"><div class="hero-eye"><span>${why}</span><i></i>${code ? `<b>Error ${code}</b>` : ''}</div><h1>${title}</h1><p>${text}</p></div></header>`
+const errHero = (art, why, code, title, text) => `<header class="hero errhero enter">${heroBack(errSvg(art, 16), why + code)}<div class="ico hero-ic" aria-hidden="true">${errSvg(art)}</div><div class="hero-tx"><div class="hero-eye"><span>${why}</span><i></i>${code ? `<b>Error ${code}</b>` : ''}</div><h1>${title}</h1><p>${text}</p></div></header>`
 const errTries = kind => `<div class="tries"><b>Things to try</b>${ERR_TRY[kind].map(t => `<span>${esc(t)}</span>`).join('')}</div>`
 function errorPage() {
   const p = new URLSearchParams(location.search)
@@ -1002,7 +1003,37 @@ function springPop(el, from) {
   s.to(1)
 }
 // the hero's lights, grain and the giant watermark glyph: a soft glow, a deep shadow copy and the crisp outline
-const heroBack = glyph => `<i class="hero-orb a"></i><i class="hero-orb b"></i><i class="hero-orb c"></i><i class="hero-orb d"></i><i class="hero-grain" aria-hidden="true"></i><span class="hero-art glow" aria-hidden="true">${glyph}</span><span class="hero-art depth" aria-hidden="true">${glyph}</span><span class="hero-art" aria-hidden="true">${glyph}</span>`
+// tiny drifting dots: three pre-painted layers of dots, each a tile of seeded radial gradients. Only the layers move
+// (transform and opacity on the compositor), so the motion costs next to nothing. Every section gets its own pattern.
+function heroDots(seed) {
+  let h = 2166136261; for (const c of String(seed)) h = Math.imul(h ^ c.charCodeAt(0), 16777619)
+  const rnd = () => ((h = Math.imul(h ^ (h >>> 15), 2246822507) ^ Math.imul(h ^ (h >>> 13), 3266489909)) >>> 0) / 4294967296
+  const dotsLayer = sets => {
+    const img = [], size = [], pos = []
+    for (const [n, tile, r, col] of sets) {
+      const th = Math.round(tile * (.8 + rnd() * .4)), px = Math.round(rnd() * tile), py = Math.round(rnd() * th)
+      for (let i = 0; i < n; i++) { img.push(`radial-gradient(circle at ${(rnd() * 100).toFixed(1)}% ${(rnd() * 100).toFixed(1)}%, ${col} ${r}px, transparent ${r + 1.2}px)`); size.push(`${tile}px ${th}px`); pos.push(`${px}px ${py}px`) }
+    }
+    return `background-image:${img.join(',')};background-size:${size.join(',')};background-position:${pos.join(',')}`
+  }
+  // the bright layer is one small SVG tile: a few glowing specks and four-point sparkles
+  const svg = x => `url('data:image/svg+xml,${encodeURIComponent(x)}')`
+  const star = (x, y, r) => `M${x} ${(y - r).toFixed(1)}Q${x} ${y} ${(x + r).toFixed(1)} ${y}Q${x} ${y} ${x} ${(y + r).toFixed(1)}Q${x} ${y} ${(x - r).toFixed(1)} ${y}Q${x} ${y} ${x} ${(y - r).toFixed(1)}Z`
+  let sp = '', specks = ''
+  for (let i = 0; i < 3; i++) sp += star(Math.round(20 + rnd() * 340), Math.round(20 + rnd() * 260), 3.5 + rnd() * 4)
+  for (let i = 0; i < 4; i++) { const x = Math.round(10 + rnd() * 360), y = Math.round(10 + rnd() * 280); specks += `<circle cx="${x}" cy="${y}" r="5" fill="white" fill-opacity=".12"/><circle cx="${x}" cy="${y}" r="1.7" fill="white"/>` }
+  const bright = `<svg xmlns="http://www.w3.org/2000/svg" width="380" height="300">${specks}<path d="${sp}" fill="white"/></svg>`
+  // a faint constellation, still, linking a handful of stars on the right
+  const pts = []; for (let i = 0; i < 6; i++) pts.push([Math.round(480 + rnd() * 470), Math.round(40 + rnd() * 240)])
+  pts.sort((a, b) => a[0] - b[0])
+  const cons = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 320" preserveAspectRatio="xMidYMid slice"><path d="M${pts.map(q => q.join(' ')).join('L')}" fill="none" stroke="white" stroke-opacity=".24" stroke-width=".9" stroke-dasharray="2 4"/>${pts.map(([x, y], i) => `<circle cx="${x}" cy="${y}" r="${i % 3 ? 1.5 : 2.4}" fill="white" fill-opacity="${i % 3 ? .5 : .85}"/>`).join('')}</svg>`
+  return `<i class="hero-dots" aria-hidden="true"><b class="hd-cons" style="background-image:${svg(cons)}"></b><i class="hd1" style="${dotsLayer([[9, 150 + Math.round(rnd() * 40), 1, 'var(--hd1)'], [6, 210 + Math.round(rnd() * 60), 1.4, 'var(--hd2)']])}"></i><i class="hd3" style="background-image:${svg(bright)};background-size:380px 300px;background-position:${Math.round(rnd() * 380)}px ${Math.round(rnd() * 300)}px"></i></i><i class="hero-glint" aria-hidden="true"></i>`
+}
+// the dots stop when the hero is off screen or the window is hidden
+const dotsIO = 'IntersectionObserver' in window ? new IntersectionObserver(es => es.forEach(e => e.target.classList.toggle('dots-off', !e.isIntersecting))) : null
+const watchDots = el => { if (dotsIO && el) dotsIO.observe(el) }
+document.addEventListener('visibilitychange', () => document.documentElement.classList.toggle('lm-hidden', document.hidden))
+const heroBack = (glyph, seed = glyph) => `<i class="hero-orb a"></i><i class="hero-orb b"></i><i class="hero-orb c"></i><i class="hero-orb d"></i>${heroDots(seed)}<i class="hero-grain" aria-hidden="true"></i><span class="hero-art glow" aria-hidden="true">${glyph}</span><span class="hero-art depth" aria-hidden="true">${glyph}</span><span class="hero-art" aria-hidden="true">${glyph}</span>`
 function springStage(el) {
   // the whole stage settles in on a Jelly spring: it rises and grows a touch, then is still
   if (!window.Jelly || Jelly.getMode() === 'off') return
@@ -1021,8 +1052,8 @@ function buildHero(main) {
   let group = 'Settings'; for (let i = 0; i <= idx && i < SECTIONS.length; i++) if (NAV_GROUPS[SECTIONS[i][0]]) group = NAV_GROUPS[SECTIONS[i][0]]
   if (title === 'Search') group = 'Settings'
   const num = title === 'Search' ? '' : `<b>${String(idx + 1).padStart(2, '0')} / ${SECTIONS.length}</b>`
-  hero.innerHTML = `${heroBack(ICONS[icon] || '')}<span class="hero-ic" aria-hidden="true">${ICONS[icon] || ''}</span><div class="hero-tx"><div class="hero-eye" aria-hidden="true"><span>${esc(group)}</span><i></i>${num}</div></div>`
-  main.insertBefore(hero, h2)
+  hero.innerHTML = `${heroBack(ICONS[icon] || '', title + CUR_SECTION)}<span class="hero-ic" aria-hidden="true">${ICONS[icon] || ''}</span><div class="hero-tx"><div class="hero-eye" aria-hidden="true"><span>${esc(group)}</span><i></i>${num}</div></div>`
+  main.insertBefore(hero, h2); watchDots(hero)
   const tx = hero.querySelector('.hero-tx'); tx.append(h2); if (lead) tx.append(lead)
   // a page that redraws itself keeps its hero still; a new page gets the full entrance
   if (heroSeen !== title) { hero.classList.add('enter'); springPop(hero.querySelector('.hero-ic'), 0.45); springStage(hero) }

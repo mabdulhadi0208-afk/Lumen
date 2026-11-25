@@ -1,4 +1,10 @@
-/* Lumen's opening film, the 4.0 trailer. Cut like a movie trailer and shot through real liquid glass: every frame,
+/* Lumen's opening film, the 4.1 cut: speed and Lumen AI. Three cards on the beat, a beat of black, then the time
+   Lumen takes to open counts down from 4 s and slams into 1; ignition on "Lumen 4.1"; a tour of live demos (open in a
+   second, results as you type, Ask Lumen with sources, Cmd K that acts, the selection bubble); and the
+   numbers, four figures at different depths that the camera flies through. A key light beam crosses the biggest
+   beats; every soft glow is a gradient, never a live blur. After an update: warp, ignition, What is new, the numbers.
+   Built on the 4.0 trailer engine below.
+   The 4.0 notes: Cut like a movie trailer and shot through real liquid glass: every frame,
    card and button is a lens that bends the nebula behind it (an SVG displacement map on the backdrop, strongest at the
    rim, with a chromatic fringe), with a glint that follows your pointer and a caustic glow inside.
    The cut: the iris opens on beat-cut title cards, a count that slams into the version number, a chromatic warp
@@ -17,16 +23,17 @@
 ;(function () {
   // ---- edit this list every release: it is the "New in Lumen" act of the film (only this version's changes)
   const WHATS_NEW = {
-    version: '4.0',
+    version: '4.1',
     items: [
-      { icon: 'clock', text: 'A brand new home: a sleek clock, smart search and 15 widgets you can drag around' },
-      { icon: 'gear', text: 'Every Settings and library page rebuilt, plus a real Read later page' },
-      { icon: 'play', text: 'A trailer for an intro, and a restart screen that lands you right back in your tabs' },
-      { icon: 'bolt', text: 'Surge and Koi are now their own apps, so Lumen is lighter and faster' },
-      { icon: 'book', text: 'Reader mode with themes, contents, focus mode and read aloud' },
-      { icon: 'key', text: 'A strong password offered on every sign-up form' },
-      { icon: 'layers', text: 'A bigger command bar, liquid glass menus and dialogs, and a new app icon' },
-      { icon: 'sparkle', text: 'Faster than ever: instant new tabs, smooth scrolling and nothing running in the background' },
+      { icon: 'sparkle', text: 'Ask Lumen: a chat for every tab, with streaming answers and cited quotes you can click to jump to' },
+      { icon: 'bolt', text: 'Opens in about 1 second instead of 4, with no freeze on first launch' },
+      { icon: 'search', text: 'Cmd K and address bar results as you type, in about 10 ms' },
+      { icon: 'tabs', text: 'Tab switching 3x faster, and every click and key answers within 20 ms' },
+      { icon: 'layers', text: 'Ask about all your tabs at once, or tell Cmd K to close all YouTube tabs' },
+      { icon: 'translate', text: 'Select text to Explain, Define, Summarize, Translate or Rewrite it, plus writing help in text boxes' },
+      { icon: 'key', text: 'Fast, Smart and Best models, set up in 3 steps' },
+      { icon: 'clock', text: 'A new Home banner: minimal, a premium clock, and Modern or Classic layouts' },
+      { icon: 'play', text: 'Jelly motion everywhere again, and a smooth glide when you scroll' },
     ],
   }
 
@@ -490,6 +497,123 @@
 
   #intro .nebc{position:absolute;inset:0;opacity:0;pointer-events:none;display:grid;place-items:center;overflow:hidden}
   #intro .nebc .nebi{width:150vmax;height:150vmax;flex:none;opacity:1}
+
+  /* ---- 4.1: the speed and AI cut. Light is cheap here: soft glows are radial gradients (never a live blur), beams
+     and wipes move with transform, and the big type moments stack on real depth (translateZ in the stage's
+     perspective) so the camera can fly through them. */
+  #intro .halo{filter:none;background:radial-gradient(closest-side,color-mix(in srgb,var(--a) 42%,transparent),color-mix(in srgb,var(--a3) 20%,transparent) 50%,transparent 78%)}
+  #intro .leak{filter:none}
+  #intro .flare{filter:none}
+  #intro .logo .mirror{filter:none;opacity:.1}
+  #intro .glassf::after{filter:none;background:radial-gradient(closest-side,color-mix(in srgb,var(--a) 40%,transparent),transparent 80%)}
+  /* a key light: one wide diagonal beam that crosses the frame on the biggest beats */
+  #intro .beam{position:absolute;left:50%;top:-30%;width:46vw;height:160%;margin-left:-23vw;z-index:5;pointer-events:none;opacity:0;transform:translateX(-120vw) rotate(18deg);
+    background:linear-gradient(90deg,transparent,color-mix(in srgb,var(--hi) 16%,transparent) 30%,rgba(255,255,255,.22) 50%,color-mix(in srgb,var(--hi3) 16%,transparent) 70%,transparent)}
+  /* a light curtain: a bright edge with ink behind it slides off the type, uncovering it */
+  #intro .wipe{position:absolute;inset:-10% -60% -10% -10%;z-index:3;pointer-events:none;transform:translateX(0);
+    background:linear-gradient(90deg,#030309 0,#030309 70%,color-mix(in srgb,var(--hi) 90%,#fff) 70.4%,color-mix(in srgb,var(--a) 40%,transparent) 71.5%,transparent 76%)}
+
+  /* the cold open: the time it takes Lumen to open, counted down to one second */
+  #intro .speedo{position:absolute;display:flex;flex-direction:column;align-items:center;opacity:0}
+  #intro .speedo .sl{font:800 clamp(12px,1.1vw,15px)/1 var(--font);letter-spacing:.5em;text-transform:uppercase;color:color-mix(in srgb,var(--hi) 85%,transparent);margin:0 0 .6em .5em}
+  #intro .speedo .sn{position:relative;display:flex;align-items:flex-start;font:800 clamp(190px,30vw,440px)/.86 ${HEAD};letter-spacing:-.065em;font-variant-numeric:tabular-nums;white-space:nowrap}
+  #intro .speedo .cn{display:inline-block;padding:0 .04em .07em;background:linear-gradient(180deg,#fff 18%,var(--hi) 62%,var(--hi3));-webkit-background-clip:text;background-clip:text;color:transparent;-webkit-text-stroke:1.5px rgba(255,255,255,.5)}
+  #intro .speedo.fin .cn{background:var(--deep);-webkit-background-clip:text;background-clip:text}
+  #intro .speedo .su{font:800 .26em/1 ${HEAD};font-style:normal;letter-spacing:-.02em;margin:.2em 0 0 .08em;color:var(--hi)}
+  #intro .speedo .glow{position:absolute;left:50%;top:50%;width:150%;height:130%;margin:-65% 0 0 -75%;border-radius:50%;z-index:-1;pointer-events:none;opacity:.7;
+    background:radial-gradient(closest-side,color-mix(in srgb,var(--a) 42%,transparent),color-mix(in srgb,var(--a3) 18%,transparent) 55%,transparent)}
+  #intro .speedo .sb{position:relative;width:min(560px,56vw);height:6px;border-radius:6px;margin-top:2.2vh;background:rgba(255,255,255,.08);box-shadow:inset 0 0 0 .5px rgba(255,255,255,.12)}
+  #intro .speedo .sb i{position:absolute;inset:0;border-radius:6px;transform-origin:0 50%;background:var(--nova);box-shadow:0 0 16px var(--a)}
+  #intro .speedo .sb b{position:absolute;top:-24px;font:800 10.5px/1 var(--font);letter-spacing:.3em;text-transform:uppercase;color:rgba(220,226,255,.5);white-space:nowrap}
+  #intro .speedo .sb b.o{right:0}#intro .speedo .sb b.n{left:0;color:var(--hi);opacity:0}
+  #intro .speedo .sc{margin-top:2.4vh;font:700 clamp(15px,1.5vw,21px)/1.3 var(--font);color:#d3d8f5;opacity:0;text-align:center}
+  #intro .speedo .sc em{font-style:normal;font-weight:800;color:#fff}
+
+  /* the tour, 4.1: speed and Lumen AI, live */
+  #intro .mw.many .t{width:94px}
+  #intro .mw .t.yt b{background:#ff3b30 !important}
+  #intro .mw .ptr{position:absolute;left:0;top:0;width:15px;height:21px;z-index:9;pointer-events:none;opacity:0;background:#16171f;clip-path:polygon(0 0,0 100%,30% 72%,55% 100%,70% 92%,47% 66%,85% 66%);
+    filter:drop-shadow(0 0 0 #fff)}
+  #intro .mw .ptr::after{content:'';position:absolute;inset:2px 3px 4px 2px;background:#fff;clip-path:inherit;opacity:0}
+  #intro .mw .tap{position:absolute;width:34px;height:34px;margin:-17px 0 0 -17px;border-radius:50%;pointer-events:none;opacity:0;border:2px solid var(--a);box-shadow:0 0 14px color-mix(in srgb,var(--a) 70%,transparent);z-index:8}
+  /* open in a second: a stopwatch and a race between 4.0 and 4.1 */
+  #intro .mw .race{position:absolute;left:50%;top:52%;width:62%;margin:-86px 0 0 -31%;padding:16px 20px 16px;border-radius:24px;box-sizing:border-box;z-index:2}
+  #intro .mw .race .hd{display:flex;align-items:center;gap:10px;font:800 10px/1 system-ui;letter-spacing:.22em;text-transform:uppercase;color:#6d7080}
+  #intro .mw .race .hd i{width:22px;height:22px;border-radius:8px;display:grid;place-items:center;color:#fff;background:var(--nova);box-shadow:0 4px 12px color-mix(in srgb,var(--a) 50%,transparent)}
+  #intro .mw .race .hd i svg{width:12px;height:12px}
+  #intro .mw .race .wt{display:flex;align-items:baseline;gap:4px;margin:8px 0 10px;font:800 46px/1 ${HEAD};letter-spacing:-.045em;color:#14151c;font-variant-numeric:tabular-nums}
+  #intro .mw .race .wt small{font:800 18px/1 ${HEAD};color:#8a8d9c;letter-spacing:-.02em}
+  #intro .mw .race .ok{margin-left:auto;align-self:center;display:inline-flex;align-items:center;gap:6px;height:26px;padding:0 11px;border-radius:999px;font:800 11.5px system-ui;color:#0f9f74;background:rgba(18,184,134,.13);box-shadow:inset 0 0 0 1px rgba(18,184,134,.28);opacity:0}
+  #intro .mw .race .ok svg{width:12px;height:12px}
+  #intro .mw .race .rr{display:grid;grid-template-columns:62px 1fr 44px;align-items:center;gap:10px;margin-top:8px;font:750 11px system-ui;color:#4a4d5e}
+  #intro .mw .race .rr em{font-style:normal;text-align:right;font-variant-numeric:tabular-nums;color:#8a8d9c}
+  #intro .mw .race .rr s{position:relative;height:9px;border-radius:6px;background:#eceef5;overflow:hidden;text-decoration:none}
+  #intro .mw .race .rr s i{position:absolute;inset:0;border-radius:6px;transform-origin:0 50%;transform:scaleX(0);background:#c9ccd8}
+  #intro .mw .race .rr.nw{color:#14151c}#intro .mw .race .rr.nw em{color:color-mix(in srgb,var(--a) 80%,#000);font-weight:800}
+  #intro .mw .race .rr.nw s i{background:var(--nova);box-shadow:0 0 10px color-mix(in srgb,var(--a) 60%,transparent)}
+  #intro .mw .race .chip4{display:inline-flex;align-items:center;gap:6px;margin-top:12px;height:24px;padding:0 10px;border-radius:999px;font:750 10.5px system-ui;color:#3a3d4c;background:color-mix(in srgb,var(--a) 9%,#fff);box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--a) 20%,transparent);opacity:0}
+  #intro .mw .race .chip4 svg{width:11px;height:11px;color:var(--a)}
+  /* results as you type */
+  #intro .mw .cmdp .ms{margin-left:auto;height:22px;padding:0 9px;border-radius:999px;display:inline-flex;align-items:center;font:800 10.5px system-ui;color:#0f9f74;background:rgba(18,184,134,.12);box-shadow:inset 0 0 0 1px rgba(18,184,134,.26);font-variant-numeric:tabular-nums;opacity:0}
+  #intro .mw .cmdp .qt{white-space:pre}
+  #intro .mw .cmdp .r b{font-weight:750;color:#14151c}
+  #intro .mw .cmdp .r .ic4{width:18px;height:18px;border-radius:6px;flex:none;display:grid;place-items:center;color:#fff;font:800 9.5px system-ui;font-style:normal}
+  /* Ask Lumen: a chat per tab, with sources */
+  #intro .mw .side.ask4{width:44%;display:flex;flex-direction:column}
+  #intro .mw .side.ask4 .ah .mdl{margin-left:auto;height:20px;padding:0 8px;border-radius:999px;display:inline-flex;align-items:center;font:800 10px system-ui;letter-spacing:.02em;color:color-mix(in srgb,var(--a) 75%,#000);background:color-mix(in srgb,var(--a) 13%,#fff);box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--a) 24%,transparent)}
+  #intro .mw .side .qb{align-self:flex-end;max-width:80%;margin:0 12px 10px;padding:8px 12px;border-radius:15px 15px 4px 15px;color:#fff;font:650 11.5px/1.4 system-ui;background:var(--nova);box-shadow:inset 0 1px 0 rgba(255,255,255,.4),0 6px 16px -4px color-mix(in srgb,var(--a) 55%,transparent);opacity:0}
+  #intro .mw .side.ask4 p{margin:0 14px 8px;min-height:0}
+  #intro .mw .side .ct{display:inline-grid;place-items:center;min-width:15px;height:15px;padding:0 3px;margin:0 1px;border-radius:5px;vertical-align:1px;font:800 9.5px/1 system-ui;color:#fff;background:var(--nova);box-shadow:0 2px 6px color-mix(in srgb,var(--a) 45%,transparent);box-sizing:border-box}
+  #intro .mw .side .acts{display:flex;gap:6px;margin:auto 12px 12px;opacity:0}
+  #intro .mw .side .acts span{height:24px;padding:0 10px;border-radius:999px;display:inline-flex;align-items:center;font:750 10.5px system-ui;color:#3a3d4c;background:rgba(255,255,255,.8);box-shadow:inset 0 0 0 1px rgba(20,24,60,.09)}
+  #intro .mw .side .acts span.stp{color:#fff;background:#1c1d24}
+  #intro .mw .scr{position:relative}
+  #intro .mw .psg{position:relative;max-width:50%;margin:12px 0;padding:8px 10px;border-radius:10px;font:600 12.5px/1.5 system-ui;color:#2b2d36}
+  #intro .mw .psg mark{position:absolute;inset:0;border-radius:10px;background:color-mix(in srgb,var(--a) 16%,#fff);box-shadow:inset 0 0 0 1.5px color-mix(in srgb,var(--a) 55%,transparent),0 0 0 5px color-mix(in srgb,var(--a) 12%,transparent),0 10px 24px -8px color-mix(in srgb,var(--a) 50%,transparent);opacity:0}
+  #intro .mw .psg span{position:relative}
+  /* Cmd K, with a plan */
+  #intro .mw .cmdp .plan{margin:2px 8px 6px;padding:12px 14px;border-radius:16px;opacity:0;
+    background:radial-gradient(80% 140% at 0% 0%,color-mix(in srgb,var(--a) 16%,transparent),transparent 70%),rgba(255,255,255,.72);box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--a) 20%,transparent)}
+  #intro .mw .cmdp .plan .ph{display:flex;align-items:center;gap:8px;font:800 10px/1 system-ui;letter-spacing:.18em;text-transform:uppercase;color:color-mix(in srgb,var(--a) 75%,#000)}
+  #intro .mw .cmdp .plan .ph i{width:18px;height:18px;border-radius:6px;background:var(--nova);box-shadow:0 0 10px color-mix(in srgb,var(--a) 50%,transparent)}
+  #intro .mw .cmdp .plan b{display:block;margin:8px 0 8px;font:800 15px/1.2 ${HEAD};letter-spacing:-.02em;color:#14151c}
+  #intro .mw .cmdp .plan .chs{display:flex;gap:6px;flex-wrap:wrap}
+  #intro .mw .cmdp .plan .chs span{display:inline-flex;align-items:center;gap:6px;height:24px;padding:0 9px 0 6px;border-radius:999px;font:700 10.5px system-ui;color:#3a3d4c;background:#fff;box-shadow:inset 0 0 0 1px rgba(20,24,60,.08)}
+  #intro .mw .cmdp .plan .chs span i{width:11px;height:11px;border-radius:4px;background:#ff3b30}
+  #intro .mw .cmdp .plan .pb{display:flex;gap:8px;margin-top:11px}
+  #intro .mw .cmdp .plan .pb span{height:28px;padding:0 14px;border-radius:999px;display:inline-flex;align-items:center;font:800 11.5px system-ui;color:#3a3d4c;background:rgba(255,255,255,.9);box-shadow:inset 0 0 0 1px rgba(20,24,60,.09)}
+  #intro .mw .cmdp .plan .pb span.dn{color:#fff;background:var(--nova);box-shadow:inset 0 1px 0 rgba(255,255,255,.45),0 6px 16px -4px color-mix(in srgb,var(--a) 60%,transparent)}
+  /* select text for a bubble */
+  #intro .mw .tx4{font:600 13.5px/1.75 system-ui;color:#2b2d36;margin-top:6px}
+  #intro .mw .tx4 .sel{position:relative;white-space:nowrap}
+  #intro .mw .tx4 .sel::before{content:'';position:absolute;left:-2px;right:-2px;top:1px;bottom:1px;border-radius:4px;background:color-mix(in srgb,var(--a) 26%,#fff);transform-origin:0 50%;transform:scaleX(var(--s,0));transition:transform .5s cubic-bezier(.3,1.1,.5,1)}
+  #intro .mw .tx4 .sel span{position:relative}
+  #intro .mw .bub{position:absolute;left:0;top:0;display:flex;gap:3px;padding:4px;border-radius:14px;opacity:0;z-index:3;white-space:nowrap;transform-origin:50% 100%}
+  #intro .mw .bub span{height:26px;padding:0 9px;border-radius:10px;display:inline-flex;align-items:center;gap:5px;font:750 10.5px system-ui;color:#2b2d36;transition:background .25s,color .25s}
+  #intro .mw .bub span:first-child{padding-left:6px}
+  #intro .mw .bub span:first-child i{width:16px;height:16px;border-radius:5px;background:var(--nova)}
+  #intro .mw .bub span.on{color:#fff;background:var(--nova);box-shadow:0 4px 12px -2px color-mix(in srgb,var(--a) 60%,transparent)}
+  #intro .mw .ans{position:absolute;left:24px;right:24px;bottom:16px;padding:12px 14px;border-radius:18px;opacity:0;z-index:2}
+  #intro .mw .ans .ah2{display:flex;align-items:center;gap:8px;font:800 10px/1 system-ui;letter-spacing:.18em;text-transform:uppercase;color:color-mix(in srgb,var(--a) 75%,#000);margin-bottom:6px}
+  #intro .mw .ans .ah2 i{width:16px;height:16px;border-radius:5px;background:var(--nova)}
+  #intro .mw .ans p{margin:0;font:600 12px/1.5 system-ui;color:#2b2d36;min-height:36px}
+
+  /* the numbers: four figures that land at different depths, then the camera flies through them */
+  #intro .wall{position:relative;width:min(1180px,92vw);display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:clamp(12px,2vw,30px);transform-style:preserve-3d}
+  #intro .wall .fig{position:relative;text-align:left;opacity:0;transform-style:preserve-3d;padding:0 0 0 2px}
+  #intro .wall .fig .n{display:block;font:800 clamp(72px,9.6vw,150px)/.9 ${HEAD};letter-spacing:-.06em;white-space:nowrap;padding:0 .04em .08em 0;
+    background:var(--deep);-webkit-background-clip:text;background-clip:text;color:transparent;-webkit-text-stroke:1px rgba(255,255,255,.45)}
+  #intro .wall .fig .n small{font-size:.42em;letter-spacing:-.02em;margin-left:.06em}
+  #intro .wall .fig .r{display:block;width:100%;height:2px;margin:8px 0 12px;border-radius:2px;transform-origin:0 50%;transform:scaleX(0);background:linear-gradient(90deg,var(--hi),var(--hi3),transparent)}
+  #intro .wall .fig .lb{display:block;font:700 clamp(13px,1.25vw,17px)/1.35 var(--font);color:#d3d8f5;opacity:0}
+  #intro .wall .fig .lb b{display:block;color:#fff;font-weight:800;font-size:1.06em}
+  #intro .wall .fig .gw{position:absolute;left:-30%;top:-40%;width:160%;height:150%;border-radius:50%;z-index:-1;pointer-events:none;opacity:.55;background:radial-gradient(closest-side,color-mix(in srgb,var(--a) 34%,transparent),transparent)}
+  #intro .wall .fig:nth-child(even) .gw{background:radial-gradient(closest-side,color-mix(in srgb,var(--a3) 34%,transparent),transparent)}
+  #intro .wkick{position:absolute;top:calc(var(--bar) + 7vh);left:0;right:0;text-align:center;font:800 clamp(12px,1.1vw,15px)/1 var(--font);letter-spacing:.5em;text-transform:uppercase;color:color-mix(in srgb,var(--hi) 85%,transparent);opacity:0}
+  @media (max-width:900px){#intro .wall{grid-template-columns:repeat(2,minmax(0,1fr));row-gap:5vh}}
+  /* the tour caption draws a hairline under its title */
+  #intro .tourcap .hr{display:block;width:100%;max-width:320px;height:2px;margin:0 0 14px;border-radius:2px;transform-origin:0 50%;transform:scaleX(0);background:linear-gradient(90deg,var(--hi5),var(--hi),var(--hi3),transparent)}
+  @media (max-width:1099px){#intro .tourcap .hr{margin:0 auto 10px}}
   `
   // ------------------------------------------------------------ sound: friendly, bright and crisp, all synthesized (no files)
   // A warm major pad, bell chimes, bubbly pops and soft air. Nothing low, buzzy or ominous.
@@ -921,6 +1045,11 @@
     if (still || skip || !root) return
     root.querySelectorAll('.slabs i').forEach((el, i) => el.animate([{ transform: 'translateX(-160%) skewX(-16deg)' }, { transform: 'translateX(420%) skewX(-16deg)' }], { duration: ms, delay: i * 70, easing: 'cubic-bezier(.6,0,.3,1)' }))
   }
+  // the key light: a wide soft beam crosses the frame once (transform and opacity only)
+  function beam(ms = 1000) {
+    if (still || skip || !root) return
+    root.querySelector('.beam').animate([{ opacity: 0, transform: 'translateX(-90vw) rotate(18deg)' }, { opacity: 1, offset: .35 }, { opacity: 1, offset: .65 }, { opacity: 0, transform: 'translateX(90vw) rotate(18deg)' }], { duration: ms, easing: 'cubic-bezier(.45,0,.3,1)' })
+  }
   function boom() { if (!still) { sky.flash = .35; sky.shake = 6; sky.shock.push({ r: 10, a: .9 }); setTimeout(() => sky.shock.push({ r: 10, a: .5 }), 140) } flare(1); leak(.8, 1, 2200); if (!skip) SFX.impact() }
   function scene(html, cls = '') { const s = document.createElement('div'); s.className = 'scene ' + cls; s.innerHTML = html; root.querySelector('.stage').appendChild(s); return s }
   async function leave(s, ms = 700) {
@@ -958,45 +1087,50 @@
     anim(el, [{ opacity: 0, transform: `scale(${from})` }, { opacity: a, transform: 'scale(1)', offset: .22 }, { opacity: 0, transform: `scale(${to})` }], { duration: ms, easing: 'cubic-bezier(.16,1,.3,1)' })
   }
 
-  // the cold open, cut like a trailer: three title cards on the beat, then a count that slams into the version number
+  // the cold open, cut like a trailer: three title cards on the beat, a beat of black, then the time Lumen takes to
+  // open counts down from 4 seconds and slams into 1
   async function coldOpen() {
-    const cards = ['<em>Rebuilt.</em>', 'Redesigned.', '<em>Reimagined.</em>']
-    const s = scene(`<div class="title trailer"><div class="echo"></div><div class="pre">A Lumen picture</div>${cards.map(c => `<div class="tc">${c}</div>`).join('')}<div class="count"><span class="cn">1.0</span><i class="cg" aria-hidden="true"></i></div><i class="cring"></i><div class="slate">Lumen ${FILM_V}   The trailer</div></div>`)
-    const ech = s.querySelector('.echo'), pre = s.querySelector('.pre'), tcs = s.querySelectorAll('.tc'), cnt = s.querySelector('.count'), cn = s.querySelector('.cn'), cg = s.querySelector('.cg'), ring = s.querySelector('.cring')
-    anim(pre, [{ opacity: 0, letterSpacing: '1em' }, { opacity: 1, letterSpacing: '.5em' }], { duration: 1100, easing: 'cubic-bezier(.16,1,.3,1)' })
+    const cards = ['<em>Faster.</em>', 'Smarter.', '<em>Smoother.</em>']
+    const s = scene(`<div class="title trailer"><div class="echo"></div><div class="pre">A Lumen picture</div>${cards.map(c => `<div class="tc">${c}</div>`).join('')}<div class="speedo"><i class="glow"></i><div class="sl">Time to open Lumen</div><div class="sn"><span class="cn">4.0</span><i class="su">s</i></div><div class="sb"><i></i><b class="o">Lumen 4.0</b><b class="n">Lumen ${FILM_V}</b></div><div class="sc">About <em>four times quicker</em> to open.</div></div><i class="cring"></i><div class="slate">Lumen ${FILM_V}   The trailer</div></div>`)
+    const ech = s.querySelector('.echo'), pre = s.querySelector('.pre'), tcs = s.querySelectorAll('.tc'), sp = s.querySelector('.speedo'), cn = s.querySelector('.cn'), ring = s.querySelector('.cring'), bar = s.querySelector('.sb i')
+    anim(pre, [{ opacity: 0, transform: 'scale(1.2)' }, { opacity: 1, transform: 'none' }], { duration: 1100, easing: 'cubic-bezier(.16,1,.3,1)' })
     anim(s.querySelector('.slate'), [{ opacity: 0 }, { opacity: 1 }], { duration: 900, delay: 200 })
     sky.speed = .2; tween(sky, 'neb', .3, 2400); crane(18, -1, 2600)
     await sleep(420)
     anim(pre, [{ opacity: 1 }, { opacity: 0 }], { duration: 260 })
     for (let i = 0; i < tcs.length && !skip; i++) {
       if (i) hardCut(tcs[i - 1])
-      slamIn(tcs[i]); echo(ech, tcs[i].textContent); SFX.hit(i); pop(.12, 3)
+      slamIn(tcs[i]); echo(ech, tcs[i].textContent); SFX.hit(i); pop(.12, 3); if (i === 2) beam(900)
       await sleep(BEAT)
     }
     hardCut(tcs[tcs.length - 1])
-    // the count: one number per half beat, each a little brighter, and a ring of light goes out with every one
-    const steps = ['1.0', '2.0', '3.0']
-    anim(cnt, [{ opacity: 0 }, { opacity: 1 }], { duration: 200 })
+    // a beat of black: only a thin line of light, then the count
+    flare(.7); await sleep(BEAT * .8)
+    anim(sp, [{ opacity: 0, transform: 'translateZ(-300px)' }, { opacity: 1, transform: 'none' }], { duration: 700, easing: 'cubic-bezier(.16,1,.3,1)' })
+    const steps = ['4.0', '3.0', '2.0']
     for (let i = 0; i < steps.length && !skip; i++) {
-      cn.textContent = steps[i]; echo(ech, steps[i], { a: .3, ms: BEAT * 1.2 })
-      anim(cn, [{ opacity: 0, transform: 'scale(1.3) translateY(12px)', filter: 'blur(10px)' }, { opacity: .45 + i * .15, transform: 'none', filter: 'blur(0)' }], { duration: 320, easing: 'cubic-bezier(.16,1,.3,1)' })
+      cn.textContent = steps[i]; echo(ech, steps[i] + 's', { a: .25, ms: BEAT * 1.2 })
+      anim(cn, [{ opacity: 0, transform: 'scale(1.25) translateY(12px)' }, { opacity: .5 + i * .15, transform: 'none' }], { duration: 320, easing: 'cubic-bezier(.16,1,.3,1)' })
+      anim(bar, [{ transform: `scaleX(${1 - i * .25 + .04})` }, { transform: `scaleX(${1 - i * .25})` }], { duration: 300 })
       anim(ring, [{ opacity: .6, transform: 'scale(.4)' }, { opacity: 0, transform: 'scale(1.5)' }], { duration: 620, easing: 'cubic-bezier(.2,.8,.3,1)' })
       SFX.count(i)
       await sleep(BEAT * .64)
     }
     if (!skip) {
-      // the version slams in: flash, shake, shockwave, and a glint runs across it
-      cn.textContent = cg.textContent = FILM_V; cnt.classList.add('fin4')
-      ech.classList.add('fill', 'mega'); echo(ech, FILM_V, { from: .6, to: 1.5, a: .6, ms: 1500 })
-      anim(cn, [{ opacity: 0, transform: 'scale(2.6)', filter: 'blur(26px)' }, { opacity: 1, transform: 'scale(.97)', filter: 'blur(0)', offset: .5 }, { opacity: 1, transform: 'scale(1)', filter: 'blur(0)' }], { duration: 720, easing: 'cubic-bezier(.16,1,.3,1)' })
+      // one second slams in: flash, shake, shockwave, color slabs, and the bar snaps short on a spring
+      cn.textContent = '1.0'; sp.classList.add('fin')
+      ech.classList.add('fill', 'mega'); echo(ech, '1s', { from: .6, to: 1.5, a: .55, ms: 1500 })
+      anim(cn, [{ opacity: 0, transform: 'scale(2.6)' }, { opacity: 1, transform: 'scale(1.06,.92)', offset: .45 }, { transform: 'scale(.97,1.04)', offset: .66 }, { transform: 'scale(1.01,.99)', offset: .84 }, { opacity: 1, transform: 'none' }], { duration: 900, easing: 'cubic-bezier(.2,.9,.3,1)' })
+      anim(bar, [{ transform: 'scaleX(.5)' }, { transform: 'scaleX(.2)', offset: .5 }, { transform: 'scaleX(.27)', offset: .75 }, { transform: 'scaleX(.25)' }], { duration: 800, easing: 'cubic-bezier(.2,.9,.3,1)' })
+      anim(s.querySelector('.sb .o'), [{ opacity: 1 }, { opacity: 0 }], { duration: 300 }); anim(s.querySelector('.sb .n'), [{ opacity: 0, transform: 'translateY(6px)' }, { opacity: 1, transform: 'none' }], { duration: 500, delay: 200 })
+      anim(s.querySelector('.sc'), [{ opacity: 0, transform: 'translateY(12px)' }, { opacity: 1, transform: 'none' }], { duration: 800, delay: 260 })
       anim(ring, [{ opacity: 1, transform: 'scale(.3)' }, { opacity: 0, transform: 'scale(3.2)' }], { duration: 1100, easing: 'cubic-bezier(.2,.8,.3,1)' })
-      boom(); slabs(); SFX.count(3)
-      setTimeout(() => { if (!skip && !still) cg.animate([{ opacity: 1, backgroundPosition: '120% 0' }, { opacity: 1, backgroundPosition: '-20% 0', offset: .9 }, { opacity: 0, backgroundPosition: '-20% 0' }], { duration: 900, easing: 'cubic-bezier(.4,0,.2,1)', fill: 'forwards' }) }, 300)
-      push(.02, 900)
-      await sleep(980)
+      boom(); slabs(); beam(1100); SFX.count(3)
+      push(.02, 1200)
+      await sleep(1500)
     }
     // straight through the number and into the warp
-    anim(s, [{ opacity: 1, transform: 'scale(1)', filter: 'blur(0)' }, { opacity: 0, transform: 'scale(2.4)', filter: 'blur(18px)' }], { duration: 380, easing: 'cubic-bezier(.55,0,.75,.3)' })
+    anim(s, [{ opacity: 1, transform: 'scale(1)' }, { opacity: 0, transform: 'scale(2.4)' }], { duration: 380, easing: 'cubic-bezier(.55,0,.75,.3)' })
     push(0, 380)
     await sleep(380); s.remove()
   }
@@ -1021,6 +1155,7 @@
     stars.forEach(s => { s.x = (Math.random() - .5) * 2; s.y = (Math.random() - .5) * 2; s.z = Math.random() * .9 + .1 })
     sky.speed = .25
     const L = 'Lumen'.split('').map(c => `<span>${c}</span>`).join('')
+    beam(1400)
     const s = scene(`<div class="echo fill mega ig"></div><div style="text-align:center;position:relative;margin-top:7vh"><div class="kicker chrome">${short ? 'Fresh from an update' : 'This is'}</div><div class="logo">${L}<b class="v4">${FILM_V}</b><i class="glint" aria-hidden="true">Lumen<i class="gv">${FILM_V}</i></i><div class="mirror" aria-hidden="true">${L}<b class="v4">${FILM_V}</b></div><i class="drop"></i></div><div class="rule"></div><div class="tag"></div></div>`)
     const logo = s.querySelector('.logo'), drop = logo.querySelector('.drop'), D = Math.round(logo.offsetHeight * 1.3)
     drop.style.width = drop.style.height = D + 'px'; lensAll(s)
@@ -1046,7 +1181,7 @@
     roll(drop, { x0: -D * .2, x1: lw + D * .2, y: logo.offsetHeight / 2, ms: 1500, bob: 6, delay: 1500 })
     setTimeout(() => { if (skip || still) return; SFX.glass(3) }, 1550)
     setTimeout(() => { if (skip || still) return; logo.querySelector('.glint').animate([{ opacity: 1, backgroundPosition: '120% 0' }, { opacity: 1, backgroundPosition: '-20% 0', offset: .92 }, { opacity: 0, backgroundPosition: '-20% 0' }], { duration: 1300, easing: 'cubic-bezier(.4,0,.2,1)', fill: 'forwards' }); SFX.shimmer() }, 2500)
-    words(s.querySelector('.tag'), short ? 'Rebuilt from the first pixel. Lit in your color.' : 'The biggest Lumen ever. Rebuilt in glass.', 1500, 80)
+    words(s.querySelector('.tag'), short ? 'Quicker to open. Clever on every page.' : 'Faster everywhere. Smarter on every page.', 1500, 80)
     await sleep(short ? 2700 : 3500)
     // push through the title: it rushes past the lens while the stars surge
     tween(sky, 'orb', 0, 900); tween(sky, 'ring', 0, 700); tween(sky, 'rays', 0, 900); tween(sky, 'ghosts', 0, 700)
@@ -1061,47 +1196,128 @@
   const TABC = ['#24292f', 'var(--a)', '#ff8a3d', '#2fb67c']
   // the real Nova chrome: window controls, tab capsules and the gradient new-tab button on top, then the toolbar
   // capsule, the address capsule with its gradient search tile, and the tools capsule
-  const CHROME = (tabs, ub = '', host = 'lumen.app') => `<div class="tb"><div class="lt cap"><i></i><i></i><i></i></div>${tabs.map((t, i) => `<div class="t${i === 0 ? ' on' : ''}"><b style="background:${TABC[i % 4]}"></b>${t}</div>`).join('')}</div><span class="plus">${IC('plus')}</span>` +
+  const CHROME = (tabs, ub = '', host = 'lumen.app') => `<div class="tb"><div class="lt cap"><i></i><i></i><i></i></div>${tabs.map((t, i) => { const [n, c, k] = Array.isArray(t) ? t : [t, TABC[i % 4], '']; return `<div class="t${i === 0 ? ' on' : ''}${k ? ' ' + k : ''}"><b style="background:${c}"></b>${n}</div>` }).join('')}</div><span class="plus">${IC('plus')}</span>` +
     `<div class="r2"><div class="nav cap">${IC('back')}${IC('forward')}${IC('reload')}<i class="ap"></i></div><div class="ub cap"><span class="sq">${IC('search')}</span><span class="host">${host}</span>${ub}<span class="st">${IC('star')}</span></div><div class="rt cap">${IC('gear')}${IC('split')}${IC('more')}</div></div>`
   const MW = (inner, tabs = ['GitHub', 'Lisbon trip', 'Recipes'], ub = '', host) => `<div class="mw">${CHROME(tabs, ub, host)}${inner}</div>`
   const LINES = (n, img) => '<div class="h"></div>' + Array.from({ length: n }, (_, i) => (img && i === 2 ? '<div class="img"></div>' : '') + `<div class="ln" style="width:${[92, 80, 96, 70, 88, 60, 84][i % 7]}%"></div>`).join('')
   const done = a => { try { a.cancel() } catch {} }
+  const CHECK = '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m3.5 8.5 3 3 6-7"/></svg>'
+  // a pointer that glides to an element inside the shot and taps it
+  async function tapAt(s, el, ms = 520) {
+    const mw = s.querySelector('.mw'), p = s.querySelector('.ptr'), t = s.querySelector('.tap'); if (!mw || !p || !el || skip) return
+    const a = mw.getBoundingClientRect(), b = el.getBoundingClientRect(), k = a.width / mw.offsetWidth || 1
+    const x = (b.left - a.left + b.width * .55) / k, y = (b.top - a.top + b.height * .6) / k
+    anim(p, [{ opacity: 0, transform: `translate(${x + 60}px,${y + 70}px)` }, { opacity: 1, transform: `translate(${x}px,${y}px)` }], { duration: ms, easing: 'cubic-bezier(.3,1.1,.4,1)' })
+    await sleep(ms)
+    anim(p, [{ opacity: 1, transform: `translate(${x}px,${y}px) scale(1)` }, { opacity: 1, transform: `translate(${x}px,${y}px) scale(.82)` }, { opacity: 1, transform: `translate(${x}px,${y}px) scale(1)` }], { duration: 260 })
+    anim(el, [{ transform: 'scale(1)' }, { transform: 'scale(.92)', offset: .35 }, { transform: 'scale(1.04)', offset: .7 }, { transform: 'scale(1)' }], { duration: 420 })
+    t.style.left = x + 'px'; t.style.top = y + 'px'
+    anim(t, [{ opacity: .9, transform: 'scale(.3)' }, { opacity: 0, transform: 'scale(1.8)' }], { duration: 520, easing: 'cubic-bezier(.2,.8,.3,1)' }); if (!skip) SFX.key()
+    await sleep(240)
+  }
+  const POINTER = '<i class="ptr"></i><i class="tap"></i>'
+  const TYPE = async (el, text, ms = 46, each) => { for (let i = 1; i <= text.length && !skip; i++) { el.textContent = text.slice(0, i); if (!skip) SFX.key(); if (each) each(i); await sleep(ms) } el.textContent = text }
   const TOUR = [
-    { title: 'Ads and trackers, gone.', text: 'Blocked before they load, on every site. Pages get faster, and nobody follows you.', build: () => MW(`<div class="pg">${LINES(6)}<div class="ad" style="left:58%;top:18px;width:150px;height:70px">AD</div><div class="ad" style="left:6%;top:118px;width:200px;height:46px">AD</div><div class="ad" style="left:52%;top:146px;width:120px;height:90px">AD</div><span class="cnt">0 blocked</span></div>`, undefined, `<span class="sh">${IC('shield')}<i>0</i></span>`, 'news.example'), play: async s => {
-      const ads = s.querySelectorAll('.ad'), c = s.querySelector('.cnt'), sh = s.querySelector('.sh i'); let n = 0
-      for (const a of ads) {
-        await sleep(400); anim(a, [{ transform: 'scale(1)', opacity: 1, filter: 'blur(0)' }, { transform: 'scale(1.12)', opacity: 1, offset: .3 }, { transform: 'scale(0) rotate(12deg)', opacity: 0, filter: 'blur(6px)' }], { duration: 560 }); if (!skip) SFX.pop(.8 + n * .02)
-        n += 8; c.textContent = n + ' blocked'; sh.textContent = n; anim(c, [{ transform: 'scale(1.25)' }, { transform: 'none' }], { duration: 460 }); anim(s.querySelector('.sh'), [{ transform: 'scale(1.18)' }, { transform: 'none' }], { duration: 460 })
-      }
-      await sleep(260); anim(s.querySelector('.pg'), [{ transform: 'translateY(6px)', opacity: .6 }, { transform: 'none', opacity: 1 }], { duration: 650 })
+    { title: 'Open in a second.', text: 'Lumen is ready in about 1 s instead of 4. The ad blocker loads off the main thread, so the first launch never freezes.', build: () => MW(`<div class="pg">${LINES(6, 1)}</div><div class="race lgl"><div class="hd"><i>${IC('bolt')}</i>Time to open</div><div class="wt"><span class="sv">0.00</span><small>s</small><span class="ok">${CHECK}Ready</span></div><div class="rr"><span>Lumen 4.0</span><s><i></i></s><em class="e0">0.0 s</em></div><div class="rr nw"><span>Lumen ${FILM_V}</span><s><i></i></s><em class="e1">0.0 s</em></div><span class="chip4">${IC('shield')}Ad blocker loaded in the background</span></div>`, undefined, '', 'lumen://home'), play: async s => {
+      const lines = s.querySelectorAll('.pg > *'), sv = s.querySelector('.sv'), b0 = s.querySelector('.rr s i'), b1 = s.querySelector('.rr.nw s i'), e0 = s.querySelector('.e0'), e1 = s.querySelector('.e1')
+      lines.forEach(l => { l.style.opacity = '0' })
+      anim(s.querySelector('.race'), [{ opacity: 0, transform: 'translateY(18px) scale(.92)' }, { opacity: 1, transform: 'translate(-1px,-2px) scale(1.03,.97)', offset: .55 }, { opacity: 1, transform: 'none' }], { duration: 760, easing: 'cubic-bezier(.2,.9,.3,1)' })
+      await sleep(380)
+      // the race: 4.0 crawls along while 4.1 is done at 0.98 s
+      anim(b0, [{ transform: 'scaleX(0)' }, { transform: 'scaleX(.27)' }], { duration: 1150, easing: 'linear' })
+      anim(b1, [{ transform: 'scaleX(0)' }, { transform: 'scaleX(1)' }], { duration: 1050, easing: 'cubic-bezier(.3,0,.3,1)' })
+      lines.forEach((l, i) => anim(l, [{ opacity: 0, transform: 'translateY(8px)' }, { opacity: 1, transform: 'none' }], { duration: 500, delay: 120 + i * 110 }))
+      const t0 = performance.now()
+      while (!skip) { const k = Math.min(1, (performance.now() - t0) / 1050); sv.textContent = (k * .98).toFixed(2); e1.textContent = (k * .98).toFixed(1) + ' s'; e0.textContent = (k * 1.1).toFixed(1) + ' s'; if (k >= 1) break; await sleep(45) }
+      sv.textContent = '0.98'; e1.textContent = '1.0 s'; e0.textContent = '4.1 s'
+      anim(s.querySelector('.ok'), [{ opacity: 0, transform: 'scale(.5)' }, { opacity: 1, transform: 'scale(1.1)', offset: .6 }, { opacity: 1, transform: 'none' }], { duration: 600 }); if (!skip) SFX.ding()
+      anim(s.querySelector('.wt'), [{ transform: 'scale(1)' }, { transform: 'scale(1.05,.95)', offset: .4 }, { transform: 'scale(1)' }], { duration: 520 })
+      await sleep(300)
+      anim(s.querySelector('.chip4'), [{ opacity: 0, transform: 'translateY(8px)' }, { opacity: 1, transform: 'none' }], { duration: 600 }); if (!skip) SFX.pop(1.2)
+      await sleep(500)
     } },
-    { title: 'Ask Lumen AI about any page.', text: 'A summary, the key points, or what anything you select means, in the side panel.', build: () => MW(`<div class="pg">${LINES(6, 1)}</div><div class="side lgl"><div class="ah"><i></i>Lumen AI</div><p class="ai"></p><div class="kp"><span>Train is cheapest</span><span>Flight is fastest</span><span>Book 2 weeks ahead</span></div></div>`, undefined, '', 'lisbon.travel'), play: async s => {
-      anim(s.querySelector('.side'), [{ transform: 'translateX(112%)' }, { transform: 'none' }], { duration: 800 }); if (!skip) SFX.whoosh()
-      await sleep(520); const p = s.querySelector('.ai'), txt = 'This page compares three ways to get to Lisbon. The train is cheapest and the flight is fastest.'
-      for (const w of txt.split(' ')) { if (skip) break; p.textContent += w + ' '; await sleep(36) }
-      s.querySelectorAll('.kp span').forEach((k, i) => { anim(k, [{ opacity: 0, transform: 'translateY(8px) scale(.8)' }, { opacity: 1, transform: 'none' }], { duration: 600, delay: i * 100 }); setTimeout(() => !skip && SFX.pop(1.1 + i * .1), i * 100) })
+    { title: 'Results as you type.', text: 'Cmd K and the address bar search your history, bookmarks and tabs in about 10 ms a key. Every click and key answers within 20 ms.', build: () => MW(`<div class="pg">${LINES(6, 1)}</div><div class="cmdp lgl"><div class="in"><span class="sq">${IC('search')}</span><span class="qt"></span><i class="caret"></i><span class="ms">0 ms</span></div>${[0, 1, 2].map(() => '<div class="r"><i class="ic4"></i><b></b><em></em></div>').join('')}</div>`, undefined, '', 'github.com'), play: async s => {
+      const cmd = s.querySelector('.cmdp'), qt = s.querySelector('.qt'), ms = s.querySelector('.ms'), rows = s.querySelectorAll('.cmdp .r')
+      anim(cmd, [{ opacity: 0, transform: 'translateY(-10px) scale(.94)' }, { opacity: 1, transform: 'translateY(2px) scale(1.015,.985)', offset: .6 }, { opacity: 1, transform: 'none' }], { duration: 560, easing: 'cubic-bezier(.2,.9,.3,1)' }); if (!skip) SFX.whoosh()
       await sleep(420)
+      const R = {
+        1: [['L', '#ff8a3d', 'Lisbon trip', 'Open tab'], ['in', '#0a66c2', 'LinkedIn', 'History'], ['L', 'var(--a)', 'Lumen release notes', 'Bookmark']],
+        2: [['L', '#ff8a3d', 'Lisbon trip', 'Open tab'], ['in', '#0a66c2', 'LinkedIn', 'History'], ['L', '#2fb67c', 'lisbon.travel', 'Bookmark']],
+        3: [['L', '#ff8a3d', 'Lisbon trip', 'Open tab'], ['L', '#2fb67c', 'lisbon.travel', 'Bookmark'], ['L', '#8a63f2', 'Lisbon trains, timetable', 'History']],
+      }
+      const MS = [7, 9, 6, 8, 7, 9]
+      await TYPE(qt, 'lisbon', 150, i => {
+        const set = R[Math.min(3, i)]; ms.textContent = MS[i - 1] + ' ms'
+        if (i === 1) anim(ms, [{ opacity: 0, transform: 'scale(.6)' }, { opacity: 1, transform: 'none' }], { duration: 360 })
+        else anim(ms, [{ opacity: 1, transform: 'scale(1.15)' }, { opacity: 1, transform: 'none' }], { duration: 260 })
+        rows.forEach((r, j) => {
+          const [l, c, n, k] = set[j], ic = r.querySelector('.ic4'); ic.textContent = l; ic.style.background = c; r.querySelector('b').textContent = n; r.querySelector('em').textContent = k
+          r.classList.toggle('sel', j === 0)
+          if (i === 1) anim(r, [{ opacity: 0, transform: 'translateY(-6px)' }, { opacity: 1, transform: 'none' }], { duration: 300, delay: j * 30 })
+        })
+      })
+      await sleep(500)
     } },
-    { title: 'Dark mode for every website.', text: 'One switch turns light sites dark, and leaves dark sites alone.', build: () => MW(`<div class="pg">${LINES(6, 1)}</div><div class="reveal">${CHROME(['GitHub', 'Lisbon trip', 'Recipes'], `<span class="sh">${IC('moon')}Dark</span>`, 'github.com')}<div class="pg">${LINES(6, 1)}</div></div>`, undefined, `<span class="sh">${IC('moon')}Dark</span>`, 'github.com'), play: async s => {
-      await sleep(560); const sh = s.querySelector('.ub .sh'); anim(sh, [{ transform: 'scale(1)' }, { transform: 'scale(.9)' }, { transform: 'scale(1)' }], { duration: 380 }); if (!skip) SFX.key()
-      // the dark theme pours out of the switch in a widening circle
-      anim(s.querySelector('.reveal'), [{ clipPath: 'circle(0% at 86% 14%)' }, { clipPath: 'circle(140% at 86% 14%)' }], { duration: 1150, easing: 'cubic-bezier(.5,0,.2,1)' }); if (!skip) SFX.whoosh()
-      await sleep(1150)
+    { title: 'Ask Lumen, with sources.', text: 'A chat for every tab. Answers stream in with Markdown and cite the page: click a number and Lumen jumps to the quote.', build: () => MW(`<div class="pg"><div class="scr">${LINES(3)}<p class="psg"><mark></mark><span>The night train from Madrid is the cheapest way in, from 39 euros.</span></p>${LINES(4)}</div></div><div class="side ask4 lgl"><div class="ah"><i></i>Ask Lumen<span class="mdl">Smart</span></div><div class="qb">Cheapest way to get there?</div><p class="ai"></p><div class="acts"><span class="stp">Stop</span><span>Copy</span><span>Regenerate</span></div></div>${POINTER}`, undefined, '', 'lisbon.travel'), play: async s => {
+      anim(s.querySelector('.side'), [{ transform: 'translateX(112%)' }, { transform: 'translateX(-2%) scale(1.01,.99)', offset: .7 }, { transform: 'none' }], { duration: 820, easing: 'cubic-bezier(.2,.9,.3,1)' }); if (!skip) SFX.whoosh()
+      await sleep(560)
+      anim(s.querySelector('.qb'), [{ opacity: 0, transform: 'translateY(8px) scale(.9)' }, { opacity: 1, transform: 'none' }], { duration: 520 }); if (!skip) SFX.pop(1.1)
+      await sleep(360)
+      const acts = s.querySelector('.acts'); anim(acts, [{ opacity: 0 }, { opacity: 1 }], { duration: 300 })
+      const p = s.querySelector('.ai'), txt = 'Take the night train from Madrid. It is the cheapest way in, from 39 euros [1], and arrives at 7:20 [2].'
+      for (const w of txt.split(' ')) { if (skip) break; const m = /^\[(\d)\]([.,]?)$/.exec(w); p.insertAdjacentHTML('beforeend', m ? `<span class="ct">${m[1]}</span>${m[2]} ` : esc(w) + ' '); await sleep(42) }
+      const stp = acts.querySelector('.stp'); if (stp) { stp.classList.remove('stp'); stp.textContent = 'Copy answer'; acts.lastElementChild.remove() }
+      await sleep(260)
+      await tapAt(s, p.querySelector('.ct'))
+      anim(s.querySelector('.scr'), [{ transform: 'none' }, { transform: 'translateY(-34px)' }], { duration: 700, easing: 'cubic-bezier(.3,1.1,.4,1)' })
+      anim(s.querySelector('.psg mark'), [{ opacity: 0, transform: 'scale(.96)' }, { opacity: 1, transform: 'scale(1.02)', offset: .6 }, { opacity: 1, transform: 'none' }], { duration: 700, delay: 200 }); setTimeout(() => !skip && SFX.shimmer(), 200)
+      await sleep(900)
     } },
-    { title: 'Every parcel, until it arrives.', text: 'Track any delivery. Orders you place are saved, one click from the order page.', build: () => MW(`<div class="pg" style="background:#f4f5fa"><div class="plist">${LINES(6)}</div><div class="pcard lgl"><div class="k">${IC('box')}</div><div style="flex:1"><b>New headphones</b><span class="st">Order placed  ·  UPS</span><div class="steps"><s class="on"></s><s></s><s></s><s></s><u></u></div></div></div></div>`, ['Parcels', 'Lisbon trip'], '', 'lumen://parcels'), play: async s => {
-      const st = s.querySelector('.st'), steps = s.querySelectorAll('.steps s'), k = s.querySelector('.pcard .k'), u = s.querySelector('.steps u')
-      anim(s.querySelector('.pcard'), [{ opacity: 0, transform: 'translateY(16px) scale(.94)' }, { opacity: 1, transform: 'none' }], { duration: 750 })
-      for (const [i, t] of ['On the way', 'Out for delivery', 'Delivered'].entries()) { await sleep(520); steps[i + 1].classList.add('on'); u.style.left = ((i + 1) / 3 * 100) + '%'; st.textContent = t + '  ·  UPS'; if (!skip) SFX.tick(i * 2) }
-      k.style.background = 'linear-gradient(135deg,#34c759,#30b04f)'; anim(s.querySelector('.pcard'), [{ transform: 'scale(1)' }, { transform: 'scale(1.05)' }, { transform: 'scale(1)' }], { duration: 560 }); if (!skip) SFX.ding()
+    { title: 'Tell Cmd K what to do.', text: 'Ask a question for an answer right in Cmd K, or give it a job like close all YouTube tabs. You see the plan first.', build: () => `<div class="mw many">${CHROME([['Lo-fi beats', '#ff3b30', 'yt'], ['Mail', 'var(--a)'], ['Guitar lesson', '#ff3b30', 'yt'], ['Docs', '#2fb67c'], ['Trailer', '#ff3b30', 'yt']], '', 'youtube.com')}<div class="pg">${LINES(6, 1)}</div><div class="cmdp lgl"><div class="in"><span class="sq">${IC('sparkle')}</span><span class="qt"></span><i class="caret"></i></div><div class="plan"><div class="ph"><i></i>Lumen AI  ·  Plan</div><b>Close 3 YouTube tabs</b><div class="chs"><span><i></i>Lo-fi beats</span><span><i></i>Guitar lesson</span><span><i></i>Trailer</span></div><div class="pb"><span class="dn">Do it</span><span>Cancel</span></div></div></div><span class="pill lgl">${IC('check')}3 tabs closed</span>${POINTER}</div>`, play: async s => {
+      const cmd = s.querySelector('.cmdp')
+      anim(cmd, [{ opacity: 0, transform: 'translateY(-10px) scale(.94)' }, { opacity: 1, transform: 'none' }], { duration: 560, easing: 'cubic-bezier(.2,.9,.3,1)' })
+      await sleep(380)
+      await TYPE(s.querySelector('.qt'), 'close all YouTube tabs', 38)
+      anim(s.querySelector('.plan'), [{ opacity: 0, transform: 'translateY(10px) scale(.95)' }, { opacity: 1, transform: 'translateY(-2px) scale(1.02,.98)', offset: .6 }, { opacity: 1, transform: 'none' }], { duration: 700, easing: 'cubic-bezier(.2,.9,.3,1)' }); if (!skip) SFX.glass(1)
+      s.querySelectorAll('.plan .chs span').forEach((c, i) => anim(c, [{ opacity: 0, transform: 'scale(.7)' }, { opacity: 1, transform: 'none' }], { duration: 500, delay: 250 + i * 70 }))
+      await sleep(900)
+      await tapAt(s, s.querySelector('.plan .dn'))
+      anim(cmd, [{ opacity: 1, transform: 'none' }, { opacity: 0, transform: 'translateY(-8px) scale(.95)' }], { duration: 320, easing: 'cubic-bezier(.5,0,.7,.4)' })
+      // the YouTube tabs squash away on a spring, and the rest slide over (FLIP: transform only)
+      const all = [...s.querySelectorAll('.tb .t')], yt = all.filter(t => t.classList.contains('yt')), rest = all.filter(t => !yt.includes(t))
+      yt.forEach((t, i) => { anim(t, [{ opacity: 1, transform: 'none' }, { opacity: 1, transform: 'scale(1.06,.9)', offset: .3 }, { opacity: 0, transform: 'scale(.3,.6)' }], { duration: 380, delay: i * 60, easing: 'cubic-bezier(.5,0,.7,.4)' }); setTimeout(() => !skip && SFX.pop(1 + i * .1), i * 60) })
+      await sleep(520)
+      const mw = s.querySelector('.mw'), first = rest.map(t => t.getBoundingClientRect().left), k = mw.getBoundingClientRect().width / mw.offsetWidth || 1
+      yt.forEach(t => { t.style.display = 'none' })
+      rest.forEach((t, i) => { const dx = (first[i] - t.getBoundingClientRect().left) / k; if (dx) anim(t, [{ transform: `translateX(${dx}px)` }, { transform: 'translateX(-3px)', offset: .65 }, { transform: 'none' }], { duration: 640, easing: 'cubic-bezier(.3,1.2,.5,1)' }) })
+      anim(s.querySelector('.pill'), [{ opacity: 0, transform: 'translateY(12px) scale(.9)' }, { opacity: 1, transform: 'none' }], { duration: 600, delay: 200 }); if (!skip) SFX.ding()
+      await sleep(900)
+    } },
+    { title: 'Select. Understand.', text: 'Select text for a bubble: Explain, Define, Summarize, Translate, Rewrite or Ask. In text boxes, Lumen helps you write.', build: () => MW(`<div class="pg"><div class="h"></div><div class="tx4">Lisbon sits on seven hills above the river Tagus. Walk the old town and you will see <span class="sel"><span>azulejo tiles on every facade</span></span>, painted in blue and white, a craft Portugal has kept for five hundred years.</div><div class="bub lgl"><span><i></i>Ask</span><span class="ex">Explain</span><span>Define</span><span>Summarize</span><span>Translate</span><span>Rewrite</span></div><div class="ans lgl"><div class="ah2"><i></i>Explain</div><p></p></div></div>${POINTER}`, undefined, '', 'visitlisbon.example'), play: async s => {
+      const sel = s.querySelector('.sel'), bub = s.querySelector('.bub'), pg = s.querySelector('.pg')
+      await sleep(260)
+      sel.style.setProperty('--s', '1'); if (!skip) SFX.tick(2)
+      await sleep(520)
+      // the bubble pops above the selection
+      const bw = bub.offsetWidth, x = Math.max(8, Math.min(pg.clientWidth - bw - 8, sel.offsetLeft + sel.offsetWidth / 2 - bw / 2)), y = Math.max(4, sel.offsetTop - bub.offsetHeight - 8)
+      bub.style.left = x + 'px'; bub.style.top = y + 'px'
+      anim(bub, [{ opacity: 0, transform: 'translateY(8px) scale(.6)' }, { opacity: 1, transform: 'translateY(-2px) scale(1.06,.95)', offset: .55 }, { opacity: 1, transform: 'scale(.98,1.02)', offset: .78 }, { opacity: 1, transform: 'none' }], { duration: 640, easing: 'cubic-bezier(.2,.9,.3,1)' }); if (!skip) SFX.pop(1.2)
+      await sleep(650)
+      const ex = bub.querySelector('.ex'); await tapAt(s, ex); ex.classList.add('on')
+      const ans = s.querySelector('.ans'), p = ans.querySelector('p')
+      anim(ans, [{ opacity: 0, transform: 'translateY(16px) scale(.95)' }, { opacity: 1, transform: 'none' }], { duration: 620, easing: 'cubic-bezier(.2,.9,.3,1)' })
+      await sleep(260)
+      for (const w of 'Azulejos are painted, glazed ceramic tiles. Portugal took the craft from Moorish Spain around 1500 and uses them to keep facades cool and bright.'.split(' ')) { if (skip) break; p.textContent += w + ' '; await sleep(34) }
+      await sleep(300)
     } },
   ]
   // where each shot sits: the camera orbits a little between them, so every shot arrives from a new angle
   const POSE = i => ({ x: (i % 2 ? -1 : 1) * 46, ry: (i % 2 ? 1 : -1) * 30, rx: [8, 4, 10, 5][i % 4] })
   const REST = 'translate(0,-6vh)'
-  const ART = ['shield', 'sparkle', 'moon', 'box']
-  const WORD = ['Blocked', 'Ask', 'Dark', 'Parcels']
+  const ART = ['bolt', 'search', 'sparkle', 'tabs', 'translate']
+  const WORD = ['1 s', '10 ms', 'Ask', 'Do it', 'Explain']
   // the tour is cut into chapters, each opened by a title card on the beat
-  const CHAPTERS = { 0: ['Protect', 'Private <em>by default.</em>'], 1: ['Understand', 'Every page, <em>explained.</em>'], 2: ['Your way', 'Made <em>yours.</em>'] }
+  const CHAPTERS = { 0: ['Speed', 'Instant, <em>everywhere.</em>'], 2: ['Lumen AI', 'Ask <em>anything.</em>'] }
   async function chapter([kick, line], n, cap) {
     root.classList.add('tight')
     if (cap) anim(cap, [{ opacity: 1 }, { opacity: 0 }], { duration: 200 })
@@ -1115,7 +1331,7 @@
   async function tour() {
     tween(sky, 'bokeh', .45, 1600); tween(sky, 'neb', .7, 1600); focus(2.5, 1200); tween(sky, 'caus', 1, 2000)
     const cap = document.createElement('div'); cap.className = 'tourcap'
-    cap.innerHTML = `<b class="bn"></b><span class="n"><span class="num"></span><span class="dots">${TOUR.map(() => '<i></i>').join('')}</span></span><h2></h2><p></p>`; root.appendChild(cap)
+    cap.innerHTML = `<b class="bn"></b><span class="n"><span class="num"></span><span class="dots">${TOUR.map(() => '<i></i>').join('')}</span></span><h2></h2><i class="hr"></i><p></p>`; root.appendChild(cap)
     const dots = cap.querySelectorAll('.dots i')
     let prev = null
     for (let i = 0; i < TOUR.length && !skip; i++) {
@@ -1149,6 +1365,7 @@
       cap.querySelector('.num').textContent = String(i + 1).padStart(2, '0') + '  /  ' + String(TOUR.length).padStart(2, '0'); cap.querySelector('.bn').textContent = String(i + 1).padStart(2, '0'); anim(cap.querySelector('.bn'), [{ opacity: 0, transform: 'translateX(-30px) scale(1.2)' }, { opacity: 1, transform: 'scale(.96,1.04)', offset: .6 }, { opacity: 1, transform: 'none' }], { duration: 800, easing: 'cubic-bezier(.2,.9,.3,1)' })
       dots.forEach((d, j) => { d.className = j === i ? 'on' : j < i ? 'past' : '' })
       words(cap.querySelector('h2'), f.title, 100, 40)
+      anim(cap.querySelector('.hr'), [{ transform: 'scaleX(0)' }, { transform: 'scaleX(1)' }], { duration: 900, delay: 220, easing: 'cubic-bezier(.16,1,.3,1)' })
       cap.querySelector('p').innerHTML = f.text; anim(cap.querySelector('p'), [{ opacity: 0, transform: 'translateY(10px)', filter: 'blur(6px)' }, { opacity: 1, transform: 'none', filter: 'blur(0)' }], { duration: 800, delay: 280 })
       await sleep(620)
       await f.play(s)
@@ -1170,7 +1387,7 @@
   async function homeReveal({ short = false } = {}) {
     if (skip) return
     // a title card on the beat, then the hero shot rises into frame and builds itself piece by piece
-    const t = scene(`<div class="title trailer"><div class="echo fill"></div><div class="tc sm"><small>${short ? 'New in ' + FILM_V : 'Introducing'}</small>The new <em>home screen.</em></div></div>`)
+    const t = scene(`<div class="title trailer"><div class="echo fill"></div><div class="tc sm"><small>${short ? 'New in ' + FILM_V : 'Introducing'}</small>The new <em>Home banner.</em></div></div>`)
     slamIn(t.querySelector('.tc'), { from: 1.3 }); slabs(); echo(t.querySelector('.echo'), 'Home', { ms: BEAT * 2.6, a: .5 }); SFX.hit(2); pop(.18, 4); leak(.5, 1, 1600)
     await sleep(BEAT * 2)
     cutOut(t.querySelector('.tc'), 220); await sleep(220); t.remove()
@@ -1210,23 +1427,34 @@
     push(0, 600); tween(sky, 'bokeh', .2, 700)
     await leave(s, 600)
   }
-  // the closing montage: three words, three beats
-  async function montage() {
+  // the numbers: four figures land on the beat, each from deeper in the frame, then the camera flies through them
+  async function montage({ short = false } = {}) {
     if (skip) return
-    const ws = ['Lighter.', 'Faster.', '<em>Yours.</em>']
-    const s = scene(`<div class="title trailer"><div class="echo fill"></div>${ws.map(w => `<div class="tc">${w}</div>`).join('')}</div>`), tcs = s.querySelectorAll('.tc'), ech = s.querySelector('.echo')
-    for (let i = 0; i < tcs.length && !skip; i++) {
-      if (i) hardCut(tcs[i - 1])
-      slamIn(tcs[i], { from: 1.4 }); echo(ech, tcs[i].textContent, { a: .4 + i * .1 }); if (i === tcs.length - 1) slabs(); SFX.hit(i + 1); pop(.12 + i * .06, 3 + i * 2)
-      await sleep(i === tcs.length - 1 ? BEAT * 1.5 : BEAT)
+    const F = [['1', 's', 'to open', 'It used to take 4'], ['3', 'x', 'faster', 'tab switching'], ['10', 'ms', 'results', 'as you type'], ['20', 'ms', 'or less', 'for every click and key']]
+    const s = scene(`<div class="wkick">Lumen ${FILM_V}  in numbers</div><div class="wall">${F.map(([n, u, b, l]) => `<div class="fig"><i class="gw"></i><span class="n">${n}<small>${u}</small></span><i class="r"></i><span class="lb"><b>${b}</b>${l}</span></div>`).join('')}</div>`, 'flat')
+    const figs = s.querySelectorAll('.fig'), step = short ? BEAT * .7 : BEAT
+    anim(s.querySelector('.wkick'), [{ opacity: 0, transform: 'translateY(-10px)' }, { opacity: 1, transform: 'none' }], { duration: 800 })
+    tween(sky, 'bokeh', .4, 1200); push(.03, step * 6)
+    for (let i = 0; i < figs.length && !skip; i++) {
+      const f = figs[i], z = -900 + i * 120
+      anim(f, [{ opacity: 0, transform: `translate3d(0,40px,${z}px) rotateX(18deg)` }, { opacity: 1, transform: 'translate3d(0,-4px,30px) scale(1.04,.96)', offset: .55 }, { opacity: 1, transform: 'scale(.99,1.01)', offset: .78 }, { opacity: 1, transform: 'none' }], { duration: 900, easing: 'cubic-bezier(.2,.9,.3,1)' })
+      anim(f.querySelector('.r'), [{ transform: 'scaleX(0)' }, { transform: 'scaleX(1)' }], { duration: 800, delay: 250, easing: 'cubic-bezier(.16,1,.3,1)' })
+      anim(f.querySelector('.lb'), [{ opacity: 0, transform: 'translateY(10px)' }, { opacity: 1, transform: 'none' }], { duration: 700, delay: 320 })
+      SFX.hit(i); pop(.1 + i * .04, 2 + i); if (i === figs.length - 1) { slabs(); beam(1000) }
+      await sleep(step)
     }
-    await leave(s, 360)
+    await sleep(short ? BEAT : BEAT * 2)
+    // the dolly: the wall rushes past the lens, the outer figures first
+    figs.forEach((f, i) => anim(f, [{ opacity: 1, transform: 'none' }, { opacity: 0, transform: `translate3d(${(i - 1.5) * 18}vw,0,700px)` }], { duration: 620, delay: Math.abs(i - 1.5) < 1 ? 80 : 0, easing: 'cubic-bezier(.55,0,.75,.3)' }))
+    anim(s.querySelector('.wkick'), [{ opacity: 1 }, { opacity: 0 }], { duration: 300 })
+    tween(sky, 'speed', 1.4, 300).then(() => tween(sky, 'speed', .25, 900)); push(0, 600); if (!skip) SFX.whoosh()
+    await sleep(700); s.remove(); tween(sky, 'bokeh', 0, 600)
   }
   async function whatsNew(version) {
     const items = WHATS_NEW.items
     tween(sky, 'bokeh', .6, 1500); focus(2, 1100); leak(.6, -1, 1800)
     const V = esc(version || WHATS_NEW.version)
-    const s = scene(`<div class="new nw4"><div class="lh"><span class="eyebrow chrome">New in Lumen ${V}</span><div class="bigv">${V}</div><h1>The biggest update yet.</h1><p class="lede">${items.length} things to try first, all of them already waiting in your browser.</p></div>
+    const s = scene(`<div class="new nw4"><div class="lh"><span class="eyebrow chrome">New in Lumen ${V}</span><div class="bigv">${V}</div><h1>Faster, smarter, smoother.</h1><p class="lede">${items.length} things to try first, all of them already waiting in your browser.</p></div>
       <div class="bento">${items.map((it, i) => `<div class="it glass sweep${i === 0 ? ' hero' : ''}${i === items.length - 1 && items.length % 2 === 0 ? ' last' : ''}" style="--sd:${1.3 + i * .08}s"><div class="k">${ICONS[it.icon] || ''}</div><span>${esc(it.text)}</span><b class="no2">${String(i + 1).padStart(2, '0')}</b><i class="wmk">${ICONS[it.icon] || ''}</i></div>`).join('')}</div></div>`, 'flat')
     lensAll(s)
     anim(s.querySelector('.eyebrow'), [{ opacity: 0, transform: 'translateY(-10px)', letterSpacing: '.6em' }, { opacity: 1, transform: 'none', letterSpacing: '.24em' }], { duration: 1100 })
@@ -1338,7 +1566,7 @@
     ensureCSS()
     const acc = accent(); HUE = acc.h
     root = document.createElement('div'); root.id = 'intro'; root.style.setProperty('--a', acc.hex); if (still) root.classList.add('still')
-    root.innerHTML = `<svg class="defs" aria-hidden="true"><defs></defs></svg><div class="cam"><div class="nebw"><div class="neb"></div><div class="nebc"></div></div><canvas></canvas><div class="flare"></div><div class="stage"></div></div><div class="leak"></div><div class="ca"></div><div class="grain"></div><div class="vig"></div><div class="slabs"><i></i><i></i><i></i></div><div class="bar t"></div><div class="bar b"></div>
+    root.innerHTML = `<svg class="defs" aria-hidden="true"><defs></defs></svg><div class="cam"><div class="nebw"><div class="neb"></div><div class="nebc"></div></div><canvas></canvas><div class="flare"></div><div class="stage"></div></div><div class="leak"></div><div class="beam"></div><div class="ca"></div><div class="grain"></div><div class="vig"></div><div class="slabs"><i></i><i></i><i></i></div><div class="bar t"></div><div class="bar b"></div>
       <div class="hud" aria-hidden="true"><i class="cm tl"></i><i class="cm tr"></i><i class="cm bl"></i><i class="cm br"></i><i class="tk"></i><span class="sw"><i></i><i></i><i></i><i></i><i></i></span><span class="tcd"><b>REC</b><span>00:00:00:00</span></span><span class="rl">Lumen <em>${esc(FILM_V)}</em>  Reel 01  2.39 : 1</span></div>
       <div class="credit"><i></i>${wn ? 'Lumen <b>' + esc(String(wn).replace(/\.0$/, '')) + '</b>' : 'A Lumen picture'}</div><button class="skip chrome">Skip intro<kbd>esc</kbd></button><button class="skip mute chrome">Sound on</button><div class="meter"><i></i></div>`
     document.body.appendChild(root)
@@ -1377,7 +1605,7 @@
 
     let answer
     if (only && !still) {
-      const ACTS = { cold: coldOpen, warp: () => warp(1500), ignite, tour, home: homeReveal, montage, whatsNew: () => whatsNew(FILM_V) }
+      const ACTS = { cold: coldOpen, warp: () => warp(1500), ignite, tour, home: homeReveal, montage, numbers: montage, whatsNew: () => whatsNew(FILM_V) }
       await sleep(200); for (const a of only) if (ACTS[a]) await ACTS[a]()
       removeEventListener('keydown', onKey); if (skip) clearStage(); skip = false
       answer = await finale({ short: true })
@@ -1386,13 +1614,13 @@
       removeEventListener('keydown', onKey); sky.neb = .9; root.classList.add('lit')
       answer = wn ? (askParcels ? await finale({ short: true, ask: true }) : await finale({ short: true })) : await finale()
     } else if (wn) {
-      // after an update: warp, "Fresh from an update, Lumen 4.0", what is new, the new home screen, and you are on it
-      await sleep(300); await warp(1800); await ignite({ short: true }); await whatsNew(String(wn).replace(/\.0$/, '')); await homeReveal({ short: true })
+      // after an update: warp, "Fresh from an update, Lumen 4.1", what is new, the numbers, and you are on it
+      await sleep(300); await warp(1800); await ignite({ short: true }); await whatsNew(String(wn).replace(/\.0$/, '')); await montage({ short: true })
       removeEventListener('keydown', onKey)
       if (!skip || askParcels) { if (skip) clearStage(); skip = false; answer = await finale({ short: true, ask: askParcels }) }
     } else {
       // a first launch is the whole trailer; what is new is only for people who update
-      await sleep(400); await coldOpen(); await warp(1500); await ignite(); await tour(); await homeReveal(); await montage()
+      await sleep(400); await coldOpen(); await warp(1500); await ignite(); await tour(); await montage()
       removeEventListener('keydown', onKey)
       // the last scene asks one question, even when the film itself was skipped
       if (skip) clearStage()

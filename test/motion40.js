@@ -34,6 +34,10 @@ const move = (wc, x, y) => wc.sendInputEvent({ type: 'mouseMove', x, y })
 // hover then press the element under a real pointer; returns the scale samples of each phase
 async function hoverPress(wc, sel) {
   move(wc, 2, 2); await wait(400)
+  // follow the same element all the way through, even if pressing it changes which selector matches it
+  const tagged = await wc.executeJavaScript(`(() => { for (const x of document.querySelectorAll('[data-hp]')) x.removeAttribute('data-hp'); const e = document.querySelector(${JSON.stringify(sel)}); if (!e) return false; e.setAttribute('data-hp', '1'); return true })()`)
+  if (!tagged) return null
+  sel = '[data-hp="1"]'
   const c = await center(wc, sel); if (!c) return null
   await wait(150)
   const hs = sample(wc, SC(sel), 450); move(wc, c.x - 3, c.y - 2); await wait(30); move(wc, c.x, c.y); const hover = await hs

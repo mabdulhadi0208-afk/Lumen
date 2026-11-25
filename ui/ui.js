@@ -58,6 +58,9 @@ function favHTML(t) {
   if (!t.favicon) return fallback
   return `<img src="${esc(t.favicon)}" draggable="false" data-fallback="${esc(fallback)}">`
 }
+// for long lists (the bookmarks bar, its popover): icons load only when their row is shown, so 200 bookmarks do not
+// start 200 favicon downloads at launch (chips that do not fit are hidden and never fetch theirs)
+const lazyFav = t => favHTML(t).replace('<img ', '<img loading="lazy" ')
 document.addEventListener('error', e => {
   const img = e.target
   if (img.tagName === 'IMG' && img.dataset.fallback) img.outerHTML = img.dataset.fallback
@@ -191,13 +194,17 @@ function toggleSplit() {
 const activeTab = () => S.tabs.find(t => t.id === S.activeId)
 
 // ---------------------------------------------------------------- render state
+// swap a button's icon only when it changes: rewriting the same SVG on every state update re-parsed it and dirtied
+// the toolbar's style and layout for nothing
+const iconHTML = new WeakMap()
+function setHTML(el, html) { if (iconHTML.get(el) === html) return; iconHTML.set(el, html); el.innerHTML = html }
 function renderChrome() {
   const a = activeTab()
   $('#btn-back').disabled = !S.canBack
   $('#btn-forward').disabled = !S.canForward
-  $('#btn-reload').innerHTML = a && a.loading ? ICONS.stop : ICONS.reload
+  setHTML($('#btn-reload'), a && a.loading ? ICONS.stop : ICONS.reload)
   $('#btn-translate').classList.toggle('on', !!S.translated)
-  $('#btn-star').innerHTML = S.bookmarked ? ICONS.starFill : ICONS.star
+  setHTML($('#btn-star'), S.bookmarked ? ICONS.starFill : ICONS.star)
   $('#btn-star').classList.toggle('on', S.bookmarked)
   $('#btn-split').classList.toggle('on', !!S.splitId)
   const url = S.url || ''
@@ -212,7 +219,7 @@ function renderChrome() {
   ut.querySelector('.host').textContent = host
   ut.querySelector('.path').textContent = path
   const site = $('#btn-site')
-  site.innerHTML = url.startsWith('lumen://') || !url ? ICONS.search : (S.secure ? ICONS.tune : ICONS.unlock)
+  setHTML(site, url.startsWith('lumen://') || !url ? ICONS.search : (S.secure ? ICONS.tune : ICONS.unlock))
   site.classList.toggle('insecure', !S.secure && !!url && !url.startsWith('lumen://'))
   const rp = $('#readpill'), rm = S.readMin || 0
   if (rp.dataset.m !== String(rm)) { rp.dataset.m = rm; rp.textContent = rm ? rm + ' min read' : ''; rp.classList.toggle('show', !!rm); if (rm) requestAnimationFrame(() => Jelly.kick && Jelly.kick(rp, 0.6, 0.5)) }
@@ -273,6 +280,7 @@ const pillG = new SpringGroup({ p: 0, o: 0, s: 1, w: 200 }, 'calm', v => {
   pill.style.opacity = Math.max(0, Math.min(1, v.o))
 })
 let drag = null
+let lastScrollKey = ''
 
 function tabInner(t) {
   // a crashed or frozen tab says so right on the tab, with its own Reload button
@@ -376,7 +384,9 @@ function renderTabs() {
     const p = LAYOUT.pos.get(S.activeId)
     if (pillG.state.o < 0.05) pillG.set({ p, w: tabW })
     pillG.to({ p, o: 1, w: tabW })
-    if (!drag) act.el.scrollIntoView({ block: 'nearest', inline: 'nearest' })
+    // only when the tab in front or the strip's size changed: scrolling into view forces a layout on every state update
+    const sk = S.activeId + '|' + LAYOUT.total + '|' + tabW + '|' + TOP
+    if (!drag && sk !== lastScrollKey) { lastScrollKey = sk; act.el.scrollIntoView({ block: 'nearest', inline: 'nearest' }) }
     // all tabs fit: never leave the strip scrolled sideways (a resize mid-spring can leave a stale scroll behind)
     if (TOP && !drag) { const tl = $('#tablist'); if (LAYOUT.total <= tl.clientWidth && tl.scrollLeft) tl.scrollLeft = 0 }
   } else pillG.to({ o: 0 })
@@ -731,9 +741,26 @@ async function refresh(q) {
   const my = ++suggestSeq
   const typed = q.slice(0, cmdInput.selectionStart === cmdInput.selectionEnd ? q.length : cmdInput.selectionStart)
   results = buildResults(typed, {}); sel = 0; renderResults()
-  const data = await api.do('suggest', typed)
+  // history, bookmarks and tabs first (no network), the search engine's suggestions join when they arrive
+  const data = await api.do('suggest', typed, { local: true })
   if (my !== suggestSeq || overlayOpen !== 'cmd') return
   results = buildResults(typed, data || {}); sel = 0; renderResults()
+  let inlineRow = null
+  const web = () => {
+    if (!data || !data.webPending || !typed.trim()) return
+    // the network part waits for a short pause in typing, so fast typing does not send a request per key
+    setTimeout(() => { if (my === suggestSeq && overlayOpen === 'cmd') webNow() }, 90)
+  }
+  const webNow = () => {
+    Promise.resolve(api.do('suggestWeb', typed)).then(search => {
+      if (my !== suggestSeq || overlayOpen !== 'cmd' || !search || !search.length) return
+      data.search = search
+      const keep = sel
+      results = buildResults(typed, data)
+      if (inlineRow && cmdInput.value.startsWith(typed) && cmdInput.value.length > typed.length) { results.unshift(inlineRow); results = results.filter((r, i) => i === 0 || r.title !== typed) }
+      sel = Math.max(0, Math.min(keep, results.length - 1)); renderResults()
+    }).catch(() => {})
+  }
   // inline completion of a domain you have been to
   if (typed && !/\s/.test(typed) && inlineAllowed && data && data.history) {
     const t = typed.toLowerCase()
@@ -745,7 +772,8 @@ async function refresh(q) {
         if (completion.length > typed.length && cmdInput.value === typed) {
           cmdInput.value = typed + completion.slice(typed.length)
           cmdInput.setSelectionRange(typed.length, cmdInput.value.length)
-          results.unshift({ sec: '', icon: ICONS.globe, title: completion, sub: '', key: 'Open', go: () => go(completion) })
+          inlineRow = { sec: '', icon: ICONS.globe, title: completion, sub: '', key: 'Open', go: () => go(completion) }
+          results.unshift(inlineRow)
           results = results.filter((r, i) => i === 0 || r.title !== typed)
           sel = 0; renderResults()
         }
@@ -753,11 +781,14 @@ async function refresh(q) {
       }
     }
   }
+  web()
 }
 let inlineAllowed = true
 cmdInput.addEventListener('beforeinput', e => { inlineAllowed = /^insert/.test(e.inputType) && !e.inputType.includes('Paste') })
 let refreshT
-cmdInput.addEventListener('input', () => { clearTimeout(refreshT); refreshT = setTimeout(() => refresh(cmdInput.value), 40) })
+// local results (history, bookmarks, tabs) cost a millisecond or two now, so they follow the key at once; keys that
+// arrive together still make one request
+cmdInput.addEventListener('input', () => { clearTimeout(refreshT); refreshT = setTimeout(() => refresh(cmdInput.value), 8) })
 cmdInput.addEventListener('keydown', e => {
   if (e.key === 'ArrowDown') { e.preventDefault(); sel = Math.min(results.length - 1, sel + 1); renderResults() }
   else if (e.key === 'ArrowUp') { e.preventDefault(); sel = Math.max(0, sel - 1); renderResults() }
@@ -911,11 +942,16 @@ peekbar.addEventListener('click', e => { const b = e.target.closest('[data-pk]')
 
 // ---------------------------------------------------------------- Now playing
 const np = $('#nowplaying')
+let npSig = ''
 function renderNowPlaying() {
   const media = S.tabs.filter(t => t.id !== S.activeId && (t.playing || (t.mediaAt && Date.now() - t.mediaAt < 10 * 60000)))
     .sort((a, b) => (b.playing - a.playing) || (b.mediaAt - a.mediaAt))[0]
-  if (!media) { np.classList.remove('show'); np.innerHTML = ''; return }
+  if (!media) { np.classList.remove('show'); if (np.firstChild) np.innerHTML = ''; npSig = ''; return }
   np.classList.add('show'); np.classList.toggle('playing', !!media.playing)
+  // rebuilt only when what it shows changes, not on every state update while something plays
+  const sig = [media.id, media.playing, titleOf(media), media.url, media.favicon].join('\n')
+  if (sig === npSig && np.firstChild) return
+  npSig = sig
   np.innerHTML = `<button class="np-main" data-np="go" title="Go to tab"><span class="np-ico">${favHTML(media)}</span><span class="np-t"><b>${esc(titleOf(media))}</b><span>${media.playing ? '<i class="np-eq"><i></i><i></i><i></i></i>Playing' : 'Paused'}  ·  ${esc(hostOf(media.url))}</span></span></button>
     <button class="ib" data-np="toggle" title="${media.playing ? 'Pause' : 'Play'}">${media.playing ? '<svg viewBox="0 0 16 16" width="16" height="16" fill="currentColor"><rect x="4" y="3" width="3" height="10" rx="1"/><rect x="9" y="3" width="3" height="10" rx="1"/></svg>' : '<svg viewBox="0 0 16 16" width="16" height="16" fill="currentColor"><path d="M5 3.2v9.6c0 .5.6.8 1 .5l7-4.8c.4-.3.4-.8 0-1L6 2.7c-.4-.3-1 0-1 .5z"/></svg>'}</button>`
   np.dataset.tab = media.id
@@ -1767,11 +1803,16 @@ api.on('state', s => {
 
 // ---------------------------------------------------------------- bookmarks bar (tabs-on-top layout)
 let bmItems = [], bmT = 0
+let bmSig = ''
 function bmRender() {
   const el = $('#bmbar'), on = settings.bookmarksBar !== false && TOP && bmItems.length > 0 && !INCOGNITO
   el.classList.toggle('show', on)
-  if (!on) { el.innerHTML = ''; return }
-  el.innerHTML = bmItems.map((b, i) => `<button class="bm" data-i="${i}" title="${esc(b.url)}">${favHTML({ url: b.url, favicon: (() => { try { return new URL(b.url).origin + '/favicon.ico' } catch { return '' } })() })}<span>${esc(b.title || hostOf(b.url))}</span></button>`).join('') + `<button class="bm more" id="bm-more" title="All bookmarks">${ICONS.more}</button>`
+  if (!on) { el.innerHTML = ''; bmSig = ''; return }
+  // nothing changed (same bookmarks, same width): keep the bar as it is, no rebuild and no measuring
+  const sig = el.clientWidth + '\n' + bmItems.map(b => b.url + '\t' + (b.title || '')).join('\n')
+  if (sig === bmSig && el.firstChild) return
+  bmSig = sig
+  el.innerHTML = bmItems.map((b, i) => `<button class="bm" data-i="${i}" title="${esc(b.url)}">${lazyFav({ url: b.url, favicon: (() => { try { return new URL(b.url).origin + '/favicon.ico' } catch { return '' } })() })}<span>${esc(b.title || hostOf(b.url))}</span></button>`).join('') + `<button class="bm more" id="bm-more" title="All bookmarks">${ICONS.more}</button>`
   // hide chips that do not fit; they stay reachable from the menu at the end
   const more = $('#bm-more'), limit = el.clientWidth - 40; let hidden = 0
   for (const c of el.querySelectorAll('.bm:not(.more)')) { const over = c.offsetLeft + c.offsetWidth > limit; c.style.display = over ? 'none' : ''; if (over) hidden++ }
@@ -1781,7 +1822,7 @@ async function bmLoad() { try { bmItems = await api.do('bmList') || [] } catch {
 $('#bmbar').addEventListener('click', e => {
   const c = e.target.closest('.bm'); if (!c) return
   if (c.id === 'bm-more') {
-    openPopover(`<h3>Bookmarks</h3><div class="sub">${bmItems.length} saved</div><div class="bm-list" style="max-height:420px;overflow:auto">${bmItems.map((b, i) => `<div class="item" data-bm="${i}"><span class="ri">${favHTML({ url: b.url, favicon: (() => { try { return new URL(b.url).origin + '/favicon.ico' } catch { return '' } })() })}</span><div class="grow">${esc(b.title || hostOf(b.url))}<div class="small">${esc(hostOf(b.url))}</div></div></div>`).join('')}</div>`, c, { wide: true })
+    openPopover(`<h3>Bookmarks</h3><div class="sub">${bmItems.length} saved</div><div class="bm-list" style="max-height:420px;overflow:auto">${bmItems.map((b, i) => `<div class="item" data-bm="${i}"><span class="ri">${lazyFav({ url: b.url, favicon: (() => { try { return new URL(b.url).origin + '/favicon.ico' } catch { return '' } })() })}</span><div class="grow">${esc(b.title || hostOf(b.url))}<div class="small">${esc(hostOf(b.url))}</div></div></div>`).join('')}</div>`, c, { wide: true })
     pop.onclick = ev => { const it = ev.target.closest('[data-bm]'); if (it) { closePopover(true); api.do('navigate', bmItems[+it.dataset.bm].url, ev.metaKey || ev.ctrlKey) } }
     return
   }
@@ -1794,7 +1835,9 @@ $('#bmbar').addEventListener('contextmenu', e => {
   openPopover(`<div class="mini-head">${esc(b.title || hostOf(b.url))}</div><div class="item" data-a="open"><span class="ri">${ICONS.plus}</span><div class="grow">Open in new tab</div></div><div class="item danger" data-a="rm"><span class="ri">${ICONS.trash}</span><div class="grow">Remove bookmark</div></div>`, c, { mini: true })
   pop.onclick = ev => { const it = ev.target.closest('[data-a]'); if (!it) return; closePopover(true); if (it.dataset.a === 'open') api.do('navigate', b.url, true); else api.do('bmRemove', b.url).then(bmLoad) }
 })
-api.on('state', () => { clearTimeout(bmT); bmT = setTimeout(bmLoad, 250) })
+// the list is fetched again only when the bookmarks changed (the state carries a revision), not on every state
+let bmRev = null
+api.on('state', s => { if (s.bmRev === bmRev) return; bmRev = s.bmRev; clearTimeout(bmT); bmT = setTimeout(bmLoad, 250) })
 api.on('settings', () => setTimeout(bmRender, 50))
 window.addEventListener('resize', () => { clearTimeout(bmT); bmT = setTimeout(bmRender, 120) })
 bmLoad()

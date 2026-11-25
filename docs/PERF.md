@@ -70,3 +70,29 @@ then drop the override.
 - Saving: the debounced writes of every store (history, session, settings...) go to disk off the main thread
   (`src/store.js`); `flush()` stays synchronous for quitting.
 - Reload Every: its once-a-second clock only runs while a tab uses it (it woke Lumen every second, all day).
+
+## 4.1 lag pass: main process, IPC, startup (no animation touched)
+
+Probe: `test/perf41.js` (startup, event-loop delay per scenario, IPC to the chrome, keystroke latency over 20,000
+history pages, tab switch, 30 tabs open and closed, idle CPU), with ceilings that fail on a regression. Numbers below
+are 4.0 and then 4.1 on the same machine, same probe.
+
+| Fix | Where | 4.0 | 4.1 |
+| --- | --- | --- | --- |
+| Filter lists are parsed and serialized on a worker thread; the main process only deserializes the cached engine | `src/adblock-worker.js`, `buildAdblockEngine` in `src/main.js` | startup event-loop stall 1.6 to 2.7 s (first launch, every 8-hour list refresh, YouTube "stuck" refresh) | 0.17 to 0.28 s |
+| The window shows when the chrome's document is ready, not when every favicon in it has loaded; bookmarks bar favicons load lazily | `BrowserWin` constructor, `lazyFav` in `ui/ui.js` | chrome first paint 4.2 s (with 300 bookmarks), 5.7 s on a used profile | 1.0 s |
+| Command bar and Home search: local results (history, bookmarks, tabs) come back at once; the search engine's suggestions follow separately and are cached a minute; history is searched through precomputed lower-case keys and a query that extends the last one only searches its matches | `suggest` / `webSuggest` in `src/main.js`, `listHistory` in `src/data.js`, `refresh` in `ui/ui.js`, `bindSearch` in `pages/home.js` | `suggest()` 300 to 400 ms (waited for the network); keystroke to results p95 0.3 to 1.2 s | `suggest()` local 1 to 3 ms; p95 180 to 340 ms |
+| Tab thumbnails are captured on switch but shrunk and JPEG-encoded later, when idle (or at once when asked for) | `snapTab` / `thumbOf` in `src/main.js` | tab switch on screen p95 190 to 270 ms, stall 85 to 107 ms | p95 50 to 70 ms, stall 15 to 25 ms |
+| A visit moves its page to the front of the sorted history instead of re-sorting 20,000 pages; history is written at most every 3 s while browsing | `addHistory` / `flushHistory` in `src/data.js` | browsing stall 77 to 222 ms | 21 to 38 ms |
+| Identical state updates are not sent; `hover-url` only when it changes; blocked requests of background tabs push nothing | `pushState`, `hoverURL`, `request-blocked` in `src/main.js` | 12.1 to 12.4 messages/s while browsing | 7.2/s |
+| The bookmarks bar refetches only when the bookmarks change (`bmRev` in the state) and rebuilds only when its items or width change; toolbar icons and Now Playing are rewritten only when they change; the active tab is scrolled into view only when it or the strip changes | `ui/ui.js` | an IPC call, a full bar rebuild and a forced layout loop 250 ms after every state update | none |
+| Tab preload: the settings it needs arrive by an async message (was `sendSync` on every page and every iframe); the password manager watches the whole document only on sites with saved passwords and otherwise binds a field when it gets focus | `src/preload-tab.js`, `lumen:qol` in `src/main.js` | 2 synchronous IPC round trips and a subtree MutationObserver per page | 1 (dark mode's no-flash check, top frame only); no observer |
+| Reading time is counted for background tabs when they come forward; download file checks are cached; Reader Mode's source is read once; the window of a webContents is looked up in a map | `src/main.js` | | |
+
+Memory after opening and closing 30 tabs returns to baseline in both (no leaked webContents or listeners). Idle CPU on
+a plain page stays under 1.5% per process.
+
+Left alone on purpose (animations, not to be touched in this pass): the Home banner ambience (`.amb-dots`,
+`.amb-spark`, `.amb-lines`) and the Settings hero dots (`hd-a`, `hd-c`) loop forever and keep the GPU process at about a
+whole core in software rendering while New Tab or Settings is on screen (`test/perfidle.js`). Also not changed: the
+packaged updater spawns `curl` every 10 s to look for a release (`src/updater.js`, auto-update work has its own rules).

@@ -76,21 +76,27 @@ let histSorted = null, topCache = null
 const histChanged = () => { histSorted = null; topCache = null }
 function addHistory(url, title) {
   if (!/^https?:/.test(url)) return
+  // a visit is always the newest page: it moves to the front of the sorted list (no re-sort of 20,000 pages per click)
+  const sorted = histSorted
   histChanged()
   let h = historyMap.get(url)
-  if (h) { h.visits++; h.t = Date.now(); if (title) h.title = title }
-  else { h = { url, title: title || url, t: Date.now(), visits: 1 }; historyMap.set(url, h) }
+  if (h) { h.visits++; h.t = Math.max(Date.now(), sorted && sorted[0] ? sorted[0].t : 0); if (title) h.title = title }
+  else { h = { url, title: title || url, t: Date.now(), visits: 1 }; if (sorted && sorted[0] && sorted[0].t > h.t) h.t = sorted[0].t; historyMap.set(url, h) }
+  if (sorted) { const i = sorted.indexOf(h); histSorted = i === 0 ? sorted.slice() : i > 0 ? [h, ...sorted.slice(0, i), ...sorted.slice(i + 1)] : [h, ...sorted] }
   flushHistory()
 }
 function updateHistoryTitle(url, title) {
   const h = historyMap.get(url)
-  if (h && title && h.title !== title) { h.title = title; topCache = null; flushHistory() }
+  if (h && title && h.title !== title) { h.title = title; topCache = null; lastSearch = null; flushHistory() }
 }
 let histTimer
 const sortedHistory = () => histSorted || (histSorted = [...historyMap.values()].sort((a, b) => b.t - a.t))
+// history is written at most every few seconds while you browse (each write serializes the whole list), and right
+// away on quit (flushAll in main.js)
 function flushHistory() {
-  clearTimeout(histTimer)
+  if (histTimer) return
   histTimer = setTimeout(() => {
+    histTimer = null
     let arr = sortedHistory()
     if (arr.length > 20000) {
       arr = arr.slice(0, 20000)
@@ -98,13 +104,23 @@ function flushHistory() {
       histChanged()
     }
     historyStore.replace(arr.slice())
-  }, 800)
+  }, 3000)
 }
+// Searching history as you type: every page's lower-cased url and title are worked out once (and again only when its
+// title changes), and a query that extends the last one only looks through the last one's matches. With 20,000 pages
+// a keystroke costs a millisecond or two instead of lower-casing 40,000 strings.
+const lowKeys = new WeakMap()   // entry -> { title, url, low }
+const lowOf = h => { let k = lowKeys.get(h); if (!k || k.title !== h.title || k.url !== h.url) { k = { title: h.title, url: h.url, u: h.url.toLowerCase(), ti: (h.title || '').toLowerCase() }; lowKeys.set(h, k) } return k }
+let lastSearch = null   // { list (the sorted array it ran on), s, hits }
 function listHistory(q = '', limit = 300) {
   const arr = sortedHistory()
   if (!q) return arr.slice(0, limit)
   const s = q.toLowerCase()
-  return arr.filter(h => h.url.toLowerCase().includes(s) || (h.title || '').toLowerCase().includes(s)).slice(0, limit)
+  const from = lastSearch && lastSearch.list === arr && s.startsWith(lastSearch.s) ? lastSearch.hits : arr
+  const hits = []
+  for (const h of from) { const k = lowOf(h); if (k.u.includes(s) || k.ti.includes(s)) hits.push(h) }
+  lastSearch = { list: arr, s, hits }
+  return hits.slice(0, limit)
 }
 function deleteHistory(url) { historyMap.delete(url); histChanged(); flushHistory() }
 // forget a whole site: every page on that host and its subdomains

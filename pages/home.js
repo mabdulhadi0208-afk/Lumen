@@ -753,11 +753,18 @@
     const ask = async () => {
       const text = q.value.trim(), my = ++seq
       if (!text) return close()
-      let r = null; try { r = await L.invoke('suggest', text) } catch {}
+      // local results (history, bookmarks) at once; the search engine's suggestions join when they arrive
+      let r = null; try { r = await L.invoke('suggest', text, { local: true }) } catch {}
       if (my !== seq || !r) return
       draw(r, text)
+      if (!r.webPending) return
+      await new Promise(res => setTimeout(res, 90)); if (my !== seq) return   // a pause in typing before the network
+      let search = null; try { search = await L.invoke('suggestWeb', text) } catch {}
+      // not while you are arrowing through the list: the rows would move under the selection
+      if (my !== seq || !search || !search.length || sel >= 0) return
+      r.search = search; draw(r, text)
     }
-    q.addEventListener('input', () => { clearTimeout(t); t = setTimeout(ask, 90) })
+    q.addEventListener('input', () => { clearTimeout(t); t = setTimeout(ask, 12) })
     // a click in the empty pill shows your top sites
     q.addEventListener('click', async () => { if (q.value.trim() || box.classList.contains('open')) return; const my = ++seq; let r = null; try { r = await L.invoke('suggest', '') } catch {} if (my === seq && r && !q.value.trim()) draw(r, '') })
     q.addEventListener('keydown', e => {

@@ -63,10 +63,18 @@ if (location.protocol === 'lumen:') {
   }, true)
 
   // ------------------------------------------------------------ trackpad swipe back / forward, and video speed keys
-  let QOL = { swipe: true, speed: true, accent: '#5b8cff', motion: 'jelly' }
-  try { QOL = { ...QOL, ...(ipcRenderer.sendSync('lumen:qol') || {}) } } catch {}
-  const ACC = /^#[0-9a-f]{3,8}$/i.test(QOL.accent || '') ? QOL.accent : '#5b8cff'
-  const STILL = QOL.motion === 'off' || !!(window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches)
+  // these settings arrive without holding the page up: a synchronous message here stopped every page and every
+  // iframe at its very start until the main process answered. Nothing below needs them before the first user input.
+  let QOL = { swipe: true, speed: true, accent: '#5b8cff', motion: 'jelly', pw: false }
+  let ACC = '#5b8cff'
+  const reduced = () => !!(window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches)
+  let STILL = reduced()
+  const qolReady = ipcRenderer.invoke('lumen:qol').then(q => {
+    QOL = { ...QOL, ...(q || {}) }
+    ACC = /^#[0-9a-f]{3,8}$/i.test(QOL.accent || '') ? QOL.accent : '#5b8cff'
+    STILL = QOL.motion === 'off' || reduced()
+    return QOL
+  }).catch(() => QOL)
 
   // ------------------------------------------------------------ Lumen 4.0 in-page kit
   // Everything Lumen draws inside a web page lives in a closed shadow root (the page cannot see or restyle it), is
@@ -302,7 +310,7 @@ if (location.protocol === 'lumen:') {
     .mt.b{background:radial-gradient(1.2px 1.2px at 24% 62%,rgba(255,255,255,.75),transparent),radial-gradient(2px 2px at 58% 44%,#fff0fa,transparent),radial-gradient(1.4px 1.4px at 44% 12%,rgba(255,255,255,.7),transparent),radial-gradient(1.6px 1.6px at 8% 86%,rgba(255,255,255,.7),transparent);animation:mtb 2.2s .2s ease-out both}
     @keyframes mta{0%{opacity:0;transform:translate3d(0,8px,0)}30%{opacity:.9}100%{opacity:.55;transform:translate3d(4px,-8px,0)}}
     @keyframes mtb{0%{opacity:0;transform:translate3d(0,-4px,0)}35%{opacity:.7}100%{opacity:.35;transform:translate3d(-5px,7px,0)}}`
-  if (QOL.swipe && window === window.top) {
+  if (window === window.top) {
     let acc = 0, timer = null, ui = null
     const canScrollX = (el, dir) => {
       for (let n = el; n && n !== document.documentElement; n = n.parentElement) {
@@ -372,7 +380,7 @@ if (location.protocol === 'lumen:') {
     }
     const reset = () => { acc = 0; if (ui) { ui.host.remove(); ui = null } }
     addEventListener('wheel', e => {
-      if (e.ctrlKey || Math.abs(e.deltaX) < Math.abs(e.deltaY) * 1.5 || Math.abs(e.deltaX) < 1) return
+      if (!QOL.swipe || e.ctrlKey || Math.abs(e.deltaX) < Math.abs(e.deltaY) * 1.5 || Math.abs(e.deltaX) < 1) return
       const dir = Math.sign(e.deltaX)
       if (acc === 0 && canScrollX(e.target, dir)) return
       if (acc !== 0 && Math.sign(acc) !== dir && Math.abs(acc) < 30) { reset(); return }
@@ -382,10 +390,10 @@ if (location.protocol === 'lumen:') {
       timer = setTimeout(() => { if (Math.abs(acc) >= 220) ipcRenderer.send('nav:swipe', acc < 0 ? 'back' : 'forward'); reset() }, 140)
     }, { passive: true, capture: true })
   }
-  if (QOL.speed && !/(^|\.)youtube\.com$/.test(location.hostname)) {
+  if (!/(^|\.)youtube\.com$/.test(location.hostname)) {
     let badge = null
     addEventListener('keydown', e => {
-      if (!e.shiftKey || e.metaKey || e.ctrlKey || e.altKey || (e.key !== '>' && e.key !== '<')) return
+      if (!QOL.speed || !e.shiftKey || e.metaKey || e.ctrlKey || e.altKey || (e.key !== '>' && e.key !== '<')) return
       const a = document.activeElement
       if (a && (a.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName))) return
       const vids = [...document.querySelectorAll('video')].filter(v => v.readyState > 0)
@@ -684,16 +692,19 @@ if (location.protocol === 'lumen:') {
     menuKeysFor(anchor, m, pick)
   }
 
+  // binds the password fields on the page; returns the fields bound just now (each with what its focus does)
   async function scan() {
-    const pws = pwFields(document)
-    if (!pws.length) return
+    const pws = pwFields(document), fresh = []
+    if (!pws.length) return fresh
     const list = await getCreds()
     for (const pw of pws) {
       if (pw.dataset.lumen) continue
       if (isNewPassword(pw)) {
         pw.dataset.lumen = '1'
-        pw.addEventListener('focus', () => { if (!pw.value) showGenerator(pw) })
+        const onFocus = () => { if (!pw.value) showGenerator(pw) }
+        pw.addEventListener('focus', onFocus)
         pw.addEventListener('blur', () => setTimeout(closeMenu, 120))
+        fresh.push([pw, onFocus])
         continue
       }
       if (!list.length) continue
@@ -701,10 +712,13 @@ if (location.protocol === 'lumen:') {
       const u = userFieldFor(pw)
       if (list.length === 1 && !pw.value) fill(list[0], pw)
       for (const el of [pw, u].filter(Boolean)) {
-        el.addEventListener('focus', () => { if (list.length > 1 || !pw.value) showMenu(el, list) })
+        const onFocus = () => { if (list.length > 1 || !pw.value) showMenu(el, list) }
+        el.addEventListener('focus', onFocus)
         el.addEventListener('blur', () => setTimeout(closeMenu, 120))
+        fresh.push([el, onFocus])
       }
     }
+    return fresh
   }
 
   // capture credentials when a login form is submitted
@@ -736,10 +750,23 @@ if (location.protocol === 'lumen:') {
     targets.forEach(p => setValue(p, pass))
   })
 
+  // Fields that show up later: a site with saved passwords is watched for them (so they fill in by themselves, as
+  // before); any other page is not observed at all, and a password field is picked up the moment one gets focus.
+  // A whole-document MutationObserver on every page made every DOM change on busy sites a little dearer.
   const start = () => {
     scan()
-    let t
-    new MutationObserver(() => { clearTimeout(t); t = setTimeout(scan, 400) }).observe(document.documentElement, { childList: true, subtree: true })
+    document.addEventListener('focusin', e => {
+      const el = e.target
+      if (!el || el.tagName !== 'INPUT' || el.dataset.lumen) return
+      if (el.type !== 'password' && !(el.form || document).querySelector('input[type="password"]')) return
+      scan().then(fresh => { if (document.activeElement !== el) return; const f = fresh.find(x => x[0] === el); if (f) f[1]() }).catch(() => {})
+    }, true)
+    qolReady.then(q => {
+      if (!q.pw) return
+      let t
+      new MutationObserver(() => { clearTimeout(t); t = setTimeout(scan, 400) }).observe(document.documentElement, { childList: true, subtree: true })
+      scan()
+    })
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start)
   else start()

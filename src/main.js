@@ -1307,8 +1307,31 @@ function readerMode(wc) {
   const acc = String(D.settings.get('accent') || '#5b8cff'), motion = String(D.settings.get('motion') || 'jelly')
   const code = fs.readFileSync(path.join(__dirname, 'reader.js'), 'utf8')
     .replace('__LUMEN_ACCENT__', /^#[0-9a-f]{3,8}$/i.test(acc) ? acc : '#5b8cff').replace('__LUMEN_MOTION__', /^[a-z]+$/.test(motion) ? motion : 'jelly')
-  wc.executeJavaScript(code).catch(() => {})
+  // runs in the tab's preload world (999), so it can save the reader's choices and the page cannot see them
+  wc.executeJavaScriptInIsolatedWorld(999, [{ code: code.replace('__LUMEN_READER_PREFS__', JSON.stringify(readerPrefs())).replace('__LUMEN_READER_POS__', String(readerPos(wc.getURL()) || 0)) }]).catch(() => {})
 }
+const READER_CHOICES = { theme: ['auto', 'light', 'sepia', 'dark'], font: ['serif', 'sans', 'rounded'], align: ['left', 'justify'], lh: ['compact', 'normal', 'airy'], width: ['narrow', 'medium', 'wide'] }
+function readerPrefs(p = D.settings.get('readerPrefs')) {
+  const o = {}
+  if (p && typeof p === 'object') {
+    for (const k in READER_CHOICES) if (READER_CHOICES[k].includes(p[k])) o[k] = p[k]
+    if (typeof p.focus === 'boolean') o.focus = p.focus
+    if (Number.isFinite(+p.size)) o.size = Math.max(14, Math.min(30, Math.round(+p.size)))
+  }
+  return o
+}
+// how far the reader got in each article (the last 60), so Reader offers to pick up where they left off
+const readerKey = u => { try { const x = new URL(u); return /^https?:$/.test(x.protocol) ? x.origin + x.pathname + x.search : '' } catch { return '' } }
+function readerPos(u) { const m = D.settings.get('readerPos'), k = readerKey(u); const v = m && k ? +m[k] : 0; return v > 0 && v < 1 ? v : 0 }
+ipcMain.on('reader:pos', (e, v) => {
+  const k = readerKey(e.sender.getURL()); v = +v
+  if (!k || !(v >= 0 && v <= 1)) return
+  const m = { ...(D.settings.get('readerPos') || {}) }; delete m[k]
+  if (v > 0.03 && v < 0.97) m[k] = Math.round(v * 1000) / 1000
+  const keys = Object.keys(m); for (const x of keys.slice(0, Math.max(0, keys.length - 60))) delete m[x]
+  D.settings.set('readerPos', m)
+})
+ipcMain.on('reader:prefs', (e, p) => { try { D.settings.set('readerPrefs', readerPrefs(p)) } catch {} })
 async function screenshot(wc) {
   try {
     const img = await wc.capturePage()
@@ -2390,4 +2413,4 @@ app.whenReady().then(async () => {
   powerMonitor.on('resume', () => Sync.syncNow().catch(() => {}))
 })
 
-module.exports = { windows, createWindow, D, allowSites, toggleSiteAdblock, __refreshAdblock: refreshAdblock, __adblockAge: adblockAge, __hl_add: addHighlight, __hl_recolor: recolorHighlight, __addToNTP: addToNTP, __checkParcels: checkParcels, __appOpen: appOpen, __goBackground: goBackground, __comeBack: comeBack, __isBackground: () => inBackground, __quitLumen: quitLumen, __nova: Nova, __novaDialog: novaDialog, __tabMenu: tabMenu, __appMenu: appMenuPopup, __confirmQuit: confirmQuit }
+module.exports = { windows, createWindow, D, allowSites, toggleSiteAdblock, __refreshAdblock: refreshAdblock, __adblockAge: adblockAge, __hl_add: addHighlight, __hl_recolor: recolorHighlight, __addToNTP: addToNTP, __checkParcels: checkParcels, __appOpen: appOpen, __goBackground: goBackground, __comeBack: comeBack, __isBackground: () => inBackground, __quitLumen: quitLumen, __nova: Nova, __novaDialog: novaDialog, __tabMenu: tabMenu, __readerMode: readerMode, __appMenu: appMenuPopup, __confirmQuit: confirmQuit }

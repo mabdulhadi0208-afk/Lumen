@@ -97,138 +97,116 @@ body.home-page { overflow-x: hidden; }
 /* ---------------------------------------------------------------- page */
 .hm-wrap { position: relative; z-index: 1; width: min(1240px, 100%); margin: 0 auto; padding: 24px 32px 44px; display: flex; flex-direction: column; gap: 22px; }
 
-/* ---------------------------------------------------------------- the hero: the Settings section banner, taken all the way
-   A wide glass banner: a colour wash from the left, layered pools of light, a rim of light, a giant watermark glyph
-   bleeding off the right edge, the clock set in a big glowing tile and a huge title with a muted line under it.
-   Everything in it is painted once; after the entrance nothing here moves, so the glass over it stays cheap. */
-.hm-hero { position: relative; isolation: isolate; overflow: hidden; display: flex; align-items: center; gap: 46px; min-height: 360px; padding: 46px 56px 46px 46px; border-radius: 44px;
-  color: var(--fg); --lens-k: .9; --tw: 0deg; container: hero / inline-size; contain: paint;
-  background-color: color-mix(in srgb, var(--glass) 80%, color-mix(in srgb, var(--accent) 8%, transparent));
-  --lg-img: linear-gradient(95deg, color-mix(in srgb, var(--accent) 58%, transparent) 0%, color-mix(in srgb, var(--accent2) 30%, transparent) 32%, transparent 60%),
-    radial-gradient(42% 80% at 96% 112%, color-mix(in srgb, oklch(from var(--accent) .68 .17 calc(h - 20 + var(--tw))) 62%, transparent), transparent 70%),
-    radial-gradient(34% 70% at 62% -18%, color-mix(in srgb, var(--accent3) 48%, transparent), transparent 70%),
-    radial-gradient(30% 60% at 40% 120%, color-mix(in srgb, var(--accent2) 30%, transparent), transparent 70%),
-    linear-gradient(180deg, rgba(255,255,255,.16), transparent 40%);
-  background-image: var(--lg-img);
-  backdrop-filter: var(--lens, ) var(--blur);
-  box-shadow: inset 0 1.5px 0 rgba(255,255,255,.85), var(--fringe), inset 0 0 0 1px rgba(255,255,255,.3), inset 0 -40px 80px -40px color-mix(in srgb, var(--accent3) 55%, transparent),
-    0 2px 4px rgba(10,10,40,.04), 0 24px 50px -10px color-mix(in srgb, var(--accent) 26%, transparent), 0 60px 120px -30px color-mix(in srgb, var(--accent2) 34%, transparent), 0 0 0 1px color-mix(in srgb, var(--accent) 16%, transparent); }
+/* ---------------------------------------------------------------- the hero: a quiet stage (4.2)
+   Deep ink lit by one soft accent glow from above the clock, a fine grid that fades out from that corner, tiny
+   drifting dots and a hairline rim that is brightest along the top edge. The date, the greeting, a muted line about
+   your day and four chips sit on the left; the clock stands on the right behind a hairline divider. No orbs, no
+   bubbles, no watermark. It is a dark stage in light and dark mode and over every wallpaper and theme, so the white
+   type always reads. Everything is painted once (no backdrop blur); the only things that move are the dots, on
+   transform and opacity, and they rest while the banner is hidden, scrolled away or Lumen is in the background. */
+.hm-hero { position: relative; isolation: isolate; overflow: hidden; display: flex; align-items: center; min-height: 376px;
+  padding: 54px 60px; border-radius: 32px; color: #fff; container: hero / inline-size; contain: paint; backdrop-filter: none;
+  --ink: oklch(from var(--accent) .175 .032 h);
+  --glow: oklch(from var(--accent) .6 .17 h);
+  --glow2: oklch(from var(--accent) .6 .15 calc(h + 40));
+  --hi: oklch(from var(--accent) .84 .12 h);
+  --ckfont: "SF Pro Display", -apple-system, BlinkMacSystemFont, "Segoe UI Variable Display", "Segoe UI", Inter, "Helvetica Neue", system-ui, sans-serif;
+  background-color: var(--ink);
+  background-image:
+    radial-gradient(68% 130% at 84% -36%, color-mix(in srgb, var(--glow) 74%, transparent), transparent 64%),
+    radial-gradient(40% 80% at 104% 112%, color-mix(in srgb, var(--glow2) 24%, transparent), transparent 70%),
+    radial-gradient(50% 90% at -8% 118%, color-mix(in srgb, var(--glow) 16%, transparent), transparent 70%),
+    linear-gradient(180deg, rgba(255,255,255,.04), transparent 42%);
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,.06), 0 1px 2px rgba(8,10,24,.12), 0 22px 44px -22px rgba(8,10,24,.5),
+    0 60px 110px -60px color-mix(in srgb, var(--glow) 70%, transparent); }
 @media (prefers-color-scheme: dark) {
-  .hm-hero { background-color: color-mix(in srgb, var(--glass) 70%, rgba(14,14,34,.5));
-    box-shadow: inset 0 1.5px 0 rgba(255,255,255,.2), var(--fringe), inset 0 0 0 1px rgba(255,255,255,.08), inset 0 -40px 80px -40px color-mix(in srgb, var(--accent3) 45%, transparent),
-      0 24px 60px -10px rgba(0,0,0,.5), 0 60px 140px -30px color-mix(in srgb, var(--accent) 40%, transparent), 0 0 0 1px color-mix(in srgb, var(--accent) 22%, transparent); }
+  .hm-hero { box-shadow: inset 0 0 0 1px rgba(255,255,255,.06), 0 30px 70px -30px rgba(0,0,0,.75), 0 60px 120px -60px color-mix(in srgb, var(--glow) 55%, transparent); }
 }
-.on-dark .hm-hero { background-color: rgba(14,16,36,.42); }
-.hm-hero[data-tod="dawn"] { --tw: 70deg; }
-.hm-hero[data-tod="dusk"] { --tw: 45deg; }
-.hm-hero[data-tod="night"] { --tw: -25deg; }
-/* a rim of light: bright at the top left, the accent at the bottom right */
-.hm-hero::before { content: ''; position: absolute; inset: 0; z-index: 5; border-radius: inherit; padding: 1.5px; pointer-events: none;
-  background: linear-gradient(125deg, #fff, color-mix(in srgb, var(--accent) 70%, #fff) 16%, transparent 38%, transparent 60%, color-mix(in srgb, var(--accent3) 70%, transparent) 84%, color-mix(in srgb, #fff 50%, var(--accent2)));
+.on-dark .hm-hero { box-shadow: inset 0 0 0 1px rgba(255,255,255,.06), 0 30px 70px -30px rgba(0,0,0,.75), 0 60px 120px -60px color-mix(in srgb, var(--glow) 55%, transparent); }
+/* the rim: a hairline, lit brightest where the glow meets the top edge */
+.hm-hero::before { content: ''; position: absolute; inset: 0; z-index: 5; border-radius: inherit; padding: 1px; pointer-events: none;
+  background: radial-gradient(36% 60px at 80% 0%, rgba(255,255,255,.85), transparent),
+    linear-gradient(180deg, rgba(255,255,255,.2), rgba(255,255,255,.06) 34%, rgba(255,255,255,.03) 70%, rgba(255,255,255,.07));
   -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor; mask-composite: exclude; }
-/* pools of coloured light */
-.hm-orb { position: absolute; z-index: -1; border-radius: 50%; pointer-events: none; background: radial-gradient(closest-side, var(--o), color-mix(in srgb, var(--o) 45%, transparent) 50%, transparent); }
-.hm-orb.a { width: 520px; height: 420px; left: -200px; top: -120px; --o: oklch(from var(--accent) calc(l + .04) calc(c + .04) calc(h + var(--tw))); opacity: .55; }
-.hm-orb.b { width: 560px; height: 340px; right: -120px; bottom: -200px; --o: oklch(from var(--accent) .7 .17 calc(h - 25 + var(--tw))); opacity: .6; }
-.hm-orb.c { width: 380px; height: 240px; left: 44%; top: -170px; --o: oklch(from var(--accent3) l c calc(h + var(--tw))); opacity: .42; }
-.hm-orb.d { width: 300px; height: 220px; left: 18%; bottom: -170px; --o: oklch(from var(--accent2) l c calc(h + var(--tw))); opacity: .45; }
-.hm-dots { position: absolute; inset: 0; z-index: -1; pointer-events: none;
-  background: radial-gradient(color-mix(in srgb, var(--accent) 34%, transparent) 1.2px, transparent 1.6px) 0 0 / 20px 20px;
-  -webkit-mask: radial-gradient(60% 90% at 84% 40%, #000, transparent 70%); opacity: .6; }
-/* the giant watermark glyph, bleeding off the right edge */
-.hm-art { position: absolute; z-index: -1; right: -250px; top: 50%; width: 660px; height: 660px; margin-top: -330px; pointer-events: none; transform: rotate(-12deg);
-  color: color-mix(in srgb, var(--accent) 70%, var(--accent3)); opacity: .16; }
-.hm-art svg { width: 100%; height: 100%; }
-/* drops of liquid glass resting on the banner: a specular hotspot, a coloured core, a caustic at the bottom and a
-   soft coloured shadow. Painted gradients only, so they cost nothing after they land. */
-.hm-ball { position: absolute; z-index: 0; border-radius: 50%; pointer-events: none;
-  background: radial-gradient(circle at 33% 27%, #fff 0, rgba(255,255,255,.85) 7%, rgba(255,255,255,0) 26%),
-    radial-gradient(circle at 66% 80%, color-mix(in srgb, var(--accent3) 85%, #fff) 0, transparent 42%),
-    radial-gradient(circle at 50% 50%, color-mix(in srgb, var(--accent) 22%, transparent) 0, color-mix(in srgb, var(--accent2) 52%, transparent) 64%, color-mix(in srgb, var(--accent2) 70%, #fff) 96%);
-  box-shadow: inset 0 -12px 22px -6px color-mix(in srgb, var(--accent2) 70%, transparent), inset 0 3px 6px rgba(255,255,255,.7), inset 0 0 0 1px rgba(255,255,255,.45),
-    0 26px 44px -14px color-mix(in srgb, var(--accent) 60%, transparent), 0 8px 16px -8px color-mix(in srgb, var(--accent2) 60%, transparent); }
-.hm-ball.s1 { width: 150px; height: 150px; right: -34px; bottom: -62px; }
-.hm-ball.s2 { width: 54px; height: 54px; right: 5%; top: 26px; }
-.hm-ball.s3 { width: 26px; height: 26px; left: 3.5%; bottom: 22px; }
-.hm-hero.no-clock .hm-ball.s3 { display: none; }
-.hm-hero.enter .hm-ball { animation: hm-ballin 1.2s var(--spring) backwards; }
-.hm-hero.enter .hm-ball.s1 { animation-delay: .35s; }
-.hm-hero.enter .hm-ball.s2 { animation-delay: .5s; }
-.hm-hero.enter .hm-ball.s3 { animation-delay: .62s; }
-@keyframes hm-ballin { from { transform: translateY(40px) scale(.2); opacity: 0; } }
-.ntp.private .hm-ball { --accent: #8a4dff; --accent2: #c04dff; --accent3: #ff6fc0; }
-@container hero (max-width: 760px) { .hm-ball.s2, .hm-ball.s3 { display: none; } .hm-ball.s1 { width: 120px; height: 120px; } }
-
-
-.hm-hi { position: relative; z-index: 1; flex: 1; min-width: 0; }
-.hm-date { display: inline-flex; align-items: center; gap: 10px; white-space: nowrap; max-width: 100%; height: 32px; margin: 0 0 16px; padding: 0 15px; border-radius: 999px;
-  font: 800 12px/1 var(--display); letter-spacing: .16em; text-transform: uppercase; color: var(--accent);
-  background: color-mix(in srgb, var(--accent) 10%, rgba(255,255,255,.4)); box-shadow: inset 0 1px 0 rgba(255,255,255,.6), inset 0 0 0 1px var(--a18), 0 6px 18px var(--a12); }
-@media (prefers-color-scheme: dark) { .hm-date { color: color-mix(in srgb, var(--accent3) 45%, #fff); background: color-mix(in srgb, var(--accent) 18%, rgba(255,255,255,.04)); box-shadow: inset 0 1px 0 rgba(255,255,255,.14), inset 0 0 0 1px var(--a30); } }
-.on-dark .hm-date { color: color-mix(in srgb, var(--accent3) 45%, #fff); background: color-mix(in srgb, var(--accent) 18%, rgba(255,255,255,.04)); box-shadow: inset 0 1px 0 rgba(255,255,255,.14), inset 0 0 0 1px var(--a30); }
-.hm-date:empty { display: none; }
-.hm-dot { width: 5px; height: 5px; border-radius: 50%; background: currentColor; box-shadow: 0 0 8px currentColor; opacity: .7; }
-.hm-wx { display: inline-flex; align-items: center; gap: 5px; letter-spacing: .02em; }
-.hm-wx svg { width: 16px; height: 16px; }
-.hm-greet { margin: 0; font: 800 clamp(48px, 8.2cqi, 106px)/.94 var(--display); letter-spacing: -.055em; color: var(--fg); overflow-wrap: break-word; }
-.hm-greet em { font-style: normal; background: linear-gradient(100deg, var(--accent) 0%, var(--accent2) 50%, var(--accent3) 100%); -webkit-background-clip: text; background-clip: text; color: transparent; }
-.hm-sub { margin: 20px 0 0; max-width: 540px; font: 560 18px/1.5 var(--font); color: var(--fg2); text-wrap: pretty; }
-.hm-sub:empty { display: none; }
-.hm-hero.no-clock .hm-greet { font-size: clamp(52px, 8.6cqi, 108px); }
-.hm-badge { display: inline-flex; align-items: center; gap: 8px; margin-bottom: 16px; padding: 5px 14px 5px 6px; border-radius: 999px; font: 800 12px/1 var(--display); letter-spacing: .12em; text-transform: uppercase;
-  color: #fff; background: rgba(255,255,255,.12); box-shadow: inset 0 1px 0 rgba(255,255,255,.3), inset 0 0 0 1px rgba(255,255,255,.18); }
-.hm-badge svg { width: 22px; height: 22px; padding: 4px; border-radius: 50%; background: rgba(255,255,255,.2); }
-.hm-card.ping { box-shadow: var(--gsh), 0 0 0 4px color-mix(in srgb, var(--ic) 30%, transparent), 0 0 40px color-mix(in srgb, var(--ic) 40%, transparent); }
-
-/* the entrance plays once: the pools of light bloom, the watermark swings in, one light sweep */
-.hm-hero.enter .hm-orb { animation: hm-orbin 1.9s var(--ease) backwards; }
-.hm-hero.enter .hm-orb.b { animation-delay: .1s; }
-.hm-hero.enter .hm-orb.c { animation-delay: .2s; }
-.hm-hero.enter .hm-orb.d { animation-delay: .3s; }
-@keyframes hm-orbin { from { transform: scale(.4); opacity: 0; } }
-.hm-hero.enter .hm-art { animation: hm-artin 1.7s var(--spring) .1s backwards; }
-@keyframes hm-artin { from { transform: rotate(-60deg) scale(.6); opacity: 0; } }
+/* the grid: fine lines that fade out from the lit corner */
+.hm-mesh { position: absolute; inset: 0; z-index: -2; pointer-events: none;
+  background: linear-gradient(rgba(255,255,255,.05) 1px, transparent 1px) -1px -1px / 48px 48px, linear-gradient(90deg, rgba(255,255,255,.05) 1px, transparent 1px) -1px -1px / 48px 48px;
+  -webkit-mask: radial-gradient(64% 118% at 82% -6%, #000 10%, transparent 72%); mask: radial-gradient(64% 118% at 82% -6%, #000 10%, transparent 72%); }
+/* one soft light sweep when the page opens */
 .hm-hero::after { content: ''; position: absolute; inset: 0; z-index: 4; pointer-events: none; border-radius: inherit;
-  background: linear-gradient(105deg, transparent 36%, rgba(255,255,255,.42) 50%, transparent 64%); transform: translateX(-110%); opacity: 0; }
-.hm-hero.enter::after { animation: hm-sweep 1.5s .5s ease-out both; }
+  background: linear-gradient(105deg, transparent 40%, rgba(255,255,255,.07) 50%, transparent 60%); transform: translateX(-110%); opacity: 0; }
+.hm-hero.enter::after { animation: hm-sweep 1.6s .45s cubic-bezier(.4, 0, .2, 1) both; }
 @keyframes hm-sweep { 0% { transform: translateX(-110%); opacity: 1; } 100% { transform: translateX(110%); opacity: 1; } }
 
-/* ---------------------------------------------------------------- ambient life on the banner
-   Three pre-painted layers: drifting glow dots, twinkling sparkle specks and faint constellation lines.
-   They only move by transform and opacity (the compositor does it, nothing repaints), they pause when the
-   banner is off screen or the tab is hidden, and they hold still under Motion Off and reduced motion.
-   Then a single slow glint runs once along the rim after the entrance. Only the banner has these. */
-.hm-amb { position: absolute; inset: 0; z-index: -1; pointer-events: none; overflow: hidden; border-radius: inherit; }
+/* ---------------------------------------------------------------- the dots: tiny, drifting, alive
+   Three pre-painted layers: a field of tiny dots, a finer field drifting the other way (a little parallax) and a few
+   specks that twinkle. Transform and opacity only, so the compositor moves them and nothing repaints. They pause
+   when the banner is off screen or the tab is hidden (amb-paused), when Lumen is not the active app (lm-away, in
+   perf.css), and hold still under Motion Off and reduced motion. They fade out behind the text so it stays crisp. */
+.hm-amb { position: absolute; inset: 0; z-index: -1; pointer-events: none; overflow: hidden; border-radius: inherit;
+  -webkit-mask: linear-gradient(90deg, rgba(0,0,0,.4), rgba(0,0,0,.55) 40%, #000 66%); mask: linear-gradient(90deg, rgba(0,0,0,.4), rgba(0,0,0,.55) 40%, #000 66%); }
 .hm-amb > i { position: absolute; display: block; will-change: transform, opacity; }
 .amb-dots { inset: -40px -260px -40px -40px;
   background:
-    radial-gradient(circle, rgba(255,255,255,.9) 0 1px, rgba(255,255,255,.25) 1.6px, transparent 2.6px) 0 0 / 97px 83px,
-    radial-gradient(circle, oklch(from var(--accent) .9 .1 calc(h - 105)) 0 1.2px, transparent 3px) 41px 29px / 151px 127px,
-    radial-gradient(circle, oklch(from var(--accent) .9 .12 calc(h + 95) / .9) 0 1px, transparent 2.6px) 77px 61px / 211px 173px;
-  -webkit-mask: linear-gradient(100deg, transparent 0%, #000 30%, #000 80%, transparent 100%);
-  opacity: .55; animation: amb-drift 70s linear infinite alternate; }
+    radial-gradient(circle, rgba(255,255,255,.95) 0 .9px, rgba(255,255,255,.2) 1.4px, transparent 2.2px) 0 0 / 97px 83px,
+    radial-gradient(circle, color-mix(in srgb, var(--hi) 80%, #fff) 0 1px, transparent 2.4px) 41px 29px / 151px 127px;
+  opacity: .62; animation: amb-drift 80s linear infinite alternate; }
+.amb-fine { inset: -40px -40px -40px -220px;
+  background: radial-gradient(circle, rgba(255,255,255,.8) 0 .6px, transparent 1.3px) 17px 23px / 59px 53px;
+  opacity: .34; animation: amb-drift2 120s linear infinite alternate; }
 .amb-spark { inset: 0;
   background:
-    radial-gradient(circle, #fff 0 1.4px, rgba(255,255,255,.4) 2.2px, transparent 4px) 120px 40px / 263px 197px,
-    radial-gradient(circle, #fff 0 1px, transparent 3px) 210px 150px / 331px 239px;
-  opacity: .3; animation: amb-twinkle 5.5s ease-in-out infinite alternate; }
-.amb-lines { inset: 0; width: 100%; height: 100%; opacity: .5; animation: amb-glow 11s ease-in-out infinite alternate; }
-.amb-lines svg { position: absolute; inset: 0; width: 100%; height: 100%; }
-.amb-lines path { fill: none; stroke: rgba(255,255,255,.22); stroke-width: .8; vector-effect: non-scaling-stroke; stroke-dasharray: 2 3; }
-.amb-lines circle { fill: #fff; opacity: .75; }
-@keyframes amb-drift { from { transform: translate3d(0, 0, 0); } to { transform: translate3d(-200px, -18px, 0); } }
-@keyframes amb-twinkle { 0% { opacity: .2; } 45% { opacity: .75; } 100% { opacity: .35; } }
-@keyframes amb-glow { from { opacity: .3; } to { opacity: .65; } }
+    radial-gradient(circle, #fff 0 1.1px, rgba(255,255,255,.35) 1.8px, transparent 3.6px) 120px 40px / 263px 197px,
+    radial-gradient(circle, #fff 0 .9px, transparent 2.8px) 210px 150px / 331px 239px;
+  opacity: .3; animation: amb-twinkle 6s ease-in-out infinite alternate; }
+@keyframes amb-drift { from { transform: translate3d(0, 0, 0); } to { transform: translate3d(-200px, -16px, 0); } }
+@keyframes amb-drift2 { from { transform: translate3d(0, 0, 0); } to { transform: translate3d(180px, 10px, 0); } }
+@keyframes amb-twinkle { 0% { opacity: .18; } 45% { opacity: .7; } 100% { opacity: .32; } }
 .hm-hero.amb-paused .hm-amb > i { animation-play-state: paused; }
-/* the glint: one slow pass of light along the rim */
-.hm-rim { position: absolute; inset: 0; z-index: 6; border-radius: inherit; padding: 2px; pointer-events: none; overflow: hidden;
-  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor; mask-composite: exclude; }
-.hm-rim i { position: absolute; top: -50%; bottom: -50%; left: 0; width: 26%; opacity: 0;
-  background: linear-gradient(90deg, transparent, rgba(255,255,255,.95) 50%, transparent); transform: translateX(-120%) rotate(18deg); }
-.hm-hero.enter .hm-rim i { animation: amb-glint 2.6s 1.1s cubic-bezier(.45, 0, .2, 1) both; }
-@keyframes amb-glint { 0% { opacity: 1; transform: translateX(-120%) rotate(18deg); } 100% { opacity: 1; transform: translateX(480%) rotate(18deg); } }
-body[data-motion="off"] .hm-amb > i, body[data-motion="off"] .hm-rim i { animation: none !important; will-change: auto; }
-@media (prefers-reduced-motion: reduce) { .hm-amb > i, .hm-rim i { animation: none !important; will-change: auto; } }
+body[data-motion="off"] .hm-amb > i { animation: none !important; will-change: auto; }
+@media (prefers-reduced-motion: reduce) { .hm-amb > i { animation: none !important; will-change: auto; } }
+
+/* ---------------------------------------------------------------- the words: date, greeting, your day, chips */
+.hm-hi { position: relative; z-index: 1; order: 1; flex: 1; min-width: 0; padding-right: 52px; }
+.hm-date { display: inline-flex; align-items: center; gap: 10px; white-space: nowrap; max-width: 100%; margin: 0 0 22px;
+  font: 600 12px/1 var(--ckfont); letter-spacing: .16em; text-transform: uppercase; color: rgba(255,255,255,.6); }
+/* a small live light before the date */
+.hm-date::before { content: ''; flex: none; width: 6px; height: 6px; margin-right: 2px; border-radius: 50%; background: var(--hi);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--hi) 20%, transparent), 0 0 12px var(--hi); }
+.hm-date:empty { display: none; }
+.hm-dot { width: 3px; height: 3px; border-radius: 50%; background: currentColor; opacity: .55; }
+.hm-wx { display: inline-flex; align-items: center; gap: 5px; letter-spacing: .04em; color: rgba(255,255,255,.78); }
+.hm-wx svg { width: 15px; height: 15px; }
+.hm-greet { margin: 0; font: 650 clamp(46px, 7cqi, 90px)/1 var(--ckfont); letter-spacing: -.045em; color: #fff; text-wrap: balance; overflow-wrap: break-word;
+  background: linear-gradient(180deg, #fff 38%, rgba(255,255,255,.72)); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
+.hm-greet em { font-style: normal; padding-right: .04em;
+  background: linear-gradient(96deg, oklch(from var(--accent) .93 .05 h), oklch(from var(--accent) .8 .14 calc(h + 30))); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
+.hm-hero.no-clock .hm-greet { font-size: clamp(50px, 7.6cqi, 100px); }
+.hm-sub { margin: 18px 0 0; max-width: 520px; font: 450 16.5px/1.55 var(--ckfont); letter-spacing: -.005em; color: rgba(255,255,255,.62); text-wrap: pretty; }
+.hm-sub:empty { display: none; }
+.hm-badge { display: inline-flex; align-items: center; gap: 9px; margin-bottom: 22px; padding: 5px 14px 5px 5px; border-radius: 999px;
+  font: 600 12px/1 var(--ckfont); letter-spacing: .14em; text-transform: uppercase; color: rgba(255,255,255,.8);
+  background: rgba(255,255,255,.06); box-shadow: inset 0 0 0 1px rgba(255,255,255,.12); }
+.hm-badge svg { width: 22px; height: 22px; padding: 4px; border-radius: 50%; color: #fff; background: color-mix(in srgb, var(--glow) 55%, rgba(255,255,255,.1)); }
+.hm-card.ping { box-shadow: var(--gsh), 0 0 0 4px color-mix(in srgb, var(--ic) 30%, transparent), 0 0 40px color-mix(in srgb, var(--ic) 40%, transparent); }
+/* the chips: quiet ghost pills; Ask Lumen is the one solid button. Hover and press move on jelly springs (home.js). */
+.hm-acts { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 30px; container: acts / inline-size; }
+.hm-act { display: inline-flex; align-items: center; gap: 8px; height: 38px; padding: 0 16px 0 13px; border: 0; border-radius: 999px; cursor: default; white-space: nowrap; text-decoration: none;
+  font: 560 13.5px/1 var(--ckfont); letter-spacing: -.005em; color: rgba(255,255,255,.88);
+  background: rgba(255,255,255,.06); box-shadow: inset 0 0 0 1px rgba(255,255,255,.1), inset 0 1px 0 rgba(255,255,255,.05);
+  transition: background-color .2s, box-shadow .2s, color .2s; }
+.hm-act svg { width: 16px; height: 16px; flex: none; opacity: .72; }
+.hm-act:hover { color: #fff; background: rgba(255,255,255,.1); box-shadow: inset 0 0 0 1px rgba(255,255,255,.2), inset 0 1px 0 rgba(255,255,255,.08); }
+.hm-act:focus-visible { outline: none; box-shadow: inset 0 0 0 1px rgba(255,255,255,.35), 0 0 0 4px color-mix(in srgb, var(--glow) 40%, transparent); }
+.hm-act.pri { color: #0b0c14; background: #fff; box-shadow: inset 0 -1px 0 rgba(10,12,30,.08), 0 8px 22px -8px color-mix(in srgb, var(--glow) 80%, transparent); }
+.hm-act.pri svg { opacity: 1; color: oklch(from var(--accent) .52 .2 h); }
+.hm-act.pri:hover { background: #fff; box-shadow: inset 0 -1px 0 rgba(10,12,30,.08), 0 0 0 4px color-mix(in srgb, var(--glow) 30%, transparent), 0 10px 26px -8px color-mix(in srgb, var(--glow) 90%, transparent); }
+.hm-act kbd { display: inline-grid; place-items: center; min-width: 22px; height: 22px; padding: 0 6px; border-radius: 6px;
+  font: 600 11.5px/1 var(--ckfont); color: rgba(255,255,255,.9); background: rgba(255,255,255,.08); box-shadow: inset 0 0 0 1px rgba(255,255,255,.12), inset 0 -1.5px 0 rgba(0,0,0,.25); }
+.hm-act kbd + kbd { margin-left: -3px; }
+.hm-hero.enter .hm-act { animation: nv-rise .6s var(--spring) backwards; animation-delay: calc(.5s + var(--i) * 50ms); }
+@container acts (max-width: 470px) { .hm-act:nth-child(n+4) { display: none; } }
+@container acts (max-width: 360px) { .hm-act:nth-child(n+3) { display: none; } }
 
 /* ---------------------------------------------------------------- the pulse: your day in big glass stat tiles */
 .hm-pulse { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 3fr); gap: 18px; }
@@ -280,54 +258,52 @@ body[data-motion="off"] .hm-amb > i, body[data-motion="off"] .hm-rim i { animati
 .hm-cust:hover svg { transform: rotate(180deg); }
 
 /* ---------------------------------------------------------------- the clock: a lock screen, not a toy
-   Plain text in a modern grotesk with tabular figures, straight on the banner. Four styles:
-   Display (thin, huge, the default), Stacked (hours over minutes, medium weight), Watch (a hairline
-   watch face) and Off. The time is set once a second (aligned to the second) and nothing runs while the
-   tab is hidden: the colon dims as a one-step opacity change, seconds are a hairline that is redrawn
-   once a second, and a changed digit slides in once. No canvas, no SVG, no per-frame work. */
-.hm-tile { position: relative; z-index: 1; flex: none; display: block; }
-.hm-glyph { display: none; }
+   Plain text in a modern grotesk with tabular figures, standing on the right of the banner behind a hairline divider.
+   Display (thin, huge, the default), Stacked (hours over minutes), Watch (a hairline watch face) and Off. The time is
+   set once a second (aligned to the second) and nothing runs while the tab is hidden: the colon dims as a one-step
+   opacity change, the seconds hairline is redrawn once a second, and a changed digit slides in once. */
+.hm-tile { position: relative; z-index: 1; order: 2; flex: none; align-self: stretch; display: flex; align-items: center; padding-left: 56px; }
+.hm-tile::before { content: ''; position: absolute; left: 0; top: 6%; bottom: 6%; width: 1px;
+  background: linear-gradient(180deg, transparent, rgba(255,255,255,.14) 26%, rgba(255,255,255,.14) 74%, transparent); }
 .hm-hero.no-clock .hm-tile { display: none; }
+.hm-hero.no-clock .hm-hi { padding-right: 0; }
 .hm-clock { position: relative; display: flex; flex-direction: column; align-items: flex-start; --fs: 150px;
-  --ckfont: "SF Pro Display", -apple-system, BlinkMacSystemFont, "Segoe UI Variable Display", "Segoe UI", Inter, "Helvetica Neue", system-ui, sans-serif;
-  --tint: oklch(from var(--accent) .86 .09 calc(h - 105)); }
+  --tint: oklch(from var(--accent) .86 .08 h); }
 .ck-top { position: relative; display: flex; align-items: flex-start; }
 .clock { position: relative; display: flex; align-items: center; user-select: none; color: #fff;
-  font: 200 var(--fs)/.84 var(--ckfont); letter-spacing: -.045em; font-variant-numeric: tabular-nums; font-feature-settings: "tnum" 1; }
+  font: 200 var(--fs)/.84 var(--ckfont); letter-spacing: -.055em; font-variant-numeric: tabular-nums; font-feature-settings: "tnum" 1; }
 .clock b { display: inline-block; font-weight: inherit;
-  background: linear-gradient(180deg, #fff 30%, var(--tint) 115%); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  background: linear-gradient(180deg, #fff 34%, color-mix(in srgb, var(--tint) 50%, rgba(255,255,255,.62)) 112%); -webkit-background-clip: text; background-clip: text; color: transparent; }
 .ck-h, .ck-m { display: inline-flex; }
 /* the colon: two small dots, dimmed every other second (a step, not an animation) */
-.ck-col { display: flex; flex-direction: column; justify-content: center; gap: calc(var(--fs) * .19); margin: 0 calc(var(--fs) * .07) 0 calc(var(--fs) * .06); }
-.ck-col i { width: calc(var(--fs) * .052); height: calc(var(--fs) * .052); border-radius: 50%; background: #fff; box-shadow: 0 0 calc(var(--fs) * .06) rgba(255,255,255,.5); }
-.ck-col.dim i { opacity: .3; }
-.hm-ampm { margin: calc(var(--fs) * .1) 0 0 calc(var(--fs) * .07); font: 650 12.5px/1 var(--font); letter-spacing: .24em; color: rgba(255,255,255,.66); }
+.ck-col { display: flex; flex-direction: column; justify-content: center; gap: calc(var(--fs) * .19); margin: 0 calc(var(--fs) * .06) 0 calc(var(--fs) * .05); }
+.ck-col i { width: calc(var(--fs) * .045); height: calc(var(--fs) * .045); border-radius: 50%; background: rgba(255,255,255,.9); }
+.ck-col.dim i { opacity: .4; }
+.hm-ampm { margin: calc(var(--fs) * .09) 0 0 calc(var(--fs) * .08); font: 600 12px/1 var(--ckfont); letter-spacing: .16em; color: rgba(255,255,255,.5); }
 .hm-ampm:empty { display: none; }
-/* seconds: a hairline under the time, with a glass reflection below it */
-.ck-sec { position: relative; align-self: stretch; height: 1px; margin-top: calc(var(--fs) * .16); background: linear-gradient(90deg, rgba(255,255,255,.34), rgba(255,255,255,.06)); }
-.ck-sec::after { content: ''; position: absolute; left: 0; right: 30%; top: 1px; height: calc(var(--fs) * .16); pointer-events: none;
-  background: radial-gradient(60% 100% at 30% 0%, rgba(255,255,255,.13), transparent 80%); }
-.ck-run { position: absolute; left: 0; right: 0; top: -.5px; height: 2px; border-radius: 2px; transform-origin: 0 50%; transform: scaleX(var(--s, 0));
-  background: linear-gradient(90deg, rgba(255,255,255,0), color-mix(in srgb, var(--tint) 60%, #fff)); }
+/* seconds: a hairline under the time, filled up to a small bright tick */
+.ck-sec { position: relative; align-self: stretch; height: 1px; margin-top: calc(var(--fs) * .2); background: rgba(255,255,255,.12); }
+.ck-run { position: absolute; left: 0; right: 0; top: 0; height: 1px; transform-origin: 0 50%; transform: scaleX(var(--s, 0));
+  background: linear-gradient(90deg, rgba(255,255,255,.08), color-mix(in srgb, var(--tint) 40%, #fff)); }
 .ck-tip { position: absolute; inset: 0; transform: translateX(calc(var(--s, 0) * 100%)); pointer-events: none; }
-.ck-tip::before { content: ''; position: absolute; left: -3px; top: -2.5px; width: 6px; height: 6px; border-radius: 50%; background: #fff; box-shadow: 0 0 10px var(--tint), 0 0 2px #fff; }
-.ck-label { display: flex; justify-content: space-between; align-self: stretch; margin-top: 10px; font: 650 11px/1 var(--font); letter-spacing: .2em; text-transform: uppercase; color: rgba(255,255,255,.5); }
-/* Stacked: hours over minutes, medium weight, the minutes in the tint */
-.ck-minimal .clock { flex-direction: column; align-items: flex-start; font-size: calc(var(--fs) * .8); font-weight: 500; letter-spacing: -.06em; line-height: .82; }
-.ck-minimal .ck-m b { background: linear-gradient(180deg, var(--tint), oklch(from var(--accent) .7 .16 calc(h + 40))); -webkit-background-clip: text; background-clip: text; }
+.ck-tip::before { content: ''; position: absolute; left: -2.5px; top: -2px; width: 5px; height: 5px; border-radius: 50%; background: #fff;
+  box-shadow: 0 0 0 3px rgba(255,255,255,.1), 0 0 10px color-mix(in srgb, var(--tint) 80%, transparent); }
+/* Stacked: hours over minutes, the minutes in the tint */
+.ck-minimal .clock { flex-direction: column; align-items: flex-start; font-size: calc(var(--fs) * .78); font-weight: 300; letter-spacing: -.06em; line-height: .84; }
+.ck-minimal .ck-m b { background: linear-gradient(180deg, var(--tint), oklch(from var(--accent) .72 .14 calc(h + 30))); -webkit-background-clip: text; background-clip: text; }
 .ck-minimal .ck-sec { margin-top: calc(var(--fs) * .12); }
 /* Watch: a hairline face, slim hands, a tinted second hand */
 .ck-analog .clock { width: calc(var(--fs) * 1.32); aspect-ratio: 1; display: block; letter-spacing: 0; }
 .wt { position: absolute; inset: 0; border-radius: 50%;
-  background: radial-gradient(circle at 50% 50%, rgba(255,255,255,.07), rgba(255,255,255,0) 70%);
-  box-shadow: inset 0 0 0 1px rgba(255,255,255,.32), 0 0 0 calc(var(--fs) * .06) rgba(255,255,255,.03); }
+  background: radial-gradient(circle at 50% 50%, rgba(255,255,255,.05), rgba(255,255,255,0) 70%);
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,.24); }
 .wt::before { content: ''; position: absolute; inset: 5%; border-radius: 50%;
-  background: repeating-conic-gradient(from -.5deg, rgba(255,255,255,.9) 0 1deg, transparent 1deg 90deg), repeating-conic-gradient(from -.3deg, rgba(255,255,255,.35) 0 .6deg, transparent .6deg 30deg);
+  background: repeating-conic-gradient(from -.5deg, rgba(255,255,255,.9) 0 1deg, transparent 1deg 90deg), repeating-conic-gradient(from -.3deg, rgba(255,255,255,.3) 0 .6deg, transparent .6deg 30deg);
   -webkit-mask: radial-gradient(closest-side, transparent 90%, #000 91%, #000 99%, transparent 100%); }
 .wh { position: absolute; left: 50%; bottom: 50%; transform-origin: 50% 100%; transform: translateX(-50%) rotate(var(--a, 0deg)); border-radius: 99px; }
 .wh.h { width: 4px; height: 25%; background: #fff; }
 .wh.m { width: 2.5px; height: 38%; background: #fff; }
-.wh.s { width: 1.2px; height: 46%; bottom: calc(50% - 8%); transform-origin: 50% 82.6%; background: var(--tint); box-shadow: 0 0 6px var(--tint); }
+.wh.s { width: 1.2px; height: 46%; bottom: calc(50% - 8%); transform-origin: 50% 82.6%; background: var(--tint); }
 .wc { position: absolute; left: 50%; top: 50%; width: 7px; height: 7px; margin: -3.5px 0 0 -3.5px; border-radius: 50%; background: #fff; box-shadow: 0 0 0 2px var(--tint); }
 /* the clock lands once */
 .hm-hero.enter .clock b, .hm-hero.enter .ck-col { animation: ck-in .9s var(--spring) backwards; animation-delay: calc(.12s + var(--n, 0) * 55ms); }
@@ -781,7 +757,6 @@ body[data-motion="off"] .hm-amb > i, body[data-motion="off"] .hm-rim i { animati
     linear-gradient(180deg, var(--lq-top), transparent 38%),
     var(--lg-img, none); }
 .hm-card:where(.hm-lq), .hm-stat:where(.hm-lq), .hm-search:where(.hm-lq), .hm-foot { background-color: var(--lq-bg); }
-.hm-hero:where(.hm-lq) { background-color: color-mix(in srgb, var(--lq-bg) 90%, var(--accent)); }
 .hm-card:where(.hm-lq), .hm-stat:where(.hm-lq) {
   /* the inner glow is painted by gradients (cheap); the shadows stay short so each card rasterizes fast */
   box-shadow: inset 0 2px 0 -.5px var(--lq-edge), inset 0 -1.5px 0 var(--lq-low), inset 0 0 0 1px color-mix(in srgb, var(--ic) 16%, transparent), var(--fringe),
@@ -798,7 +773,6 @@ body[data-motion="off"] .hm-amb > i, body[data-motion="off"] .hm-rim i { animati
 .hm-search:where(.hm-lq):focus-within { box-shadow: inset 0 2px 0 -.5px var(--lq-edge), inset 0 0 0 1.5px var(--a50), inset 0 0 40px -10px color-mix(in srgb, var(--accent) 50%, transparent), var(--fringe),
     0 0 0 6px var(--a18), 0 22px 60px color-mix(in srgb, var(--accent) 34%, transparent), 0 0 80px -10px color-mix(in srgb, var(--accent2) 70%, transparent); }
 .hm-search::after { padding: 2px; }
-.hm-hero::before { padding: 2.5px; }
 .hm-foot { box-shadow: inset 0 2px 0 -.5px var(--lq-edge), inset 0 0 20px -8px var(--a30), var(--fringe), 0 14px 34px -10px var(--a30); }
 /* the glass digits: no backdrop, the tile's colours show through the tinted glass */
 
@@ -822,55 +796,8 @@ body[data-motion="off"] .hm-amb > i, body[data-motion="off"] .hm-rim i { animati
   --spec: inset 0 1px 0 rgba(255,255,255,.7), inset 0 -1px 0 rgba(255,255,255,.18); --rim: inset 0 0 0 1px rgba(18,22,44,.07);
   --shadow: 0 1px 2px rgba(16,20,40,.04), 0 10px 28px color-mix(in srgb, var(--accent) 8%, rgba(16,20,40,.05)), 0 28px 70px color-mix(in srgb, var(--accent) 8%, transparent); }
 .ntp.home.on-light { --lq-bg: rgba(255,255,255,.66); --lq-top: rgba(255,255,255,.7); --lq-sheen: rgba(255,255,255,.42); --lq-edge: #fff; --lq-low: rgba(255,255,255,.5); }
-.ntp.on-light .hm-date { color: var(--accent); background: color-mix(in srgb, var(--accent) 10%, rgba(255,255,255,.4)); box-shadow: inset 0 1px 0 rgba(255,255,255,.6), inset 0 0 0 1px var(--a18); }
 .ntp.on-light .hm-wm { opacity: .09; }
 
-/* ---------------------------------------------------------------- the deep stage
-   The banner is a night sky in every mode: deep ink with saturated pools of many hues (cyan, violet, amber, the
-   accent), all derived from your accent so it changes with it. White type on it, so it reads at a glance. */
-.ntp .hm-hero { color: #fff; --hh: 0deg;
-  background-color: oklch(from var(--accent) .2 .07 calc(h + 10));
-  --lg-img:
-    radial-gradient(38% 70% at 0% 10%, oklch(from var(--accent) .62 .22 h / .95), transparent 70%),
-    radial-gradient(34% 60% at 30% 118%, oklch(from var(--accent) .72 .17 calc(h - 105) / .8), transparent 70%),
-    radial-gradient(30% 64% at 62% -14%, oklch(from var(--accent) .58 .25 calc(h + 95) / .75), transparent 70%),
-    radial-gradient(34% 70% at 100% 100%, oklch(from var(--accent) .78 .16 calc(h + 175) / .62), transparent 70%),
-    radial-gradient(26% 44% at 86% 6%, oklch(from var(--accent) .66 .2 calc(h - 40) / .55), transparent 70%),
-    linear-gradient(120deg, oklch(from var(--accent) .24 .1 h), oklch(from var(--accent) .2 .1 calc(h + 40)) 55%, oklch(from var(--accent) .17 .07 calc(h - 50)));
-  box-shadow: inset 0 1.5px 0 rgba(255,255,255,.55), var(--fringe), inset 0 0 0 1px rgba(255,255,255,.14), inset 0 -50px 90px -50px oklch(from var(--accent) .7 .18 calc(h - 105) / .7),
-    inset 0 0 80px -20px oklch(from var(--accent) .5 .2 calc(h + 40) / .5),
-    0 2px 6px rgba(10,10,40,.12), 0 30px 60px -14px oklch(from var(--accent) .5 .2 h / .55), 0 60px 120px -40px oklch(from var(--accent) .6 .2 calc(h - 105) / .5), 0 0 0 1px oklch(from var(--accent) .4 .15 h / .4); }
-.ntp .hm-hero::before { background: linear-gradient(125deg, #fff, oklch(from var(--accent) .85 .12 calc(h - 105)) 16%, transparent 38%, transparent 62%, oklch(from var(--accent) .82 .15 calc(h + 175)) 86%, #fff); }
-.ntp .hm-hero.hm-lq { --lq-sheen: rgba(255,255,255,.09); --lq-top: rgba(255,255,255,.1); }
-.ntp .hm-orb.a { --o: oklch(from var(--accent) .62 .24 h); opacity: .55; }
-.ntp .hm-orb.b { --o: oklch(from var(--accent) .75 .17 calc(h + 175)); opacity: .4; }
-.ntp .hm-orb.c { --o: oklch(from var(--accent) .62 .25 calc(h + 50)); opacity: .5; }
-.ntp .hm-orb.d { --o: oklch(from var(--accent) .74 .16 calc(h - 105)); opacity: .5; }
-.ntp .hm-dots { background: radial-gradient(rgba(255,255,255,.5) 1px, transparent 1.4px) 0 0 / 22px 22px; opacity: .35; }
-.ntp .hm-art { color: #fff; opacity: .1; }
-/* the type on the banner */
-.ntp .hm-greet { color: #fff; text-shadow: 0 6px 40px rgba(0,0,20,.35); }
-.ntp .hm-greet em { background: linear-gradient(100deg, oklch(from var(--accent) .88 .13 calc(h - 105)) 0%, oklch(from var(--accent) .8 .17 calc(h + 40)) 48%, oklch(from var(--accent) .78 .2 calc(h + 95)) 100%); -webkit-background-clip: text; background-clip: text; color: transparent; }
-.ntp .hm-sub { color: rgba(255,255,255,.8); }
-.ntp .hm-hero .hm-date { color: #fff; background: rgba(255,255,255,.12); box-shadow: inset 0 1px 0 rgba(255,255,255,.35), inset 0 0 0 1px rgba(255,255,255,.18), 0 8px 22px rgba(0,0,30,.2); }
-.ntp .hm-hero .hm-dot { background: oklch(from var(--accent) .88 .14 calc(h + 175)); }
-/* glass drops in three hues */
-.ntp .hm-ball.s1 { --accent2: oklch(from var(--accent) .62 .2 calc(h - 105)); --accent3: oklch(from var(--accent) .88 .12 calc(h - 90)); }
-.ntp .hm-ball.s2 { --accent2: oklch(from var(--accent) .72 .17 calc(h + 175)); --accent3: oklch(from var(--accent) .92 .12 calc(h + 180)); }
-.ntp .hm-ball.s3 { --accent2: oklch(from var(--accent) .6 .24 calc(h + 50)); --accent3: oklch(from var(--accent) .85 .14 calc(h + 60)); }
-/* quick actions on the banner */
-.hm-acts { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 24px; container: acts / inline-size; }
-.hm-act { display: inline-flex; align-items: center; gap: 8px; height: 40px; padding: 0 16px 0 6px; border: 0; border-radius: 999px; cursor: default; white-space: nowrap;
-  font: 750 13.5px var(--display); color: #fff; --c: var(--accent);
-  background: linear-gradient(180deg, rgba(255,255,255,.2), rgba(255,255,255,.07)); box-shadow: inset 0 1px 0 rgba(255,255,255,.45), inset 0 0 0 1px rgba(255,255,255,.18), 0 8px 20px -6px rgba(0,0,30,.35); }
-.hm-act svg { width: 28px; height: 28px; padding: 6px; border-radius: 50%; color: #fff; flex: none;
-  background: linear-gradient(180deg, rgba(255,255,255,.4), transparent 60%), var(--c); box-shadow: inset 0 1px 0 rgba(255,255,255,.55), 0 4px 12px color-mix(in srgb, var(--c) 60%, transparent); }
-.hm-act:hover { background: linear-gradient(180deg, rgba(255,255,255,.3), rgba(255,255,255,.12)); }
-.hm-act:nth-child(1) { --c: oklch(from var(--accent) .62 .22 calc(h + 45)); }
-.hm-act:nth-child(2) { --c: oklch(from var(--accent) .68 .17 calc(h - 105)); }
-.hm-act:nth-child(3) { --c: oklch(from var(--accent) .72 .17 calc(h + 175)); }
-.hm-act:nth-child(4) { --c: oklch(from var(--accent) .62 .2 calc(h - 40)); }
-.hm-hero.enter .hm-act { animation: nv-rise .6s var(--spring) backwards; animation-delay: calc(.55s + var(--i) * 60ms); }
 /* the search pill and the pulse: real body, many hues */
 .ntp .hm-ask { background: linear-gradient(180deg, rgba(255,255,255,.3), transparent 55%), linear-gradient(120deg, oklch(from var(--accent) .7 .16 calc(h - 105)), var(--accent) 50%, oklch(from var(--accent) .55 .24 calc(h + 45))); }
 .ntp .hm-sic { background: linear-gradient(180deg, rgba(255,255,255,.35), transparent 55%), linear-gradient(135deg, oklch(from var(--accent) .72 .16 calc(h - 105)), var(--accent) 55%, oklch(from var(--accent) .55 .24 calc(h + 45))); }
@@ -881,8 +808,6 @@ body[data-motion="off"] .hm-amb > i, body[data-motion="off"] .hm-rim i { animati
     linear-gradient(180deg, rgba(255,255,255,.1), transparent 30%); }
 .hm-wm { opacity: .13; }
 .hm-sect h2 em { background: linear-gradient(100deg, oklch(from var(--accent) .6 .2 calc(h - 105)), var(--accent) 45%, oklch(from var(--accent) .55 .24 calc(h + 45))); -webkit-background-clip: text; background-clip: text; color: transparent; }
-@container acts (max-width: 470px) { .hm-act:nth-child(n+4) { display: none; } }
-@container acts (max-width: 360px) { .hm-act:nth-child(n+3) { display: none; } }
 
 /* the little pictures in the corner of the pulse tiles */
 .hm-viz { position: absolute; top: 16px; right: 18px; z-index: 1; width: 62px; height: 30px; pointer-events: none; }
@@ -906,15 +831,8 @@ body[data-motion="off"] .hm-amb > i, body[data-motion="off"] .hm-rim i { animati
 @media (max-width: 1100px) { .hm-viz { display: none; } }
 
 /* ---------------------------------------------------------------- the private window */
-.ntp.private .hm-hero { background-color: rgba(30,16,64,.5);
-  --lg-img: linear-gradient(95deg, rgba(150,80,255,.5) 0%, rgba(120,70,255,.2) 30%, transparent 58%), radial-gradient(42% 80% at 96% 112%, rgba(255,70,170,.4), transparent 70%), radial-gradient(34% 70% at 62% -18%, rgba(90,110,255,.36), transparent 70%);
-  box-shadow: inset 0 1.5px 0 rgba(255,255,255,.3), inset 0 0 0 1px rgba(255,255,255,.1), inset 0 -40px 80px -40px rgba(170,90,255,.5), 0 30px 80px -10px rgba(110,50,220,.4), 0 0 0 1px rgba(150,90,255,.3); }
-.ntp.private .hm-orb.a { --o: #8a4dff; }
-.ntp.private .hm-orb.b { --o: #ff4fae; opacity: .4; }
-.ntp.private .hm-orb.c { --o: #4f6bff; }
-.ntp.private .hm-orb.d { --o: #b44dff; }
-.ntp.private .hm-art { color: #b78cff; opacity: .14; }
-.ntp.private .hm-greet em { background: linear-gradient(100deg, #c9a6ff, #ff8fd0); -webkit-background-clip: text; background-clip: text; }
+.ntp.private .hm-hero { --ink: #120c22; --glow: #8a4dff; --glow2: #ff4fae; --hi: #c9a6ff; }
+.ntp.private .hm-greet em { background: linear-gradient(96deg, #e4d4ff, #ff9fd6); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
 .ntp.private .hm-search { --lg-img: linear-gradient(90deg, transparent 35%, rgba(150,80,255,.14) 75%, rgba(255,70,170,.14)); }
 .ntp.private .w-privacy { --ic: #9b5cff !important; }
 
@@ -923,18 +841,27 @@ body[data-motion="off"] .hm-amb > i, body[data-motion="off"] .hm-rim i { animati
   .hm-sub { font-size: 15.5px; }
 }
 @media (max-width: 1100px) { .hm-stat em { display: none; } }
+@media (max-width: 1100px) {
+  .hm-hero { padding: 48px 48px; }
+  .hm-tile { padding-left: 44px; }
+  .hm-hi { padding-right: 44px; }
+}
+/* narrower: the clock stands over the words, with a hairline between them */
 @media (max-width: 1000px) {
-  .hm-hero { gap: 34px; padding: 38px 40px 38px 36px; }
+  .hm-hero { flex-direction: column; align-items: stretch; gap: 0; padding: 40px 44px 44px; }
+  .hm-tile { order: 0; align-self: stretch; padding: 0 0 28px; margin-bottom: 30px; }
+  .hm-tile::before { left: 0; right: 0; top: auto; bottom: 0; width: auto; height: 1px;
+    background: linear-gradient(90deg, rgba(255,255,255,.16), rgba(255,255,255,.04) 70%, transparent); }
+  .hm-hi { padding-right: 0; }
   .hm-pulse { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .hm-pulsex { display: contents; }
 }
 @media (max-width: 820px) {
-  .hm-hero { flex-direction: column; align-items: flex-start; gap: 26px; padding: 34px 32px; }
-  .hm-art { width: 460px; height: 460px; margin-top: -230px; right: -170px; }
+  .hm-hero { padding: 34px 32px 38px; }
 }
 @media (max-width: 720px) {
   .hm-wrap { padding: 18px 16px 28px; }
-  .hm-hero { padding: 30px 24px; border-radius: 34px; }
+  .hm-hero { padding: 30px 24px; border-radius: 26px; }
   .hm-pulsex { grid-auto-flow: row; }
   .hm-sechead { flex-direction: column; align-items: flex-start; }
   .hm-k { display: none; }

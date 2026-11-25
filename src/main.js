@@ -302,7 +302,7 @@ async function setupExtensions() {
 }
 
 // ---------------------------------------------------------------- internal pages (lumen://)
-const PAGES = ['newtab', 'settings', 'history', 'downloads', 'bookmarks', 'passwords', 'extensions', 'error', 'crashed', 'about', 'parcels']
+const PAGES = ['newtab', 'settings', 'history', 'downloads', 'bookmarks', 'passwords', 'extensions', 'error', 'crashed', 'about', 'parcels', 'readlater']
 async function serveInternal(req) {
   const u = new URL(req.url)
   let file
@@ -2121,6 +2121,7 @@ function buildMenu() {
       { label: 'Focus Mode', accelerator: 'CmdOrCtrl+Shift+F', click: focused(w => setFocusMode(w, !w.focusMode)) },
       { label: 'Parcels', accelerator: 'CmdOrCtrl+Alt+P', click: focused(w => w.createTab('lumen://parcels')) },
       { label: 'Save to Read Later', accelerator: 'CmdOrCtrl+Shift+D', click: focused((w, t) => toggleReadLater(w, t)) },
+      { label: 'Show Read Later', click: focused(w => w.createTab('lumen://readlater')) },
       { label: 'Bookmark This Page', accelerator: 'CmdOrCtrl+D', click: focused((w, t) => { if (t) { if (D.isBookmarked(t.url)) D.removeBookmark(t.url); else D.addBookmark(t.url, t.title); w.pushState(); w.send('toast', D.isBookmarked(t.url) ? 'Bookmarked' : 'Bookmark removed') } }) },
       { label: 'Show All Bookmarks', accelerator: 'CmdOrCtrl+Alt+B', click: focused(w => w.createTab('lumen://bookmarks')) },
       { label: 'Passwords', click: focused(w => w.createTab('lumen://passwords')) },

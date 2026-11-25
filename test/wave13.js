@@ -62,7 +62,7 @@ app.whenReady().then(async () => {
   // ---- archived tabs page + history tools
   const hp = w.createTab('lumen://history#archive', { active: true }); await wait(1800)
   const hq = s => hp.view.webContents.executeJavaScript(s)
-  ok(await hq(`document.querySelectorAll('#out .row').length`) === 2 && /Archived tabs/.test(await hq(`document.querySelector('h2').textContent`)), 'Archived tabs page lists them')
+  ok(await hq(`document.querySelectorAll('#out [data-url]').length`) === 2 && /Archived tabs/.test(await hq(`document.querySelector('h2').textContent`)), 'Archived tabs page lists them')
   fs.writeFileSync(`${SHOTS}/w13-archive.png`, (await hp.view.webContents.capturePage()).toPNG())
   await hq(`document.querySelector('#out [data-open]').click()`); await wait(1500)
   ok(/old/.test(hp.view.webContents.getURL()) && L.D.archive.get().length === 1, 'Open restores the page and takes it off the archive')

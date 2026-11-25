@@ -479,6 +479,7 @@ if (location.protocol === 'lumen:') {
       .bub.above{transform-origin:14px 100%}
       .bub>button,.bub>.sep{max-width:140px;overflow:hidden;transition:max-width .55s var(--jelly),opacity .25s,padding .55s var(--jelly),margin .55s var(--jelly),background .18s,color .18s,transform .45s var(--jelly)}
       .bub.mini{padding:3px;gap:0}
+      .bub.nt,.bub.nt>*{transition:none!important}
       .bub.mini>button,.bub.mini>.sep{max-width:0;opacity:0;padding-left:0;padding-right:0;margin:0;pointer-events:none}
       .bub.mini .orb{margin-right:0;box-shadow:0 0 0 0 rgba(255,79,184,.5);animation:pulse 2.4s ease-out .7s 2}
       @keyframes pulse{0%{box-shadow:0 0 0 0 rgba(255,79,184,.45)}100%{box-shadow:0 0 0 12px rgba(255,79,184,0)}}
@@ -523,9 +524,12 @@ if (location.protocol === 'lumen:') {
       const bub = sh.querySelector('.bub')
       host.style.visibility = 'hidden'
       document.documentElement.appendChild(host)
+      // measure both sizes with transitions off, or the orb is measured mid-collapse at the full bar's width
+      bub.classList.add('nt')
       const bw = bub.offsetWidth, bh = bub.offsetHeight
       bub.classList.add('mini')
       const mw = bub.offsetWidth
+      bub.classList.remove('nt')
       const below = last.bottom + bh + 14 <= innerHeight || first.top < bh + 18
       // the orb sits just past the end of the selection; the bar opens to the right, or shifts left near the edge
       const ox = Math.round(Math.max(8, Math.min(innerWidth - mw - 8, last.right - mw / 2)))

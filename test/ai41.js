@@ -198,7 +198,7 @@ async function main() {
   const bo1 = await isoPage(`({ mini: __lumenAISel.mini(), r: __lumenAISel.rect() })`, 999)
   ok(bo1.mini && bo1.r.width < 60, 'bubble starts as a small orb: ' + Math.round(bo1.r.width) + 'px')
   ok(bo1.r.top >= geo.bottom - 1 || bo1.r.bottom <= geo.top + 1, 'bubble does not cover the selected text or the line above (bubble top ' + Math.round(bo1.r.top) + ', selection ' + Math.round(geo.top) + '-' + Math.round(geo.bottom) + ')')
-  ok(Math.abs((bo1.r.left + bo1.r.width / 2) - geo.right) < 40, 'orb sits at the end of the selection')
+  ok(Math.abs((bo1.r.left + bo1.r.width / 2) - geo.right) < 40, 'orb sits at the end of the selection (orb centre ' + Math.round(bo1.r.left + bo1.r.width / 2) + ', selection end ' + Math.round(geo.right) + ')')
   await isoPage(`__lumenAISel.open()`, 999); await wait(800)
   const bo2 = await isoPage(`({ mini: __lumenAISel.mini(), r: __lumenAISel.rect() })`, 999)
   const vis = await isoPage(`__lumenAISel.rect()`, 999)

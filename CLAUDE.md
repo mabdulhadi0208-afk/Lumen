@@ -3,7 +3,7 @@
 Lumen is an Electron (Chromium) browser for Mac and Windows: just the browser. Since 4.0, Surge and Koi are separate Mac apps again, from their own repos (`mabdulhadi0208-afk/surge`, `mabdulhadi0208-afk/mabdulhadi0208-afk-koi`); Lumen only links to their downloads (Settings, Get Surge and Koi).
 
 - Repo: `mabdulhadi0208-afk/lumen`, branch `main`
-- Website: https://claude.ai/artifact/7PLHZoZDB7J1WvQDCHh2ZA (artifact slug `33b51480-35c9-428a-ac2c-53ab06bcd50d`)
+- Website: https://getlumen.info (GitHub Pages from the `gh-pages` branch, domain on GoDaddy). Keep the claude.ai copy in step too: https://claude.ai/artifact/7PLHZoZDB7J1WvQDCHh2ZA (artifact slug `33b51480-35c9-428a-ac2c-53ab06bcd50d`)
 - Mac download: https://github.com/mabdulhadi0208-afk/lumen/releases/latest/download/Lumen-mac-arm64.dmg
 
 ## Rules (never break these)

@@ -23,10 +23,10 @@
 ;(function () {
   // ---- edit this list every release: it is the "New in Lumen" act of the film (only this version's changes)
   const WHATS_NEW = {
-    version: '4.1.2',
+    version: '4.1.3',
     items: [
-      { icon: 'tabs', text: 'The + now rides right next to the tab you are in, and the tabs after it slide over to make room' },
-      { icon: 'play', text: 'Press + and the new tab opens right after the tab you were on, not at the end' },
+      { icon: 'sparkle', text: 'Lumen has its own home on the web: getlumen.info' },
+      { icon: 'play', text: 'About Lumen has a new getlumen.info button, one click to the website' },
     ],
   }
 
@@ -1156,7 +1156,7 @@
     const ig = s.querySelector('.ig'); if (!still) { ig.textContent = FILM_V; anim(ig, [{ opacity: 0, transform: 'scale(1.6)' }, { opacity: .55, transform: 'scale(1.02)', offset: .45 }, { opacity: .4, transform: 'scale(1)' }], { duration: 2600, delay: 900, easing: 'cubic-bezier(.16,1,.3,1)' }) }
     push(.035, short ? 3000 : 4000)   // a slow dolly in on the title
     crane(60, 2.2, short ? 2600 : 3200)   // while the camera cranes down and levels out
-    anim(s.querySelector('.kicker'), [{ opacity: 0, letterSpacing: '1.1em' }, { opacity: 1, letterSpacing: '.46em' }], { duration: 1600, delay: 250, easing: 'cubic-bezier(.16,1,.3,1)' })
+    anim(s.querySelector('.kicker'), [{ opacity: 0, letterSpacing: '1.1em', filter: `blur(6px) ${SPLIT(6, .6)}` }, { opacity: 1, letterSpacing: '.46em', filter: `blur(0) ${SPLIT(0, 0)}` }], { duration: 1600, delay: 250, easing: 'cubic-bezier(.16,1,.3,1)' })
     logo.querySelectorAll(':scope > span').forEach((l, i) => anim(l, [
       { opacity: 0, transform: `translate3d(${(i - 2) * 90}px, ${(i % 2 ? -1 : 1) * 40}px, 600px) rotateY(${(i - 2) * 25}deg) scale(1.6)`, filter: `blur(18px) ${SPLIT(16, .85)}` },
       { opacity: 1, filter: `blur(2px) ${SPLIT(5, .5)}`, offset: .55 },

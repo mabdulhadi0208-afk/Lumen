@@ -2,6 +2,8 @@
 
 A fast, private desktop browser for Mac and Windows. Chromium engine, so every site works like it does in Chrome, with a calmer, springy interface on top.
 
+Website: https://getlumen.info
+
 ## What is built in
 
 - Jelly spring physics everywhere (about 15% overshoot, 2-3 wobbles), critically damped scrolling, vertical tabs with drag to reorder, pinned tabs, tab sleeping

@@ -92,11 +92,11 @@ app.whenReady().then(async () => {
   const txt = await ex(`document.querySelector('.ai-msg.bot:last-child') && document.querySelector('.ai-msg.bot:last-child').innerText`)
   ok(/test login/.test(txt || '') && /password field/.test(txt || ''), 'AI summary streamed: ' + JSON.stringify((txt || '').slice(0, 80)))
   ok(mock.last && mock.last.headers['x-api-key'] === 'sk-ant-test-key' && mock.last.headers['anthropic-version'] === '2023-06-01', 'API headers')
-  ok(mock.last && mock.last.body.model === 'claude-haiku-5-5' && /<page>/.test(mock.last.body.messages[0].content) && /Some article text/.test(mock.last.body.messages[0].content), 'page text sent with request')
+  ok(mock.last && mock.last.body.model === 'claude-haiku-5-5' && /"type":"document"/.test(JSON.stringify(mock.last.body.messages[0].content)) && /Some article text/.test(JSON.stringify(mock.last.body.messages[0].content)), 'page text sent with request (as a citable document)')
   ok(await ex(`document.querySelectorAll('.ai-msg.bot ul li').length >= 2`), 'markdown list rendered')
   // follow-up keeps the page
   await ex(`document.getElementById('ai-q').value = 'What fields are there?'; document.getElementById('ai-form').requestSubmit()`); await wait(1500)
-  ok(mock.last.body.messages.length === 3 && /<page>/.test(mock.last.body.messages[0].content), 'follow-up keeps context (' + mock.last.body.messages.length + ' msgs)')
+  ok(mock.last.body.messages.length === 3 && /"type":"document"/.test(JSON.stringify(mock.last.body.messages[0].content)), 'follow-up keeps context (' + mock.last.body.messages.length + ' msgs)')
   // explain selection from context menu path
   await ex(`window.lumenUI && 0`)
   w.send('command', { ai: 'explain', text: 'Some article text here.' }); await wait(1500)

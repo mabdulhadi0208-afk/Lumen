@@ -448,6 +448,88 @@ if (location.protocol === 'lumen:') {
     }, true)
   }
 
+  // ------------------------------------------------------------ Lumen AI selection bubble (4.1)
+  // Select text on a page and a small liquid glass capsule rises above it: Explain, Define or Summarize, Translate,
+  // Rewrite, Ask. Only shown once a Claude key is set (and the bubble is on in Settings). Nothing is sent until a
+  // button is pressed: the bubble itself reads nothing and asks nothing. Made when first needed, removed on close.
+  if (QOL.ai && window === top) {
+    const IC = {
+      explain: '<path d="M9.5 18h5M10 21h4M12 3a6 6 0 0 0-3.6 10.8c.6.5 1.1 1.2 1.1 2V16h5v-.2c0-.8.5-1.5 1.1-2A6 6 0 0 0 12 3z"/>',
+      define: '<path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v15H6.5A2.5 2.5 0 0 0 4 20.5zM4 20.5A2.5 2.5 0 0 0 6.5 23H20M8 8h8M8 12h5"/>',
+      summarize: '<path d="M4 6h16M4 11h16M4 16h10M4 21h6"/>',
+      translate: '<path d="M4 5h9M8.5 3v2c0 4-2.5 7.5-5 9M6 9c1 2.5 3.5 4.6 6 5.5M13 21l4.5-10 4.5 10M14.6 17.5h5.8"/>',
+      rewrite: '<path d="M4 20h4L19 9a2.8 2.8 0 0 0-4-4L4 16zM13.5 6.5l4 4"/>',
+      ask: '<path d="M21 12a8 8 0 0 1-11.6 7.1L4 21l1.9-5.1A8 8 0 1 1 21 12z"/><path d="M9.6 9.6a2.4 2.4 0 1 1 3.4 2.2c-.6.3-1 .8-1 1.5M12 16.5v.01"/>',
+      spark: '<path d="M12 2.5l1.9 5.6 5.6 1.9-5.6 1.9L12 17.5l-1.9-5.6L4.5 10l5.6-1.9zM19 15l.8 2.2 2.2.8-2.2.8L19 21l-.8-2.2-2.2-.8 2.2-.8z"/>',
+    }
+    const svg = p => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">${p}</svg>`
+    const CSS = () => `${novaCSS()}
+      .nv{--accent:#ff4fb8}
+      .bub{position:absolute;left:0;top:0;display:flex;align-items:center;gap:2px;padding:4px;border-radius:999px;white-space:nowrap;
+        transform-origin:50% 100%;animation:in .62s var(--jelly) both}
+      .bub.below{transform-origin:50% 0}
+      .bub.out{animation:out .16s ease-in both}
+      @keyframes in{0%{opacity:0;transform:translateY(8px) scale(.82)}35%{opacity:1}100%{opacity:1;transform:none}}
+      @keyframes out{to{opacity:0;transform:scale(.92)}}
+      .orb{width:28px;height:28px;border-radius:50%;margin-right:3px;background:radial-gradient(circle at 35% 30%,rgba(255,255,255,.75),transparent 42%),linear-gradient(135deg,#ff4fb8,#a24bff 60%,#5b8cff)}
+      .orb svg{width:15px;height:15px;stroke-width:1.6}
+      button{all:unset;position:relative;z-index:4;display:inline-flex;align-items:center;gap:6px;height:30px;padding:0 11px 0 9px;border-radius:999px;
+        font:650 12.5px/1 var(--sans);color:var(--fg);cursor:default;transition:background .18s,color .18s,transform .45s var(--jelly)}
+      button svg{width:14px;height:14px;color:color-mix(in srgb,#ff4fb8 80%,var(--fg))}
+      button:hover{background:linear-gradient(135deg,#ff4fb8,#c040ff);color:#fff;transform:translateY(-1px) scale(1.04)}
+      button:hover svg{color:#fff}
+      button:active{transform:scale(.94);transition-duration:.08s}
+      .sep{width:1px;height:18px;background:var(--line);margin:0 2px}
+      ${STILL ? '.bub{animation:none}' : ''}`
+    let cur = null, pending = 0
+    const editable = n => { const el = n && (n.nodeType === 1 ? n : n.parentElement); return !!(el && el.closest && el.closest('input,textarea,select,[contenteditable=""],[contenteditable=true],[contenteditable=plaintext-only]')) }
+    const close = quick => {
+      if (!cur) return
+      const c = cur; cur = null
+      if (quick || STILL) { c.host.remove(); return }
+      c.bub.classList.add('out'); setTimeout(() => c.host.remove(), 170)
+    }
+    const press = (action, text) => { ipcRenderer.send('ai:sel', { action, text }); close() }
+    function show() {
+      const s = getSelection()
+      if (!s || s.isCollapsed || !s.rangeCount) return close(true)
+      const text = String(s).trim()
+      if (text.length < 2 || text.length > 6000 || editable(s.anchorNode) || editable(document.activeElement)) return close(true)
+      const r = s.getRangeAt(0).getBoundingClientRect()
+      if (!r.width && !r.height) return close(true)
+      close(true)
+      const words = text.split(/\s+/).length
+      const acts = [['explain', 'Explain'], words <= 4 ? ['define', 'Define'] : words >= 25 ? ['summarize', 'Summarize'] : null, ['translate', 'Translate'], ['rewrite', 'Rewrite'], ['ask', 'Ask']].filter(Boolean)
+      const { host, sh } = surface()
+      sh.innerHTML = `<style>${CSS()}</style><div class="nv"><div class="bub glass" role="toolbar" aria-label="Lumen AI"><span class="orb tile">${svg(IC.spark)}</span>${acts.map(([k, l], i) => `${i === acts.length - 1 ? '<span class="sep"></span>' : ''}<button data-a="${k}" title="${l} with Lumen AI">${svg(IC[k])}${l}</button>`).join('')}</div></div>`
+      const bub = sh.querySelector('.bub')
+      host.style.visibility = 'hidden'
+      document.documentElement.appendChild(host)
+      const bw = bub.offsetWidth, bh = bub.offsetHeight
+      const below = r.top < bh + 18
+      const x = Math.round(Math.max(8, Math.min(innerWidth - bw - 8, r.left + r.width / 2 - bw / 2)))
+      const y = Math.round(below ? r.bottom + 12 : r.top - bh - 12)
+      bub.classList.toggle('below', below)
+      host.style.left = x + 'px'; host.style.top = y + 'px'; host.style.visibility = ''
+      glint(bub)
+      // keep the page's selection while the bubble is pressed
+      bub.addEventListener('mousedown', e => { e.preventDefault(); e.stopPropagation() })
+      bub.addEventListener('click', e => { const b = e.target.closest('button'); if (b) press(b.dataset.a, text) })
+      cur = { host, bub, text, acts: acts.map(a => a[0]) }
+    }
+    addEventListener('mouseup', e => {
+      if (e.button !== 0 || (cur && e.composedPath().includes(cur.host))) return
+      clearTimeout(pending); pending = setTimeout(show, 60)
+    }, true)
+    addEventListener('mousedown', e => { if (cur && !e.composedPath().includes(cur.host)) close() }, true)
+    addEventListener('keydown', e => { if (cur) close(e.key !== 'Escape') }, true)
+    addEventListener('scroll', () => { if (cur) close(true) }, { capture: true, passive: true })
+    addEventListener('resize', () => { if (cur) close(true) })
+    addEventListener('blur', () => { if (cur) close(true) })
+    // for tests: this lives in the preload's own world, which pages cannot see
+    globalThis.__lumenAISel = { shown: () => !!cur, actions: () => (cur ? cur.acts.slice() : []), press: a => { if (cur) press(a, cur.text) }, rect: () => (cur ? cur.host.getBoundingClientRect().toJSON() : null) }
+  }
+
   // ------------------------------------------------------------ Reader mode (src/reader.js runs in this world): remember its choices
   globalThis.__lumenReaderSave = prefs => { try { ipcRenderer.send('reader:prefs', prefs) } catch {} }
   globalThis.__lumenReaderPos = v => { try { ipcRenderer.send('reader:pos', +v) } catch {} }

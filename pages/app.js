@@ -224,25 +224,55 @@ async function general(m) {
 
 async function aiPage(m) {
   const st = await L.invoke('aiStatus') || {}
+  const q = s => m.querySelector(s)
   const bars = hs => hs.map(h => `<i style="height:${h}px"></i>`).join('')
-  m.innerHTML = `<h2>Lumen AI</h2><p class="lead">Summarize any page, ask questions about it, or get a highlighted paragraph explained. Open it with Shift ${MOD()} A, from the menu, or by right-clicking a page.</p>
-  <div class="glance aiuses">${[['book', 'Summarize', 'Any page in a few lines'], ['search', 'Ask', 'Questions about the page'], ['sparkle', 'Explain', 'Right-click selected text']].map(([i, t, d], n) => `<div class="gl" style="--ic:${tint(n * 70)}"><span class="gl-ic">${ICONS[i]}</span><div><b>${t}</b><span>${d}</span></div></div>`).join('')}</div>
-  <div class="card"><h3>CLAUDE API KEY</h3>
-    <div class="row aikeyrow"><span class="aiorb ${st.ready ? '' : 'off'}">${ICONS.sparkle}</span><div class="grow"><div class="t">${st.ready ? 'Key saved' : 'No key yet'}</div><div class="d">${st.ready ? 'Your key is stored encrypted on this device and only sent to Anthropic.' : 'Lumen AI runs on Claude with your own API key. Create one at console.anthropic.com, under API Keys, then paste it here.'}</div></div>${st.ready ? '<span class="pill">Connected</span><button class="btn sm" id="aikeyrm">Remove</button>' : ''}</div>
-    <div class="row keyfield"><input id="aikey" type="password" placeholder="sk-ant-..." autocomplete="off" spellcheck="false" aria-label="Claude API key"><button class="btn primary" id="aikeysave">${st.ready ? 'Replace' : 'Save key'}</button></div>
+  const kb = (...k) => k.map(x => `<kbd>${x}</kbd>`).join('')
+  m.innerHTML = `<h2>Lumen AI</h2><p class="lead">Claude, built into your browser: ask about any page with answers that cite it, compare your tabs, get things done from ${MOD()} K, and fix up anything you write.</p>
+  <div class="card ai4-key ${st.ready ? 'is-on' : ''}" id="ai4key"><h3>CLAUDE API KEY</h3>
+    <div class="ai4-status"><span class="ai4-orb">${ICONS.sparkle}</span><div class="grow"><div class="t">${st.ready ? 'Connected to Claude' : 'Set up Lumen AI in three steps'}</div><div class="d">${st.ready ? 'Your key is stored encrypted on this device and only ever sent to Anthropic.' : 'Lumen AI uses your own Claude API key, so you pay Anthropic directly for what you use and nobody else sees your chats.'}</div></div>${st.ready ? '<span class="pill ai4-pill">Working</span><button class="btn sm" id="aikeyrm">Remove</button>' : ''}</div>
+    ${st.ready ? '' : `<ol class="ai4-steps"><li><b>1</b><div class="grow"><div class="t">Open the Anthropic Console</div><div class="d">Sign in or create an account.</div></div><button class="btn sm" id="aiconsole">Open Console</button></li><li><b>2</b><div class="grow"><div class="t">Create a key</div><div class="d">Go to API Keys and press Create Key. Copy it.</div></div></li><li><b>3</b><div class="grow"><div class="t">Paste it here</div><div class="d">Lumen checks it with Anthropic before saving.</div></div></li></ol>`}
+    <div class="row keyfield"><input id="aikey" type="password" placeholder="${st.ready ? 'Paste a new key to replace it' : 'sk-ant-...'}" autocomplete="off" spellcheck="false" aria-label="Claude API key"><button class="btn primary" id="aikeysave">${st.ready ? 'Check and replace' : 'Check and save'}</button></div>
+    <div class="ai4-msg" id="aikeymsg" role="status"></div>
   </div>
-  <div class="card fcard"><h3>OPTIONS</h3>
-    ${vrow('Model', 'Fast is quicker and cheaper. Smart writes deeper answers.', vchoice('aiModel', [['fast', 'Fast', 'mdl', 'Quick answers, low cost', `<em>Fast</em>${bars([14, 22, 18, 28])}`], ['smart', 'Smart', 'mdl', 'Deeper, more careful answers', `<em>Smart</em>${bars([24, 36, 46, 56])}`]], S.aiModel || 'fast'))}
-    <div class="ftiles">${ft('aiTabGroups', S.aiTabGroups !== false, 'Use AI to sort tab groups', 'When on, Sort tabs into groups sends your tab titles and links to Claude for smarter groups. When off, Lumen groups tabs on your device.', 'layers', 140, `<span class="fa-tabs"><i class="on"></i><i class="on"></i></span><span class="fa-tabs"><i></i><i></i><i></i></span>`)}</div>
+  <div class="card fcard"><h3>MODEL</h3>
+    ${vrow('Which Claude answers', 'Fast is quick and costs very little. Smart writes deeper answers. Best is the most capable and takes a little longer.', vchoice('aiModel', [['fast', 'Fast', 'mdl', 'Claude Haiku, quick and cheap', `<em>Fast</em>${bars([14, 22, 18, 28])}`], ['smart', 'Smart', 'mdl', 'Claude Sonnet, deeper answers', `<em>Smart</em>${bars([24, 36, 46, 56])}`], ['best', 'Best', 'mdl', 'Claude Opus, the most capable', `<em>Best</em>${bars([34, 48, 60, 72])}`]], st.tier || S.aiModel || 'fast'))}
   </div>
-  <p class="note">Page text is sent to Anthropic only when you ask Lumen AI something. Nothing is sent in the background.</p>`
+  <div class="card fcard"><h3>OPTIONS</h3><div class="ftiles">
+    ${ft('aiSelBubble', S.aiSelBubble !== false, 'Quick actions on selected text', 'Select text on a page and a small bubble offers Explain, Define, Translate, Rewrite and Ask. Nothing is sent until you press one. Applies to pages opened after you change it.', 'sparkle', 320, '<span class="ai4-bub"><i></i><i></i><i></i><i></i></span>')}
+    ${ft('aiTabGroups', S.aiTabGroups !== false, 'Use AI to sort tab groups', 'When on, Sort tabs into groups sends your tab titles and links to Claude for smarter groups. When off, Lumen groups tabs on your device.', 'layers', 140, `<span class="fa-tabs"><i class="on"></i><i class="on"></i></span><span class="fa-tabs"><i></i><i></i><i></i></span>`)}
+  </div></div>
+  <div class="card"><h3>WAYS TO USE IT</h3><div class="ai4-tips">
+    ${[['bolt', 'Ask Lumen panel', `${kb('Shift', MOD(), 'A')} A chat for each tab. Answers cite the page: click a number to jump to the passage.`],
+       ['search', 'Ask from anywhere', `${kb(MOD(), 'K')} then type a question and press Enter for an answer right there.`],
+       ['tabs', 'Do things with words', `${kb(MOD(), 'K')} then try "close all YouTube tabs" or "group my shopping tabs". You see the plan before anything happens.`],
+       ['layers', 'All your tabs at once', 'Press All tabs in the panel to compare or summarize every tab in the window.'],
+       ['sparkle', 'Selected text', 'Explain, define, translate or rewrite any passage from the bubble or the right-click menu.'],
+       ['key', 'Writing help', 'Select text in any text box, right-click, and pick Lumen AI Writing to improve, shorten or fix it.']].map(([i, t, d], n) => `<div class="ai4-tip" style="--ic:${tint(n * 45 + 300)}"><span class="ai4-tip-ic">${ICONS[i] || ''}</span><div><b>${t}</b><span>${d}</span></div></div>`).join('')}
+  </div></div>
+  <div class="card ai4-priv"><h3>PRIVACY</h3>
+    <div class="ai4-plist">
+      <div><span class="ai4-ok">${ICONS.check}</span><div><b>Nothing is sent until you ask.</b> Lumen AI never reads pages in the background. Opening the panel or selecting text sends nothing.</div></div>
+      <div><span class="ai4-ok">${ICONS.check}</span><div><b>What is sent, and when.</b> When you ask about a page, its text, title and address go to Anthropic with your question. All tabs sends the text of the tabs in this window. Selection actions send only the selected text. Command bar actions send your tab titles and addresses and the titles of pages you visited recently.</div></div>
+      <div><span class="ai4-ok">${ICONS.check}</span><div><b>Your key stays here.</b> It is encrypted on this device, used only by Lumen itself, and never shown to websites.</div></div>
+      <div><span class="ai4-ok">${ICONS.check}</span><div><b>Chats are not saved.</b> A chat lives with its tab and is gone when you close the tab or the window.</div></div>
+    </div>
+  </div>`
   bindSettings(m)
-  $('#aikeysave').onclick = async () => {
-    const v = $('#aikey').value.trim()
-    if (!/^sk-ant-/.test(v)) { $('#aikey').focus(); $('#aikey').style.boxShadow = '0 0 0 2px #e5484d'; return }
-    await L.invoke('aiSetKey', v); aiPage(m)
+  const msg = (cls, text) => { const e = q('#aikeymsg'); if (!e) return; e.className = 'ai4-msg show ' + cls; e.textContent = text }
+  const save = q('#aikeysave'), inp = q('#aikey')
+  if (save) save.onclick = async () => {
+    const v = inp.value.trim()
+    if (!v) { inp.focus(); msg('bad', 'Paste your key first.'); return }
+    save.disabled = true; msg('busy', 'Checking your key with Anthropic...')
+    const r = await L.invoke('aiSetKey', v) || {}
+    save.disabled = false
+    if (r.ok) { msg('good', 'Your key works. Lumen AI is ready.'); setTimeout(() => aiPage(m), 900) }
+    else if (r.kind === 'offline') { msg('bad', r.message + ' '); const b = document.createElement('button'); b.className = 'btn sm'; b.textContent = 'Save anyway'; b.onclick = async () => { await L.invoke('aiSetKey', v, true); aiPage(m) }; q('#aikeymsg').appendChild(b) }
+    else msg('bad', r.message || 'That key did not work.')
   }
-  const rm = $('#aikeyrm'); if (rm) rm.onclick = async () => { await L.invoke('aiSetKey', ''); aiPage(m) }
+  if (inp) inp.onkeydown = e => { if (e.key === 'Enter') save.click() }
+  const rm = q('#aikeyrm'); if (rm) rm.onclick = async () => { await L.invoke('aiSetKey', ''); aiPage(m) }
+  const con = q('#aiconsole'); if (con) con.onclick = () => L.invoke('open', 'https://console.anthropic.com/settings/keys')
 }
 
 // Appearance: a live picture of your browser at the top that follows every change

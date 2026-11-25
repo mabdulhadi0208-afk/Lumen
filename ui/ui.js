@@ -685,6 +685,7 @@ function buildResults(q, data) {
   if (data.parcel) out.unshift({ sec: '', icon: ICONS.box, title: 'Track parcel ' + data.parcel.number, sub: '  ' + data.parcel.carrier, key: 'Track', go: () => { closeCmd(true); api.do('trackNumber', data.parcel.number) } })
   if (data.conv) out.unshift({ sec: '', icon: ICONS.bolt, title: data.conv.text, sub: '  Press Enter to copy', key: 'Copy', go: () => { api.do('copyText', String(data.conv.value)); closeCmd(true); toast('Copied ' + data.conv.value) } })
   if (data.shortcut) out.unshift({ sec: '', icon: ICONS.search, title: data.shortcut.query, sub: '  Search ' + data.shortcut.name, key: 'Search', go: () => go(qq) })
+  if (qq && typeof aiCmdRows === 'function') aiCmdRows(qq, out)
   const lq = qq.toLowerCase()
   const cmds = lq ? COMMANDS.map(c => [c, cmdScore(c, lq)]).filter(x => x[1] > 0).sort((a, b) => b[1] - a[1]).slice(0, 4).map(x => x[0]) : []
   for (const c of cmds) out.push({ sec: 'Actions', icon: ICONS[c.i], title: c.t, sub: '', key: c.s ? c.s() : 'Run', go: () => { closeCmd(true); c.run() } })
@@ -732,7 +733,7 @@ async function refresh(q) {
   const typed = q.slice(0, cmdInput.selectionStart === cmdInput.selectionEnd ? q.length : cmdInput.selectionStart)
   results = buildResults(typed, {}); sel = 0; renderResults()
   const data = await api.do('suggest', typed)
-  if (my !== suggestSeq || overlayOpen !== 'cmd') return
+  if (my !== suggestSeq || overlayOpen !== 'cmd' || (typeof aiCmdBusy === 'function' && aiCmdBusy())) return
   results = buildResults(typed, data || {}); sel = 0; renderResults()
   // inline completion of a domain you have been to
   if (typed && !/\s/.test(typed) && inlineAllowed && data && data.history) {
@@ -1234,7 +1235,7 @@ api.on('update', u => { updateState = u; $('#btn-update').classList.toggle('show
 api.on('fullscreen', f => { fullscreenWindow = f; document.body.classList.toggle('winfs', !!f); queueLayout() })
 let fullscreenWindow = false
 api.on('command', c => {
-  if (c && typeof c === 'object' && c.ai) { openAI(); aiRun(c.ai, c.text); return }
+  if (c && typeof c === 'object' && c.ai) { aiCommand(c); return }
   if (c && typeof c === 'object' && c.find) { findInput.value = c.find; openFind(); return }
   if (c === 'qr') { openQR(); return }
   if (c === 'tabgrid') { tgOpen ? closeTabGrid() : openTabGrid(); return }
@@ -1334,83 +1335,7 @@ function playIntro(opts = {}) {
 }
 
 
-// ---------------------------------------------------------------- Lumen AI panel
-let aiOpen = false, aiBusy = null, aiHistory = [], aiSeq = 0
-const aiLog = $('#ai-log'), aiQ = $('#ai-q')
-$('#ai-close').innerHTML = ICONS.close; $('#ai-clear').innerHTML = ICONS.reload; $('#ai-send').innerHTML = ICONS.arrowRight
-for (const [k, ic] of [['summarize', 'book'], ['keypoints', 'layers'], ['explain', 'sparkle']]) { const c = document.querySelector(`.ai-chip[data-ai="${k}"]`); if (c) c.insertAdjacentHTML('afterbegin', ICONS[ic]) }
-$('#ai-addkey').insertAdjacentHTML('afterbegin', ICONS.key); $('#ai-hart').innerHTML = ICONS.sparkle
-function mdToHTML(src) {
-  const lines = esc(src).split('\n'); let out = '', list = null
-  const inline = s => s.replace(/`([^`]+)`/g, '<code>$1</code>').replace(/\*\*([^*]+)\*\*/g, '<b>$1</b>').replace(/(^|[^*])\*([^*\n]+)\*/g, '$1<i>$2</i>')
-  const close = () => { if (list) { out += `</${list}>`; list = null } }
-  for (const l of lines) {
-    let m
-    if ((m = l.match(/^\s*[-*•]\s+(.*)/))) { if (list !== 'ul') { close(); out += '<ul>'; list = 'ul' } out += `<li>${inline(m[1])}</li>` }
-    else if ((m = l.match(/^\s*\d+[.)]\s+(.*)/))) { if (list !== 'ol') { close(); out += '<ol>'; list = 'ol' } out += `<li>${inline(m[1])}</li>` }
-    else if ((m = l.match(/^#{1,4}\s+(.*)/))) { close(); out += `<h5>${inline(m[1])}</h5>` }
-    else if (!l.trim()) close()
-    else { close(); out += `<p>${inline(l)}</p>` }
-  }
-  close(); return out
-}
-async function refreshAI() {
-  const st = await api.do('aiStatus').catch(() => null) || {}
-  $('#aipanel').classList.toggle('nokey', !st.ready)
-  $('#ai-page').textContent = st.title || hostOf(st.url || '') || ''
-  return st
-}
-function openAI() {
-  if (aiOpen) { refreshAI(); return }
-  aiOpen = true; $('#aipanel').classList.add('open')
-  aiW.to(AI_W); refreshAI()
-  setTimeout(() => aiQ.focus(), 120)
-}
-function closeAI() { aiOpen = false; $('#aipanel').classList.remove('open'); aiW.to(0) }
-function toggleAI() { aiOpen ? closeAI() : openAI() }
-function aiBubble(role, html) {
-  const el = document.createElement('div'); el.className = 'ai-msg ' + role; el.innerHTML = html
-  aiLog.appendChild(el); aiLog.scrollTop = aiLog.scrollHeight
-  requestAnimationFrame(() => Jelly.kick && Jelly.kick(el, 0.6, 0.5))
-  return el
-}
-const AI_LABEL = { summarize: 'Summarize this page', keypoints: 'Key points', explain: 'Explain the selection' }
-async function aiRun(mode, text) {
-  const st = await refreshAI()
-  if (!st.ready) return
-  if (aiBusy) api.do('aiStop', aiBusy)
-  if (mode === 'explain' && !text) text = st.sel
-  if (mode === 'explain' && !text) { aiBubble('note', '<p>Highlight some text on the page first, then press Explain selection, or right-click it and pick Explain with Lumen AI.</p>'); return }
-  const shown = mode === 'chat' ? text : AI_LABEL[mode] + (mode === 'explain' ? `<blockquote>${esc(text.slice(0, 280))}${text.length > 280 ? '...' : ''}</blockquote>` : '')
-  aiBubble('user', mode === 'chat' ? `<p>${esc(text)}</p>` : `<p>${shown}</p>`)
-  const out = aiBubble('bot', '<div class="ai-dots"><i></i><i></i><i></i></div>')
-  const id = 'r' + (++aiSeq); aiBusy = id
-  $('#aipanel').classList.add('busy')
-  out.dataset.id = id; out.dataset.buf = ''
-  api.do('aiAsk', { id, mode, text, history: aiHistory })
-}
-api.on('ai', m => {
-  const out = aiLog.querySelector(`[data-id="${m.id}"]`)
-  if (!out) return
-  if (m.delta) { out.dataset.buf += m.delta; out.innerHTML = mdToHTML(out.dataset.buf); aiLog.scrollTop = aiLog.scrollHeight }
-  if (m.error) { out.classList.add('err'); out.innerHTML = `<p>${esc(m.error)}</p>` }
-  if (m.done && m.prompt) { aiHistory.push({ role: 'user', content: m.prompt }, { role: 'assistant', content: m.text }); aiHistory = aiHistory.slice(-12) }
-  if (m.done && m.stopped && !out.dataset.buf) out.innerHTML = '<p class="small">Stopped</p>'
-  if (m.done || m.error) { if (aiBusy === m.id) { aiBusy = null; $('#aipanel').classList.remove('busy') } }
-})
-$('#ai-form').addEventListener('submit', e => {
-  e.preventDefault()
-  if (aiBusy) { api.do('aiStop', aiBusy); return }
-  const q = aiQ.value.trim(); if (!q) return
-  aiQ.value = ''; aiQ.style.height = ''
-  aiRun('chat', q)
-})
-aiQ.addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) { e.preventDefault(); $('#ai-form').requestSubmit() } else if (e.key === 'Escape') closeAI() })
-aiQ.addEventListener('input', () => { aiQ.style.height = ''; aiQ.style.height = Math.min(140, aiQ.scrollHeight) + 'px' })
-$('#aipanel .ai-actions').addEventListener('click', e => { const b = e.target.closest('[data-ai]'); if (b) aiRun(b.dataset.ai) })
-$('#ai-close').onclick = closeAI
-$('#ai-clear').onclick = () => { if (aiBusy) api.do('aiStop', aiBusy); aiHistory = []; aiLog.innerHTML = ''; refreshAI() }
-$('#ai-addkey').onclick = () => api.do('openPage', 'settings/ai')
+// ---------------------------------------------------------------- Lumen AI: the panel, command bar answers and actions live in ui/ai41.js
 
 
 // ---------------------------------------------------------------- send to phone (QR)

@@ -105,4 +105,6 @@
   }
   const start = () => { settingsCard(); if (!d.querySelector('.lu-card') && d.documentElement.dataset.lg === 'settings') new MutationObserver((_, ob) => { if (d.getElementById('pane-updater')) { ob.disconnect(); settingsCard() } }).observe(d.body, { childList: true, subtree: true }) }
   if (d.body) start(); else addEventListener('DOMContentLoaded', start)
+  // Koi's menu may have drawn its first state before this file loaded: draw it again with the card
+  try { window.__pop && window.__pop.render && window.__pop.render() } catch {}
 })()

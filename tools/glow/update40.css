@@ -75,7 +75,7 @@
 /* when there is a button to press (Get it, Restart, Try again), it gets the full width under the words, so the
    title never has to shrink to make room */
 [data-lg=kpop] .up-b.lu:not(.lu-busy){flex-wrap:wrap}
-[data-lg=kpop] .up-b.lu:not(.lu-busy) .bt{flex:1 0 100%;margin-top:2px;padding:11px 16px;font-size:14px}
+[data-lg=kpop] .up-b.lu:not(.lu-busy) .bt{box-sizing:border-box;flex:1 0 100%;margin-top:2px;padding:11px 16px;font-size:14px}
 [data-lg=popover] #upd.lu:not(.lu-busy){flex-wrap:wrap}
 [data-lg=popover] #upd.lu:not(.lu-busy) #updBtn{flex:1 0 100%;padding:11px 16px!important;font-size:13.5px!important}
 .lu-card .lu-hero.lu-busy .lu-btn{display:none}

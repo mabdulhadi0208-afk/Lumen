@@ -21,7 +21,7 @@ document.addEventListener('error', e => {
 const LOGOS = {}, logoAsked = new Set(); let logoQ = 0
 function applyLogo(im, fail) {
   if (im.dataset.lg) return
-  const x = LOGOS[im.dataset.h]; im.dataset.lg = 'none'; if (!x) return fail && fail()
+  const x = LOGOS[im.dataset.h]; im.dataset.lg = 'none'; if (!x) return typeof fail === 'function' && fail()
   const pre = new Image()
   pre.onload = () => { if (pre.naturalWidth < 8 || !im.isConnected) return fail && fail(); im.dataset.lg = x.k; im.classList.add('lgx', x.k === 'touch' ? 'lgx-touch' : 'lgx-icon'); im.src = x.u }
   pre.onerror = () => fail && fail()
@@ -32,7 +32,7 @@ function hydrateLogos() {
   const imgs = [...document.querySelectorAll('img.fav[data-h]:not([data-lg])')]; if (!imgs.length) return
   const need = [...new Set(imgs.map(i => i.dataset.h).filter(h => h && !logoAsked.has(h)))].slice(0, 200)
   need.forEach(h => logoAsked.add(h))
-  const go = () => imgs.forEach(applyLogo)
+  const go = () => imgs.forEach(im => applyLogo(im))
   if (!need.length || !L) return go()
   L.invoke('siteIcons', need).then(r => { Object.assign(LOGOS, r || {}); go() }, go)
 }

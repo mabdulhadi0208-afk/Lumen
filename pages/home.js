@@ -1141,7 +1141,7 @@
     d.innerHTML = `<form class="ntp-card rise"><div class="sc-head"><span class="sc-prev" id="sc-prev">${ICONS.globe}</span><div><h3>Add shortcut</h3><p>It shows up on every new tab.</p></div></div><label>Website address<input type="text" id="sc-url" placeholder="example.com" required spellcheck="false" autocomplete="off"></label><label>Name <input type="text" id="sc-name" placeholder="Optional"></label><div class="row2"><button type="button" class="btn" id="sc-cancel">Cancel</button><button class="btn primary">Add shortcut</button></div></form>`
     document.body.appendChild(d)
     d.querySelector('#sc-url').focus()
-    d.querySelector('#sc-url').oninput = e => { const h = hostOf(/^https?:\/\//i.test(e.target.value) ? e.target.value : 'https://' + e.target.value.trim()); qs('#sc-prev').innerHTML = h && h.includes('.') ? letterFav(h.replace(/^www\./, '')) : ICONS.globe }
+    d.querySelector('#sc-url').oninput = e => { const h = hostOf(/^https?:\/\//i.test(e.target.value) ? e.target.value : 'https://' + e.target.value.trim()); previewFav(qs('#sc-prev'), h, ICONS.globe) }
     d.querySelector('#sc-cancel').onclick = () => d.remove()
     d.onclick = e => { if (e.target === d) d.remove() }
     d.onkeydown = e => { if (e.key === 'Escape') d.remove() }

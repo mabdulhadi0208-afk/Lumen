@@ -23,10 +23,11 @@
 ;(function () {
   // ---- edit this list every release: it is the "New in Lumen" act of the film (only this version's changes)
   const WHATS_NEW = {
-    version: '4.1.4',
+    version: '4.1.5',
     items: [
-      { icon: 'sparkle', text: 'Home shows every site with its real logo, sharp and full size, not just a letter' },
-      { icon: 'play', text: 'Lumen picks the sharpest icon each site offers, and new logos pop in with a spring' },
+      { icon: 'sparkle', text: 'Bookmarks, History, Read later and Passwords show every site with its real logo' },
+      { icon: 'play', text: 'Add shortcut and Add bookmark preview the real logo as you type' },
+      { icon: 'sparkle', text: 'Big sites like YouTube now get their sharpest logo on Home too' },
     ],
   }
 
@@ -1180,6 +1181,15 @@
     }, 1080)
     anim(logo.querySelector('.mirror .v4'), [{ opacity: 0 }, { opacity: 1 }], { duration: 600, delay: 1300 })
     anim(s.querySelector('.rule'), [{ transform: 'scaleX(0)' }, { transform: 'scaleX(1)' }], { duration: 1500, delay: 1200, easing: 'cubic-bezier(.16,1,.3,1)' })
+    // 4.1.5: as the number lands, an anamorphic streak of light cuts across the frame through it and burns off
+    setTimeout(() => {
+      if (skip || still || !v4.offsetParent) return
+      const host = v4.offsetParent, y = v4.offsetTop + v4.offsetHeight * .52, x = v4.offsetLeft + v4.offsetWidth / 2
+      const st = document.createElement('i')
+      st.style.cssText = `position:absolute;left:${x - 600}px;top:${y - 2}px;width:1200px;height:4px;border-radius:4px;pointer-events:none;mix-blend-mode:screen;background:linear-gradient(90deg,transparent,color-mix(in srgb,var(--hi) 70%,transparent) 22%,#fff 50%,color-mix(in srgb,var(--hi3) 70%,transparent) 78%,transparent);box-shadow:0 0 24px 4px color-mix(in srgb,var(--hi) 50%,transparent)`
+      host.appendChild(st)
+      st.animate([{ opacity: 0, transform: 'scaleX(.05) scaleY(.6)' }, { opacity: 1, transform: 'scaleX(1) scaleY(1.4)', offset: .3 }, { opacity: 0, transform: 'scaleX(1.25) scaleY(.4)' }], { duration: 1100, easing: 'cubic-bezier(.16,1,.3,1)' }).finished.then(() => st.remove(), () => st.remove())
+    }, 1040)
     // 4.1.4: two sparks of light race out from the middle of the rule as it draws, and flare where it ends
     setTimeout(() => {
       const rule = s.querySelector('.rule'); if (skip || still || !rule || !rule.offsetParent) return

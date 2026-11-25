@@ -13,6 +13,7 @@ const SITES = {
   'svg.test': { html: '<link rel="shortcut icon" href="/favicon.ico"><link rel="icon" type="image/svg+xml" href="/logo.svg"><link rel="mask-icon" href="/mask.svg">', files: { '/logo.svg': '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10"><circle cx="5" cy="5" r="4" fill="#1a73e8"/></svg>' } },
   'plain.test': { html: '', files: { '/favicon.ico': png(32, [20, 160, 90]) } },
   'none.test': { html: '', files: {} },
+  'www.wsite.test': { html: '<link rel="apple-touch-icon" href="/t.png" sizes="180x180">', files: { '/t.png': png(180, [120, 60, 220]) } },
 }
 app.whenReady().then(async () => {
   await wait(4000); const w = L.windows[0], ex = s => w.ui.webContents.executeJavaScript(s)
@@ -33,8 +34,10 @@ app.whenReady().then(async () => {
   ok(icons['touch.test'] && icons['touch.test'].u === 'https://touch.test/t.png' && icons['touch.test'].k === 'touch', 'a 180px touch icon wins over a 32px PNG: ' + JSON.stringify(icons['touch.test']))
   ok(icons['svg.test'] && icons['svg.test'].u === 'https://svg.test/logo.svg' && icons['svg.test'].k === 'icon', 'an SVG icon wins over favicon.ico and the mask icon is ignored: ' + JSON.stringify(icons['svg.test']))
   ok(!icons['plain.test'] && !icons['none.test'], 'sites with no icon links remember nothing')
-
+  const wi = L.D.iconsFor(['wsite.test', 'www.wsite.test'])
+  ok(wi['wsite.test'] && wi['www.wsite.test'] && wi['wsite.test'].u === 'https://www.wsite.test/t.png', '4.1.5: a www. site is found with or without its www. (pages ask without it)')
   L.D.settings.set({ ntpShortcuts: Object.keys(SITES).map(h => ({ url: 'https://' + h, title: h })) })
+
   const t = w.createTab('lumen://newtab', { active: true }); await wait(5000)
   const pg = s => t.view.webContents.executeJavaScript(s)
   const faces = await pg(`[...document.querySelectorAll('#tiles .tile[data-url]')].map(x => { const f = x.querySelector('.hm-face'), im = f.querySelector('.hm-lg'); return { u: x.dataset.url, c: f.className, src: im ? im.getAttribute('src') : '', vis: im ? getComputedStyle(im).opacity : '0', letter: getComputedStyle(f.querySelector('b')).visibility, w: im ? im.getBoundingClientRect().width : 0, fw: f.getBoundingClientRect().width } })`)
@@ -48,6 +51,27 @@ app.whenReady().then(async () => {
   await pg(`document.querySelector('#tiles').scrollIntoView({ block: 'center' })`); await wait(700)
   try { fs.writeFileSync('/tmp/lumen-logos43.png', (await t.view.webContents.capturePage()).toPNG()) } catch (e) { console.log('shot failed', e.message) }
   ok(await pg(`[...document.querySelectorAll('.hm-row .hm-face')].some(f => f.classList.contains('lg'))`), 'the history rows show logos too')
+
+  ok(/\blg-touch\b/.test(F('wsite.test').c), '4.1.5: the www. site shows its logo on Home too')
+  // the Add shortcut dialog previews the real logo as you type a site Lumen has seen
+  await pg(`document.getElementById('addtile').click()`); await wait(700)
+  await pg(`(() => { const i = document.getElementById('sc-url'); i.value = 'touch.test'; i.dispatchEvent(new Event('input', { bubbles: true })) })()`); await wait(1200)
+  ok(await pg(`(() => { const im = document.querySelector('#sc-prev img.fav.lgx-touch'); return !!im && im.src === 'https://touch.test/t.png' })()`), '4.1.5: Add shortcut previews the real logo')
+  await pg(`(() => { const i = document.getElementById('sc-url'); i.value = 'zz'; i.dispatchEvent(new Event('input', { bubbles: true })) })()`); await wait(600)
+  ok(await pg(`!document.querySelector('#sc-prev img')`), '4.1.5: no logo for a half-typed address')
+  // Bookmarks and History pages swap their small favicons for the real logos
+  for (const h of ['touch.test', 'svg.test', 'none.test']) L.D.addBookmark('https://' + h + '/', h)
+  const bt = w.createTab('lumen://bookmarks', { active: true }); await wait(3500)
+  const bm = await bt.view.webContents.executeJavaScript(`[...document.querySelectorAll('img.fav')].map(i => i.dataset.h + ':' + i.className + ':' + i.getAttribute('src'))`)
+  fs.appendFileSync(LOG, JSON.stringify(bm) + '\n')
+  ok(bm.some(x => x.startsWith('touch.test:') && /lgx-touch/.test(x) && x.endsWith('/t.png')) && bm.some(x => x.startsWith('svg.test:') && /lgx-icon/.test(x) && x.endsWith('/logo.svg')), '4.1.5: Bookmarks shows the real logos')
+  ok(!bm.some(x => x.startsWith('none.test:') && /lgx/.test(x)), '4.1.5: a site with no logo keeps its letter or favicon')
+  await bt.view.webContents.executeJavaScript('scrollTo(0, 560)'); await wait(600)
+  try { fs.writeFileSync('/tmp/lumen-logos43-bm.png', (await bt.view.webContents.capturePage()).toPNG()) } catch {}
+  const ht = w.createTab('lumen://history', { active: true }); await wait(3500)
+  ok(await ht.view.webContents.executeJavaScript(`document.querySelectorAll('img.fav.lgx').length > 0`), '4.1.5: History shows real logos')
+  await ht.view.webContents.executeJavaScript('scrollTo(0, 640)'); await wait(600)
+  try { fs.writeFileSync('/tmp/lumen-logos43-hist.png', (await ht.view.webContents.capturePage()).toPNG()) } catch {}
 
   // private windows remember nothing
   const before = JSON.stringify(L.D.iconsFor(['touch.test']))

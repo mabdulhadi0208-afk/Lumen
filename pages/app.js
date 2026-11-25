@@ -6,7 +6,55 @@ const hostOf = u => { try { return new URL(u).host.replace(/^www\./, '') } catch
 const hue = s => { let h = 0; for (const c of s) h = (h * 31 + c.charCodeAt(0)) % 360; return h }
 const letterFav = host => `<span class="fav" style="background:hsl(${hue(host)} 55% 52%)">${esc((host[0] || '?').toUpperCase())}</span>`
 const fav = url => { const h = hostOf(url); if (!h) return letterFav('?'); return `<img class="fav" src="${esc(new URL(url).origin)}/favicon.ico" data-h="${esc(h)}">` }
-document.addEventListener('error', e => { if (e.target.tagName === 'IMG' && e.target.dataset.h !== undefined) e.target.outerHTML = letterFav(e.target.dataset.h) }, true)
+// a favicon that fails to load: the site's remembered logo if there is one, else its letter tile
+document.addEventListener('error', e => {
+  const im = e.target; if (im.tagName !== 'IMG' || im.dataset.h === undefined) return
+  const h = im.dataset.h, letter = () => { if (im.isConnected) im.outerHTML = letterFav(h) }
+  if (im.dataset.lg && im.dataset.lg !== 'none') return letter()   // the logo itself failed
+  im.style.visibility = 'hidden'; im.dataset.lg = 'wait'
+  const known = () => { const x = LOGOS[h]; if (!x) return letter(); im.dataset.lg = ''; im.style.visibility = ''; applyLogo(im, letter) }
+  if (logoAsked.has(h) || !L) return setTimeout(known, 60)
+  logoAsked.add(h); L.invoke('siteIcons', [h]).then(r => { Object.assign(LOGOS, r || {}); known() }, letter)
+}, true)
+// real logos everywhere: every favicon a page draws is upgraded to the sharpest icon Lumen remembers for that site
+// (its touch icon, an SVG or its biggest PNG), loaded off-screen first so it swaps in sharp, never broken
+const LOGOS = {}, logoAsked = new Set(); let logoQ = 0
+function applyLogo(im, fail) {
+  if (im.dataset.lg) return
+  const x = LOGOS[im.dataset.h]; im.dataset.lg = 'none'; if (!x) return typeof fail === 'function' && fail()
+  const pre = new Image()
+  pre.onload = () => { if (pre.naturalWidth < 8 || !im.isConnected) return fail && fail(); im.dataset.lg = x.k; im.classList.add('lgx', x.k === 'touch' ? 'lgx-touch' : 'lgx-icon'); im.src = x.u }
+  pre.onerror = () => fail && fail()
+  pre.src = x.u
+}
+function hydrateLogos() {
+  logoQ = 0
+  const imgs = [...document.querySelectorAll('img.fav[data-h]:not([data-lg])')]; if (!imgs.length) return
+  const need = [...new Set(imgs.map(i => i.dataset.h).filter(h => h && !logoAsked.has(h)))].slice(0, 200)
+  need.forEach(h => logoAsked.add(h))
+  const go = () => imgs.forEach(im => applyLogo(im))
+  if (!need.length || !L) return go()
+  L.invoke('siteIcons', need).then(r => { Object.assign(LOGOS, r || {}); go() }, go)
+}
+new MutationObserver(() => { if (!logoQ) logoQ = setTimeout(hydrateLogos, 40) }).observe(document.documentElement, { childList: true, subtree: true })
+// the add dialogs' live preview: the letter tile at once, then the site's real logo if Lumen has seen the site
+// (looked up after a short pause in typing, so half-typed addresses are never fetched)
+let prevT = 0
+function previewFav(el, h, fallback) {
+  clearTimeout(prevT)
+  const key = (h || '').replace(/^www\./, '')
+  if (!key.includes('.')) { el.innerHTML = fallback; return }
+  if (el.dataset.ph !== key) el.innerHTML = letterFav(key)
+  el.dataset.ph = key
+  prevT = setTimeout(async () => {
+    let x = LOGOS[key]
+    if (!x && L) { try { x = ((await L.invoke('siteIcons', [key])) || {})[key] } catch {} }
+    if (!x || el.dataset.ph !== key) return
+    const im = new Image(); im.className = 'fav lgx ' + (x.k === 'touch' ? 'lgx-touch' : 'lgx-icon'); im.alt = ''
+    im.onload = () => { if (el.dataset.ph === key && im.naturalWidth > 7) el.replaceChildren(im) }
+    im.src = x.u
+  }, 350)
+}
 const $ = s => document.querySelector(s)
 // a small message that springs up at the bottom of an internal page
 function flash(msg) {
@@ -824,7 +872,7 @@ function bookmarkDialog(b, folders, done) {
   document.body.appendChild(d)
   const close = () => d.remove(), sel = d.querySelector('#bm-f')
   sel.onchange = () => { const n = sel.value === '+new'; d.querySelector('#bm-nfw').classList.toggle('hidden', !n); if (n) d.querySelector('#bm-nf').focus() }
-  d.querySelector('#bm-u').oninput = e => { const h = hostOf(/^https?:\/\//i.test(e.target.value) ? e.target.value : 'https://' + e.target.value.trim()); d.querySelector('#bm-prev').innerHTML = h && h.includes('.') ? letterFav(h.replace(/^www\./, '')) : ICONS.star }
+  d.querySelector('#bm-u').oninput = e => { const h = hostOf(/^https?:\/\//i.test(e.target.value) ? e.target.value : 'https://' + e.target.value.trim()); previewFav(d.querySelector('#bm-prev'), h, ICONS.star) }
   d.querySelector('#bm-c').onclick = close
   d.onclick = e => { if (e.target === d) close() }
   d.onkeydown = e => { if (e.key === 'Escape') close() }

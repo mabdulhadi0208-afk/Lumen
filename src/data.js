@@ -34,6 +34,7 @@ const settings = new Store('settings', {
   ntpShortcuts: null,        // null = most visited
   ntpWallpaper: 'theme',      // Match theme: the home background follows the browser theme
   ntpClock: true,
+  ntpBanner: 'modern',
   sync: { enabled: false, folder: '', lastSync: 0 },
   autoUpdate: true,
   askWhereToSave: false,

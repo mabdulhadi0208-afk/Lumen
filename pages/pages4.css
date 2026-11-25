@@ -175,6 +175,27 @@
 .vc-art.mdl i { position: static; width: 12px; border-radius: 4px 4px 2px 2px; background: var(--nova); box-shadow: 0 3px 10px var(--a30); }
 .vc-art.mdl em { position: absolute; left: 12px; top: 10px; font: 800 11px/1 var(--display); font-style: normal; color: var(--accent); letter-spacing: .06em; text-transform: uppercase; }
 
+/* Home banner layout: Modern (words left, clock right) and Classic (clock left, words right), drawn like the banner */
+.vc-art.hb { display: flex; align-items: center; gap: 0; padding: 0 12px; color: #fff;
+  background: radial-gradient(68% 130% at 84% -36%, oklch(from var(--accent) .6 .17 h / .74), transparent 64%), oklch(from var(--accent) .175 .032 h);
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,.08); }
+.vc-art.hb.hb-classic { flex-direction: row-reverse; }
+.vc-art.hb i { position: static; display: block; border-radius: 3px; background: rgba(255,255,255,.3); }
+.hb-w { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; padding-right: 10px; }
+.hb-classic .hb-w { padding: 0 0 0 10px; }
+.hb-w .d { width: 34%; height: 3px; background: rgba(255,255,255,.45); }
+.hb-w .g { width: 82%; height: 9px; border-radius: 4px; background: #fff; }
+.hb-w .s { width: 60%; height: 3px; }
+.hb-ch { display: flex; gap: 3px; margin-top: 3px; }
+.hb-ch i { width: 16px; height: 6px; border-radius: 99px !important; background: rgba(255,255,255,.18) !important; }
+.hb-ch i.p { background: #fff !important; }
+.hb-c { position: relative; flex: none; display: flex; flex-direction: column; gap: 5px; padding-left: 10px; }
+.hb-classic .hb-c { padding: 0 10px 0 0; }
+.hb-c::before { content: ''; position: absolute; left: 0; top: -6px; bottom: -6px; width: 1px; background: rgba(255,255,255,.18); }
+.hb-classic .hb-c::before { left: auto; right: 0; }
+.hb-c b { font: 200 24px/.84 -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif; letter-spacing: -.05em; color: #fff; padding: 0; }
+.hb-c i { height: 1px; background: rgba(255,255,255,.3); }
+
 /* ---------------------------------------------------------------- Appearance: a live picture of your browser */
 .apv-stage { position: relative; margin: 0 0 22px; padding: 26px; border-radius: 30px; overflow: hidden;
   background: radial-gradient(60% 80% at 15% 0%, var(--a30), transparent 70%), radial-gradient(50% 80% at 100% 100%, color-mix(in srgb, var(--accent3) 26%, transparent), transparent 70%), color-mix(in srgb, var(--accent) 5%, var(--glass));

@@ -140,6 +140,8 @@ const ftCard = (h, tiles, before = '') => `<div class="card fcard">${h ? `<h3>${
 const glance = items => `<div class="glance">${items.filter(Boolean).map(([v, l, icon, hue, cls = '', extra = '']) => `<div class="gl ${cls}${String(v).replace(/<[^>]*>|&[a-z]+;/g, 'x').length > 7 ? ' long' : ''}" style="--ic:${tint(hue)}"><span class="gl-ic">${ICONS[icon] || ''}</span><div><b>${v}</b><span>${l}</span>${extra}</div></div>`).join('')}</div>`
 // big picture choices that behave like a segmented control (data-seg)
 const vchoice = (key, opts, val) => `<div class="vch" data-seg="${key}" role="group">${opts.map(([v, l, art, sub, inner]) => `<button class="vc ${String(v) === String(val) ? 'on' : ''}" data-v="${v}" aria-pressed="${String(v) === String(val)}"><span class="vc-art ${art}" aria-hidden="true">${inner || (art.startsWith('tabs') ? '<i></i><i></i><i></i>' : '<i></i>')}</span><b>${l}</b>${sub ? `<small>${sub}</small>` : ''}</button>`).join('')}</div>`
+// a tiny Home banner for the banner layout choice: the words (date, greeting, a line, chips), a hairline and the clock
+const HB_ART = '<span class="hb-w"><i class="d"></i><i class="g"></i><i class="s"></i><span class="hb-ch"><i class="p"></i><i></i><i></i></span></span><span class="hb-c"><b>9:41</b><i></i></span>'
 const vrow = (t, d, body) => `<div class="row stack"><div class="grow"><div class="t">${t}</div>${d ? `<div class="d">${d}</div>` : ''}</div>${body}</div>`
 const chip = (txt, cls = '') => `<span class="fa-chip ${cls}">${txt}</span>`
 const K = (...k) => k.map(x => `<kbd>${x}</kbd>`).join('')
@@ -295,6 +297,7 @@ function appearance(m) {
     <div class="apv-tx"><h3>Your Lumen</h3><p>Tabs, theme, color and motion, all in one look. Change anything on this page and watch it here.</p><div class="apv-facts" id="apvf"></div></div></div>
   <div class="card fcard"><h3>LAYOUT</h3>
     ${vrow('Tabs', 'Down the side in a sidebar, or across the top like Chrome.', vchoice('tabLayout', [['top', 'Top', 'tabs-top', 'Across the top, like Chrome'], ['side', 'Sidebar', 'tabs-side', 'Down the side, room for long titles']], S.tabLayout || 'top'))}
+    ${vrow('Home banner layout', 'Where the clock sits in the banner on your Home page. Only the arrangement changes; the look stays the same.', vchoice('ntpBanner', [['modern', 'Modern', 'hb', 'Words on the left, clock on the right', HB_ART], ['classic', 'Classic', 'hb hb-classic', 'Clock on the left, words on the right', HB_ART]], S.ntpBanner === 'classic' ? 'classic' : 'modern'))}
     <div class="ftiles">
       ${ft('compact', !!S.compact, 'Compact mode', 'Thinner bars and tabs, more room for the page.', 'minus', 40, '<span class="fa-tabs"><i class="on"></i><i></i><i></i></span>')}
       ${ft('bookmarksBar', S.bookmarksBar !== false, 'Bookmarks bar', 'Shows your bookmarks under the address bar when tabs are on top.', 'star', 90, `${chip(ICONS.star + 'Docs')}${chip(ICONS.star + 'Mail')}${chip(ICONS.star + 'News')}`)}

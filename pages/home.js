@@ -93,6 +93,10 @@
   document.addEventListener('error', e => { if (e.target.classList && e.target.classList.contains('hm-fb')) e.target.remove() }, true)
   document.addEventListener('load', e => { if (e.target.classList && e.target.classList.contains('hm-fb') && e.target.naturalWidth > 1) e.target.parentNode.classList.add('has-fb') }, true)
 
+  // the banner layout (setting ntpBanner): Modern (words left, clock right, the default) or Classic (clock left, words
+  // right). Only the arrangement changes; see .hm-hero.classic in home.css.
+  const heroLayout = () => S.ntpBanner === 'classic' ? 'classic' : 'modern'
+
   // ---------------------------------------------------------------- the clock: Glass, Minimal, Analog or Off (setting ntpClock)
   // saved values stay as they were (true or 'glass', 'minimal', 'analog', false or 'off'); the new names map onto them
   const clockStyle = () => { const v = S.ntpClock; return v === false || v === 'off' ? 'off' : v === 'minimal' || v === 'stacked' ? 'minimal' : v === 'analog' || v === 'watch' ? 'analog' : 'glass' }
@@ -806,6 +810,8 @@
     <p class="dsub">Make your home yours. Drag widgets on the page to move them.</p>
     <div class="dl">Clock</div>
     <div class="clkpick" id="clk">${[['glass', 'Display', '<b>9:41</b>'], ['minimal', 'Stacked', '<b>09\n<i>41</i></b>'], ['analog', 'Watch', '<b></b>'], ['off', 'Off', '<b></b>']].map(([v, l, art]) => `<button class="clkb ${style === v ? 'on' : ''}" data-clk="${v}" title="${l} clock"><i class="cp cp-${v}">${art}</i><span>${l}</span></button>`).join('')}</div>
+    <div class="dl">Banner layout</div>
+    <div class="seg" id="hlay"><button data-v="modern" class="${heroLayout() === 'modern' ? 'on' : ''}" title="Words on the left, clock on the right">Modern</button><button data-v="classic" class="${heroLayout() === 'classic' ? 'on' : ''}" title="Clock on the left, words on the right">Classic</button></div>
     <div class="dl">Greeting</div>
     <label class="dfield"><span>Your name, for the greeting</span><input id="hmname" placeholder="Optional" maxlength="40" value="${esc(S.ntpName || '')}" spellcheck="false" autocomplete="off"></label>
     <div class="dl">Theme backgrounds</div>
@@ -882,6 +888,11 @@
       drawer.querySelectorAll('.clkb').forEach(x => x.classList.toggle('on', x === b))
       const slot = qs('#clockslot'); slot.innerHTML = clockMarkup(clockStyle()); qs('#hero').classList.toggle('no-clock', clockStyle() === 'off')
       buildClock(); tickClock()
+    }
+    qs('#hlay').onclick = async e => {
+      const b = e.target.closest('[data-v]'); if (!b) return
+      S.ntpBanner = b.dataset.v; applyHeroLayout()
+      await L.invoke('setSetting', 'ntpBanner', b.dataset.v)
     }
     qs('#wlist').onchange = async e => {
       const s = e.target.closest('[data-wsw]'); if (!s) return
@@ -972,6 +983,30 @@
     })
   }
 
+  // switch the banner layout in place: the clock and the words glide to their new sides on a jelly spring (FLIP on
+  // translate only, cleared once it settles). Looks, colours and every other animation stay exactly as they are.
+  function applyHeroLayout() {
+    const hero = qs('#hero'); if (!hero) return
+    const want = heroLayout()
+    const sw = qs('#hlay'); if (sw) sw.querySelectorAll('button').forEach(x => x.classList.toggle('on', x.dataset.v === want))
+    if (hero.dataset.layout === want) return
+    const parts = [qs('#cktile'), hero.querySelector('.hm-hi')].filter(Boolean)
+    const before = parts.map(el => el.getBoundingClientRect())
+    hero.classList.toggle('classic', want === 'classic'); hero.dataset.layout = want
+    if (still() || !window.Jelly) return
+    parts.forEach((el, i) => {
+      el.style.removeProperty('translate')
+      const a = el.getBoundingClientRect(), d = { x: before[i].left - a.left, y: before[i].top - a.top }
+      if (Math.abs(d.x) < 1 && Math.abs(d.y) < 1) return
+      if (!el._hl) el._hl = { d, sp: new Jelly.Spring(0, 'jelly', p => {
+        const o = el._hl.d
+        if (p === 0 && !el._hl.sp.vel) { el.style.removeProperty('translate'); return }
+        el.style.translate = `${(o.x * p).toFixed(2)}px ${(o.y * p).toFixed(2)}px`
+      }) }
+      el._hl.d = d; el._hl.sp.set(1); el._hl.sp.to(0)
+    })
+  }
+
   async function newTab() {
     document.title = 'New Tab'
     document.body.classList.add('home-page')
@@ -985,7 +1020,7 @@
     root.innerHTML = `<div class="ntp home${p ? ' private' : ''}" id="ntp" data-nolens>
     <div class="ntp-bg"></div>
     <div class="hm-wrap">
-      <header class="hm-hero enter ${style === 'off' ? 'no-clock' : ''}" id="hero">
+      <header class="hm-hero enter ${style === 'off' ? 'no-clock' : ''}${heroLayout() === 'classic' ? ' classic' : ''}" id="hero" data-layout="${heroLayout()}">
         <span class="hm-amb" aria-hidden="true"><i class="amb-dots"></i><i class="amb-fine"></i><i class="amb-spark"></i></span><i class="hm-mesh" aria-hidden="true"></i>
         <div class="hm-tile" id="cktile">
           <div id="clockslot">${clockMarkup(style)}</div>
@@ -1072,7 +1107,7 @@
     setTimeout(() => { const h = qs('#hero'); if (h) h.classList.remove('enter'); if (g) g.classList.remove('enter') }, 2600)
     if (!newTab.rs) { newTab.rs = true; let t; addEventListener('resize', () => { clearTimeout(t); t = setTimeout(() => { if (qs('#clock')) buildClock() }, 200) }) }
     matchMedia('(prefers-color-scheme: dark)').onchange = () => { if (qs('#ntp')) paintWallpaper(false) }
-    if (!newTab.th && L.onSettings) { newTab.th = true; L.onSettings(() => { if (qs('#ntp') && isThemeKey(H.wp) && themeSig() !== H.themeSeen) paintWallpaper(true) }) }
+    if (!newTab.th && L.onSettings) { newTab.th = true; L.onSettings(s => { if (qs('#ntp') && isThemeKey(H.wp) && themeSig() !== H.themeSeen) paintWallpaper(true); if (s && qs('#ntp')) { S.ntpBanner = s.ntpBanner; applyHeroLayout() } }) }
   }
 
   // ---------------------------------------------------------------- add a shortcut

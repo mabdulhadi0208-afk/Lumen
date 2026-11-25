@@ -102,11 +102,53 @@ jobs:
             # (with a Developer ID the DMG carries the same notarized app, no re-signing)
             if [ "$SIGN_MODE" != "devid" ]; then codesign --force --deep --sign - "$STAGE/Lumen.app"; fi
             ln -s /Applications "$STAGE/Applications"
+            # the install window: Lumen's background art (Retina-ready), big icons, Lumen on the left and Applications on the right.
+            # Styling is best effort: if anything in it fails, the plain DMG below is built exactly as before.
+            styled_dmg() {
+              local VOL="Lumen $ARCH" RW="dist/rw-$ARCH.dmg" DEV MNTP
+              mkdir -p "$STAGE/.background"
+              tiffutil -cathidpicheck build/dmg/background.png build/dmg/background@2x.png -out "$STAGE/.background/background.tiff" || return 1
+              rm -f "$RW"; hdiutil create -volname "$VOL" -srcfolder "$STAGE" -ov -format UDRW -fs HFS+ "$RW" || return 1
+              DEV=$(hdiutil attach -readwrite -noverify -noautoopen "$RW" | grep -E '^/dev/' | head -1 | awk '{print $1}') || return 1
+              MNTP="/Volumes/$VOL"; [ -d "$MNTP" ] || { hdiutil detach -force "$DEV" 2>/dev/null; return 1; }
+              # Finder writes the layout into the DMG's .DS_Store; give it 60 s at most
+              osascript -e "with timeout of 60 seconds
+                tell application \"Finder\"
+                  tell disk \"$VOL\"
+                    open
+                    set current view of container window to icon view
+                    set toolbar visible of container window to false
+                    set statusbar visible of container window to false
+                    set the bounds of container window to {200, 120, 860, 540}
+                    set vo to the icon view options of container window
+                    set arrangement of vo to not arranged
+                    set icon size of vo to 128
+                    set text size of vo to 13
+                    set background picture of vo to file \".background:background.tiff\"
+                    set position of item \"Lumen.app\" of container window to {180, 190}
+                    set position of item \"Applications\" of container window to {480, 190}
+                    update without registering applications
+                    delay 2
+                    close
+                  end tell
+                end tell
+              end timeout" &
+              local OSA=$!; ( sleep 75; kill $OSA 2>/dev/null ) & local GUARD=$!
+              wait $OSA; local RC=$?; kill $GUARD 2>/dev/null || true
+              [ -f "$MNTP/.DS_Store" ] || RC=1
+              sync; sleep 2
+              hdiutil detach "$DEV" || hdiutil detach -force "$DEV" || true
+              [ "$RC" = 0 ] || { rm -f "$RW"; return 1; }
+              hdiutil convert "$RW" -format UDZO -imagekey zlib-level=6 -ov -o "dist/Lumen-mac-$ARCH.dmg" || { rm -f "$RW"; return 1; }
+              rm -f "$RW"
+            }
+            ok=0
+            if styled_dmg; then ok=1; echo "styled $ARCH DMG"; else echo "styling the $ARCH DMG failed: building the plain one"; rm -rf "$STAGE/.background"; fi
             # hdiutil sometimes fails with "Resource busy" on GitHub's Macs: retry
-            ok=0; for t in 1 2 3 4 5; do
+            if [ "$ok" != 1 ]; then for t in 1 2 3 4 5; do
               if hdiutil create -volname "Lumen $ARCH" -srcfolder "$STAGE" -ov -format UDZO -imagekey zlib-level=6 "dist/Lumen-mac-$ARCH.dmg"; then ok=1; break; fi
               echo "hdiutil attempt $t failed, retrying"; sleep $((t * 5)); hdiutil info | grep -i "/dev/disk" | awk '{print $1}' | xargs -I{} hdiutil detach -force {} 2>/dev/null || true
-            done
+            done; fi
             [ "$ok" = 1 ] || { echo "could not create the $ARCH DMG"; exit 1; }
             if [ "$SIGN_MODE" = "devid" ]; then
               codesign --force --timestamp --sign "$SIGN_ID" "dist/Lumen-mac-$ARCH.dmg"

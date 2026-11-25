@@ -10,7 +10,6 @@ const Sync = require('./sync')
 const Importer = require('./importer')
 const Updater = require('./updater')
 const Passkeys = require('./passkeys')
-const AXGuard = require('./axguard')
 const Translate = require('./translate')
 const Groups = require('./groups')
 const Nova = require('./nova')
@@ -990,7 +989,6 @@ let saveTimer
 function saveSession() { clearTimeout(saveTimer); saveTimer = setTimeout(saveSessionNow, 1000) }
 function saveSessionNow() {
   clearTimeout(saveTimer)
-  if (inBackground) return  // the tabs were saved when Lumen went to the background; closing its windows must not shrink that
   const data = {
     windows: windows.filter(w => !w.incognito && !w.win.isDestroyed()).map(w => ({
       bounds: w.win.getBounds(),
@@ -1017,7 +1015,6 @@ async function autoGroupWindow(w) {
 const AI = require('./ai')
 const HL = require('./highlights')
 const Parcels = require('./parcels')
-const Apps = require('./apps')
 
 // ---------------------------------------------------------------- translator
 async function translateTab(w, t, toLang) {
@@ -1072,49 +1069,48 @@ async function offerTranslate(w, t) {
   w.send('trask', { id, tabId: t.id, host: new URL(wc.getURL()).host, from: lang, fromName: Translate.langName(lang), to, toName: Translate.langName(to), rtl: Translate.dirOf(lang) === 'rtl' })
 }
 
-// ---------------------------------------------------------------- Surge and Koi
-function startApps() {
-  // updates used to leave the Accessibility switch stale (on, but ignored): repair it before Surge and Koi start
-  try {
-    AXGuard.check({ settings: D.settings, log, notify: () => setTimeout(() => {
-      for (const w of windows) w.send('toast', 'Lumen updated. Turn Lumen back on in the Accessibility list so Surge and Koi keep working')
-      try { new (require('electron').Notification)({ title: 'Turn Lumen back on for Surge and Koi', body: 'Lumen was updated. Switch Lumen on in Privacy and Security, Accessibility. No need to remove it first.' }).show() } catch {}
-    }, 2500) })
-  } catch (e) { log('accessibility check failed', e.message) }
-  try {
-    const started = Apps.start({
-      D, Updater, log,
-      // "Quit" in a tool's own menu turns just that tool off; on Windows, Lumen leaves when nothing is left open
-      onStopped: () => { setTimeout(() => broadcast('settings', publicSettings()), 60); if (!windows.length && !appsRunning() && (!isMac || inBackground)) quitEverything() },
-      onSeparate: async ids => {
-        const names = ids.map(i => Apps.APPS[i].name), both = names.length > 1, n = names.join(' and ')
-        const r = await novaDialog(lastFocused(), { type: 'info', buttons: [both ? 'Quit them' : 'Quit it', 'Keep running'], defaultId: 0, cancelId: 1, kind: 'apps', icon: 'apps',
-          message: `${n} ${both ? 'are' : 'is'} part of Lumen now`,
-          detail: `The separate ${n} ${both ? 'apps are' : 'app is'} still running, so you would hear and see everything twice. Lumen can quit ${both ? 'them' : 'it'} and stop ${both ? 'them' : 'it'} opening at login. You can then delete the old ${both ? 'apps' : 'app'} from Applications.` })
-        if (r.response === 0) Apps.quitSeparate(ids)
-      },
-    })
-    // people who used Surge or Koi had them start at login; keep that, with Lumen opening quietly in the background
-    if (started.length && D.settings.get('openAtLogin') == null && Apps.importedAny) setSetting('openAtLogin', true)
-    syncLoginItem()
-  } catch (e) { log('apps failed', e && e.stack || e) }
+// ---------------------------------------------------------------- Surge and Koi, their own apps again (4.0)
+// Lumen 4.0 is just the browser: Surge and Koi no longer run inside it. People who had them get one card, once, with
+// the links to the standalone apps; Settings keeps a "Get Surge and Koi" card for later. Nothing is downloaded or
+// written anywhere for them: the links open on GitHub and the person installs the apps as usual.
+const SEPARATE_APPS = {
+  surge: { name: 'Surge', url: 'https://github.com/mabdulhadi0208-afk/surge/releases/latest' },
+  koi: { name: 'Koi', url: 'https://github.com/mabdulhadi0208-afk/mabdulhadi0208-afk-koi/releases/latest' },
 }
-// open a part of Surge or Koi, the same way their own menus do
-function appOpen(id, what, rect) {
-  if (!Apps.isRunning(id)) return false
-  if (id === 'surge') { if (what === 'notes') Apps.poke('notes:toggle'); else if (what === 'menu' && rect) Apps.poke('lumen:popover', rect); else Apps.poke('open:settings') }
-  if (id === 'koi') Apps.poke('pop:action', what === 'hotkeys' ? 'hotkeys' : what === 'tour' ? 'tour' : 'open')
-  return true
+function getSeparateApp(id) { const a = SEPARATE_APPS[id]; if (!a) return false; shell.openExternal(a.url).catch(e => log('open ' + id + ' failed', e.message)); return true }
+// had Surge or Koi inside Lumen (3.x): their data folders, or settings only they ever wrote
+function hadBuiltInApps() {
+  try { if (['surge', 'koi'].some(id => fs.existsSync(path.join(app.getPath('userData'), 'apps', id)))) return true } catch {}
+  const s = D.settings.get()
+  return !!(s.apps && typeof s.apps === 'object') || s.backgroundToldOnce != null || s.axVersion != null || s.axGranted != null || s.openAtLogin === true
 }
-function syncLoginItem() {
-  if (!app.isPackaged || (!isMac && process.platform !== 'win32')) return
-  try { app.setLoginItemSettings({ openAtLogin: !!D.settings.get('openAtLogin'), openAsHidden: true, args: ['--hidden'] }) } catch (e) { log('login item failed', e.message) }
+// The login item only ever existed so Surge and Koi were ready at login (Lumen opened hidden, without a window).
+// With them gone it would just start an invisible browser, so it is switched off once, here.
+function retireLoginItem() {
+  if (D.settings.get('openAtLogin') === undefined) return
+  const was = D.settings.get('openAtLogin'); D.settings.set({ openAtLogin: undefined })
+  if (!was || !app.isPackaged || (!isMac && process.platform !== 'win32')) return
+  try { app.setLoginItemSettings({ openAtLogin: false, args: ['--hidden'] }); log('login item removed (it was only for Surge and Koi)') } catch (e) { log('login item removal failed', e.message) }
 }
-// started by the system at login: run the tools, open no window (clicking Lumen in the Dock opens one)
-function openedHidden() {
-  if (!D.settings.get('openAtLogin')) return false
-  try { if (isMac) { const s = app.getLoginItemSettings(); return !!(s.wasOpenedAtLogin || s.wasOpenedAsHidden) } } catch {}
-  return process.argv.includes('--hidden')
+// decided once per install: a fresh user never sees the card, someone with old Surge or Koi data sees it once
+function separateAppsCheck() {
+  if (D.settings.get('separateAppsShown') != null) return
+  const had = hadBuiltInApps()
+  retireLoginItem()
+  if (!had) { D.settings.set({ separateAppsShown: false }); return }
+  let tries = 0
+  const wait = () => {
+    const w = windows.find(x => !x.incognito && !x.win.isDestroyed())
+    // never over the intro or the restart arrival, and only once a window is up; give up quietly after a few minutes
+    if (!w || w.introOn || w.overlay || !w.win.isVisible()) { if (++tries < 120) setTimeout(wait, 1500); return }
+    D.settings.set({ separateAppsShown: true }); D.settings.flush()   // stored first: a crash here never brings it back
+    novaDialog(w, { type: 'info', kind: 'apps', icon: 'apps', title: 'Lumen 4.0',
+      buttons: ['Get Surge and Koi', 'Not now'], defaultId: 0, cancelId: 1,
+      message: 'Surge and Koi are now their own apps',
+      detail: 'Lumen is just the browser now, so it is lighter and faster, and your Mac runs smoother when it is closed. Download them as separate apps to keep using them. You can also get them one at a time in Settings.' })
+      .then(r => { if (r.response === 0) { getSeparateApp('surge'); getSeparateApp('koi') } }, () => {})
+  }
+  setTimeout(wait, 3500)
 }
 
 // ---------------------------------------------------------------- Google sign-in
@@ -1581,19 +1577,12 @@ ipcMain.handle('ui', async (e, action, ...a) => {
       case 'readLater': return toggleReadLater(w, t)
       case 'parcelsAuto': setSetting('parcelsAuto', !!a[0]); return true
       case 'parcelsCount': return Parcels.active().length
-      case 'appOpen': {
-        // from Lumen's toolbar: the button's place on screen, so Surge's menu opens right under it
-        let rect = null; const r = a[2]
-        if (r && [r.x, r.y, r.width, r.height].every(Number.isFinite)) { const cb = w.win.getContentBounds(); rect = { x: Math.round(cb.x + r.x), y: Math.round(cb.y + r.y), width: Math.round(r.width), height: Math.round(r.height) } }
-        return appOpen(String(a[0]), String(a[1] || ''), rect)
-      }
-      case 'appsRunning': return Apps.list().filter(x => x.running).map(x => x.id)
       case 'trackNumber': return trackNumber(w, a[0])
       case 'focusMode': return setFocusMode(w, a[0] === undefined ? !w.focusMode : a[0])
       case 'archiveNow': return archiveIdleTabs()
       case 'readLaterOpen': { const url = String(a[0] || ''); if (!D.isReadLater(url)) return; D.removeReadLater(url); w.createTab(url, { active: true }); return }
       case 'readLaterRemove': return D.removeReadLater(String(a[0] || ''))
-      case 'menuInfo': return { apps: Apps.list().filter(x => x.running).map(x => x.id), parcels: Parcels.active().length, readLater: readLaterList(6), readLaterCount: D.readLater.get().length, saved: !!t && D.isReadLater(t.view ? t.view.webContents.getURL() : t.url), sessions: (D.settings.get('savedSessions') || []).map(s => ({ id: s.id, name: s.name, count: s.tabs.length })), closed: closedTabs.slice(-5).reverse().map(c => ({ title: c.title || c.url, url: c.url })), version: app.getVersion(), update: Updater.getState(), zoom: t ? Math.round(Math.pow(1.2, t.zoom || 0) * 100) : 100, incognito: w.incognito, tabLayout: D.settings.get('tabLayout'), fullscreen: w.win.isFullScreen(), passkeys: Passkeys.list().length, passwords: D.listPasswords().length }
+      case 'menuInfo': return { parcels: Parcels.active().length, readLater: readLaterList(6), readLaterCount: D.readLater.get().length, saved: !!t && D.isReadLater(t.view ? t.view.webContents.getURL() : t.url), sessions: (D.settings.get('savedSessions') || []).map(s => ({ id: s.id, name: s.name, count: s.tabs.length })), closed: closedTabs.slice(-5).reverse().map(c => ({ title: c.title || c.url, url: c.url })), version: app.getVersion(), update: Updater.getState(), zoom: t ? Math.round(Math.pow(1.2, t.zoom || 0) * 100) : 100, incognito: w.incognito, tabLayout: D.settings.get('tabLayout'), fullscreen: w.win.isFullScreen(), passkeys: Passkeys.list().length, passwords: D.listPasswords().length }
       case 'zoom': return t && w.zoom(t.id, a[0])
       case 'openPage': return w.createTab('lumen://' + a[0])
       case 'reader': return wc && readerMode(wc)
@@ -1721,7 +1710,7 @@ function downloadAction(id, what) {
   broadcast('downloads', listDownloads())
 }
 
-const PUBLIC_SETTINGS = ['backgroundApps', 'openAtLogin', 'toolbarApps', 'googleSignInMode', 'ntpParcels', 'parcelsAuto', 'whatsNewSeen', 'archiveTabsAfterH', 'bookmarksBar', 'ntpStats', 'ntpRecent', 'ntpReadLater', 'darkStyle', 'uiSounds', 'darkOffSites', 'translateFlipDir', 'searchShortcuts', 'rememberZoom', 'soundActiveOnly', 'linksBackground', 'confirmQuit', 'wheelTabs', 'adblockAllow', 'aiModel', 'aiTabGroups', 'browserTheme', 'themeCustom', 'compact', 'appIcon', 'cleanLinks', 'swipeNav', 'videoSpeedKeys', 'hideCookieBanners', 'blockNotifications', 'forceDark', 'translateTo', 'offerTranslate', 'autoPip', 'ntpShortcuts', 'ntpWallpaper', 'ntpClock', 'searchEngine', 'motion', 'theme', 'accent', 'adblock', 'blockTrackers', 'httpsOnly', 'sleepTabsAfterMin', 'restoreSession', 'sidebarCollapsed', 'sidebarWidth', 'tabLayout', 'introSeen', 'autoUpdate', 'askWhereToSave', 'doNotTrack', 'showSuggestions', 'homeTiles', 'ntpOrder', 'ntpHide', 'ntpWeather', 'ntpName', 'ntpNote', 'ntpFocus', 'ntpSizes', 'ntpZones']
+const PUBLIC_SETTINGS = ['googleSignInMode', 'ntpParcels', 'parcelsAuto', 'whatsNewSeen', 'archiveTabsAfterH', 'bookmarksBar', 'ntpStats', 'ntpRecent', 'ntpReadLater', 'darkStyle', 'uiSounds', 'darkOffSites', 'translateFlipDir', 'searchShortcuts', 'rememberZoom', 'soundActiveOnly', 'linksBackground', 'confirmQuit', 'wheelTabs', 'adblockAllow', 'aiModel', 'aiTabGroups', 'browserTheme', 'themeCustom', 'compact', 'appIcon', 'cleanLinks', 'swipeNav', 'videoSpeedKeys', 'hideCookieBanners', 'blockNotifications', 'forceDark', 'translateTo', 'offerTranslate', 'autoPip', 'ntpShortcuts', 'ntpWallpaper', 'ntpClock', 'searchEngine', 'motion', 'theme', 'accent', 'adblock', 'blockTrackers', 'httpsOnly', 'sleepTabsAfterMin', 'restoreSession', 'sidebarCollapsed', 'sidebarWidth', 'tabLayout', 'introSeen', 'autoUpdate', 'askWhereToSave', 'doNotTrack', 'showSuggestions', 'homeTiles', 'ntpOrder', 'ntpHide', 'ntpWeather', 'ntpName', 'ntpNote', 'ntpFocus', 'ntpSizes', 'ntpZones']
 function publicSettings() { const s = D.settings.get(); return Object.fromEntries(PUBLIC_SETTINGS.map(k => [k, s[k]])) }
 function setSetting(k, v) {
   if (!PUBLIC_SETTINGS.includes(k)) return
@@ -1735,7 +1724,6 @@ function setSetting(k, v) {
   if (k === 'ntpWeather' || k === 'ntpName') v = String(v || '').replace(/[\u0000-\u001f]/g, '').trim().slice(0, k === 'ntpName' ? 40 : 80)
   D.settings.set({ [k]: v, ...(!['sidebarCollapsed', 'sidebarWidth', 'introSeen'].includes(k) ? { settingsAt: Date.now() } : {}) })
   if (k === 'adblock') setAdblock(!!v)
-  if (k === 'openAtLogin') syncLoginItem()
   if (k === 'darkStyle' && !DARK_STYLES[v]) return
   if (k === 'forceDark' || k === 'darkOffSites' || k === 'darkStyle') setTimeout(darkAll, 0)
   if (k === 'soundActiveOnly' && !v) for (const w of windows) for (const t of w.tabs.values()) if (t.autoMuted && t.view) { t.view.webContents.setAudioMuted(!!t.muted); t.autoMuted = false }
@@ -1744,7 +1732,6 @@ function setSetting(k, v) {
   if (k === 'autoUpdate') Updater.setEnabled(!!v)
   if (k === 'tabLayout') buildMenu()
   if (k === 'appIcon') applyAppIcon()
-  if (k === 'accent') Apps.setAccent()
   broadcast('settings', publicSettings())
   for (const w of windows) for (const t of w.tabs.values()) if (t.view && (t.url || '').startsWith('lumen://')) t.view.webContents.send('lumen:settings', publicSettings())
 }
@@ -1892,7 +1879,7 @@ ipcMain.handle('lumen', async (e, action, ...a) => {
       case 'setSetting': return setSetting(a[0], a[1])
       case 'topSites': return D.topSites(8)
       case 'stats': return { blocked: blockedTotal, since: D.settings.get('statsSince') || 0 }
-      case 'home': { const week = blockedWeek(); return { private: !!(w && w.incognito), today: week[6].n, week, total: blockedTotal, adblock: !!D.settings.get('adblock'), apps: Apps.list().filter(x => x.supported), closed: w && w.incognito ? [] : closedTabs.slice(-6).reverse().map(c => ({ url: c.url, title: c.title || '' })) } }
+      case 'home': { const week = blockedWeek(); return { private: !!(w && w.incognito), today: week[6].n, week, total: blockedTotal, adblock: !!D.settings.get('adblock'), closed: w && w.incognito ? [] : closedTabs.slice(-6).reverse().map(c => ({ url: c.url, title: c.title || '' })) } }
       case 'suggest': return suggest(w || { incognito: false }, String(a[0] || '').slice(0, 300))
       case 'weather': return weatherFor(a[0])
       case 'homeCmd': { if (!w) return; const c = a[0]; if (c === 'palette' || c === 'ai') w.send('command', c); else if (c && typeof c === 'object' && typeof c.ask === 'string' && c.ask.trim()) w.send('command', { ai: 'chat', text: c.ask.trim().slice(0, 4000) }); return }
@@ -1910,16 +1897,7 @@ ipcMain.handle('lumen', async (e, action, ...a) => {
       case 'history': return D.listHistory(a[0] || '', 500)
       case 'readLater': return readLaterList(a[0] || 300)
       case 'archive': return D.archive.get().slice(0, 500)
-      case 'apps': return { list: Apps.list(), openAtLogin: !!D.settings.get('openAtLogin'), backgroundApps: D.settings.get('backgroundApps') !== false, toolbarApps: D.settings.get('toolbarApps') !== false, platform: process.platform }
-      case 'appSet': {
-        const id = String(a[0]), on = !!a[1]; if (!Apps.APPS[id]) return null
-        D.settings.set({ apps: { ...(D.settings.get('apps') || {}), [id]: on } })
-        setTimeout(() => broadcast('settings', publicSettings()), 60)   // the toolbar buttons follow
-        if (!on) { Apps.stop(id, 'off'); return { ok: true } }
-        if (Apps.isRunning(id)) return { ok: true }
-        return Apps.startApp(id) ? { ok: true } : { restart: true }   // a tool switched off earlier in this session comes back after a restart
-      }
-      case 'appOpen': return appOpen(String(a[0]), String(a[1] || ''))
+      case 'getApp': return getSeparateApp(String(a[0] || ''))   // the Get Surge and Koi card in Settings
       case 'parcels': Parcels.prune(); return Parcels.list().map(parcelView)
       case 'parcelCarriers': return Object.entries(Parcels.CARRIERS).map(([k, c]) => ({ id: k, name: c.name, region: c.region }))
       case 'parcelDetect': return Parcels.detect(a[0])
@@ -2050,7 +2028,7 @@ function buildMenu() {
       { label: 'Settings...', accelerator: 'Cmd+,', click: focused(w => openSettings(w)) },
       { label: 'Set as Default Browser', click: () => { app.setAsDefaultProtocolClient('http'); app.setAsDefaultProtocolClient('https') } },
       { type: 'separator' }, { role: 'services' }, { type: 'separator' },
-      { role: 'hide' }, { role: 'hideOthers' }, { role: 'unhide' }, { type: 'separator' }, { label: 'Quit Lumen', accelerator: 'Cmd+Q', click: () => quitLumen() }, { label: 'Quit Lumen, Surge and Koi', accelerator: 'Cmd+Alt+Q', click: () => quitEverything() },
+      { role: 'hide' }, { role: 'hideOthers' }, { role: 'unhide' }, { type: 'separator' }, { label: 'Quit Lumen', accelerator: 'Cmd+Q', click: () => quitLumen() },
     ] }] : []),
     { label: 'File', submenu: [
       { label: 'New Tab', accelerator: 'CmdOrCtrl+T', click: focused(w => w.send('command', 'newtab')) },
@@ -2064,7 +2042,7 @@ function buildMenu() {
       { type: 'separator' },
       { label: 'Save Page As...', accelerator: 'CmdOrCtrl+S', click: focused((w, t) => activeWc(w, t) && savePage(activeWc(w, t))) },
       { label: 'Print...', accelerator: 'CmdOrCtrl+P', click: focused((w, t) => activeWc(w, t) && printPage(w, activeWc(w, t))) },
-      ...(isMac ? [] : [{ type: 'separator' }, { label: 'Settings', accelerator: 'Ctrl+,', click: focused(w => openSettings(w)) }, { label: 'Exit', accelerator: 'Ctrl+Q', click: () => quitLumen() }, { label: 'Exit Lumen, Surge and Koi', click: () => quitEverything() }]),
+      ...(isMac ? [] : [{ type: 'separator' }, { label: 'Settings', accelerator: 'Ctrl+,', click: focused(w => openSettings(w)) }, { label: 'Exit', accelerator: 'Ctrl+Q', click: () => quitLumen() }]),
     ] },
     { label: 'Edit', submenu: [
       { role: 'undo' }, { role: 'redo' }, { type: 'separator' }, { role: 'cut' }, { role: 'copy' }, { role: 'paste' }, { role: 'pasteAndMatchStyle' }, { role: 'selectAll' },
@@ -2274,30 +2252,10 @@ app.on('login', (event, wc, details, authInfo, callback) => {
 })
 
 // ---------------------------------------------------------------- quit guard (only for Cmd+Q, never for updates or shutdown)
-// with Surge or Koi on, Cmd+Q puts Lumen in the background: the windows close (tabs saved), the Dock icon goes,
-// and Surge and Koi keep working from the menu bar. Opening Lumen again brings the tabs back.
-let inBackground = false
-function appsRunning() { try { return Apps.list().some(a => a.running) } catch { return false } }
-function goBackground() {
-  if (!appsRunning() || D.settings.get('backgroundApps') === false) return false
-  saveSessionNow()
-  inBackground = true
-  for (const w of [...windows]) { try { w.win.close() } catch {} }
-  if (isMac && app.dock) app.dock.hide()
-  if (!D.settings.get('backgroundToldOnce')) {
-    D.settings.set({ backgroundToldOnce: true })
-    const names = Apps.list().filter(a => a.running).map(a => a.name).join(' and ')
-    try { const { Notification } = require('electron'); if (Notification.isSupported()) new Notification({ title: 'Lumen is still running', body: `${names} keep working in the background. Open Lumen to get your tabs back.`, silent: true }).show() } catch {}
-  }
-  log('background: windows closed, tools running')
-  return true
-}
-// back from the background (or from opening at login): show the Dock icon and the saved tabs
+// reopening Lumen with no window (Dock click, second launch): a fresh window
 function comeBack() {
-  if (isMac && app.dock) app.dock.show()
-  const was = inBackground; inBackground = false
   if (windows.length) return lastFocused() || windows[0]
-  return was ? restoreWindows(true) : createWindow({})
+  return createWindow({})
 }
 function restoreWindows(all) {
   const saved = D.session.get().windows || [], restore = all || D.settings.get('restoreSession')
@@ -2309,8 +2267,7 @@ function restoreWindows(all) {
   })
   return first || createWindow({})
 }
-function quitEverything() { inBackground = false; app.quit() }
-function quitLumen() { if (!goBackground()) confirmQuit() }
+function quitLumen() { confirmQuit() }
 function confirmQuit() {
   const n = windows.reduce((a, w) => a + w.tabs.size, 0)
   if (!D.settings.get('confirmQuit') || n < 2) return app.quit()
@@ -2383,7 +2340,6 @@ function setFocusMode(w, on) {
 const pendingOpen = []
 function openExternalURL(url) {
   if (!app.isReady() || !mainSession) { pendingOpen.push(url); return }
-  if (inBackground && isMac && app.dock) { app.dock.show(); inBackground = false }
   const w = windows.find(x => !x.incognito) || createWindow({ urls: [] })
   w.createTab(url); w.win.show(); w.win.focus()
 }
@@ -2420,8 +2376,8 @@ function recentSites(n = 5) {
 }
 function dockTemplate(recent = []) {
   const tpl = [
-    { label: 'New Window', click: () => { if (isMac && app.dock) app.dock.show(); inBackground = false; const w = createWindow({}); w.win.show() } },
-    { label: 'New Private Window', click: () => { if (isMac && app.dock) app.dock.show(); inBackground = false; const w = createWindow({ incognito: true }); w.win.show() } },
+    { label: 'New Window', click: () => { if (isMac && app.dock) app.dock.show(); const w = createWindow({}); w.win.show() } },
+    { label: 'New Private Window', click: () => { if (isMac && app.dock) app.dock.show(); const w = createWindow({ incognito: true }); w.win.show() } },
     { label: 'New Tab', click: () => dockOpen('lumen://newtab') },
     { type: 'separator' },
     { label: 'Read Later', click: () => dockOpen('lumen://readlater') },
@@ -2476,8 +2432,7 @@ ipcMain.handle('update:action', (e, name) => {
     case 'cancel': return Updater.cancel()
   }
 })
-// with Surge running, Lumen stays in the tray when its last window closes, like Surge did on its own
-app.on('window-all-closed', () => { if (isMac || quitting) return; if (appsRunning() && D.settings.get('backgroundApps') !== false) inBackground = true; else app.quit() })
+app.on('window-all-closed', () => { if (isMac || quitting) return; app.quit() })
 app.on('activate', () => { if (!windows.length && app.isReady() && mainSession) comeBack() })
 process.on('uncaughtException', err => { console.error('uncaught', err); log('UNCAUGHT', err && err.stack || err) })
 process.on('unhandledRejection', err => { console.error('unhandled', err); log('UNHANDLED', err && err.stack || err) })
@@ -2498,8 +2453,7 @@ app.whenReady().then(async () => {
   powerMonitor.on('resume', () => setTimeout(() => refreshAdblock().catch(() => {}), 15000))
   const saved = D.session.get().windows || []
   const argUrls = process.argv.slice(1).filter(a => /^(https?|file):/.test(a))
-  if (openedHidden() && !argUrls.length) { inBackground = true; if (isMac && app.dock) app.dock.hide(); log('opened at login: in the background, tools only') }
-  else if (saved.length) restoreWindows(false)
+  if (saved.length) restoreWindows(false)
   else createWindow({})
   for (const u of [...argUrls, ...pendingOpen.splice(0)]) openExternalURL(u)
   if (!openedHidden()) handleArgs(process.argv)
@@ -2521,10 +2475,10 @@ app.whenReady().then(async () => {
   // the windows opened in the restart screen's ink: back to the normal background once the arrival has played
   if (windows.some(w => w.arrived)) setTimeout(() => { for (const w of windows) { try { w.win.setBackgroundColor(winBg(w.incognito)) } catch {} } }, 6000)
   log('boot ' + app.getVersion())
-  startApps()
+  separateAppsCheck()
   Sync.start()
   nativeTheme.on('updated', () => { broadcast('theme', nativeTheme.shouldUseDarkColors); for (const w of windows) { try { w.win.setBackgroundColor(winBg(w.incognito)); for (const t of w.tabs.values()) if (t.view && !t.view.webContents.isDestroyed()) t.view.setBackgroundColor(tabBg(t.view.webContents.getURL() || t.url, w.incognito)) } catch {} } })
   powerMonitor.on('resume', () => Sync.syncNow().catch(() => {}))
 })
 
-module.exports = { windows, createWindow, D, allowSites, toggleSiteAdblock, __refreshAdblock: refreshAdblock, __adblockAge: adblockAge, __hl_add: addHighlight, __hl_recolor: recolorHighlight, __addToNTP: addToNTP, __checkParcels: checkParcels, __appOpen: appOpen, __goBackground: goBackground, __comeBack: comeBack, __isBackground: () => inBackground, __quitLumen: quitLumen, __nova: Nova, __novaDialog: novaDialog, __tabMenu: tabMenu, __readerMode: readerMode, __appMenu: appMenuPopup, __confirmQuit: confirmQuit, __printFailed: printFailed, __dockTemplate: dockTemplate, __jumpTasks: jumpTasks, __handleArgs: handleArgs, __recentSites: recentSites }
+module.exports = { windows, createWindow, D, allowSites, toggleSiteAdblock, __refreshAdblock: refreshAdblock, __adblockAge: adblockAge, __hl_add: addHighlight, __hl_recolor: recolorHighlight, __addToNTP: addToNTP, __checkParcels: checkParcels, __separateApps: { check: separateAppsCheck, had: hadBuiltInApps, LINKS: SEPARATE_APPS }, __nova: Nova, __novaDialog: novaDialog, __tabMenu: tabMenu, __readerMode: readerMode, __appMenu: appMenuPopup, __confirmQuit: confirmQuit, __printFailed: printFailed, __dockTemplate: dockTemplate, __jumpTasks: jumpTasks, __handleArgs: handleArgs, __recentSites: recentSites }

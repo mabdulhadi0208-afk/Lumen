@@ -19,8 +19,7 @@
     "darkreader": "^4.9.135",
     "electron-chrome-extensions": "^4.10.0",
     "electron-chrome-web-store": "^0.13.0",
-    "qrcode": "^1.5.4",
-    "uiohook-napi": "^1.5.5"
+    "qrcode": "^1.5.4"
   },
   "devDependencies": {
     "electron": "^45.4.1",
@@ -38,7 +37,6 @@
       "src/**/*",
       "ui/**/*",
       "pages/**/*",
-      "apps/**/*",
       "build/icon.png",
       "build/icons/*.png",
       "package.json"
@@ -103,8 +101,7 @@
         "NSAppTransportSecurity": {
           "NSAllowsArbitraryLoads": true
         },
-        "LSApplicationCategoryType": "public.app-category.productivity",
-        "NSAppleEventsUsageDescription": "Lumen uses this for Surge (auto dark mode) and Koi (hide or quit an app from the fan)."
+        "LSApplicationCategoryType": "public.app-category.productivity"
       }
     },
     "dmg": {

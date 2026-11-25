@@ -390,3 +390,19 @@ body[data-motion="off"] .tries span, body[data-motion="off"] .hero-art, body[dat
 body[data-motion="off"] .hero-dots > i, body[data-motion="off"] .hero-glint::before { animation: none; will-change: auto; }
 body[data-motion="off"] .hero-dots > i { opacity: .7; }
 @media (prefers-reduced-motion: reduce) { .hero-dots > i { animation: none !important; will-change: auto; opacity: .7; } }
+
+/* 4.1.5: real logos on every page. A touch icon fills its squircle edge to edge; any other logo sits on white
+   with room to breathe, like an app icon. Each one springs in as it swaps over from the small favicon */
+img.fav.lgx { animation: lgx415 .55s cubic-bezier(.34,1.56,.64,1) both; }
+img.fav.lgx-touch { padding: 0 !important; background: none !important; object-fit: cover; }
+img.fav.lgx-icon { background: linear-gradient(180deg, #fff, #f2f3f8) !important; padding: 4px !important; object-fit: contain; box-shadow: inset 0 0 0 1px rgba(0,0,0,.05), 0 6px 16px -6px rgba(16,20,40,.25); }
+.gl .favs img.fav.lgx-icon, .hmore img.fav.lgx-icon { padding: 2px !important; }
+.sc-prev img.fav.lgx { width: 54px; height: 54px; border-radius: 18px; }
+.sc-prev img.fav.lgx-icon { padding: 10px !important; }
+.list .row img.fav.lgx-icon { padding: 8px !important; }
+.bmt .bm-head img.fav.lgx-icon, .permsite > img.fav.lgx-icon { padding: 6px !important; }
+.rlc .bm-head img.fav.lgx-icon { padding: 7px !important; }
+.hlhead img.fav.lgx-icon { padding: 5px !important; }
+@keyframes lgx415 { from { opacity: .3; transform: scale(.7); filter: blur(3px); } 60% { opacity: 1; transform: scale(1.06); filter: none; } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { img.fav.lgx { animation: none; } }
+body[data-motion="off"] img.fav.lgx { animation: none; }

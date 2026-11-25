@@ -145,7 +145,10 @@ function clearHistory(sinceMs = 0) {
 // the sharpest icon each site offers (its touch icon, an SVG or its largest PNG), so Home can show real logos.
 // Remembered per host as { u: url, s: size, k: 'touch' | 'icon', t: last seen }; the oldest are dropped past 600.
 const siteIcons = new Store('siteicons', {})
+// hosts are kept without a leading www., the way the pages name them (www.youtube.com and youtube.com are one site)
+const iconKey = h => String(h || '').toLowerCase().replace(/^www\./, '')
 function setSiteIcon(host, u, s, k) {
+  host = iconKey(host)
   if (!host || !/^https:\/\//.test(u) || u.length > 2000) return
   const cur = siteIcons.data[host]
   if (cur && cur.u === u && Date.now() - cur.t < 864e5) return
@@ -156,7 +159,7 @@ function setSiteIcon(host, u, s, k) {
 }
 function iconsFor(hosts) {
   const out = {}
-  for (const h of (Array.isArray(hosts) ? hosts : []).slice(0, 200)) { const x = siteIcons.data[String(h)]; if (x) out[h] = { u: x.u, k: x.k } }
+  for (const h of (Array.isArray(hosts) ? hosts : []).slice(0, 200)) { const x = siteIcons.data[iconKey(h)] || siteIcons.data['www.' + iconKey(h)]; if (x) out[h] = { u: x.u, k: x.k } }
   return out
 }
 function topSites(n = 8) {

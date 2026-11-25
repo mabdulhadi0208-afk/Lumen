@@ -138,9 +138,26 @@ function deleteHistoryHost(host) {
   histChanged(); histEvent(['reset']); flushHistory(); return n
 }
 function clearHistory(sinceMs = 0) {
-  if (!sinceMs) historyMap.clear()
+  if (!sinceMs) { historyMap.clear(); siteIcons.replace({}) }
   else for (const [k, h] of historyMap) if (h.t >= Date.now() - sinceMs) historyMap.delete(k)
   histChanged(); histEvent(['reset']); flushHistory()
+}
+// the sharpest icon each site offers (its touch icon, an SVG or its largest PNG), so Home can show real logos.
+// Remembered per host as { u: url, s: size, k: 'touch' | 'icon', t: last seen }; the oldest are dropped past 600.
+const siteIcons = new Store('siteicons', {})
+function setSiteIcon(host, u, s, k) {
+  if (!host || !/^https:\/\//.test(u) || u.length > 2000) return
+  const cur = siteIcons.data[host]
+  if (cur && cur.u === u && Date.now() - cur.t < 864e5) return
+  siteIcons.data[host] = { u, s: s | 0, k: k === 'touch' ? 'touch' : 'icon', t: Date.now() }
+  const keys = Object.keys(siteIcons.data)
+  if (keys.length > 600) keys.sort((a, b) => siteIcons.data[a].t - siteIcons.data[b].t).slice(0, keys.length - 600).forEach(h => delete siteIcons.data[h])
+  siteIcons.save()
+}
+function iconsFor(hosts) {
+  const out = {}
+  for (const h of (Array.isArray(hosts) ? hosts : []).slice(0, 200)) { const x = siteIcons.data[String(h)]; if (x) out[h] = { u: x.u, k: x.k } }
+  return out
 }
 function topSites(n = 8) {
   if (topCache && topCache.n >= n && Date.now() - topCache.at < 10 * 60000) return topCache.list.slice(0, n).map(x => ({ ...x }))
@@ -222,4 +239,5 @@ module.exports = {
   savePassword, hasPassword, credentialsFor, listPasswords, revealPassword, deletePassword, updatePassword,
   enc, dec, historyMap, flushHistory, onHistory, historyCompact,
   readLater, isReadLater, addReadLater, removeReadLater, archive, addArchive, removeArchive, highlights,
+  setSiteIcon, iconsFor,
 }

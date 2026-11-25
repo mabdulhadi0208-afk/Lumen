@@ -700,7 +700,7 @@ class BrowserWin {
     wc.on('did-start-loading', () => { t.loading = true; t.crashed = false; upd() })
     wc.on('did-stop-loading', () => { t.loading = false; upd() })
     wc.on('did-finish-load', () => {
-      offerTranslate(this, t).catch(() => {}); darkPage(wc); paintHighlights(wc); parcelPage(this, t); googleBlockCheck(this, t)
+      offerTranslate(this, t).catch(() => {}); darkPage(wc); paintHighlights(wc); parcelPage(this, t); googleBlockCheck(this, t); siteIconScan(this, t, wc)
       // the reading time is only shown for the tab in front: a background tab counts its words when it comes forward
       // (reading the text of every paragraph forces the page to lay out)
       if (this.activeId === t.id || this.splitId === t.id) { t.readDue = false; readingTime(this, t) } else { t.readMin = 0; t.readDue = true }
@@ -1331,6 +1331,30 @@ function separateAppsCheck() {
 // If Google still says "This browser or app may not be secure", switch to the other sign-in mode once and start the
 // sign-in again, so it just works on the second try. The mode that worked is kept.
 let googleRetried = false
+// remembers the sharpest icon the page offers, so Home can show the site's real logo instead of a letter.
+// Read in an isolated world; never in private windows. Touch icons are full-bleed squares, the rest sit on white.
+const ICON_SCAN = `(() => { const out = []
+  for (const l of document.querySelectorAll('link[rel][href]')) {
+    const rel = l.rel.toLowerCase().split(/\\s+/); const touch = rel.includes('apple-touch-icon') || rel.includes('apple-touch-icon-precomposed')
+    if (!touch && !rel.includes('icon')) continue
+    const sz = (l.getAttribute('sizes') || '').toLowerCase(), svg = /svg/.test(l.type || '') || /\\.svg(\\?|$)/i.test(l.href)
+    let s = 0; for (const m of sz.matchAll(/(\\d+)x(\\d+)/g)) s = Math.max(s, +m[1])
+    if (sz === 'any' || svg) s = Math.max(s, 256); if (!s) s = touch ? 180 : /\\.ico(\\?|$)/i.test(l.href) ? 32 : 48
+    out.push([l.href, s, touch ? 'touch' : 'icon'])
+  }
+  return out })()`
+async function siteIconScan(w, t, wc) {
+  if (w.incognito || t.spare) return
+  let host; try { const u = new URL(wc.getURL()); if (u.protocol !== 'https:') return; host = u.host } catch { return }
+  try {
+    const list = await wc.executeJavaScriptInIsolatedWorld(1013, [{ code: ICON_SCAN }])
+    if (!Array.isArray(list) || !list.length) return
+    // a touch icon wins from 120px up (it is drawn for exactly this); otherwise the biggest icon
+    const ok = list.filter(x => Array.isArray(x) && /^https:\/\//.test(x[0]) && x[1] >= 32)
+    const best = ok.filter(x => x[2] === 'touch' && x[1] >= 120).sort((a, b) => b[1] - a[1])[0] || ok.sort((a, b) => b[1] - a[1])[0]
+    if (best) D.setSiteIcon(host, best[0], best[1], best[2])
+  } catch {}
+}
 async function googleBlockCheck(w, t) {
   const wc = t.view && t.view.webContents
   if (!wc || wc.isDestroyed() || !isGoogleSignIn(wc.getURL())) return
@@ -2084,6 +2108,7 @@ ipcMain.handle('lumen', async (e, action, ...a) => {
       case 'settings': return { settings: publicSettings(), engines: Object.fromEntries(Object.entries(SEARCH).map(([k, v]) => [k, v.name])), version: app.getVersion(), platform: process.platform }
       case 'setSetting': return setSetting(a[0], a[1])
       case 'topSites': return D.topSites(8)
+      case 'siteIcons': return w && w.incognito ? {} : D.iconsFor(a[0])
       case 'stats': return { blocked: blockedTotal, since: D.settings.get('statsSince') || 0 }
       case 'home': { const week = blockedWeek(); return { private: !!(w && w.incognito), today: week[6].n, week, total: blockedTotal, adblock: !!D.settings.get('adblock'), closed: w && w.incognito ? [] : closedTabs.slice(-6).reverse().map(c => ({ url: c.url, title: c.title || '' })) } }
       case 'suggest': return suggest(w || { incognito: false }, String(a[0] || '').slice(0, 300), a[1])

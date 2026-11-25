@@ -23,10 +23,10 @@
 ;(function () {
   // ---- edit this list every release: it is the "New in Lumen" act of the film (only this version's changes)
   const WHATS_NEW = {
-    version: '4.1.3',
+    version: '4.1.4',
     items: [
-      { icon: 'sparkle', text: 'Lumen has its own home on the web: getlumen.info' },
-      { icon: 'play', text: 'About Lumen has a new getlumen.info button, one click to the website' },
+      { icon: 'sparkle', text: 'Home shows every site with its real logo, sharp and full size, not just a letter' },
+      { icon: 'play', text: 'Lumen picks the sharpest icon each site offers, and new logos pop in with a spring' },
     ],
   }
 
@@ -1180,6 +1180,17 @@
     }, 1080)
     anim(logo.querySelector('.mirror .v4'), [{ opacity: 0 }, { opacity: 1 }], { duration: 600, delay: 1300 })
     anim(s.querySelector('.rule'), [{ transform: 'scaleX(0)' }, { transform: 'scaleX(1)' }], { duration: 1500, delay: 1200, easing: 'cubic-bezier(.16,1,.3,1)' })
+    // 4.1.4: two sparks of light race out from the middle of the rule as it draws, and flare where it ends
+    setTimeout(() => {
+      const rule = s.querySelector('.rule'); if (skip || still || !rule || !rule.offsetParent) return
+      const host = rule.offsetParent, cx = rule.offsetLeft + rule.offsetWidth / 2, cy = rule.offsetTop + rule.offsetHeight / 2, half = rule.offsetWidth / 2
+      ;[-1, 1].forEach(dir => {
+        const sp = document.createElement('i')
+        sp.style.cssText = `position:absolute;left:${cx - 4}px;top:${cy - 4}px;width:8px;height:8px;border-radius:50%;pointer-events:none;background:#fff;mix-blend-mode:screen;box-shadow:0 0 10px 3px var(--hi),0 0 26px 8px color-mix(in srgb,var(--hi) 55%,transparent)`
+        host.appendChild(sp)
+        sp.animate([{ transform: 'translateX(0) scale(.4)', opacity: 0 }, { transform: `translateX(${dir * half * .5}px) scale(1.1,.8)`, opacity: 1, offset: .35 }, { transform: `translateX(${dir * half}px) scale(1)`, opacity: 1, offset: .78 }, { transform: `translateX(${dir * half}px) scale(3.2)`, opacity: 0 }], { duration: 1250, easing: 'cubic-bezier(.16,1,.3,1)' }).finished.then(() => sp.remove(), () => sp.remove())
+      })
+    }, 1250)
     // a glass lens sweeps across the finished title, bending each letter as it passes, then the glint follows
     const lw = logo.offsetWidth
     roll(drop, { x0: -D * .2, x1: lw + D * .2, y: logo.offsetHeight / 2, ms: 1500, bob: 6, delay: 1500 })

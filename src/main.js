@@ -393,6 +393,7 @@ function onDownload(e, item, wc) {
     item.setSavePath(p); d.path = p; d.name = path.basename(p)
   }
   downloads.unshift(d)
+  spareChanged()
   d._item = item
   const push = () => broadcast('downloads', listDownloads())
   item.on('updated', (ev, state) => {
@@ -416,6 +417,15 @@ const listDownloads = () => downloads.slice(0, 100).map(({ _item, ...d }) => ({ 
 // ---------------------------------------------------------------- windows & tabs
 const windows = []
 let tabSeq = 0, incognitoSeq = 0
+// spareGen goes up whenever something the New Tab page shows changes, so a preloaded New Tab knows it is out of date
+let spareGen = 0
+function spareChanged() { spareGen++; for (const w of windows) w.refreshSpareSoon() }
+for (const st of [D.bookmarks, D.readLater, D.archive, D.highlights, D.historyStore]) st.onChange(spareChanged)
+{ // settings: everything but the ad counters, which tick all the time while browsing
+  const sig = d => { try { const { blockedTotal, blockedDays, adblockUpdatedAt, ...r } = d || {}; return JSON.stringify(r) } catch { return '' } }
+  let last = sig(D.settings.get())
+  D.settings.onChange(d => { const n = sig(d); if (n !== last) { last = n; spareChanged() } })
+}
 const closedTabs = []
 
 function lastFocused() {
@@ -424,7 +434,7 @@ function lastFocused() {
 }
 function winForWc(wcId) {
   if (wcId == null) return null
-  return windows.find(w => w.ui.webContents.id === wcId || [...w.tabs.values()].some(t => t.view && !t.view.webContents.isDestroyed() && t.view.webContents.id === wcId)) || null
+  return windows.find(w => w.ui.webContents.id === wcId || (w.spare && w.spare.view && !w.spare.view.webContents.isDestroyed() && w.spare.view.webContents.id === wcId) || [...w.tabs.values()].some(t => t.view && !t.view.webContents.isDestroyed() && t.view.webContents.id === wcId)) || null
 }
 function broadcast(ch, data) { for (const w of windows) w.send(ch, data) }
 
@@ -470,11 +480,12 @@ class BrowserWin {
     this.win.on('closed', () => {
       if (this.peek && !this.peek.webContents.isDestroyed()) this.peek.webContents.close()   // a peeked video must not keep playing
       for (const t of this.tabs.values()) this.destroyView(t)
+      this.dropSpare()
       if (!this.ui.webContents.isDestroyed()) this.ui.webContents.close()
       windows.splice(windows.indexOf(this), 1)
       saveSession()
     })
-    this.ui.webContents.once('did-finish-load', () => { this.win.show(); this.pushState(); setTimeout(() => Nova.prewarm(this), 1500) })
+    this.ui.webContents.once('did-finish-load', () => { this.win.show(); this.pushState(); setTimeout(() => Nova.prewarm(this), 1500); setTimeout(() => this.warmSpare(), 2600) })
     this.ui.webContents.on('render-process-gone', () => { setTimeout(() => { if (!this.ui.webContents.isDestroyed()) this.ui.webContents.reload() }, 300) })
     this.ui.webContents.on('before-input-event', (e, input) => this.handleKeys(e, input))
     windows.push(this)
@@ -485,7 +496,14 @@ class BrowserWin {
   tabByWc(id) { return [...this.tabs.values()].find(t => t.view && !t.view.webContents.isDestroyed() && t.view.webContents.id === id) }
 
   createTab(url = 'lumen://newtab', { active = true, pinned = false, index = null, title = '', favicon = '', asleep = false, openerId = null } = {}) {
-    const t = { id: ++tabSeq, url, title: title || '', favicon, pinned, loading: false, audible: false, muted: false, asleep: false, crashed: false, lastActive: Date.now(), view: null, zoom: 0, canBack: false, canForward: false, opener: openerId }
+    // a New Tab takes the preloaded one when it is ready: the page is already drawn, so it shows at once
+    const sp = url === 'lumen://newtab' && !asleep ? this.takeSpare() : null
+    const t = sp || { url, title: title || '', favicon, loading: false, audible: false, muted: false, asleep: false, crashed: false, view: null, zoom: 0, canBack: false, canForward: false }
+    Object.assign(t, { id: ++tabSeq, pinned, lastActive: Date.now(), opener: openerId })
+    if (sp) { delete t.spare; if (title) t.title = title }
+    // Reload Every: setting it starts the reload clock (which stops by itself once no tab uses it)
+    let re = 0
+    Object.defineProperty(t, 'reloadEvery', { configurable: true, enumerable: true, get: () => re, set: v => { re = v; if (v) watchAutoReload() } })
     this.tabs.set(t.id, t)
     let idx = index
     if (idx == null) {
@@ -495,12 +513,75 @@ class BrowserWin {
       } else idx = this.order.length
     }
     this.order.splice(idx, 0, t.id)
-    if (asleep && !active) { t.asleep = true }
+    if (sp) this.adoptSpare(t)
+    else if (asleep && !active) { t.asleep = true }
     else this.makeView(t)
     if (active) this.activate(t.id)
     else this.pushState()
     saveSession()
     return t
+  }
+
+  // ---- the preloaded New Tab (Chrome does the same): one hidden lumen://newtab per window, loaded and drawn ahead of
+  // time at the size of the page area. It is never on screen and never in the tab strip until a New Tab takes it.
+  // When what it shows changes (history, bookmarks, settings and so on) it redraws itself in the background.
+  warmSpare() {
+    clearTimeout(this._spareT); this._spareT = null
+    if (this.win.isDestroyed() || this.spare || process.env.LUMEN_NO_SPARE === '1') return
+    const t = { id: 0, spare: true, url: 'lumen://newtab', title: '', favicon: '', pinned: false, loading: false, audible: false, muted: false, asleep: false, crashed: false, lastActive: 0, view: null, zoom: 0, canBack: false, canForward: false, opener: null }
+    this.spare = t
+    t.gen = spareGen; t.readyAt = 0
+    this.makeView(t)
+    t.view.setBounds({ x: 0, y: 0, width: Math.max(1, this.rect.width), height: Math.max(1, this.rect.height) })
+    const wc = t.view.webContents
+    wc.once('render-process-gone', () => { if (this.spare === t) this.dropSpare() })
+    wc.once('did-finish-load', () => this.spareWhenDrawn(t))
+  }
+  // ready once the page has drawn its widgets (a short poll right after it loads, then nothing)
+  spareWhenDrawn(t, tries = 0) {
+    if (this.spare !== t || !t.view || t.view.webContents.isDestroyed()) return
+    t.view.webContents.executeJavaScript(`!!(document.querySelector('#ntp') && document.querySelector('#widgets [data-w]'))`, true).then(ok => {
+      if (this.spare !== t) return
+      if (ok) { t.readyAt = Date.now(); if (t.gen !== spareGen) this.refreshSpareSoon(); return }
+      if (tries < 50) setTimeout(() => this.spareWhenDrawn(t, tries + 1), 120)
+    }).catch(() => {})
+  }
+  takeSpare() {
+    const t = this.spare
+    if (!t) return null
+    const fresh = t.readyAt && t.gen === spareGen && t.view && !t.view.webContents.isDestroyed() && !t.crashed && !t.loading && (t.url || '').startsWith('lumen://newtab')
+    if (!fresh) { if (t.readyAt || t.crashed) this.dropSpare(); return null }   // out of date: this New Tab loads the usual way
+    this.spare = null
+    clearTimeout(this._spareRT); this._spareRT = null
+    return t
+  }
+  adoptSpare(t) {
+    const wc = t.view.webContents
+    if (extensions && !this.incognito) { addingTab = true; try { extensions.addTab(wc, this.win) } catch {} finally { addingTab = false } }
+    // the page drew itself a while ago, so its entrance played unseen: play it again now that it is on screen
+    if (Date.now() - t.readyAt > 2400) wc.executeJavaScript(`(() => { const els = ['hero', 'widgets'].map(i => document.getElementById(i)).filter(Boolean); for (const e of els) { e.classList.remove('enter'); void e.offsetWidth; e.classList.add('enter') } clearTimeout(window.__lumenEnter); window.__lumenEnter = setTimeout(() => els.forEach(e => e.classList.remove('enter')), 2600); const q = document.getElementById('q'); if (q && document.activeElement !== q) q.focus({ preventScroll: true }) })()`, true).catch(() => {})
+    this._spareT = setTimeout(() => this.warmSpare(), 1500)
+  }
+  dropSpare() {
+    const t = this.spare; this.spare = null
+    clearTimeout(this._spareRT); this._spareRT = null
+    if (t && t.view) { try { if (!t.view.webContents.isDestroyed()) t.view.webContents.close({ waitForBeforeUnload: false }) } catch {} t.view = null }
+    if (!this.win.isDestroyed() && !this._spareT) this._spareT = setTimeout(() => this.warmSpare(), 1500)
+  }
+  // redraw the hidden New Tab when its data changed: a moment after the change, at most every few seconds. It loads
+  // afresh (the page keeps its own copy of the settings, so a redraw in place could show old ones)
+  refreshSpareSoon() {
+    const t = this.spare
+    if (!t || !t.readyAt || this._spareRT) return
+    const wait = Math.max(1200, 4000 - (Date.now() - (t.refreshedAt || 0)))
+    this._spareRT = setTimeout(() => {
+      this._spareRT = null
+      if (this.spare !== t || !t.view || t.view.webContents.isDestroyed()) return
+      const wc = t.view.webContents
+      t.refreshedAt = Date.now(); t.readyAt = 0; t.gen = spareGen
+      wc.once('did-finish-load', () => this.spareWhenDrawn(t))
+      wc.reload()
+    }, wait)
   }
 
   makeView(t) {
@@ -514,8 +595,8 @@ class BrowserWin {
     // the colour under the page follows what it is (a Lumen page or a web page), so nothing flashes on the way in
     wc.on('did-start-navigation', e => { if (e.isMainFrame && !e.isSameDocument) { try { view.setBackgroundColor(tabBg(e.url, this.incognito)) } catch {} } })
     // the extensions library marks every added tab as active; ignore that so background tabs stay in the background
-    if (extensions && !this.incognito) { addingTab = true; try { extensions.addTab(wc, this.win) } catch {} finally { addingTab = false } }
-    const upd = () => this.pushStateSoon()
+    if (extensions && !this.incognito && !t.spare) { addingTab = true; try { extensions.addTab(wc, this.win) } catch {} finally { addingTab = false } }
+    const upd = () => { if (!t.spare) this.pushStateSoon() }
     wc.on('page-title-updated', (e, title) => { t.title = title; D.updateHistoryTitle(wc.getURL(), title); upd() })
     wc.on('page-favicon-updated', (e, icons) => { t.favicon = icons[icons.length - 1] || icons[0] || ''; upd() })
     wc.on('did-start-loading', () => { t.loading = true; t.crashed = false; upd() })
@@ -541,7 +622,8 @@ class BrowserWin {
     wc.on('will-redirect', fixNav)
     const nav = () => {
       t.url = wc.getURL(); t.canBack = wc.navigationHistory.canGoBack(); t.canForward = wc.navigationHistory.canGoForward()
-      if (!this.incognito) D.addHistory(t.url, wc.getTitle())
+      if (t.spare) return
+      if (!this.incognito) { D.addHistory(t.url, wc.getTitle()); if (/^https?:/.test(t.url)) spareChanged() }
       applySiteZoom(t)
       if (t.translated) t.translated = false
       upd(); saveSession()
@@ -756,6 +838,7 @@ class BrowserWin {
     const url = t.view ? t.view.webContents.getURL() : t.url
     if (!this.incognito && url && url !== 'lumen://newtab/') closedTabs.push({ url, title: t.title, index: this.order.indexOf(id), pinned: t.pinned })
     if (closedTabs.length > 30) closedTabs.shift()
+    if (/^https?:/.test(url || '')) spareChanged()
     const idx = this.order.indexOf(id)
     this.order.splice(idx, 1)
     this.tabs.delete(id)
@@ -1015,6 +1098,7 @@ async function autoGroupWindow(w) {
 const AI = require('./ai')
 const HL = require('./highlights')
 const Parcels = require('./parcels')
+Parcels.store.onChange(() => spareChanged())
 
 // ---------------------------------------------------------------- translator
 async function translateTab(w, t, toLang) {
@@ -1254,13 +1338,19 @@ async function readingTime(w, t) {
 }
 
 // ---------------------------------------------------------------- auto reload
-setInterval(() => {
-  const now = Date.now()
+// the clock only runs while some tab has Reload Every on (it used to wake Lumen every second, all day)
+let reloadTimer = null
+function autoReloadTick() {
+  const now = Date.now(); let any = false
   for (const w of windows) for (const t of w.tabs.values()) {
-    if (!t.reloadEvery || !t.view || t.view.webContents.isDestroyed()) continue
+    if (!t.reloadEvery) continue
+    any = true
+    if (!t.view || t.view.webContents.isDestroyed()) continue
     if (now >= (t.reloadAt || 0)) { t.reloadAt = now + t.reloadEvery * 1000; if (!t.view.webContents.isLoading()) t.view.webContents.reload() }
   }
-}, 1000)
+  if (!any) { clearInterval(reloadTimer); reloadTimer = null }
+}
+function watchAutoReload() { if (!reloadTimer) reloadTimer = setInterval(autoReloadTick, 1000) }
 
 function addToNTP(w, t) {
   const url = t.view && !t.view.webContents.isDestroyed() ? t.view.webContents.getURL() : t.url
@@ -2124,7 +2214,8 @@ async function snapTab(t) {
   if (!t || !t.view || t.view.webContents.isDestroyed() || t.asleep) return
   try {
     const img = await Promise.race([t.view.webContents.capturePage(), new Promise(r => setTimeout(() => r(null), 1500))])
-    if (img && !img.isEmpty()) t.thumb = img.resize({ width: 480, quality: 'good' }).toDataURL()
+    // JPEG: several times quicker to encode than PNG on the main process, and a fraction of the size over IPC
+    if (img && !img.isEmpty()) t.thumb = 'data:image/jpeg;base64,' + img.resize({ width: 480, quality: 'good' }).toJPEG(84).toString('base64')
   } catch {}
 }
 

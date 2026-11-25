@@ -419,6 +419,9 @@ const windows = []
 let tabSeq = 0, incognitoSeq = 0
 // spareGen goes up whenever something the New Tab page shows changes, so a preloaded New Tab knows it is out of date
 let spareGen = 0
+// banner dots on lumen:// pages only move while someone can see them: 'lm-away' pauses them (app in the background,
+// or a preloaded New Tab waiting off screen). Off-screen scrolling and hidden tabs are handled in the page itself.
+function setAway(wc, away) { try { if (wc && !wc.isDestroyed() && (wc.getURL() || '').startsWith('lumen://')) wc.executeJavaScript(`document.documentElement.classList.toggle('lm-away', ${!!away})`, true).catch(() => {}) } catch {} }
 function spareChanged() { spareGen++; for (const w of windows) w.refreshSpareSoon() }
 for (const st of [D.bookmarks, D.readLater, D.archive, D.highlights, D.historyStore]) st.onChange(spareChanged)
 { // settings: everything but the ad counters, which tick all the time while browsing
@@ -475,7 +478,8 @@ class BrowserWin {
     this.win.on('resize', fit)
     this.win.on('enter-full-screen', () => { this.send('fullscreen', true); this.pushStateSoon() })
     this.win.on('leave-full-screen', () => { this.send('fullscreen', false); if (this.fullscreenTab) { this.fullscreenTab = false; this.layout() } })
-    this.win.on('focus', () => { const t = this.active(); if (t && t.view && !this.overlay) t.view.webContents.focus() })
+    this.win.on('focus', () => { const t = this.active(); if (t && t.view && !this.overlay) t.view.webContents.focus(); if (t && t.view) setAway(t.view.webContents, false) })
+    this.win.on('blur', () => { const t = this.active(); if (t && t.view) setAway(t.view.webContents, true) })
     this.win.on('close', () => { saveSessionNow() })
     this.win.on('closed', () => {
       if (this.peek && !this.peek.webContents.isDestroyed()) this.peek.webContents.close()   // a peeked video must not keep playing
@@ -554,7 +558,7 @@ class BrowserWin {
     if (this.spare !== t || !t.view || t.view.webContents.isDestroyed()) return
     t.view.webContents.executeJavaScript(`!!(document.querySelector('#ntp') && document.querySelector('#widgets [data-w]'))`, true).then(ok => {
       if (this.spare !== t) return
-      if (ok) { t.readyAt = Date.now(); if (t.gen !== spareGen) this.refreshSpareSoon(); return }
+      if (ok) { t.readyAt = Date.now(); setAway(t.view.webContents, true); if (t.gen !== spareGen) this.refreshSpareSoon(); return }
       if (tries < 50) setTimeout(() => this.spareWhenDrawn(t, tries + 1), 120)
     }).catch(() => {})
   }
@@ -565,6 +569,7 @@ class BrowserWin {
     if (!fresh) { if (t.readyAt || t.crashed) this.dropSpare(); return null }   // out of date: this New Tab loads the usual way
     this.spare = null
     clearTimeout(this._spareRT); this._spareRT = null
+    setImmediate(() => setAway(t.view && t.view.webContents, !this.win.isFocused()))
     return t
   }
   adoptSpare(t) {

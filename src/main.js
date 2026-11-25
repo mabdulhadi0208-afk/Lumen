@@ -867,6 +867,7 @@ class BrowserWin {
     if (!this.incognito && url && url !== 'lumen://newtab/') closedTabs.push({ url, title: t.title, index: this.order.indexOf(id), pinned: t.pinned })
     if (closedTabs.length > 30) closedTabs.shift()
     if (/^https?:/.test(url || '')) spareChanged()
+    AIHost.tabClosed(this, id)
     const idx = this.order.indexOf(id)
     this.order.splice(idx, 1)
     this.tabs.delete(id)
@@ -1021,7 +1022,8 @@ class BrowserWin {
       if (Parcels.looksLikeTracking(p.selectionText.trim()) && p.selectionText.trim().length < 40) items.push({ label: `Track Parcel ${Parcels.clean(p.selectionText)} (${Parcels.carrierName(Parcels.detect(p.selectionText))})`, click: () => trackNumber(this, p.selectionText.trim(), wc.getURL()) })
       if (web) items.push({ label: 'Highlight', submenu: Object.keys(HL.COLORS).map(c => ({ label: c[0].toUpperCase() + c.slice(1), click: () => addHighlight(this, t, c) })) })
       if (/^https?:/.test(wc.getURL()) && p.selectionText.trim().length < 300) items.push({ label: 'Copy Link to Highlight', click: () => { const u = cleanURL(wc.getURL()).split('#')[0]; const txt = p.selectionText.trim().replace(/\s+/g, ' '); const words = txt.split(' '); const frag = words.length > 8 ? encodeURIComponent(words.slice(0, 4).join(' ')).replace(/-/g, '%2D') + ',' + encodeURIComponent(words.slice(-4).join(' ')).replace(/-/g, '%2D') : encodeURIComponent(txt).replace(/-/g, '%2D'); clipboard.writeText(u + '#:~:text=' + frag); this.send('toast', 'Link to highlight copied') } })
-      items.push({ label: 'Explain with Lumen AI', click: () => this.send('command', { ai: 'explain', text: p.selectionText.slice(0, 6000) }) })
+      { const st = p.selectionText.slice(0, 6000), ai = mode => () => this.send('command', { ai: mode, text: st, tabId: t.id }), words = st.trim().split(/\s+/).length
+        items.push({ label: 'Lumen AI', submenu: [{ label: 'Explain', click: ai('explain') }, ...(words <= 4 ? [{ label: 'Define', click: ai('define') }] : []), ...(words >= 25 ? [{ label: 'Summarize', click: ai('summarize') }] : []), { label: 'Rewrite More Clearly', click: ai('rewrite') }, { label: `Translate to ${Translate.langName(Translate.target(D.settings))}`, click: ai('translate') }, { type: 'separator' }, { label: 'Ask About This...', click: ai('ask') }] }) }
       items.push({ label: `Translate to ${Translate.langName(Translate.target(D.settings))}`, click: () => Translate.bubble(wc, p.selectionText.slice(0, 4000), Translate.target(D.settings), { accent: D.settings.get('accent'), dark: nativeTheme.shouldUseDarkColors, motion: D.settings.get('motion') }).catch(e => this.send('toast', 'Translation failed')) })
       items.push({ label: `Search ${(SEARCH[D.settings.get('searchEngine')] || SEARCH.google).name} for "${q.length > 30 ? q.slice(0, 30) + '...' : q}"`, click: () => this.createTab(toURL(q), { openerId: t.id }) })
       sep()
@@ -1030,6 +1032,7 @@ class BrowserWin {
       items.push({ label: 'Undo', role: 'undo', enabled: p.editFlags.canUndo }, { label: 'Redo', role: 'redo', enabled: p.editFlags.canRedo }, { type: 'separator' })
       items.push({ label: 'Cut', role: 'cut', enabled: p.editFlags.canCut }, { label: 'Copy', role: 'copy', enabled: p.editFlags.canCopy }, { label: 'Paste', role: 'paste', enabled: p.editFlags.canPaste }, { label: 'Paste and Match Style', role: 'pasteAndMatchStyle' }, { label: 'Select All', role: 'selectAll' })
       if (p.formControlType === 'input-password' || /pass/i.test(p.inputFieldType || '')) items.push({ type: 'separator' }, { label: 'Suggest Strong Password', click: () => wc.send('lumen:fill-generated', genPassword()) })
+      else if (p.selectionText && p.selectionText.trim()) { const st = p.selectionText.slice(0, 8000), ai = mode => () => this.send('command', { ai: mode, text: st, tabId: t.id, write: true }); items.push({ type: 'separator' }, { label: 'Lumen AI Writing', submenu: [{ label: 'Improve Writing', click: ai('improve') }, { label: 'Make Shorter', click: ai('shorten') }, { label: 'Fix Spelling and Grammar', click: ai('grammar') }] }) }
       sep()
     }
     if (!p.linkURL && !p.isEditable && !p.selectionText && p.mediaType === 'none') {
@@ -1402,51 +1405,9 @@ function toggleReadLater(w, t) {
 }
 const readLaterList = n => D.readLater.get().slice(0, n).map(x => ({ url: x.url, title: x.title, t: x.t }))
 
-// ---------------------------------------------------------------- Lumen AI
-const PAGE_TEXT_JS = `(() => {
-  const pick = document.querySelector('article') || document.querySelector('main') || document.querySelector('[role=main]') || document.body
-  let t = (pick && pick.innerText || '').replace(/\\n{3,}/g, '\\n\\n').trim()
-  if (t.length < 400 && pick !== document.body) t = (document.body.innerText || '').trim()
-  return { title: document.title, url: location.href, text: t.slice(0, 60000), sel: String(getSelection() || '').slice(0, 6000) }
-})()`
-async function pageInfo(w) {
-  const t = w.tabs.get(w.activeId)
-  const wc = t && t.view && !t.view.webContents.isDestroyed() ? t.view.webContents : null
-  if (!wc) return null
-  const url = wc.getURL()
-  if (!/^https?:|^file:/.test(url)) return { title: wc.getTitle(), url, text: '', sel: '', internal: true }
-  try { return await wc.executeJavaScriptInIsolatedWorld(1018, [{ code: PAGE_TEXT_JS }]) } catch { return { title: wc.getTitle(), url, text: '', sel: '' } }
-}
-const aiRuns = new Map()
-async function aiAsk(w, req) {
-  const id = req.id
-  const send = m => w.send('ai', { id, ...m })
-  const ctl = new AbortController(); aiRuns.set(id, ctl)
-  try {
-    const page = await pageInfo(w)
-    if (!page || page.internal || !page.text) {
-      if (req.mode !== 'chat') throw new Error('Open a web page first, then ask Lumen AI about it.')
-    }
-    let prompt
-    if (req.mode === 'summarize') prompt = 'Summarize this page. Start with a one-sentence overview, then the key points as a short bulleted list, then anything important to watch out for, if there is any.'
-    else if (req.mode === 'explain') prompt = `Explain this passage from the page in plain language. Say what it means and why it matters in the context of the page. Keep it short.\n\n<passage>\n${String(req.text || (page && page.sel) || '').slice(0, 6000)}\n</passage>`
-    else if (req.mode === 'keypoints') prompt = 'List the 5 most important points on this page, one line each.'
-    else prompt = String(req.text || '').slice(0, 8000)
-    const history = (req.history || []).slice(-8).filter(m => m && (m.role === 'user' || m.role === 'assistant') && m.content).map(m => ({ role: m.role, content: String(m.content).slice(0, 12000) }))
-    const first = page && page.text ? pageBlock(page) + '\n\n' : ''
-    // the page goes into the first user turn so follow-up questions keep it
-    const messages = history.length
-      ? [{ role: 'user', content: first + history[0].content }, ...history.slice(1), { role: 'user', content: prompt }]
-      : [{ role: 'user', content: first + prompt }]
-    send({ start: true, title: page ? page.title : '', url: page ? page.url : '' })
-    const full = await AI.stream({ system: AI.SYSTEM, messages }, d => send({ delta: d }), ctl.signal)
-    send({ done: true, text: full, prompt })
-  } catch (e) {
-    if (e.name === 'AbortError') send({ done: true, stopped: true })
-    else send({ error: e.message || String(e) })
-  } finally { aiRuns.delete(id) }
-}
-const pageBlock = p => AI.pageBlock(p)
+// ---------------------------------------------------------------- Lumen AI (src/ai-host.js)
+const AIHost = require('./ai-host')
+AIHost.init({ winForWc, log })
 
 // ---------------------------------------------------------------- app icon
 const APP_ICONS = ['default', 'midnight', 'sunset', 'mint', 'ocean', 'gold', 'rose', 'mono']
@@ -1651,9 +1612,7 @@ ipcMain.handle('ui', async (e, action, ...a) => {
       case 'appMenu': return Menu.getApplicationMenu() && appMenuPopup(w)
       case 'print': return wc && printPage(w, wc)
       case 'autoGroup': return autoGroupWindow(w)
-      case 'aiAsk': aiAsk(w, a[0] || {}); return true
-      case 'aiStop': { const c = aiRuns.get(a[0]); if (c) c.abort(); return true }
-      case 'aiStatus': { const pi = await pageInfo(w).catch(() => null); return { ready: AI.ready(), title: pi ? pi.title : '', url: pi ? pi.url : '', sel: pi ? pi.sel : '' } }
+      case 'aiAsk': case 'aiStop': case 'aiStatus': case 'aiCite': case 'aiPlan': case 'aiAct': case 'aiReplace': case 'aiCopy': case 'aiForget': return AIHost.ui(w, action, a)
       case 'ungroupAll': return w.ungroup(null)
       case 'groupToggle': { const g = w.groups.get(a[0]); if (g) w.setGroup(a[0], { collapsed: !g.collapsed }); return }
       case 'groupRename': return w.setGroup(a[0], { name: String(a[1] || '').slice(0, 40) || 'Group' })
@@ -1831,7 +1790,7 @@ function downloadAction(id, what) {
   broadcast('downloads', listDownloads())
 }
 
-const PUBLIC_SETTINGS = ['googleSignInMode', 'ntpParcels', 'parcelsAuto', 'whatsNewSeen', 'archiveTabsAfterH', 'bookmarksBar', 'ntpStats', 'ntpRecent', 'ntpReadLater', 'darkStyle', 'uiSounds', 'darkOffSites', 'translateFlipDir', 'searchShortcuts', 'rememberZoom', 'soundActiveOnly', 'linksBackground', 'confirmQuit', 'wheelTabs', 'adblockAllow', 'aiModel', 'aiTabGroups', 'browserTheme', 'themeCustom', 'compact', 'appIcon', 'cleanLinks', 'swipeNav', 'videoSpeedKeys', 'hideCookieBanners', 'blockNotifications', 'forceDark', 'translateTo', 'offerTranslate', 'autoPip', 'ntpShortcuts', 'ntpWallpaper', 'ntpClock', 'searchEngine', 'motion', 'theme', 'accent', 'adblock', 'blockTrackers', 'httpsOnly', 'sleepTabsAfterMin', 'restoreSession', 'sidebarCollapsed', 'sidebarWidth', 'tabLayout', 'introSeen', 'autoUpdate', 'askWhereToSave', 'doNotTrack', 'showSuggestions', 'homeTiles', 'ntpOrder', 'ntpHide', 'ntpWeather', 'ntpName', 'ntpNote', 'ntpFocus', 'ntpSizes', 'ntpZones']
+const PUBLIC_SETTINGS = ['googleSignInMode', 'ntpParcels', 'parcelsAuto', 'whatsNewSeen', 'archiveTabsAfterH', 'bookmarksBar', 'ntpStats', 'ntpRecent', 'ntpReadLater', 'darkStyle', 'uiSounds', 'darkOffSites', 'translateFlipDir', 'searchShortcuts', 'rememberZoom', 'soundActiveOnly', 'linksBackground', 'confirmQuit', 'wheelTabs', 'adblockAllow', 'aiModel', 'aiTabGroups', 'aiSelBubble', 'browserTheme', 'themeCustom', 'compact', 'appIcon', 'cleanLinks', 'swipeNav', 'videoSpeedKeys', 'hideCookieBanners', 'blockNotifications', 'forceDark', 'translateTo', 'offerTranslate', 'autoPip', 'ntpShortcuts', 'ntpWallpaper', 'ntpClock', 'searchEngine', 'motion', 'theme', 'accent', 'adblock', 'blockTrackers', 'httpsOnly', 'sleepTabsAfterMin', 'restoreSession', 'sidebarCollapsed', 'sidebarWidth', 'tabLayout', 'introSeen', 'autoUpdate', 'askWhereToSave', 'doNotTrack', 'showSuggestions', 'homeTiles', 'ntpOrder', 'ntpHide', 'ntpWeather', 'ntpName', 'ntpNote', 'ntpFocus', 'ntpSizes', 'ntpZones']
 function publicSettings() { const s = D.settings.get(); return Object.fromEntries(PUBLIC_SETTINGS.map(k => [k, s[k]])) }
 function setSetting(k, v) {
   if (!PUBLIC_SETTINGS.includes(k)) return
@@ -1901,7 +1860,7 @@ ipcMain.on('nav:swipe', (e, dir) => {
   if (dir === 'forward' && h.canGoForward()) h.goForward()
 })
 ipcMain.on('peek:open', (e, url) => { const w = winForWc(e.sender.id); if (w && /^https?:/.test(url)) w.openPeek(url) })
-ipcMain.on('lumen:qol', e => { const a = String(D.settings.get('accent') || '#5b8cff'); e.returnValue = { swipe: !!D.settings.get('swipeNav'), speed: !!D.settings.get('videoSpeedKeys'), accent: /^#[0-9a-f]{3,8}$/i.test(a) ? a : '#5b8cff', motion: D.settings.get('motion') || 'jelly' } })
+ipcMain.on('lumen:qol', e => { const a = String(D.settings.get('accent') || '#5b8cff'); e.returnValue = { swipe: !!D.settings.get('swipeNav'), speed: !!D.settings.get('videoSpeedKeys'), accent: /^#[0-9a-f]{3,8}$/i.test(a) ? a : '#5b8cff', motion: D.settings.get('motion') || 'jelly', ai: AI.ready() && D.settings.get('aiSelBubble') !== false } })
 ipcMain.on('lumen:auth-ua', e => { e.returnValue = googleCompat() && isGoogleSignIn(e.senderFrame && e.senderFrame.url) ? firefoxUA() : '' })
 
 // ---------------------------------------------------------------- passkeys
@@ -1994,8 +1953,8 @@ ipcMain.handle('lumen', async (e, action, ...a) => {
   const w = winForWc(e.sender.id) || lastFocused()
   try {
     switch (action) {
-      case 'aiSetKey': return AI.setKey(a[0])
-      case 'aiStatus': return { ready: AI.ready() }
+      case 'aiSetKey': { const k = String(a[0] || '').trim(); if (!k) return { ok: true, ready: AI.setKey('') }; const v = await AI.validate(k); if (v.ok || (a[1] && v.kind === 'offline')) AI.setKey(k); return { ...v, ready: AI.ready() } }
+      case 'aiStatus': return { ready: AI.ready(), tier: AI.tier() }
       case 'settings': return { settings: publicSettings(), engines: Object.fromEntries(Object.entries(SEARCH).map(([k, v]) => [k, v.name])), version: app.getVersion(), platform: process.platform }
       case 'setSetting': return setSetting(a[0], a[1])
       case 'topSites': return D.topSites(8)

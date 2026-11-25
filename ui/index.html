@@ -6,6 +6,7 @@
 <link rel="stylesheet" href="ui.css">
 <link rel="stylesheet" href="chrome41.css">
 <link rel="stylesheet" href="sweep41.css">
+<link rel="stylesheet" href="ai41.css">
 <link rel="stylesheet" href="perf.css">
 </head>
 <body>
@@ -72,13 +73,7 @@
     <div id="content-shadow"></div>
     <div id="loadbar"><i></i></div>
     <div id="tabcard"><div class="tc-thumb"><img alt=""></div><div class="tc-body"><div class="tc-title"></div><div class="tc-host"><img class="tc-fav" alt=""><span></span></div><div class="tc-meta"></div></div></div>
-    <aside id="aipanel" class="no-drag" aria-label="Lumen AI">
-      <div class="ai-head chero"><i class="hb a"></i><i class="hb b"></i><span class="hart" id="ai-hart"></span><div class="ai-mark"></div><div class="grow"><div class="ai-title">Lumen AI</div><div class="ai-page" id="ai-page"></div></div><button class="ib sm" id="ai-clear" title="New chat"></button><button class="ib sm" id="ai-close" title="Close Lumen AI (Shift+Cmd+A)"></button></div>
-      <div class="ai-actions"><button class="ai-chip" data-ai="summarize">Summarize page</button><button class="ai-chip" data-ai="keypoints">Key points</button><button class="ai-chip" data-ai="explain">Explain selection</button></div>
-      <div class="ai-log" id="ai-log"></div>
-      <div class="ai-nokey" id="ai-nokey"><div class="ai-mark big"></div><h4>Bring your own Claude key</h4><p>Lumen AI uses the Claude API with your own key, so your chats stay between you and Anthropic. Add a key once and you are set.</p><button class="btn primary" id="ai-addkey">Add API key</button></div>
-      <form class="ai-input" id="ai-form"><textarea id="ai-q" rows="1" placeholder="Ask about this page"></textarea><button class="ai-send" id="ai-send" type="submit" title="Send"></button></form>
-    </aside>
+    <aside id="aipanel" class="no-drag" aria-label="Lumen AI"></aside>
     <div id="findbar" class="no-drag">
       <span class="find-ic" id="find-ic"></span>
       <input id="find-input" placeholder="Find in page" spellcheck="false">
@@ -164,5 +159,6 @@
   <script src="themes.js"></script>
   <script src="intro.js"></script>
   <script src="ui.js"></script>
+  <script src="ai41.js"></script>
 </body>
 </html>

@@ -188,7 +188,10 @@ app.whenReady().then(async () => {
   // ---- idle: no running animations and a quiet renderer
   await pg(`scrollTo(0, 0); document.activeElement && document.activeElement.blur()`)
   wc.sendInputEvent({ type: 'mouseMove', x: 5, y: 790 }); await wait(10000)
-  const running = await pg(`JSON.stringify(document.getAnimations().filter(a => a.playState === 'running' && !(a.effect && a.effect.target && a.effect.target.closest('.hm-amb'))).map(a => (a.animationName || a.constructor.name) + ':' + (a.effect && a.effect.target ? (a.effect.target.className || a.effect.target.tagName) : '')))`)
+  // the clock's digits flip for 0.4 s when the minute turns: if that is all that is running, look again once it is done
+  const runningNow = () => pg(`JSON.stringify(document.getAnimations().filter(a => a.playState === 'running' && !(a.effect && a.effect.target && a.effect.target.closest('.hm-amb'))).map(a => (a.animationName || a.constructor.name) + ':' + (a.effect && a.effect.target ? (a.effect.target.className || a.effect.target.tagName) : '')))`)
+  let running = await runningNow()
+  if (running !== '[]' && await pg(`document.getAnimations().filter(a => a.playState === 'running' && !(a.effect && a.effect.target && a.effect.target.closest('.hm-amb'))).every(a => a.effect && a.effect.target && a.effect.target.closest('#clock'))`)) { await wait(700); running = await runningNow() }
   ok(running === '[]', 'no animation running after 10 s idle, apart from the banner dots ' + running)
   const amb = () => pg(`JSON.stringify(document.getAnimations().filter(a => a.effect && a.effect.target && a.effect.target.closest('.hm-amb')).map(a => a.playState))`).then(JSON.parse)
   const ambOn = await amb()

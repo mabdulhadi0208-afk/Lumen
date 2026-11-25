@@ -472,6 +472,19 @@ for (const st of [D.bookmarks, D.readLater, D.archive, D.highlights, D.historySt
   D.settings.onChange(d => { const n = sig(d); if (n !== last) { last = n; spareChanged() } })
 }
 const closedTabs = []
+// history changes go to the chrome's own copy (it searches history as you type without asking): batched, and a
+// big batch becomes "reload it"
+let histOps = [], histT = null
+D.onHistory(op => {
+  histOps.push(op)
+  if (histT) return
+  histT = setTimeout(() => {
+    histT = null
+    const ops = histOps.length > 300 || histOps.some(o => o[0] === 'reset') ? [['reset']] : histOps
+    histOps = []
+    broadcast('hist', ops)
+  }, 120)
+})
 // goes up whenever the bookmarks change, so the chrome's bookmarks bar fetches them only then
 let bmRev = 0
 D.bookmarks.onChange(() => { bmRev++; for (const w of windows) w.pushStateSoon() })
@@ -681,7 +694,7 @@ class BrowserWin {
     wc.on('did-start-navigation', e => { if (e.isMainFrame && !e.isSameDocument) { try { view.setBackgroundColor(tabBg(e.url, this.incognito)) } catch {} } })
     // the extensions library marks every added tab as active; ignore that so background tabs stay in the background
     if (extensions && !this.incognito && !t.spare) { addingTab = true; try { extensions.addTab(wc, this.win) } catch {} finally { addingTab = false } }
-    const upd = () => { if (!t.spare) this.pushStateSoon() }
+    const upd = () => { if (!t.spare) this.pushStateSoon(this.activeId === t.id || this.splitId === t.id) }
     wc.on('page-title-updated', (e, title) => { t.title = title; D.updateHistoryTitle(wc.getURL(), title); upd() })
     wc.on('page-favicon-updated', (e, icons) => { t.favicon = icons[icons.length - 1] || icons[0] || ''; upd() })
     wc.on('did-start-loading', () => { t.loading = true; t.crashed = false; upd() })
@@ -1050,7 +1063,13 @@ class BrowserWin {
     this._lastState = loading ? null : sig
     this.send('state', s)
   }
-  pushStateSoon() { if (!this._pst) this._pst = setTimeout(() => this.pushState(), 50) }
+  // background changes are gathered for 50 ms; fast (the tab in front loading, navigating, changing title) goes out
+  // on the next turn of the event loop, so the toolbar answers within the same frame
+  pushStateSoon(fast) {
+    if (this._pst && (!fast || this._pstFast)) return
+    clearTimeout(this._pst); this._pstFast = !!fast
+    this._pst = setTimeout(() => this.pushState(), fast ? 0 : 50)
+  }
 
   async contextMenu(t, p) {
     const wc = t.view.webContents
@@ -1823,6 +1842,8 @@ ipcMain.handle('ui', async (e, action, ...a) => {
       case 'translateLangs': { const from = t && t.translated && t.trFrom ? t.trFrom : wc && /^https?:/.test(wc.getURL()) ? await Translate.pageLang(wc) : ''; return { to: Translate.target(D.settings), from, translated: !!(t && t.translated), always: (D.settings.get('alwaysTranslate') || []).includes(from), busy: trJobs.has(w), web: !!(wc && /^https?:/.test(wc.getURL())) } }
       case 'alwaysTranslate': { const l = String(a[0] || ''); if (l) { const s = new Set(D.settings.get('alwaysTranslate') || []); a[1] === false ? s.delete(l) : s.add(l); D.settings.set({ alwaysTranslate: [...s] }) } return }
       case 'translateCancel': { const j = trJobs.get(w); if (j) j.cancelled = true; return }
+      case 'histMirror': return D.historyCompact()
+      case 'bmAll': return D.liveBookmarks().map(b => [b.url, b.title || ''])
       case 'bmList': return D.liveBookmarks().slice(0, 200).map(b => ({ url: b.url, title: b.title || '' }))
       case 'bmRemove': D.removeBookmark(String(a[0])); w.pushState(); return
       case 'siteDark': return toggleSiteDark(w, !!a[0])

@@ -96,3 +96,31 @@ Left alone on purpose (animations, not to be touched in this pass): the Home ban
 `.amb-spark`, `.amb-lines`) and the Settings hero dots (`hd-a`, `hd-c`) loop forever and keep the GPU process at about a
 whole core in software rendering while New Tab or Settings is on screen (`test/perfidle.js`). Also not changed: the
 packaged updater spawns `curl` every 10 s to look for a release (`src/updater.js`, auto-update work has its own rules).
+
+## The 20 ms bar (4.1)
+
+Every interaction answers within 20 ms of the input. `test/perf20.js` measures each one through the real input
+pipeline. It waits for a quiet machine (load average under 3), then records two times: ready (the response is in the
+DOM of the renderer that draws it: everything Lumen's code does) and frame (the first animation frame that paints it).
+The bar is asserted on ready. Frame adds the compositor, which on a software-rendered Linux test machine is slow on its
+own (a 4 px box moving in the chrome: frame gaps p50 17 ms, p95 50 ms), so it is reported, not asserted.
+
+- Command bar and address bar: the chrome keeps its own copy of history (sent once when idle after startup, then
+  changes as they happen, `hist`) and bookmarks (`bmAll`, refetched when `bmRev` changes), and searches it in the
+  input handler: the local results are drawn in the same task as the key. The main process adds only what it alone
+  knows (calculator, units, parcels, other windows' tabs) and the search engine's suggestions follow.
+- Tab click, tab close: the strip answers locally in the same frame (`localActivate`, `localClose` in `ui/ui.js`); the
+  state from the main process settles it.
+- The tab in front loading, navigating or changing its title pushes the state on the next turn of the event loop
+  instead of after 50 ms (`pushStateSoon(fast)`): Back and Forward show at once.
+- Main menu and site info popovers: their data is fetched ahead (after the state settles and when the pointer reaches
+  the button) and drawn from that; a fresher answer replaces the contents quietly.
+- Settings sidebar: the pressed section is marked at once; its page follows.
+
+Still over 20 ms, and why (nothing here may change an animation):
+- Settings and Home scrolling with a mouse wheel: `Jelly.smoothScroll` glides wheel steps on animation frames, so the
+  first move waits for a frame, and Home's frames are slow while its banner ambience loops (see above).
+- Settings section switch: the press is marked at once, but on some presses the page's main thread is still busy with
+  its entrance and banner animations when the input arrives.
+- Cmd T, the New Tab page's first frame: on Linux and Windows the preloaded New Tab is drawn when it is taken (on macOS
+  it keeps its drawn frame off screen).

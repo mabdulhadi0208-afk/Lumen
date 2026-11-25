@@ -1009,6 +1009,13 @@ function heroDots(seed) {
 // the dots stop when the hero is off screen or the window is hidden
 const dotsIO = 'IntersectionObserver' in window ? new IntersectionObserver(es => es.forEach(e => e.target.classList.toggle('dots-off', !e.isIntersecting))) : null
 const watchDots = el => { if (dotsIO && el) dotsIO.observe(el) }
+// a section picked in the sidebar is marked as chosen the moment it is pressed; its page follows
+document.addEventListener('pointerdown', e => {
+  if (e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return
+  const a = e.target.closest && e.target.closest('.nav a[href]'); if (!a || a.classList.contains('on')) return
+  for (const x of document.querySelectorAll('.nav a.on')) x.classList.remove('on')
+  a.classList.add('on')
+}, true)
 document.addEventListener('visibilitychange', () => document.documentElement.classList.toggle('lm-hidden', document.hidden))
 const heroBack = (glyph, seed = glyph) => `<i class="hero-orb a"></i><i class="hero-orb b"></i><i class="hero-orb c"></i><i class="hero-orb d"></i>${heroDots(seed)}<i class="hero-grain" aria-hidden="true"></i><span class="hero-art glow" aria-hidden="true">${glyph}</span><span class="hero-art depth" aria-hidden="true">${glyph}</span><span class="hero-art" aria-hidden="true">${glyph}</span>`
 function springStage(el) {

@@ -992,7 +992,7 @@
     for (let i = 0; i < TOUR.length && !skip; i++) {
       if (CHAPTERS[i] && !skip) {
         // the shot on screen swings away while the chapter card slams in
-        if (prev) { const o = prev, op = POSE(i - 1), orig = o.querySelector('.rig'); orig.getAnimations().forEach(done); anim(orig, [{ opacity: 1, transform: 'translate3d(0,-6vh,0)' }, { opacity: 0, transform: `translate3d(${-op.x}vw,-4vh,-380px) rotateY(${-op.ry}deg)` }], { duration: 520, easing: 'cubic-bezier(.55,0,.4,1)' }); setTimeout(() => o.remove(), still ? 0 : 560); prev = null; focus(0, 300) }
+        if (prev) { const o = prev, op = POSE(i - 1), orig = o.querySelector('.rig'); orig.getAnimations().forEach(done); anim(orig, [{ opacity: 1, transform: 'translate3d(0,-6vh,0)' }, { opacity: 0, transform: `translate3d(${-op.x}vw,-4vh,-380px) rotateY(${-op.ry}deg)` }], { duration: 520, easing: 'cubic-bezier(.55,0,.4,1)' }); setTimeout(() => o.remove(), still ? 0 : 560); prev = null; focus(0, 300); await sleep(340) }
         await chapter(CHAPTERS[i], Object.keys(CHAPTERS).indexOf(String(i)) + 1, cap)
         focus(2.5, 600)
       }

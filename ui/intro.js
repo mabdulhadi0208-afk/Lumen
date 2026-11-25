@@ -283,14 +283,14 @@
   #intro .new h1{font:800 clamp(32px,4.4vw,64px)/1.04 ${HEAD};letter-spacing:-.04em;margin:14px 0 clamp(16px,3vh,28px);padding-bottom:.06em;background:linear-gradient(100deg,#fff 25%,var(--hi) 60%,var(--hi3));-webkit-background-clip:text;background-clip:text;color:transparent}
   #intro .new h1.shine{animation:nsweep 1.6s cubic-bezier(.3,.7,.2,1)}
   @keyframes nsweep{0%{background-image:linear-gradient(100deg,#fff 25%,var(--hi) 60%,var(--hi3)),linear-gradient(100deg,transparent 40%,rgba(255,255,255,.95) 50%,transparent 60%);background-size:100% 100%,250% 100%;background-position:0 0,120% 0}100%{background-image:linear-gradient(100deg,#fff 25%,var(--hi) 60%,var(--hi3)),linear-gradient(100deg,transparent 40%,rgba(255,255,255,.95) 50%,transparent 60%);background-size:100% 100%,250% 100%;background-position:0 0,-20% 0}}
-  #intro .new .grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;text-align:left}
+  #intro .new .grid{display:grid;grid-template-columns:repeat(var(--n,4),minmax(0,1fr));gap:14px;text-align:left;max-width:calc(var(--n,4) * 280px);margin-inline:auto}
   #intro .new .it{padding:16px 16px 18px;opacity:0;display:flex;flex-direction:column;gap:12px;border-radius:24px}
   #intro .new .it .hd{display:flex;align-items:center;justify-content:space-between}
   #intro .new .it .no2{font:800 11px/1 var(--font);letter-spacing:.2em;color:color-mix(in srgb,var(--hi) 80%,transparent);font-variant-numeric:tabular-nums}
   #intro .new .it .k,#intro .ask .k{flex:none;width:40px;height:40px;border-radius:13px;display:grid;place-items:center;color:#fff;background:var(--nova);box-shadow:inset 0 1px 0 rgba(255,255,255,.4),inset 0 -6px 12px rgba(0,0,0,.12),0 10px 26px color-mix(in srgb,var(--a) 50%,transparent)}
   #intro .new .it .k svg{width:19px;height:19px}
   #intro .new .it span{color:#e4e7fa;font:650 14px/1.45 var(--font);letter-spacing:-.005em}
-  @media (max-width:760px){#intro .new .grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}#intro .new .it{padding:12px;gap:8px}#intro .new .it span{font-size:12.5px}}
+  @media (max-width:760px){#intro .new .grid{grid-template-columns:repeat(min(2,var(--n,4)),minmax(0,1fr));gap:10px}#intro .new .it{padding:12px;gap:8px}#intro .new .it span{font-size:12.5px}}
   /* finale */
   #intro .fin{text-align:center;width:min(980px,94vw);display:flex;flex-direction:column;align-items:center}
   #intro .fin .ask{width:min(580px,90vw)}
@@ -518,7 +518,8 @@
   // frame (and on macOS it can fall back to the CPU). Plain frosted glass from CSS is used instead.
   const LENS_IN_FILM = false
   function lens(el, o = {}) {
-    if (!LENS_IN_FILM || still || !el || !defs || el.dataset.lens) return
+    if (still || !el || !defs || el.dataset.lens) return
+    if (!LENS_IN_FILM) { el.dataset.lens = 'blur'; el.style.backdropFilter = `blur(${Math.min(o.blur ?? 10, 12)}px) saturate(${o.sat ?? 1.8})${o.bright ? ` brightness(${o.bright})` : ''}`; return }
     const w = Math.round(el.offsetWidth), h = Math.round(el.offsetHeight); if (w < 4 || h < 4) return
     const r = Math.min(parseFloat(getComputedStyle(el).borderTopLeftRadius) || 0, w / 2, h / 2)
     const S = o.scale ?? Math.min(44, Math.max(14, Math.min(w, h) * .16)), edge = o.edge ?? Math.min(56, Math.max(10, Math.min(w, h) * .32))
@@ -551,7 +552,7 @@
   const camera = { x: 0, y: 0, px: 0, py: 0, push: 0, roll: 0, lift: 0 }
   let bokeh = [], stars = [], caus = [], nebula = null, dofShown = -1, lastNow = 0
   function size() {
-    const scale = Math.min(1, devicePixelRatio || 1) * .7   // the sky is soft light: 70% resolution looks the same and costs half
+    const scale = Math.min(1, devicePixelRatio || 1) * (innerWidth * innerHeight > 1200000 ? .6 : .75)   // the sky is soft light: below screen resolution it looks the same and costs a fraction
     const r = cv.getBoundingClientRect(); W = Math.round(r.width) || innerWidth + 80; H = Math.round(r.height) || innerHeight + 80
     cv.width = Math.round(W * scale); cv.height = Math.round(H * scale)
     cx.setTransform(scale, 0, 0, scale, 0, 0)
@@ -1094,7 +1095,7 @@
   async function whatsNew(version) {
     const items = WHATS_NEW.items
     tween(sky, 'bokeh', .6, 1500); focus(2, 1100); leak(.6, -1, 1800)
-    const s = scene(`<div class="new"><span class="eyebrow chrome">New in Lumen ${version || WHATS_NEW.version}</span><h1>The biggest update yet.</h1><div class="grid">${items.map((it, i) => `<div class="it glass sweep" style="--sd:${1.3 + i * .08}s"><div class="hd"><div class="k">${ICONS[it.icon] || ''}</div><span class="no2">${String(i + 1).padStart(2, '0')}</span></div><span>${it.text}</span></div>`).join('')}</div></div>`, 'flat')
+    const s = scene(`<div class="new"><span class="eyebrow chrome">New in Lumen ${version || WHATS_NEW.version}</span><h1>The biggest update yet.</h1><div class="grid" style="--n:${Math.min(items.length, 4)}">${items.map((it, i) => `<div class="it glass sweep" style="--sd:${1.3 + i * .08}s"><div class="hd"><div class="k">${ICONS[it.icon] || ''}</div><span class="no2">${String(i + 1).padStart(2, '0')}</span></div><span>${it.text}</span></div>`).join('')}</div></div>`, 'flat')
     lensAll(s)
     anim(s.querySelector('.eyebrow'), [{ opacity: 0, transform: 'translateY(-10px)', letterSpacing: '.6em' }, { opacity: 1, transform: 'none', letterSpacing: '.24em' }], { duration: 1100 })
     slamIn(s.querySelector('h1'), { from: 1.25, ms: 900, k: 12 }); setTimeout(() => { if (!skip) { SFX.hit(1); pop(.1, 2) } }, 60)

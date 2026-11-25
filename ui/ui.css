@@ -1831,3 +1831,370 @@ body.incognito .popover .item.mm kbd, body.incognito .newtab kbd { color: var(--
 body.incognito .pin, body.incognito .tab .icon, body.incognito .bm img, body.incognito .bm .fav { background: radial-gradient(120% 100% at 30% 0%, rgba(255, 220, 255, .14), rgba(255, 255, 255, .03)); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .08); }
 body.incognito .zoom.stepper, body.incognito .si-count, body.incognito .mm-zoom { background: rgba(0, 0, 0, .25); }
 body.incognito .prompt .btn:not(.primary), body.incognito .trm-langs button, body.incognito .qa, body.incognito .sc-sec { background: rgba(255, 255, 255, .06); box-shadow: inset 0 1px 0 rgba(255, 255, 255, .1), inset 0 0 0 1px rgba(255, 255, 255, .05); }
+
+/* =====================================================================
+   LUMEN 4.0: the chrome, rebuilt (docs/NOVA.md, docs/NEXT.md)
+   A deeper, brighter glass: every main surface gets a lit header band, colour that comes from the accent wheel,
+   bigger confident type and Lumen-drawn tooltips. Everything here is still at rest: motion only plays on entrance,
+   hover and press (springs via ui/spring.js and ui/jelly.js), never in a loop behind the glass.
+   This layer sits last and overrides the 1.23 rules above. No emoji anywhere.
+   ===================================================================== */
+
+/* ------------------------------------------------------------- tokens */
+:root {
+  /* a hue wheel that starts at the accent: tiles, quick actions and menu cards take their colour from it */
+  --w0: var(--accent);
+  --w1: oklch(from var(--accent) l c calc(h + 40));
+  --w2: oklch(from var(--accent) calc(l + .02) c calc(h + 95));
+  --w3: oklch(from var(--accent) calc(l + .04) calc(c * .95) calc(h + 150));
+  --w4: oklch(from var(--accent) calc(l + .06) calc(c * .9) calc(h + 205));
+  --w5: oklch(from var(--accent) calc(l + .02) c calc(h + 260));
+  --w6: oklch(from var(--accent) l c calc(h + 310));
+  --gem: radial-gradient(120% 100% at 30% 0%, rgba(255, 255, 255, .55), transparent 55%);
+  --deck: rgba(255, 255, 255, .42);
+  --well: color-mix(in srgb, var(--accent) 5%, rgba(14, 18, 40, .055));
+  --tip-bg: color-mix(in srgb, var(--accent) 7%, rgba(250, 251, 255, .95));
+  --tip-fg: #141722;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    /* dark glass reads as deep ink, never as grey, even over a bright page */
+    --lg-tint-menu: color-mix(in srgb, var(--accent) 9%, rgba(11, 13, 24, .9));
+    --lg-tint-under: color-mix(in srgb, var(--accent) 10%, rgba(11, 13, 24, .84));
+    --deck: rgba(255, 255, 255, .05);
+    --well: rgba(0, 0, 0, .22);
+    --tip-bg: color-mix(in srgb, var(--accent) 12%, rgba(12, 14, 26, .95));
+    --tip-fg: #eef0fa;
+  }
+}
+body.incognito { --deck: rgba(255, 220, 255, .05); --well: rgba(0, 0, 0, .28); --tip-bg: rgba(30, 16, 56, .96); --tip-fg: #f3eaff; --lg-tint-under: rgba(24, 12, 46, .86); --w0: #a259ff; --w1: #c45cff; --w2: #ff4fb8; --w3: #ff6f8e; --w4: #7c6dff; --w5: #5f8bff; --w6: #b07bff; }
+body.chrome-dark { --deck: rgba(255, 255, 255, .06); --well: rgba(0, 0, 0, .2); }
+
+/* ------------------------------------------------------------- still at rest: nothing loops behind the glass */
+#loadbar:not(.show) i::before, #loadbar.done i::before { animation: none; }
+#aipanel:not(.open) .ai-mark, #aipanel:not(.open) .ai-mark.big::before, #aipanel:not(.open) .chero .hb, #aipanel:not(.open) .chero::after { animation: none !important; }
+#aipanel.open:not(.busy) .ai-head .ai-mark { animation: aimark 6s linear 1; }
+.chero .hb.a { animation: chba 11s ease-in-out 2 alternate; }
+.chero .hb.b { animation: chbb 13s ease-in-out 2 alternate; }
+#toast .t-orb::after { animation: torb 1.6s ease-out 2; }
+.mm-logo.img { animation: orbfloat 4s ease-in-out 1; }
+.prompt .pic { animation: picglow 2.6s ease-in-out 3; }
+.tge-orb, .em-orb { animation: orbfloat 3.4s ease-in-out 2; }
+.update { animation: nova-pulse 2.8s ease-in-out 3, upflow 4s linear 2; }
+.update::after { animation: nova-sweep 1.4s .3s cubic-bezier(.4, 0, .2, 1) 2; }
+.update .up-orb svg { animation: upbob 1.4s ease-in-out 4; }
+.cmdicon::before { animation: apspin 3s linear 1; }
+.qrbox::before { animation: apspin 3s linear 2; }
+.dl-live { animation: nova-pulse 2.4s ease-in-out 4; }
+
+/* ------------------------------------------------------------- the window: an aurora ribbon behind the toolbar */
+body.toplayout #nova-bg::before {
+  inset: 0;
+  background:
+    radial-gradient(30% 130px at 6% 0, color-mix(in srgb, var(--accent) 50%, transparent), transparent 75%),
+    radial-gradient(26% 110px at 50% 0, color-mix(in srgb, var(--accent2) 32%, transparent), transparent 75%),
+    radial-gradient(30% 130px at 96% 0, color-mix(in srgb, var(--accent3) 44%, transparent), transparent 75%),
+    radial-gradient(46% 56% at 72% 104%, color-mix(in srgb, var(--accent2) 22%, transparent), transparent 72%),
+    radial-gradient(32% 44% at 2% 98%, color-mix(in srgb, var(--accent2) 24%, transparent), transparent 70%);
+}
+body.incognito.toplayout #nova-bg::before {
+  background:
+    radial-gradient(34% 130px at 6% 0, rgba(162, 89, 255, .6), transparent 75%),
+    radial-gradient(26% 110px at 50% 0, rgba(124, 77, 255, .35), transparent 75%),
+    radial-gradient(30% 130px at 96% 0, rgba(255, 79, 184, .45), transparent 75%),
+    radial-gradient(50% 56% at 70% 108%, rgba(110, 60, 255, .38), transparent 72%);
+}
+
+/* ------------------------------------------------------------- icon buttons */
+.ib svg { transition: transform .35s var(--ease); }
+.ib:hover svg { transform: translateY(-.5px) scale(1.07); }
+.ib:active svg { transform: scale(.9); }
+body.toplayout .navbtns .ib, body.toplayout .bottomrow .ib { width: 30px; height: 30px; border-radius: 11px; }
+body.toplayout .navbtns, body.toplayout .bottomrow { height: 36px; padding: 3px; border-radius: 16px; }
+body.compact.toplayout .navbtns .ib, body.compact.toplayout .bottomrow .ib { width: 26px; height: 26px; }
+body.compact.toplayout .navbtns, body.compact.toplayout .bottomrow { height: 30px; padding: 2px; border-radius: 12px; }
+/* a capsule's buttons sit on a faint lit band so the capsule reads as one piece of glass */
+.navbtns, .bottomrow { background: var(--glint), linear-gradient(180deg, var(--deck), transparent 70%), var(--caustic), var(--lg-tint); }
+
+/* ------------------------------------------------------------- tabs on top: a lit glass rail */
+body.toplayout .tablist {
+  height: 40px; padding: 4px; border-radius: 16px;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--accent) 6%, rgba(14, 18, 40, .05)), rgba(255, 255, 255, .18));
+  box-shadow: inset 0 1px 3px rgba(14, 18, 40, .1), inset 0 0 0 1px rgba(255, 255, 255, .4), 0 1px 0 rgba(255, 255, 255, .55);
+}
+@media (prefers-color-scheme: dark) { body.toplayout .tablist { background: linear-gradient(180deg, rgba(0, 0, 0, .3), rgba(0, 0, 0, .1)); box-shadow: inset 0 1px 3px rgba(0, 0, 0, .45), inset 0 0 0 1px rgba(255, 255, 255, .05), 0 1px 0 rgba(255, 255, 255, .05); } }
+body.incognito.toplayout .tablist { background: linear-gradient(180deg, rgba(0, 0, 0, .3), rgba(40, 10, 70, .2)); box-shadow: inset 0 1px 3px rgba(0, 0, 0, .5), inset 0 0 0 1px rgba(220, 180, 255, .08); }
+body.toplayout .tabs { height: 32px; }
+body.toplayout .tab, body.toplayout .pill { height: 32px; border-radius: 12px; }
+body.toplayout .tab { gap: 8px; padding: 0 5px 0 9px; }
+/* hairline dividers between resting tabs */
+body.toplayout .tab::after { content: ''; position: absolute; right: -3.5px; top: 9px; bottom: 9px; width: 1px; border-radius: 1px; background: linear-gradient(180deg, transparent, color-mix(in srgb, var(--fg) 18%, transparent), transparent); transition: opacity .2s; pointer-events: none; }
+body.toplayout .tab.active::after, body.toplayout .tab:hover::after { opacity: 0; }
+body.toplayout .tab .title { font-size: 12.5px; }
+/* the active tab: a drop of bright glass with a beam of light along its foot */
+body.toplayout .pill {
+  background: var(--glint), radial-gradient(80% 90% at 50% 125%, color-mix(in srgb, var(--accent) 28%, transparent), transparent 70%), linear-gradient(180deg, rgba(255, 255, 255, .97), rgba(255, 255, 255, .76));
+  box-shadow: inset 0 1px 0 #fff, 0 0 0 1px color-mix(in srgb, var(--accent) 24%, transparent), 0 2px 4px rgba(14, 18, 40, .08), 0 8px 22px -6px color-mix(in srgb, var(--accent) 55%, transparent), 0 0 0 4px color-mix(in srgb, var(--accent) 9%, transparent);
+}
+@media (prefers-color-scheme: dark) {
+  body.toplayout .pill { background: var(--glint), radial-gradient(80% 90% at 50% 125%, color-mix(in srgb, var(--accent) 42%, transparent), transparent 70%), linear-gradient(180deg, color-mix(in srgb, var(--accent) 20%, rgba(48, 54, 84, .96)), color-mix(in srgb, var(--accent) 12%, rgba(30, 34, 56, .92))); box-shadow: inset 0 1px 0 rgba(255, 255, 255, .22), 0 0 0 1px color-mix(in srgb, var(--accent) 42%, transparent), 0 8px 22px -6px color-mix(in srgb, var(--accent) 60%, transparent), 0 0 0 4px color-mix(in srgb, var(--accent) 12%, transparent); }
+}
+body.incognito.toplayout .pill { background: var(--glint), radial-gradient(80% 90% at 50% 125%, rgba(255, 79, 184, .4), transparent 70%), linear-gradient(180deg, rgba(92, 56, 150, .96), rgba(60, 34, 104, .93)); box-shadow: inset 0 1px 0 rgba(255, 220, 255, .3), 0 0 0 1px rgba(190, 140, 255, .45), 0 8px 22px -6px rgba(255, 79, 184, .55), 0 0 0 4px rgba(162, 89, 255, .16); }
+body.toplayout .pill::after { left: 16%; right: 16%; width: auto; margin: 0; bottom: 0; height: 3px; border-radius: 3px 3px 0 0; background: linear-gradient(90deg, transparent, var(--accent) 22%, var(--accent3) 78%, transparent); box-shadow: 0 0 12px var(--accent), 0 -2px 10px color-mix(in srgb, var(--accent) 60%, transparent); }
+body.toplayout .tab.active .title { background: linear-gradient(90deg, var(--fg) 58%, var(--glow-ink)); -webkit-background-clip: text; background-clip: text; color: transparent; font-weight: 750; }
+body.toplayout .tab .icon { width: 22px; height: 22px; border-radius: 8px; }
+body.toplayout .tab.active .icon { box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .7), 0 3px 10px -2px var(--a40), 0 0 0 3px var(--a10); }
+/* the new tab gem: a lit orb with a quiet ring */
+body.toplayout .newtab { width: 34px; height: 34px; border-radius: 13px; box-shadow: inset 0 1px 0 rgba(255, 255, 255, .6), inset 0 -2px 6px rgba(0, 0, 0, .12), 0 0 0 1px color-mix(in srgb, var(--accent) 40%, transparent), 0 0 0 5px var(--a10), 0 8px 20px -6px var(--a40); }
+body.toplayout .newtab .plus svg { width: 16px; height: 16px; transition: transform .45s var(--ease); }
+body.toplayout .newtab:hover .plus svg { transform: rotate(90deg) scale(1.08); }
+body.toplayout .pin { height: 32px; width: 38px; border-radius: 12px; }
+body.toplayout .ghead { height: 28px; top: 2px; border-radius: 12px; }
+body.compact.toplayout .tablist { height: 34px; padding: 3px; }
+body.compact.toplayout .tab, body.compact.toplayout .pill, body.compact.toplayout .tabs { height: 28px; }
+body.compact.toplayout .newtab { width: 28px; height: 28px; border-radius: 10px; }
+
+/* ------------------------------------------------------------- tabs in the sidebar */
+.pill {
+  background: var(--glint), linear-gradient(90deg, color-mix(in srgb, var(--accent) 22%, transparent), transparent 62%), var(--caustic), var(--lg-tint-hi);
+  box-shadow: var(--lg-rim), 0 0 0 1px color-mix(in srgb, var(--accent) 20%, transparent), 0 0 0 4px color-mix(in srgb, var(--accent) 8%, transparent), 0 10px 24px -8px color-mix(in srgb, var(--accent) 55%, transparent);
+}
+.pill::after { width: 4px; top: 6px; bottom: 6px; background: linear-gradient(180deg, var(--accent), var(--accent3)); box-shadow: 0 0 14px var(--accent), 0 0 4px var(--accent3); }
+.tab.active .title { background: linear-gradient(90deg, var(--fg) 58%, var(--glow-ink)); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.newtab { margin-bottom: 6px; }
+.newtab .plus { width: 28px; height: 28px; border-radius: 10px; }
+
+/* ------------------------------------------------------------- the address bar */
+.urlbar {
+  background: var(--glint), radial-gradient(50% 160% at 0% 50%, color-mix(in srgb, var(--accent) 18%, transparent), transparent 72%), linear-gradient(180deg, var(--deck), transparent 80%), var(--caustic), var(--lg-tint-hi);
+}
+.urlbar:hover { background: var(--glint), radial-gradient(50% 160% at 0% 50%, color-mix(in srgb, var(--accent) 24%, transparent), transparent 72%), linear-gradient(180deg, var(--deck), transparent 80%), var(--caustic), var(--lg-tint-hi); }
+body.toplayout .urlbar { height: 36px; border-radius: 16px; padding: 0 4px; gap: 6px; }
+body.toplayout .site { width: 28px; height: 28px; border-radius: 11px; }
+body.compact.toplayout .urlbar { height: 30px; border-radius: 12px; }
+body.compact.toplayout .site { width: 24px; height: 24px; border-radius: 9px; }
+.site { overflow: visible; }
+.site::after { content: ''; position: absolute; right: -5px; top: 6px; bottom: 6px; width: 1px; background: linear-gradient(180deg, transparent, color-mix(in srgb, var(--fg) 20%, transparent), transparent); pointer-events: none; }
+.urltext { padding: 0 6px 0 8px; }
+.urltext .host { font-weight: 750; letter-spacing: -.015em; }
+.urltext .path { color: color-mix(in srgb, var(--fg) 42%, transparent); }
+.urlactions { gap: 3px; padding: 2px; border-radius: 12px; transition: background .2s, box-shadow .2s; }
+.urlactions:has(.show) { background: var(--well); box-shadow: inset 0 1px 2px rgba(14, 18, 40, .08), 0 1px 0 rgba(255, 255, 255, .45); }
+@media (prefers-color-scheme: dark) { .urlactions:has(.show) { box-shadow: inset 0 1px 2px rgba(0, 0, 0, .3), 0 1px 0 rgba(255, 255, 255, .05); } }
+
+/* ------------------------------------------------------------- the command bar (Cmd K) */
+.cmdbar {
+  top: 11vh; width: min(720px, calc(100vw - 64px)); margin-left: calc(min(720px, calc(100vw - 64px)) / -2); border-radius: 30px;
+  box-shadow: var(--lg-rim), 0 0 0 1px color-mix(in srgb, var(--accent) 24%, transparent), 0 0 0 8px color-mix(in srgb, var(--accent) 9%, transparent), var(--lg-drop-lg), 0 0 140px -10px color-mix(in srgb, var(--accent) 34%, transparent);
+}
+/* the input sits in a lit hero band: two colour blobs and a big faint outline glyph, all still */
+.cmdinput { height: 80px; padding: 0 20px 0 18px; gap: 15px; isolation: isolate; border-radius: 30px 30px 0 0; }
+.cmdinput::before {
+  content: ''; position: absolute; inset: 0; z-index: -1; pointer-events: none; border-radius: inherit;
+  background:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='%237f86a8' stroke-opacity='.22' stroke-width='.5' stroke-linecap='round'%3E%3Ccircle cx='7.2' cy='7.2' r='4.4'/%3E%3Cpath d='m10.5 10.5 3.2 3.2'/%3E%3C/svg%3E") right 58px top -18px / 124px no-repeat,
+    radial-gradient(42% 120% at 4% 0%, color-mix(in srgb, var(--accent) 34%, transparent), transparent 70%),
+    radial-gradient(36% 110% at 100% 100%, color-mix(in srgb, var(--accent3) 26%, transparent), transparent 72%);
+}
+.cmdinput::after { left: 0; right: 0; background: linear-gradient(90deg, transparent, var(--a40) 20%, color-mix(in srgb, var(--accent3) 45%, transparent) 80%, transparent); }
+.cmdicon { width: 44px; height: 44px; border-radius: 15px; box-shadow: inset 0 1px 0 rgba(255, 255, 255, .6), 0 0 0 5px var(--a14), 0 10px 24px -6px var(--a40); }
+.cmdicon::before { border-radius: 19px; }
+.cmdicon svg { width: 20px; height: 20px; }
+.cmdinput input { font: 750 23px var(--display); letter-spacing: -.03em; }
+.cmdinput input::placeholder { color: color-mix(in srgb, var(--fg) 40%, transparent); font-weight: 650; }
+/* quick actions: a row of lit tiles, each with its own colour from the accent wheel */
+.cmdquick { padding: 14px 16px 6px; gap: 8px; }
+.cmdquick.show { display: grid; grid-template-columns: repeat(auto-fill, minmax(84px, 1fr)); }
+.qa {
+  --qc: var(--w0);
+  position: relative; height: 80px; padding: 10px 4px 8px; border-radius: 20px; flex-direction: column; justify-content: center; gap: 8px; min-width: 0;
+  font: 700 11.5px var(--font); letter-spacing: -.005em; color: var(--fg); white-space: nowrap; overflow: hidden;
+  background: radial-gradient(120% 80% at 50% 0%, color-mix(in srgb, var(--qc) 22%, rgba(255, 255, 255, .55)), transparent 70%), var(--lg-tint-hi);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .85), inset 0 0 0 1px color-mix(in srgb, var(--qc) 20%, rgba(255, 255, 255, .3)), 0 4px 12px -6px color-mix(in srgb, var(--qc) 50%, transparent);
+}
+@media (prefers-color-scheme: dark) { .qa { background: radial-gradient(120% 80% at 50% 0%, color-mix(in srgb, var(--qc) 30%, transparent), transparent 70%), rgba(255, 255, 255, .04); box-shadow: inset 0 1px 0 rgba(255, 255, 255, .12), inset 0 0 0 1px color-mix(in srgb, var(--qc) 28%, transparent), 0 4px 14px -6px color-mix(in srgb, var(--qc) 55%, transparent); } }
+body.incognito .qa { background: radial-gradient(120% 80% at 50% 0%, color-mix(in srgb, var(--qc) 32%, transparent), transparent 70%), rgba(255, 255, 255, .04); box-shadow: inset 0 1px 0 rgba(255, 220, 255, .14), inset 0 0 0 1px color-mix(in srgb, var(--qc) 30%, transparent); }
+.qa span, .qa:nth-child(3n+2) span, .qa:nth-child(3n) span { width: 36px; height: 36px; border-radius: 13px; flex: none; color: #fff; background: var(--gem), linear-gradient(140deg, var(--qc), color-mix(in srgb, var(--qc) 66%, #000)); box-shadow: inset 0 1px 0 rgba(255, 255, 255, .55), 0 6px 14px -4px color-mix(in srgb, var(--qc) 70%, transparent); transition: transform .45s var(--ease), box-shadow .25s; }
+.qa span svg { width: 17px; height: 17px; filter: drop-shadow(0 1px 1px rgba(0, 0, 0, .25)); }
+.qa:hover { transform: translateY(-3px); box-shadow: inset 0 1px 0 rgba(255, 255, 255, .9), inset 0 0 0 1px color-mix(in srgb, var(--qc) 48%, transparent), 0 12px 26px -10px color-mix(in srgb, var(--qc) 75%, transparent); }
+.qa:hover span { transform: scale(1.1) rotate(-6deg); background: var(--gem), linear-gradient(140deg, var(--qc), color-mix(in srgb, var(--qc) 66%, #000)); box-shadow: inset 0 1px 0 rgba(255, 255, 255, .6), 0 0 0 4px color-mix(in srgb, var(--qc) 22%, transparent), 0 8px 18px -4px color-mix(in srgb, var(--qc) 80%, transparent); }
+.qa:active { transform: scale(.96); }
+.qa:nth-child(7n+1) { --qc: var(--w0); } .qa:nth-child(7n+2) { --qc: var(--w1); } .qa:nth-child(7n+3) { --qc: var(--w2); } .qa:nth-child(7n+4) { --qc: var(--w3); }
+.qa:nth-child(7n+5) { --qc: var(--w4); } .qa:nth-child(7n+6) { --qc: var(--w5); } .qa:nth-child(7n) { --qc: var(--w6); }
+/* results */
+.cmdresults { padding: 2px 12px 12px; }
+.cmdresults .sec { padding: 14px 10px 6px; letter-spacing: .12em; }
+.cmdresults .sec::before { content: ''; width: 6px; height: 6px; border-radius: 2px; background: var(--nova); box-shadow: 0 0 8px var(--accent); flex: none; }
+.res { height: 50px; border-radius: 17px; gap: 13px; padding: 0 10px 0 8px; }
+.res .ri { width: 34px; height: 34px; border-radius: 12px; }
+.res .ri img, .res .ri .fav { width: 18px; height: 18px; }
+.res .rt { font-size: 14px; font-weight: 600; letter-spacing: -.01em; }
+.res.sel {
+  background: radial-gradient(70% 160% at 0% 50%, color-mix(in srgb, var(--accent) 26%, transparent), transparent 70%), linear-gradient(90deg, color-mix(in srgb, var(--accent) 12%, rgba(255, 255, 255, .5)), rgba(255, 255, 255, .12));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .7), inset 0 0 0 1px color-mix(in srgb, var(--accent) 30%, transparent), 0 8px 22px -10px color-mix(in srgb, var(--accent) 60%, transparent);
+}
+@media (prefers-color-scheme: dark) { .res.sel { background: radial-gradient(70% 160% at 0% 50%, color-mix(in srgb, var(--accent) 34%, transparent), transparent 70%), linear-gradient(90deg, color-mix(in srgb, var(--accent) 16%, rgba(255, 255, 255, .06)), rgba(255, 255, 255, .02)); box-shadow: inset 0 1px 0 rgba(255, 255, 255, .12), inset 0 0 0 1px color-mix(in srgb, var(--accent) 40%, transparent), 0 8px 22px -10px color-mix(in srgb, var(--accent) 70%, transparent); } }
+body.incognito .res.sel { background: radial-gradient(70% 160% at 0% 50%, rgba(162, 89, 255, .4), transparent 70%), linear-gradient(90deg, rgba(162, 89, 255, .16), rgba(255, 255, 255, .02)); box-shadow: inset 0 1px 0 rgba(255, 220, 255, .14), inset 0 0 0 1px rgba(190, 140, 255, .4); }
+.res.sel .ri { box-shadow: inset 0 1px 0 rgba(255, 255, 255, .55), 0 0 0 3px var(--a14), 0 6px 14px -3px var(--a40); }
+.res.sel .rk { padding: 3px 9px 3px 10px; border-radius: 9px; display: inline-flex; align-items: center; gap: 6px; }
+.res.sel .rk::after { content: ''; width: 12px; height: 10px; background: currentColor; -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 10' fill='none' stroke='%23000' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M10.5 1v3.5a1.5 1.5 0 0 1-1.5 1.5H2M4.5 3.4 2 6l2.5 2.6'/%3E%3C/svg%3E") center / contain no-repeat; }
+.cmdfoot { height: 44px; }
+
+/* ------------------------------------------------------------- popovers */
+.popover { border-radius: 28px; padding: 10px; box-shadow: var(--lg-rim), 0 0 0 1px color-mix(in srgb, var(--accent) 16%, transparent), var(--lg-drop-lg); }
+.popover.wide { width: 352px; }
+/* grouped cards: the main menu's sections sit in recessed glass wells, each with a coloured label */
+.mm-card { position: relative; margin: 0 0 8px; padding: 3px 4px 4px; border-radius: 20px; background: var(--well); box-shadow: inset 0 1px 2px rgba(14, 18, 40, .06), 0 1px 0 rgba(255, 255, 255, .5); }
+@media (prefers-color-scheme: dark) { .mm-card { box-shadow: inset 0 1px 2px rgba(0, 0, 0, .3), 0 1px 0 rgba(255, 255, 255, .04); } }
+.mm-card:last-child { margin-bottom: 0; }
+.mm-card > .mm-label { padding: 8px 10px 4px; }
+.mm-card > .mm-label::before { content: ''; width: 6px; height: 6px; border-radius: 2px; background: var(--lc, var(--accent)); box-shadow: 0 0 8px var(--lc, var(--accent)); flex: none; }
+.mm-card .item { border-radius: 15px; }
+.mm-card[data-c="0"] { --lc: var(--w0); } .mm-card[data-c="1"] { --lc: var(--w2); } .mm-card[data-c="2"] { --lc: var(--w4); } .mm-card[data-c="3"] { --lc: var(--w5); } .mm-card[data-c="4"] { --lc: var(--w1); } .mm-card[data-c="5"] { --lc: var(--w3); }
+/* the three big tiles: vivid gems at rest, not only on hover */
+.mm-tiles { gap: 8px; }
+.mm-tile, .mm-tile:nth-child(1), .mm-tile:nth-child(2), .mm-tile:nth-child(3) {
+  height: 80px; border-radius: 22px; color: #fff; gap: 8px; font-weight: 750;
+  background: var(--gem), linear-gradient(150deg, var(--ic), color-mix(in srgb, var(--ic) 62%, #000));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .55), inset 0 -10px 20px -12px rgba(0, 0, 0, .35), 0 10px 22px -10px color-mix(in srgb, var(--ic) 80%, transparent);
+}
+.mm-tile:nth-child(1) { --ic: var(--w0); } .mm-tile:nth-child(2) { --ic: var(--w2); } .mm-tile:nth-child(3) { --ic: var(--w5); }
+body.incognito .mm-tile:nth-child(1) { --ic: #8b5cf6; } body.incognito .mm-tile:nth-child(2) { --ic: #c45cff; } body.incognito .mm-tile:nth-child(3) { --ic: #ff4fb8; }
+.mm-tile svg, .mm-tile:hover svg { color: #fff; width: 24px; height: 24px; filter: drop-shadow(0 2px 3px rgba(0, 0, 0, .25)); }
+.mm-tile span { color: #fff; text-shadow: 0 1px 2px rgba(0, 0, 0, .22); }
+.mm-tile::before { display: none; }
+.mm-tile:hover { color: #fff; background: var(--gem), linear-gradient(150deg, var(--ic), color-mix(in srgb, var(--ic) 62%, #000)); box-shadow: inset 0 1px 0 rgba(255, 255, 255, .6), 0 0 0 4px color-mix(in srgb, var(--ic) 22%, transparent), 0 14px 28px -10px color-mix(in srgb, var(--ic) 90%, transparent); }
+.mm-zoom { border-radius: 18px; background: var(--well); box-shadow: inset 0 1px 2px rgba(14, 18, 40, .06), 0 1px 0 rgba(255, 255, 255, .5); margin: 0 0 8px; }
+@media (prefers-color-scheme: dark) { .mm-zoom { box-shadow: inset 0 1px 2px rgba(0, 0, 0, .3); } }
+.mm-head.chero { min-height: 84px; border-radius: 22px; }
+.mm-head.chero .mm-title { font-size: 28px; }
+
+/* ------------------------------------------------------------- toast */
+#toast {
+  gap: 11px; padding: 7px 18px 7px 7px; min-height: 42px; max-width: 232px; border-radius: 999px; font: 750 13px var(--display); letter-spacing: -.01em;
+  box-shadow: var(--lg-rim), 0 0 0 1px color-mix(in srgb, var(--accent) 24%, transparent), 0 0 0 5px color-mix(in srgb, var(--accent) 9%, transparent), var(--lg-drop-lg);
+}
+#toast .t-orb { width: 28px; height: 28px; display: grid; place-items: center; color: #fff; background: var(--gem), var(--nova); box-shadow: inset 0 1px 0 rgba(255, 255, 255, .55), 0 0 0 3px var(--a14), 0 4px 12px -2px var(--a40); }
+#toast .t-orb svg { width: 15px; height: 15px; filter: drop-shadow(0 1px 1px rgba(0, 0, 0, .25)); }
+#toast .t-orb::after { inset: -6px; }
+#toast.bad .t-orb { background: var(--gem), linear-gradient(140deg, #ff7a6a, #e5484d); }
+#toast .t-time { position: absolute; left: 24px; right: 24px; bottom: 1px; height: 2px; border-radius: 2px; overflow: hidden; pointer-events: none; }
+#toast .t-time i { display: block; height: 100%; border-radius: 2px; background: linear-gradient(90deg, var(--accent), var(--accent3)); transform-origin: left; box-shadow: 0 0 6px var(--accent); }
+#toast.bad .t-time i { background: linear-gradient(90deg, #ff7a6a, #e5484d); }
+#toast.act { padding: 6px 6px 6px 7px; max-width: 340px; }
+.toast-btn { padding: 8px 15px; font-weight: 800; }
+/* tabs on top: the toast is shown in its own small glass view over the page (src/nova.js), so it never covers the
+   tab strip. This copy stays the source of truth, out of sight; if that view cannot load, it shows here as before. */
+body.toplayout #toast.viewed { visibility: hidden; pointer-events: none !important; }
+
+/* ------------------------------------------------------------- tooltips: drawn by Lumen, never by the system */
+#tip {
+  position: fixed; left: 0; top: 0; z-index: 400; display: none; align-items: center; gap: 8px; max-width: 320px; padding: 5px 6px 5px 11px; min-height: 30px; border-radius: 12px;
+  font: 650 12px/1.25 var(--font); letter-spacing: -.005em; color: var(--tip-fg); pointer-events: none; white-space: nowrap; will-change: transform, opacity;
+  background: radial-gradient(120% 140% at 0% 0%, color-mix(in srgb, var(--accent) 18%, transparent), transparent 60%), linear-gradient(180deg, var(--deck), transparent), var(--tip-bg);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .75), 0 0 0 1px color-mix(in srgb, var(--accent) 24%, rgba(14, 18, 40, .08)), 0 2px 4px rgba(14, 18, 40, .08), 0 10px 26px -8px color-mix(in srgb, var(--accent) 45%, rgba(14, 18, 40, .25));
+}
+@media (prefers-color-scheme: dark) { #tip { box-shadow: inset 0 1px 0 rgba(255, 255, 255, .14), 0 0 0 1px color-mix(in srgb, var(--accent) 36%, rgba(255, 255, 255, .06)), 0 2px 4px rgba(0, 0, 0, .4), 0 12px 28px -8px color-mix(in srgb, var(--accent) 55%, rgba(0, 0, 0, .5)); } }
+body.incognito #tip { box-shadow: inset 0 1px 0 rgba(255, 220, 255, .2), 0 0 0 1px rgba(190, 140, 255, .42), 0 12px 28px -8px rgba(255, 79, 184, .5); }
+#tip.show { display: flex; }
+#tip.nokeys { padding-right: 11px; }
+#tip .tp-t { overflow: hidden; text-overflow: ellipsis; }
+#tip .tp-k { display: inline-flex; gap: 3px; flex: none; }
+#tip kbd {
+  display: inline-grid; place-items: center; min-width: 20px; height: 20px; padding: 0 5px; border-radius: 6px; font: 750 10.5px var(--font); color: var(--glow-ink);
+  background: linear-gradient(180deg, rgba(255, 255, 255, .95), rgba(255, 255, 255, .6)); box-shadow: inset 0 -1.5px 0 color-mix(in srgb, var(--accent) 24%, var(--line)), inset 0 0 0 1px color-mix(in srgb, var(--accent) 20%, var(--line));
+}
+@media (prefers-color-scheme: dark) { #tip kbd { background: linear-gradient(180deg, rgba(255, 255, 255, .16), rgba(255, 255, 255, .05)); box-shadow: inset 0 -1.5px 0 rgba(0, 0, 0, .35), inset 0 0 0 1px color-mix(in srgb, var(--accent) 32%, rgba(255, 255, 255, .08)); } }
+body.incognito #tip kbd { color: #ecdcff; background: linear-gradient(180deg, rgba(255, 220, 255, .18), rgba(255, 255, 255, .05)); box-shadow: inset 0 -1.5px 0 rgba(0, 0, 0, .35), inset 0 0 0 1px rgba(190, 140, 255, .3); }
+#tip i.ar { position: absolute; left: var(--ax, 50%); width: 10px; height: 10px; margin-left: -5px; border-radius: 2.5px; background: var(--tip-bg); transform: rotate(45deg); z-index: -1; }
+#tip.below i.ar { top: -4px; box-shadow: -1px -1px 0 color-mix(in srgb, var(--accent) 24%, rgba(14, 18, 40, .08)); }
+#tip.above i.ar { bottom: -4px; box-shadow: 1px 1px 0 color-mix(in srgb, var(--accent) 24%, rgba(14, 18, 40, .08)); }
+#tip.side i.ar { display: none; }
+
+/* ------------------------------------------------------------- tabs, kept simple (owner: "just make it a gradient")
+   The active tab is a clean accent gradient pill with white text and a soft glow. No lens, no inner layers, no rings.
+   Resting tabs stay plain. Only the close button shows on a tab (New Tab Below lives in the tab's right-click menu). */
+.pill, body.toplayout .pill, body.incognito.toplayout .pill {
+  background: linear-gradient(120deg, var(--accent), var(--accent2) 60%, var(--accent3));
+  backdrop-filter: none; box-shadow: 0 6px 16px -6px color-mix(in srgb, var(--accent) 70%, transparent);
+}
+.pill::before, .pill::after, body.toplayout .pill::after { display: none; }
+.tab.active .title, body.toplayout .tab.active .title { background: none; -webkit-background-clip: border-box; background-clip: border-box; color: #fff; font-weight: 700; }
+.tab.active .icon, body.toplayout .tab.active .icon { background: rgba(255, 255, 255, .9); box-shadow: none; }
+.tab.active .x, .tab.active .audio { color: rgba(255, 255, 255, .85); }
+.tab.active .x:hover { background: rgba(255, 255, 255, .22); color: #fff; box-shadow: none; }
+.tab.active .eq i { background: #fff; box-shadow: none; }
+.tab .add, .tabs.narrow .tab .add { display: none !important; }
+body.toplayout .tab::after { display: none; }
+
+/* the accent wheel, tuned so every stop stays a clear jewel colour (no muddy olive or brown) */
+:root {
+  --w1: oklch(from var(--accent) calc(l + .02) c calc(h + 40));
+  --w2: oklch(from var(--accent) calc(l + .03) c calc(h + 80));
+  --w3: oklch(from var(--accent) calc(l + .05) c calc(h + 120));
+  --w4: oklch(from var(--accent) calc(l + .08) c calc(h + 160));
+  --w5: oklch(from var(--accent) calc(l + .04) c calc(h + 290));
+  --w6: oklch(from var(--accent) calc(l + .02) c calc(h + 325));
+}
+.qa span, .qa:nth-child(3n+2) span, .qa:nth-child(3n) span, .qa:hover span {
+  background: var(--gem), linear-gradient(140deg, oklch(from var(--qc) calc(l + .06) c h), oklch(from var(--qc) calc(l - .06) c calc(h + 28)));
+}
+.mm-tile, .mm-tile:nth-child(1), .mm-tile:nth-child(2), .mm-tile:nth-child(3), .mm-tile:hover {
+  background: var(--gem), linear-gradient(150deg, oklch(from var(--ic) calc(l + .05) c h), oklch(from var(--ic) calc(l - .07) c calc(h + 30)));
+}
+.cmdinput::before { background-position: right 66px top -24px, 0 0, 0 0; background-size: 116px, auto, auto; }
+
+/* ------------------------------------------------------------- 4.0, round two: address bar */
+/* the site you are on sits in its own lit chip; the path trails off softly after it */
+.urltext:not(.empty) .host { display: inline-block; padding: 2px 9px; margin-right: 1px; border-radius: 9px; color: var(--fg); -webkit-background-clip: border-box; background-clip: border-box;
+  background: linear-gradient(180deg, rgba(255, 255, 255, .7), rgba(255, 255, 255, .35)), var(--a10); box-shadow: inset 0 1px 0 rgba(255, 255, 255, .8), inset 0 0 0 1px var(--a18); line-height: 18px; }
+@media (prefers-color-scheme: dark) { .urltext:not(.empty) .host { background: linear-gradient(180deg, rgba(255, 255, 255, .1), rgba(255, 255, 255, .03)), var(--a14); box-shadow: inset 0 1px 0 rgba(255, 255, 255, .14), inset 0 0 0 1px var(--a28); } }
+body.incognito .urltext:not(.empty) .host { background: linear-gradient(180deg, rgba(255, 220, 255, .12), rgba(255, 255, 255, .03)), rgba(162, 89, 255, .2); box-shadow: inset 0 1px 0 rgba(255, 220, 255, .16), inset 0 0 0 1px rgba(190, 140, 255, .32); }
+.urltext.empty .host { font-weight: 550; }
+/* an empty bar says how to reach the command bar from anywhere */
+.uhint { display: none; gap: 3px; flex: none; margin-right: 2px; }
+.urlbar:has(.urltext.empty) .uhint { display: inline-flex; }
+.uhint kbd { display: inline-grid; place-items: center; min-width: 20px; height: 20px; padding: 0 5px; border-radius: 6px; font: 750 10.5px var(--font); color: var(--glow-ink);
+  background: linear-gradient(180deg, rgba(255, 255, 255, .92), rgba(255, 255, 255, .55)); box-shadow: inset 0 -1.5px 0 color-mix(in srgb, var(--accent) 22%, var(--line)), inset 0 0 0 1px color-mix(in srgb, var(--accent) 18%, var(--line)); }
+@media (prefers-color-scheme: dark) { .uhint kbd { background: linear-gradient(180deg, rgba(255, 255, 255, .16), rgba(255, 255, 255, .05)); box-shadow: inset 0 -1.5px 0 rgba(0, 0, 0, .35), inset 0 0 0 1px color-mix(in srgb, var(--accent) 30%, rgba(255, 255, 255, .08)); } }
+body.incognito .uhint kbd { color: #ecdcff; background: linear-gradient(180deg, rgba(255, 220, 255, .18), rgba(255, 255, 255, .05)); }
+/* the bar's spectral rim stays faintly lit at rest, and blooms on hover */
+.urlbar::before { opacity: .65; }
+.urlbar:hover { box-shadow: var(--lg-rim), 0 0 0 1px color-mix(in srgb, var(--accent) 30%, transparent), 0 0 0 5px var(--a14), 0 12px 30px -8px color-mix(in srgb, var(--accent) 50%, transparent); }
+
+/* ------------------------------------------------------------- 4.0, round two: command bar */
+/* once you type, the best match becomes a hero row: taller, a bigger gem, bigger type */
+.cmdbar.typed .res[data-i="0"] { height: 60px; border-radius: 19px; }
+.cmdbar.typed .res[data-i="0"] .ri { width: 40px; height: 40px; border-radius: 14px; }
+.cmdbar.typed .res[data-i="0"] .ri svg { width: 18px; height: 18px; }
+.cmdbar.typed .res[data-i="0"] .rt { font: 750 16px var(--display); letter-spacing: -.02em; }
+.cmdbar.typed .res[data-i="0"] .ru { font-weight: 600; }
+.cmdbar.typed .cmdresults { padding-top: 10px; }
+.res .ru:not(:empty) { flex: 0 1 auto; }
+.res .ru:not(:empty)::before { content: ''; display: inline-block; width: 4px; height: 4px; border-radius: 50%; margin: 0 8px 2px 0; background: currentColor; opacity: .55; }
+.res .rk:not(:empty) { margin-left: auto; }
+.res .ri { transition: transform .4s var(--ease), background .15s, box-shadow .2s; }
+.res.sel .ri { transform: scale(1.05) rotate(-3deg); }
+
+/* ------------------------------------------------------------- 4.0, round two: popovers, command bar, site info */
+/* one diagonal light sweep across the glass as a popover or the command bar opens (plays once, then rests) */
+.popover.show::after, .cmdbar.show::after {
+  content: ''; position: absolute; left: 0; right: 0; top: 0; height: 420px; max-height: 100%; border-radius: inherit; pointer-events: none; z-index: 4;
+  background: linear-gradient(105deg, transparent 38%, rgba(255, 255, 255, .42) 50%, transparent 62%) no-repeat;
+  background-size: 250% 100%; background-position: 130% 0; animation: pop-sweep .9s .08s cubic-bezier(.4, 0, .2, 1) 1 both;
+}
+@media (prefers-color-scheme: dark) { .popover.show::after, .cmdbar.show::after { background-image: linear-gradient(105deg, transparent 38%, rgba(255, 255, 255, .12) 50%, transparent 62%); } }
+@keyframes pop-sweep { from { background-position: 130% 0; } to { background-position: -30% 0; } }
+body[data-motion="off"] .popover.show::after, body[data-motion="off"] .cmdbar.show::after { display: none; }
+/* the site info danger card */
+.mm-card.danger { background: color-mix(in srgb, #e5484d 7%, var(--well)); }
+.popover .item.danger .ri { color: #e5484d; }
+
+/* ------------------------------------------------------------- 4.0, round three: find bar, tab preview, peek bar */
+/* the same lit band as the command bar: accent light pooled at the left, a bright top edge */
+#findbar, .peekbar { background: var(--glint), radial-gradient(40% 160% at 0% 50%, color-mix(in srgb, var(--accent) 22%, transparent), transparent 72%), linear-gradient(180deg, var(--deck), transparent 70%), var(--caustic), var(--lg-tint-menu); box-shadow: var(--lg-rim), 0 0 0 1px color-mix(in srgb, var(--accent) 22%, transparent), 0 0 0 5px color-mix(in srgb, var(--accent) 8%, transparent), var(--lg-drop-lg); }
+#findbar input { font: 700 14px var(--display); letter-spacing: -.01em; }
+.find-ic { width: 30px; height: 30px; border-radius: 11px; box-shadow: inset 0 1px 0 rgba(255, 255, 255, .55), 0 0 0 4px var(--a10), 0 4px 12px -2px var(--a40); }
+#tabcard { box-shadow: var(--lg-rim), 0 0 0 1px color-mix(in srgb, var(--accent) 22%, transparent), 0 0 0 5px color-mix(in srgb, var(--accent) 8%, transparent), var(--lg-drop-lg); }
+.tc-body { background: radial-gradient(60% 120% at 0% 100%, color-mix(in srgb, var(--accent) 16%, transparent), transparent 70%); }
+.tc-title { font-size: 14px; }

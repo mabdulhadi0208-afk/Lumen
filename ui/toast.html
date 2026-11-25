@@ -1,0 +1,121 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Lumen toast</title>
+<!-- Lumen's toast over the page when tabs are on top (src/nova.js): a glass capsule that springs down from under the
+     toolbar, says what happened with an icon gem, and runs out on a hairline timer. No emoji. -->
+<style>
+:root {
+  --accent: #5b8cff;
+  --accent2: oklch(from var(--accent) calc(l - .02) c calc(h + 40));
+  --accent3: oklch(from var(--accent) calc(l + .04) c calc(h + 95));
+  --nova: linear-gradient(135deg, var(--accent), var(--accent2) 55%, var(--accent3));
+  --fg: #141722; --tint: rgba(250, 251, 255, .78); --line: rgba(20, 24, 48, .09);
+  --rim: inset 0 1px 0 rgba(255, 255, 255, .95), inset 0 -1px 0 rgba(255, 255, 255, .35), inset 1.5px 0 0 rgba(255, 79, 139, .14), inset -1.5px 0 0 rgba(63, 212, 255, .18);
+  --shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 26%, transparent), 0 0 0 5px color-mix(in srgb, var(--accent) 10%, transparent), 0 2px 4px rgba(14, 18, 40, .08), 0 12px 28px -8px color-mix(in srgb, var(--accent) 50%, rgba(14, 18, 40, .25));
+  --font: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI Variable Text", "Segoe UI", Inter, system-ui, sans-serif;
+  --display: ui-rounded, "SF Pro Rounded", "Nunito", system-ui, var(--font);
+}
+.dark { --fg: #eef0fa; --tint: color-mix(in srgb, var(--accent) 12%, rgba(11, 13, 26, .86)); --line: rgba(255, 255, 255, .1);
+  --rim: inset 0 1px 0 rgba(255, 255, 255, .26), inset 0 -1px 0 rgba(255, 255, 255, .06), inset 1.5px 0 0 rgba(255, 79, 139, .22), inset -1.5px 0 0 rgba(63, 212, 255, .24);
+  --shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 40%, transparent), 0 0 0 5px color-mix(in srgb, var(--accent) 12%, transparent), 0 2px 4px rgba(0, 0, 0, .4), 0 12px 28px -8px color-mix(in srgb, var(--accent) 60%, rgba(0, 0, 0, .5)); }
+.incognito { --accent: #a77dff; --accent2: #c45cff; --accent3: #ff4fb8; --tint: rgba(30, 14, 58, .88); }
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; overflow: hidden; background: transparent; font: 13px/1.3 var(--font); color: var(--fg); -webkit-font-smoothing: antialiased; user-select: none; cursor: default; }
+#t {
+  position: absolute; left: 50%; top: 8px; display: flex; align-items: center; gap: 11px; min-height: 44px; max-width: calc(100vw - 48px); padding: 7px 18px 7px 7px;
+  border-radius: 999px; isolation: isolate; opacity: 0; translate: -50% 0; transform-origin: 50% 0; will-change: transform, opacity;
+  box-shadow: var(--rim), var(--shadow);
+}
+#t.act { padding-right: 6px; }
+#t > .glass { position: absolute; inset: 0; border-radius: inherit; overflow: hidden; z-index: -1; }
+.glass .under { position: absolute; inset: -20px; filter: blur(14px) saturate(1.9) brightness(1.04); opacity: 0; transition: opacity .2s; }
+.glass .under.on { opacity: 1; }
+.glass .under img { position: absolute; display: block; }
+.glass .tint { position: absolute; inset: 0; background: var(--tint); }
+.glass .lit { position: absolute; inset: 0; background: linear-gradient(180deg, rgba(255, 255, 255, .45), transparent 55%), radial-gradient(60% 140% at 0% 50%, color-mix(in srgb, var(--accent) 24%, transparent), transparent 70%); }
+.dark .glass .lit { background: linear-gradient(180deg, rgba(255, 255, 255, .08), transparent 55%), radial-gradient(60% 140% at 0% 50%, color-mix(in srgb, var(--accent) 34%, transparent), transparent 70%); }
+.orb { position: relative; width: 30px; height: 30px; border-radius: 50%; flex: none; display: grid; place-items: center; color: #fff;
+  background: radial-gradient(120% 100% at 30% 0%, rgba(255, 255, 255, .55), transparent 55%), var(--nova);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .55), 0 0 0 3px color-mix(in srgb, var(--accent) 16%, transparent), 0 4px 12px -2px color-mix(in srgb, var(--accent) 55%, transparent); }
+.orb svg { width: 16px; height: 16px; filter: drop-shadow(0 1px 1px rgba(0, 0, 0, .25)); }
+.bad .orb { background: radial-gradient(120% 100% at 30% 0%, rgba(255, 255, 255, .55), transparent 55%), linear-gradient(140deg, #ff7a6a, #e5484d); box-shadow: inset 0 1px 0 rgba(255, 255, 255, .55), 0 0 0 3px rgba(229, 72, 77, .18), 0 4px 12px -2px rgba(229, 72, 77, .55); }
+.msg { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font: 750 13.5px var(--display); letter-spacing: -.012em; }
+.btn { flex: none; position: relative; overflow: hidden; border: 0; border-radius: 999px; padding: 8px 16px; font: 800 13px var(--display); color: #fff; cursor: default;
+  background: radial-gradient(120% 100% at 30% 0%, rgba(255, 255, 255, .45), transparent 55%), var(--nova); box-shadow: inset 0 1px 0 rgba(255, 255, 255, .5), 0 4px 12px -2px color-mix(in srgb, var(--accent) 55%, transparent);
+  transition: transform .35s cubic-bezier(.3, 1.5, .5, 1), filter .2s; }
+.btn:hover { filter: brightness(1.07); transform: translateY(-1px); }
+.btn:active { transform: scale(.95); }
+.btn[hidden] { display: none; }
+.bad .btn { background: radial-gradient(120% 100% at 30% 0%, rgba(255, 255, 255, .45), transparent 55%), linear-gradient(140deg, #ff7a6a, #e5484d); }
+.time { position: absolute; left: 26px; right: 26px; bottom: 1px; height: 2px; border-radius: 2px; overflow: hidden; }
+.time i { display: block; height: 100%; border-radius: 2px; background: linear-gradient(90deg, var(--accent), var(--accent3)); box-shadow: 0 0 6px var(--accent); transform-origin: left; }
+.bad .time i { background: linear-gradient(90deg, #ff7a6a, #e5484d); }
+</style>
+</head>
+<body>
+<div id="t" role="status" aria-live="polite"><div class="glass"><div class="under"></div><div class="tint"></div><div class="lit"></div></div><span class="orb"></span><span class="msg"></span><button class="btn" hidden></button><span class="time"><i></i></span></div>
+<script>
+'use strict'
+const t = document.getElementById('t')
+let MOTION = 'jelly', hideT = 0, raf = 0, left = 0, ms = 2200, endAt = 0, paused = false, id = 0
+// one spring, Jelly toned down (zeta ~0.64); still under Motion Off and reduced motion
+const S = { v: 0, to: 0, vel: 0 }
+function paint() {
+  const v = S.v, y = (1 - v) * -14, s = 0.9 + 0.1 * v
+  t.style.opacity = Math.max(0, Math.min(1, v * 1.4)); t.style.transform = `translateY(${y}px) scale(${s})`
+}
+function frame(now) {
+  const k = MOTION === 'calm' ? 240 : 300, c = MOTION === 'calm' ? 25.5 : 22
+  for (let i = 0; i < 4; i++) { const h = 1 / 240, a = -k * (S.v - S.to) - c * S.vel; S.vel += a * h; S.v += S.vel * h }
+  paint()
+  if (Math.abs(S.v - S.to) < 0.001 && Math.abs(S.vel) < 0.003) { S.v = S.to; S.vel = 0; paint(); raf = 0; if (S.to === 0) window.nova.send('toast-done', id); return }
+  raf = requestAnimationFrame(frame)
+}
+function spring(to) {
+  S.to = to
+  if (MOTION === 'off') { S.v = to; S.vel = 0; paint(); if (to === 0) window.nova.send('toast-done', id); return }
+  if (!raf) raf = requestAnimationFrame(frame)
+}
+function report() { const r = t.getBoundingClientRect(); window.nova.send('toast-size', { w: Math.ceil(t.offsetWidth), h: Math.ceil(t.offsetHeight), id }) }
+function timer(rest) {
+  clearTimeout(hideT); endAt = Date.now() + rest
+  hideT = setTimeout(() => spring(0), rest)
+  const bar = t.querySelector('.time i')
+  bar.style.transition = 'none'; bar.style.transform = `scaleX(${Math.max(0, rest / ms)})`
+  if (MOTION !== 'off') requestAnimationFrame(() => requestAnimationFrame(() => { bar.style.transition = `transform ${rest}ms linear`; bar.style.transform = 'scaleX(0)' }))
+}
+window.nova.on('nova:toast', d => {
+  id = d.id
+  const th = d.theme || {}
+  document.documentElement.className = (th.dark || th.incognito ? 'dark' : '') + (th.incognito ? ' incognito' : '')
+  if (!th.incognito) document.documentElement.style.setProperty('--accent', th.accent || '#5b8cff')
+  MOTION = th.motion === 'off' || matchMedia('(prefers-reduced-motion: reduce)').matches ? 'off' : th.motion === 'calm' ? 'calm' : 'jelly'
+  t.classList.toggle('bad', d.kind === 'bad'); t.classList.toggle('act', !!d.label)
+  t.querySelector('.orb').innerHTML = d.icon || ''
+  t.querySelector('.msg').textContent = d.msg || ''
+  const b = t.querySelector('.btn'); b.hidden = !d.label; b.textContent = d.label || ''
+  ms = d.ms || 2200
+  report()
+  const fresh = S.v < 0.05
+  if (fresh) { S.v = 0; S.vel = 0; paint() }
+  spring(1)
+  if (!fresh && MOTION !== 'off') S.vel += 2.5   // a new message while one is up: a small hop
+  timer(ms)
+})
+window.nova.on('nova:toast-close', () => { clearTimeout(hideT); spring(0) })
+window.nova.on('nova:toast-backdrop', shot => {
+  const u = t.querySelector('.under'); u.innerHTML = ''
+  if (!shot) return
+  const im = new Image(); im.src = shot.src
+  im.style.cssText = `left:${shot.x + 20}px;top:${shot.y + 20}px;width:${shot.w}px;height:${shot.h}px`
+  u.appendChild(im); im.decode().then(() => u.classList.add('on')).catch(() => {})
+})
+t.querySelector('.btn').addEventListener('click', () => { clearTimeout(hideT); window.nova.send('toast-act', id); spring(0) })
+// hovering holds the toast; it runs out once the pointer leaves
+t.addEventListener('mouseenter', () => { if (S.to !== 1) return; paused = true; left = Math.max(900, endAt - Date.now()); clearTimeout(hideT); const bar = t.querySelector('.time i'); bar.style.transition = 'none'; bar.style.transform = `scaleX(${Math.max(0, left / ms)})` })
+t.addEventListener('mouseleave', () => { if (!paused) return; paused = false; timer(left) })
+</script>
+</body>
+</html>

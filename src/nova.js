@@ -44,7 +44,7 @@ function makeView(host, kind) {
   // a Nova surface never navigates anywhere and never opens windows
   wc.on('will-navigate', e => e.preventDefault())
   wc.setWindowOpenHandler(() => ({ action: 'deny' }))
-  wc.loadFile(path.join(ROOT, 'ui', kind === 'menu' ? 'menu.html' : 'dialog.html')).catch(() => {})
+  wc.loadFile(path.join(ROOT, 'ui', kind === 'menu' ? 'menu.html' : kind === 'toast' ? 'toast.html' : 'dialog.html')).catch(() => {})
   return o
 }
 function fit(host, o) {
@@ -76,6 +76,7 @@ function destroy(o) {
 // keep Nova surfaces above everything else in the window (called after the window re-stacks its views)
 function restack(host) {
   const n = host._nova; if (!n) return
+  if (n.toast && n.toast.attached) { placeToast(host); try { host.win.contentView.addChildView(n.toast.view) } catch {} }
   for (const o of [n.menu, n.dialog]) if (o && o.attached) { fit(host, o); try { host.win.contentView.addChildView(o.view) } catch {} }
 }
 // load the menu surface ahead of time so the first right-click is instant
@@ -90,8 +91,8 @@ function setup(host) {
   host.win.on('closed', () => {
     if (n.menuState) closeMenu(host, 'closed')
     if (n.dialogState) n.dialogState.finish(null)
-    for (const o of [n.menu, n.dialog, n.spare]) if (o) destroy(o)
-    n.menu = n.dialog = n.spare = null
+    for (const o of [n.menu, n.dialog, n.spare, n.toast]) if (o) destroy(o)
+    n.menu = n.dialog = n.spare = n.toast = null
   })
   return n
 }
@@ -299,6 +300,51 @@ async function showDialog(host, opts) {
   })
 }
 
+// ------------------------------------------------------------------ toasts (tabs on top)
+// With tabs on top the chrome has no free room for a toast: drawn in the chrome it covered the tab strip. So the toast
+// gets its own small transparent view, sized to the capsule, just under the toolbar over the top of the page. Only the
+// capsule itself takes clicks; the rest of the page stays live. The chrome keeps its copy as the source of truth.
+const TOAST_PAD = { x: 26, top: 0, bottom: 30 }
+function placeToast(host) {
+  const n = host._nova, o = n && n.toast; if (!o) return
+  const r = host.rect || { x: 0, y: 0, width: 600, height: 400 }
+  const st = n.toastState || {}
+  const w = Math.min(Math.max(120, (st.w || 300) + TOAST_PAD.x * 2), Math.max(120, r.width - 16))
+  const h = (st.h || 44) + 8 + TOAST_PAD.bottom
+  try { o.view.setBounds({ x: Math.round(r.x + (r.width - w) / 2), y: Math.round(r.y + 4), width: Math.round(w), height: Math.round(h) }) } catch {}
+}
+/** data: { msg, label, kind, icon (svg markup), ms }, or null to put the toast away. Answers true when shown here. */
+async function toast(host, data) {
+  if (NATIVE() || !host || !host.win || host.win.isDestroyed()) return false
+  const n = setup(host)
+  if (!data) { if (n.toast && n.toast.attached) try { n.toast.view.webContents.send('nova:toast-close') } catch {} ; return true }
+  if (!n.toast || n.toast.failed) { if (n.toast) destroy(n.toast); n.toast = makeView(host, 'toast') }
+  const o = n.toast
+  if (!o.loaded) { const ok = await Promise.race([o.ready, new Promise(r => setTimeout(() => r(false), 1500))]); if (!ok || host.win.isDestroyed()) return false }
+  const id = (n.toastSeq = (n.toastSeq || 0) + 1)
+  n.toastState = { ...(n.toastState || {}), id }
+  placeToast(host)
+  if (!o.attached) { try { host.win.contentView.addChildView(o.view) } catch {} o.attached = true }
+  else try { host.win.contentView.addChildView(o.view) } catch {}
+  // menus and dialogs stay above the toast
+  for (const x of [n.menu, n.dialog]) if (x && x.attached) try { host.win.contentView.addChildView(x.view) } catch {}
+  o.view.webContents.send('nova:toast', { id, msg: String(data.msg || '').slice(0, 300), label: String(data.label || '').slice(0, 40), kind: data.kind === 'bad' ? 'bad' : '', icon: typeof data.icon === 'string' && /^<svg[\s>]/.test(data.icon) ? data.icon : '', ms: Math.max(1200, Math.min(10000, +data.ms || 2200)), theme: theme(host) })
+  return true
+}
+async function toastBackdrop(host) {
+  const n = host._nova, o = n && n.toast; if (!o || !o.attached || !n.toastState) return
+  try {
+    const a = host.active && host.active(); if (!a || !a.view) return
+    const vb = o.view.getBounds(), tb = a.view.getBounds(), st = n.toastState
+    const px = vb.x + TOAST_PAD.x, py = vb.y + 8
+    const R = { x: px - 20 - tb.x, y: py - 20 - tb.y, width: (st.w || 300) + 40, height: (st.h || 44) + 40 }
+    if (R.x < 0 || R.y < 0 || R.x + R.width > tb.width || R.y + R.height > tb.height) return
+    const img = await Promise.race([a.view.webContents.capturePage(R), new Promise(r => setTimeout(() => r(null), 500))])
+    if (!img || img.isEmpty() || !o.attached) return
+    o.view.webContents.send('nova:toast-backdrop', { src: img.resize({ width: Math.max(1, Math.round(R.width / 2)) }).toDataURL(), x: -20, y: -20, w: R.width, h: R.height })
+  } catch {}
+}
+
 // ------------------------------------------------------------------ IPC from the Nova views
 ipcMain.on('nova', (e, action, a) => {
   const ent = byWc.get(e.sender.id); if (!ent) return
@@ -306,6 +352,13 @@ ipcMain.on('nova', (e, action, a) => {
   if (ent.kind === 'menu') {
     if (action === 'pick') pick(host, a)
     else if (action === 'close') closeMenu(host, a || 'dismiss')
+  } else if (ent.kind === 'toast') {
+    const n = host._nova, o = n && n.toast; if (!o || !n.toastState) return
+    const cur = a && typeof a === 'object' ? a.id : a
+    if (cur !== n.toastState.id) return
+    if (action === 'toast-size') { n.toastState.w = Math.max(60, Math.min(1200, +a.w || 300)); n.toastState.h = Math.max(30, Math.min(120, +a.h || 44)); placeToast(host); toastBackdrop(host) }
+    else if (action === 'toast-act') { try { if (host.ui && !host.ui.webContents.isDestroyed()) host.ui.webContents.executeJavaScript('window.__toastAct && window.__toastAct()').catch(() => {}) } catch {} }
+    else if (action === 'toast-done') { o.attached = false; try { host.win.contentView.removeChildView(o.view) } catch {} }
   } else if (ent.kind === 'dialog') {
     const st = host._nova && host._nova.dialogState
     if (action === 'answer' && st) st.finish({ response: Number(a && a.response), checkboxChecked: !!(a && a.checkboxChecked), values: (a && a.values) || {} })
@@ -318,7 +371,8 @@ function state(host) {
   return {
     menuOpen: !!(n && n.menuState), menuView: n && n.menu ? n.menu.view : null, menuItems: n && n.menuState ? [...n.menuState.map.values()].map(i => i.label || ROLE_LABEL[i.role] || '') : [],
     dialogOpen: !!(n && n.dialogState), dialogView: n && n.dialogState ? n.dialogState.view : null,
+    toastOpen: !!(n && n.toast && n.toast.attached), toastView: n && n.toast ? n.toast.view : null,
   }
 }
 
-module.exports = { configure, prewarm, popupMenu, closeMenu, novaDialog, restack, state, keycaps }
+module.exports = { configure, prewarm, popupMenu, closeMenu, novaDialog, restack, state, keycaps, toast }

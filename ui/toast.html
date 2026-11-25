@@ -96,8 +96,10 @@ html, body { margin: 0; height: 100%; overflow: hidden; background: transparent;
 </head>
 <body>
 <div id="t" role="status" aria-live="polite"><div class="glass"><div class="under"></div><div class="tint"></div><div class="lit"></div></div><span class="orb"></span><span class="msg"></span><button class="btn" hidden></button><span class="time"><i></i></span></div>
+<script src="jelly.js"></script>
 <script>
 'use strict'
+if (window.Jelly) Jelly.init({ buttons: '.btn' })
 const t = document.getElementById('t')
 let MOTION = 'jelly', hideT = 0, raf = 0, left = 0, ms = 2200, endAt = 0, paused = false, id = 0
 // one spring, Jelly toned down (zeta ~0.64); still under Motion Off and reduced motion
@@ -131,7 +133,7 @@ window.nova.on('nova:toast', d => {
   const th = d.theme || {}
   document.documentElement.className = (th.dark || th.incognito ? 'dark' : '') + (th.incognito ? ' incognito' : '')
   if (!th.incognito) document.documentElement.style.setProperty('--accent', th.accent || '#5b8cff')
-  MOTION = th.motion === 'off' || matchMedia('(prefers-reduced-motion: reduce)').matches ? 'off' : th.motion === 'calm' ? 'calm' : 'jelly'
+  MOTION = th.motion === 'off' || matchMedia('(prefers-reduced-motion: reduce)').matches ? 'off' : th.motion === 'calm' ? 'calm' : 'jelly'; if (window.Jelly) Jelly.setMode(MOTION)
   t.classList.toggle('bad', d.kind === 'bad'); t.classList.toggle('act', !!d.label)
   t.querySelector('.orb').innerHTML = d.icon || ''
   t.querySelector('.msg').textContent = d.msg || ''

@@ -20,7 +20,7 @@ These are hard limits. A change that breaks one needs a reason written next to i
 | Windows and views | No transparent or always-on-top window stays mapped while idle; hidden views are detached from the window (Nova menus, dialogs and toasts come off when they close). `backgroundThrottling: false` only on views that are on screen whenever they exist (the chrome). No command-line switch that turns off throttling or forces the fast GPU. |
 | Main process | No synchronous file writes, `JSON.stringify` of big data or PNG encoding on a hot path (opening tabs, switching tabs, navigation). Longest event-loop stall during normal use: under 50 ms. |
 | New Tab | First frame of the Home page within 100 ms of Cmd T (the preloaded New Tab in `src/main.js` does this). |
-| Settings and Home scroll | 60 fps; wheel scrolling of trackpads stays on the compositor (`Jelly.smoothScroll` only glides mouse wheels). |
+| Settings and Home scroll | 60 fps. Mouse wheels and trackpads both glide on the Jelly scroll spring (`Jelly.smoothScroll`: critically damped, no rubber-banding; a stiffer spring for trackpads so it keeps up with the fingers). One `scrollTop` write per frame, the rAF loop stops when it settles, no layout reads in the wheel handler unless over a nested scroller. A wheel listener that only passes events through is worse than either (it blocks the compositor for nothing), so a page either glides or has no wheel listener. Measure with `ONLY=scroll test/perfpages.js`, `PAD=1` for a trackpad. |
 | Idle CPU | Under 1% for every process (main, chrome, each tab, Surge, Koi) with nothing happening. |
 
 Measure with `test/perfpages.js` (CPU seconds per workload, frame gaps, main-process stalls), `test/perfidle.js`

@@ -275,8 +275,11 @@ h1 { background: linear-gradient(120deg, var(--fg) 0%, var(--fg) 45%, color-mix(
   <label class="check" hidden><input type="checkbox"><span class="box"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m3.5 8.5 3 3 6-7"/></svg></span><span class="cl"></span></label>
   <div class="buttons"></div>
 </div>
+<script src="jelly.js"></script>
 <script>
 'use strict'
+// the buttons and choices are Jelly bodies: they lift toward the pointer and squish when pressed
+if (window.Jelly) Jelly.init({ buttons: '.btn', cards: '.choice', press: '.check' })
 // ---------------------------------------------------------------- springs (Jelly, toned down)
 const PRE = { jelly: { k: 300, c: 22 }, calm: { k: 240, c: 25.5 } }
 let MOTION = 'jelly'
@@ -361,7 +364,11 @@ function answer(response) {
   window.nova.send('answer', r)
   // a short exit: the sheet lifts away and the window brightens again
   if (MOTION !== 'off') {
-    $('#sheet').style.transition = 'opacity .15s ease-in, transform .15s ease-in'; $('#sheet').style.opacity = '0'; $('#sheet').style.transform = 'translateY(-10px) scale(.97)'
+    // a stiff spring on the compositor, done inside the 170ms the view stays up
+    const sh = $('#sheet'), from = getComputedStyle(sh).transform, e = window.Jelly ? Jelly.easing('glide') : { easing: 'ease-in' }
+    live.clear(); clearTimeout(settleT)
+    sh.style.opacity = '0'; sh.style.transform = 'translateY(-14px) scale(.94, .9)'
+    sh.animate([{ opacity: 1, transform: from === 'none' ? 'none' : from }, { opacity: 0, transform: 'translateY(-14px) scale(.94, .9)' }], { duration: 150, easing: e.easing })
     $('#veil').style.transition = 'opacity .16s ease-in'; $('#veil').style.opacity = '0'
   }
 }
@@ -371,6 +378,7 @@ function open(d) {
   document.documentElement.className = (th.dark || th.incognito ? 'dark' : '') + (th.incognito ? ' incognito' : '') + (th.motion === 'off' ? ' off' : '')
   document.documentElement.style.setProperty('--accent', th.incognito ? '#a77dff' : (th.accent || '#5b8cff'))
   MOTION = th.motion === 'off' || matchMedia('(prefers-reduced-motion: reduce)').matches ? 'off' : th.motion === 'calm' ? 'calm' : 'jelly'
+  if (window.Jelly) Jelly.setMode(MOTION)
   document.body.dataset.kind = d.kind || ''
   const ic = $('.icon')
   if (d.icon && d.icon.src) { ic.className = 'icon img'; ic.innerHTML = '<img alt="">'; ic.querySelector('img').src = d.icon.src; ic.hidden = false }

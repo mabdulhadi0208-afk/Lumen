@@ -40,9 +40,17 @@ function applyLook(s) {
   const was = window.Glass && Glass.on
   if (window.Glass) { Glass.setMode(page === 'newtab' || !page ? Jelly.getMode() : 'off'); if (was !== Glass.on && typeof buildClock === 'function' && document.getElementById('clock')) buildClock() }
 }
-Jelly.init({ buttons: '.btn, .ib, .switch, .hero-chip, .seg button, .swatches button, .vc, .fchip, .npd-nav, .nav a, .ntp .foot a, .hm-cust, .hm-foot a, .hm-ask, .hm-k, .hm-eng, .hm-more, .wpqb, .wpb, .customize, .cswatch, .gtoggle, .sb-eng', cards: '.tile, .gl, .tries span, .hm-stat, .hm-tile, .err .ico, .key, .wpb, .thb, .icb, .rc, .pcard, .clkb, .hero-ic, .an-dial', press: '.list .row, a.row.hit' })
-// the pages scroll natively (passive, on the compositor); only the New Tab keeps the springy wheel
-if (page === 'newtab' || !page) Jelly.smoothScroll(window)
+// Every interactive thing on every lumen:// page is a Jelly body: buttons lift and pull toward the pointer, cards tilt,
+// rows squish when pressed (test/motion40.js checks that nothing clickable is left out)
+Jelly.init({
+  buttons: '.btn, .ib, .switch, .hero-chip, .seg button, .swatches button, .vc, .fchip, .npd-nav, .nav a, .ntp .foot a, .hm-cust, .hm-foot a, .hm-ask, .hm-k, .hm-eng, .hm-more, .hm-act, .hmore, .wpqb, .wpb, .customize, .cswatch, .gtoggle, .sb-eng, .tx, .zc-x, .rl-x, .bm-x, .dlr, .ap, .main select, .drawer select, .npc-sw button, .cal-nav button, .lr-x',
+  cards: '.tile, .gl, .tries span, .hm-stat, .hm-tile, .err .ico, .key, .wpb, .thb, .icb, .rc, .pcard, .clkb, .hero-ic, .an-dial, .ftile, .bkc, .bmt, .hq, .hlhead',
+  press: '.list .row, a.row.hit, .hm-row, .dlrow, .prow',
+})
+// every page glides on the Jelly scroll spring, mouse wheel and trackpad alike (ui/jelly.js: critically damped, no
+// rubber-banding at the ends, one scrollTop write per frame, the frame loop stops the moment the page settles).
+// Measured against the native scroll with test/perfpages.js (PAD=1 for a trackpad), docs/PERF.md
+Jelly.smoothScroll(window)
 
 // ======================================================================= new tab
 // The New Tab (home) lives in pages/home.js and pages/home.css. It defines newTab() and buildClock().

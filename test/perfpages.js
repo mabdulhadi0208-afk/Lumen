@@ -67,9 +67,12 @@ app.whenReady().then(async () => {
       const pm = async () => { try { const { metrics } = await wc.debugger.sendCommand('Performance.getMetrics'); return Object.fromEntries(metrics.map(m => [m.name, m.value])) } catch { return {} } }
       const m0 = await pm()
       const c0 = cpuNow(); await frames(wc)
+      // PAD=1: a trackpad instead of a mouse wheel (small pixel steps at 60 per second, the same distance)
+      const step = (dir) => process.env.PAD ? { type: 'mouseWheel', x: 700, y: 300, deltaX: 0, deltaY: dir * 50, hasPreciseScrollingDeltas: true, canScroll: true } : { type: 'mouseWheel', x: 700, y: 300, deltaX: 0, deltaY: dir * 100, wheelTicksY: dir, canScroll: true }
+      const n = process.env.PAD ? 60 : 30, gap = process.env.PAD ? 16 : 33
       for (let r = 0; r < 2; r++) {
-        for (let i = 0; i < 30; i++) { wc.sendInputEvent({ type: 'mouseWheel', x: 700, y: 300, deltaX: 0, deltaY: -100, wheelTicksY: -1, canScroll: true }); await wait(33) }
-        for (let i = 0; i < 30; i++) { wc.sendInputEvent({ type: 'mouseWheel', x: 700, y: 300, deltaX: 0, deltaY: 100, wheelTicksY: 1, canScroll: true }); await wait(33) }
+        for (let i = 0; i < n; i++) { wc.sendInputEvent(step(-1)); await wait(gap) }
+        for (let i = 0; i < n; i++) { wc.sendInputEvent(step(1)); await wait(gap) }
       }
       await wait(600)
       const fr = await framesEnd(wc)

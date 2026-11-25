@@ -232,6 +232,7 @@ html, body { margin: 0; height: 100%; overflow: hidden; background: transparent;
     <!-- lens filters are added per panel by lensFilter() below -->
   </defs>
 </svg>
+<script src="jelly.js"></script>
 <script>
 'use strict'
 // ---------------------------------------------------------------- springs (Jelly, toned down: zeta ~0.64)
@@ -455,7 +456,6 @@ function enter(p, { sub = false } = {}) {
     const k = Math.min(1.2, v)
     p.style.opacity = Math.min(1, v * 1.6)
     p.style.transform = `scale(${(sub ? 0.92 : 0.84) + (sub ? 0.08 : 0.16) * k}, ${(sub ? 0.9 : 0.78) + (sub ? 0.1 : 0.22) * k})`
-    p.style.filter = v < 0.6 ? `blur(${(0.6 - v) * 6}px)` : ''
   })
   s.to(1)
   // rows arrive 12ms apart: quick enough for a menu, still alive
@@ -508,7 +508,13 @@ function exit() {
   const ps = panels.slice(); panels = []; root = null
   ps.forEach(p => { p._closing = true })
   if (MOTION === 'off' || !ps.length) { ps.forEach(p => { const rf = p.querySelector('.refract'); if (rf && rf._lens) rf._lens.remove(); p.remove() }); return }
-  ps.forEach(p => { p.style.transition = 'opacity .1s ease-in, transform .1s ease-in'; p.style.opacity = '0'; p.style.transform = 'scale(.97)' })
+  // the close is a spring too, run on the compositor (a stiff one, so it is gone inside the 110ms the view stays up)
+  const ease = window.Jelly ? Jelly.easing('glide') : { easing: 'ease-in', duration: 100 }
+  ps.forEach(p => {
+    const from = getComputedStyle(p).transform
+    p.style.opacity = '0'; p.style.transform = 'scale(.9, .86)'
+    p.animate([{ opacity: 1, transform: from === 'none' ? 'none' : from }, { opacity: 0, transform: 'scale(.9, .86)' }], { duration: Math.min(110, ease.duration), easing: ease.easing })
+  })
   exitT = setTimeout(() => ps.forEach(p => { const rf = p.querySelector('.refract'); if (rf && rf._lens) rf._lens.remove(); p.remove() }), 120)
 }
 

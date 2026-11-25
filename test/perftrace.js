@@ -20,10 +20,17 @@ app.whenReady().then(async () => {
   dbg.on('message', (e, method, params) => { if (method === 'Tracing.dataCollected') events.push(...params.value) })
   const done = new Promise(r => dbg.on('message', (e, m) => { if (m === 'Tracing.tracingComplete') r() }))
   await dbg.sendCommand('Tracing.start', { categories: 'devtools.timeline,disabled-by-default-devtools.timeline,blink,cc', transferMode: 'ReportEvents' })
-  for (let i = 0; i < 40; i++) { wc.sendInputEvent({ type: 'mouseWheel', x: 700, y: 300, deltaX: 0, deltaY: -100, wheelTicksY: -1, canScroll: true }); await wait(33) }
+  // PAD=1: a trackpad (pixel steps, 60 per second) instead of mouse-wheel notches
+  const t0 = Date.now()
+  if (process.env.PAD) for (let i = 0; i < 80; i++) { wc.sendInputEvent({ type: 'mouseWheel', x: 700, y: 300, deltaX: 0, deltaY: -50, hasPreciseScrollingDeltas: true, canScroll: true }); await wait(16) }
+  else for (let i = 0; i < 40; i++) { wc.sendInputEvent({ type: 'mouseWheel', x: 700, y: 300, deltaX: 0, deltaY: -100, wheelTicksY: -1, canScroll: true }); await wait(33) }
   await wait(300)
+  const secs = (Date.now() - t0) / 1000
   await dbg.sendCommand('Tracing.end'); await done
   const pid = wc.getOSProcessId(); const agg = new Map(), paints = new Map()
+  // frames the compositor actually drew for this page (what you see), next to the main thread's own frames
+  const drawn = events.filter(e => e.pid === pid && e.name === 'DrawFrame').length, mainF = events.filter(e => e.pid === pid && e.name === 'ProxyMain::BeginMainFrame' && e.ph === 'X').length
+  console.log(`FRAMES drawn ${drawn} (${(drawn / secs).toFixed(1)} fps), main-thread frames ${mainF}, over ${secs.toFixed(1)}s`)
   for (const e of events) {
     if (e.pid !== pid || e.ph !== 'X' || !e.dur) continue
     agg.set(e.name, (agg.get(e.name) || 0) + e.dur)

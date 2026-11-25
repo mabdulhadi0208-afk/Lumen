@@ -107,6 +107,32 @@ function upgradeURL(u) {
 
 // ---------------------------------------------------------------- sessions
 let mainSession, extensions = null, blocker = null, addingTab = false, blockedTotal = 0, blockedSaveT = null
+// ads and trackers blocked per day (local date -> count), the last two weeks, for the New Tab
+let blockedDays = null
+const dayKey = (d = new Date()) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+function loadBlockedDays() { if (!blockedDays) { const b = D.settings.get('blockedDays'); blockedDays = b && typeof b === 'object' && !Array.isArray(b) ? { ...b } : {} } return blockedDays }
+function bumpBlockedDay() {
+  const days = loadBlockedDays(), k = dayKey()
+  days[k] = (days[k] || 0) + 1
+  const keys = Object.keys(days); if (keys.length > 14) for (const old of keys.sort().slice(0, keys.length - 14)) delete days[old]
+}
+function blockedWeek() { const days = loadBlockedDays(), out = []; for (let i = 6; i >= 0; i--) { const d = new Date(); d.setDate(d.getDate() - i); out.push({ day: dayKey(d), n: days[dayKey(d)] || 0 }) } return out }
+// the New Tab weather: Open-Meteo for a city the user typed (no key, no location access). Cached for 20 minutes.
+const weatherCache = new Map()
+async function weatherFor(city) {
+  const q = String(city || '').trim().slice(0, 80); if (!q) return null
+  const hit = weatherCache.get(q.toLowerCase()); if (hit && Date.now() - hit.at < 20 * 60000) return hit.v
+  const get = async u => { const ctrl = new AbortController(); const t = setTimeout(() => ctrl.abort(), 6000); try { const r = await net.fetch(u, { signal: ctrl.signal }); if (!r.ok) throw new Error('http ' + r.status); return await r.json() } finally { clearTimeout(t) } }
+  try {
+    const g = await get('https://geocoding-api.open-meteo.com/v1/search?count=1&language=en&format=json&name=' + encodeURIComponent(q))
+    const p = g && g.results && g.results[0]; if (!p) return { error: 'notfound' }
+    const fahrenheit = ['US', 'LR', 'MM', 'BS', 'KY', 'PW', 'FM', 'MH'].includes(p.country_code)
+    const f = await get(`https://api.open-meteo.com/v1/forecast?latitude=${p.latitude}&longitude=${p.longitude}&current=temperature_2m,weather_code,is_day&daily=temperature_2m_max,temperature_2m_min&forecast_days=1&timezone=auto${fahrenheit ? '&temperature_unit=fahrenheit' : ''}`)
+    const c = f && f.current; if (!c) return { error: 'failed' }
+    const v = { name: p.name, country: p.country || '', temp: Math.round(c.temperature_2m), code: c.weather_code, day: !!c.is_day, hi: Math.round(f.daily.temperature_2m_max[0]), lo: Math.round(f.daily.temperature_2m_min[0]), unit: fahrenheit ? 'F' : 'C' }
+    weatherCache.set(q.toLowerCase(), { at: Date.now(), v }); return v
+  } catch { return { error: 'offline' } }
+}
 const blockedByWc = new Map()
 const sessionsReady = new Set()
 
@@ -175,7 +201,7 @@ async function setupAdblock({ fresh = false } = {}) {
       const id = req.tabId
       if (id == null) return
       blockedByWc.set(id, (blockedByWc.get(id) || 0) + 1)
-      blockedTotal++; if (!blockedSaveT) blockedSaveT = setTimeout(() => { blockedSaveT = null; D.settings.set({ blockedTotal }) }, 15000)
+      blockedTotal++; bumpBlockedDay(); if (!blockedSaveT) blockedSaveT = setTimeout(() => { blockedSaveT = null; D.settings.set({ blockedTotal, blockedDays }) }, 15000)
       const w = winForWc(id)
       if (w) w.pushStateSoon()
     })
@@ -1656,12 +1682,18 @@ function downloadAction(id, what) {
   broadcast('downloads', listDownloads())
 }
 
-const PUBLIC_SETTINGS = ['backgroundApps', 'openAtLogin', 'toolbarApps', 'googleSignInMode', 'ntpParcels', 'parcelsAuto', 'whatsNewSeen', 'archiveTabsAfterH', 'bookmarksBar', 'ntpStats', 'ntpRecent', 'ntpReadLater', 'darkStyle', 'uiSounds', 'darkOffSites', 'translateFlipDir', 'searchShortcuts', 'rememberZoom', 'soundActiveOnly', 'linksBackground', 'confirmQuit', 'wheelTabs', 'adblockAllow', 'aiModel', 'aiTabGroups', 'browserTheme', 'themeCustom', 'compact', 'appIcon', 'cleanLinks', 'swipeNav', 'videoSpeedKeys', 'hideCookieBanners', 'blockNotifications', 'forceDark', 'translateTo', 'offerTranslate', 'autoPip', 'ntpShortcuts', 'ntpWallpaper', 'ntpClock', 'searchEngine', 'motion', 'theme', 'accent', 'adblock', 'blockTrackers', 'httpsOnly', 'sleepTabsAfterMin', 'restoreSession', 'sidebarCollapsed', 'sidebarWidth', 'tabLayout', 'introSeen', 'autoUpdate', 'askWhereToSave', 'doNotTrack', 'showSuggestions', 'homeTiles']
+const PUBLIC_SETTINGS = ['backgroundApps', 'openAtLogin', 'toolbarApps', 'googleSignInMode', 'ntpParcels', 'parcelsAuto', 'whatsNewSeen', 'archiveTabsAfterH', 'bookmarksBar', 'ntpStats', 'ntpRecent', 'ntpReadLater', 'darkStyle', 'uiSounds', 'darkOffSites', 'translateFlipDir', 'searchShortcuts', 'rememberZoom', 'soundActiveOnly', 'linksBackground', 'confirmQuit', 'wheelTabs', 'adblockAllow', 'aiModel', 'aiTabGroups', 'browserTheme', 'themeCustom', 'compact', 'appIcon', 'cleanLinks', 'swipeNav', 'videoSpeedKeys', 'hideCookieBanners', 'blockNotifications', 'forceDark', 'translateTo', 'offerTranslate', 'autoPip', 'ntpShortcuts', 'ntpWallpaper', 'ntpClock', 'searchEngine', 'motion', 'theme', 'accent', 'adblock', 'blockTrackers', 'httpsOnly', 'sleepTabsAfterMin', 'restoreSession', 'sidebarCollapsed', 'sidebarWidth', 'tabLayout', 'introSeen', 'autoUpdate', 'askWhereToSave', 'doNotTrack', 'showSuggestions', 'homeTiles', 'ntpOrder', 'ntpHide', 'ntpWeather', 'ntpName', 'ntpNote', 'ntpFocus', 'ntpSizes', 'ntpZones']
 function publicSettings() { const s = D.settings.get(); return Object.fromEntries(PUBLIC_SETTINGS.map(k => [k, s[k]])) }
 function setSetting(k, v) {
   if (!PUBLIC_SETTINGS.includes(k)) return
   if (k === 'tabLayout' && !['side', 'top'].includes(v)) return
   if (k === 'adblockAllow') { if (!Array.isArray(v)) return; v = v.filter(x => typeof x === 'string' && /^[a-z0-9.-]+$/i.test(x)).slice(0, 500) }
+  if (k === 'ntpOrder' || k === 'ntpHide') { if (!Array.isArray(v)) return; v = [...new Set(v.filter(x => typeof x === 'string' && /^[a-z]{1,20}$/.test(x)))].slice(0, 30) }
+  if (k === 'ntpNote') v = String(v || '').slice(0, 4000)
+  if (k === 'ntpZones') { if (!Array.isArray(v)) return; v = [...new Set(v.filter(z => typeof z === 'string' && /^[A-Za-z_]+(\/[A-Za-z0-9_+-]+){0,2}$/.test(z)))].slice(0, 4) }
+  if (k === 'ntpFocus') v = v && typeof v === 'object' ? { len: Math.max(60e3, Math.min(4 * 3600e3, +v.len || 0)), end: +v.end || 0, left: Math.max(0, +v.left || 0), done: Math.max(0, Math.min(999, +v.done || 0)), day: String(v.day || '').slice(0, 10) } : null
+  if (k === 'ntpSizes') { if (!v || typeof v !== 'object' || Array.isArray(v)) return; v = Object.fromEntries(Object.entries(v).filter(([id, n]) => /^[a-z]{1,20}$/.test(id) && [2, 3, 4, 6].includes(n)).slice(0, 30)) }
+  if (k === 'ntpWeather' || k === 'ntpName') v = String(v || '').replace(/[\u0000-\u001f]/g, '').trim().slice(0, k === 'ntpName' ? 40 : 80)
   D.settings.set({ [k]: v, ...(!['sidebarCollapsed', 'sidebarWidth', 'introSeen'].includes(k) ? { settingsAt: Date.now() } : {}) })
   if (k === 'adblock') setAdblock(!!v)
   if (k === 'openAtLogin') syncLoginItem()
@@ -1821,6 +1853,10 @@ ipcMain.handle('lumen', async (e, action, ...a) => {
       case 'setSetting': return setSetting(a[0], a[1])
       case 'topSites': return D.topSites(8)
       case 'stats': return { blocked: blockedTotal, since: D.settings.get('statsSince') || 0 }
+      case 'home': { const week = blockedWeek(); return { private: !!(w && w.incognito), today: week[6].n, week, total: blockedTotal, adblock: !!D.settings.get('adblock'), apps: Apps.list().filter(x => x.supported), closed: w && w.incognito ? [] : closedTabs.slice(-6).reverse().map(c => ({ url: c.url, title: c.title || '' })) } }
+      case 'suggest': return suggest(w || { incognito: false }, String(a[0] || '').slice(0, 300))
+      case 'weather': return weatherFor(a[0])
+      case 'homeCmd': { if (!w) return; const c = a[0]; if (c === 'palette' || c === 'ai') w.send('command', c); else if (c && typeof c === 'object' && typeof c.ask === 'string' && c.ask.trim()) w.send('command', { ai: 'chat', text: c.ask.trim().slice(0, 4000) }); return }
       case 'adblockInfo': return { updatedAt: D.settings.get('adblockUpdatedAt') || 0, refreshing: !!adRefreshing }
       case 'adblockRefresh': return refreshAdblock(true)
       case 'wallpaper': {
@@ -2169,7 +2205,7 @@ function toggleSiteDark(w, on) {
   w.send('toast', on ? `Dark mode on for ${h}` : `Dark mode off for ${h}`)
 }
 
-app.on('before-quit', () => { try { if (blockedTotal) D.settings.set({ blockedTotal }) } catch {} })
+app.on('before-quit', () => { try { if (blockedTotal) D.settings.set({ blockedTotal, ...(blockedDays ? { blockedDays } : {}) }) } catch {} })
 
 // ---------------------------------------------------------------- Nova dialogs and HTTP sign-in
 // parent: a Lumen window (or its BaseWindow). Without one, or if the Nova sheet cannot load, the system dialog asks.

@@ -12,7 +12,7 @@
   const SEL = [
     '.card', '.nav', '.searchbox', '.tile .ti', '.rc', '.pcard', '.date', '.nstats', '.ntp .foot', '.customize', '.drawer',
     '.pdialog', '.ntp-card', '.nv-dlg', '#pflash', '.abouthero', '.err .ico', '.err code', '.errwait', '.seg.big', '.ptips',
-    '.toolbar input[type=search]', '.pauto', '.an-dial', '.cg-track', '.crash .ico', '.hero', '.note.errnote', '.drow', '.wpb i',
+    '.toolbar input[type=search]', '.pauto', '.an-dial', '.cg-track', '.crash .ico', '.hero', '.note.errnote', '.drow', '.wpb i', '.hm-glass',
   ].join(',')
   const reduce = global.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches
   let on = !reduce, svg = null, seq = 0

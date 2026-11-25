@@ -27,14 +27,15 @@ const PARA = i => `<p>Paragraph ${i}. Glass has always been a material of light,
 const PIC = (h1, h2) => `<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="600"><defs><linearGradient id="g" x2="1" y2="1"><stop offset="0" stop-color="hsl(${h1},80%,62%)"/><stop offset="1" stop-color="hsl(${h2},75%,45%)"/></linearGradient></defs><rect width="1200" height="600" fill="url(#g)"/><circle cx="860" cy="220" r="150" fill="rgba(255,255,255,.35)"/><circle cx="300" cy="420" r="90" fill="rgba(255,255,255,.2)"/></svg>`
 const SIGNUP = k => page(k, 'Create account', '<h2>Create your account</h2><form><p><input name=email placeholder=Email></p><p><input type=password name=pw autocomplete=new-password placeholder="New password"></p><p><input type=password name=pw2 autocomplete=new-password placeholder="Repeat password"></p><button>Create account</button></form>')
 const ARTICLE = k => page(k, 'The quiet art of glass', '<article><h1>The quiet art of glass</h1><img src="/pic1.svg" style="width:720px;height:360px;display:block">' + ['Where it begins', 'The furnace', 'Reading the rim', 'Colour and light', 'What lasts'].map((h, j) => `<h2>${h}</h2>` + Array.from({ length: 5 }, (_, i) => PARA(j * 5 + i + 1)).join('') + (j === 1 ? '<figure><img src="/pic2.svg" style="width:600px"><figcaption>Glass in the furnace</figcaption></figure>' : '') + (j === 2 ? '<blockquote>The rim is where glass tells the truth about light.</blockquote>' : '')).join('') + '</article><aside>Related: nothing</aside>')
+const ESSAY = k => page(k, 'Notes on a slower internet', '<meta name=theme-color content="#0b7bff"><meta name=author content="Mira Okafor"><article><h1>Notes on a slower internet</h1>' + ['The case for patience', 'What we lost', 'Small rooms', 'A better default'].map((h, j) => `<h2>${h}</h2>` + Array.from({ length: 4 }, (_, i) => PARA(j * 4 + i + 1)).join('')).join('') + '</article>')
 const VIDEO = k => page(k, 'Video', '<video id=v muted autoplay style="width:720px;height:405px;display:block;background:#333;border-radius:12px"></video><p>A short clip about glass.</p><canvas id=c width=320 height=180 hidden></canvas><script>const c=document.getElementById("c"),x=c.getContext("2d");let h=0;const g=x.createLinearGradient(0,0,320,180);g.addColorStop(0,"hsl(20,80%,60%)");g.addColorStop(1,"hsl(200,80%,50%)");x.fillStyle=g;x.fillRect(0,0,320,180);setInterval(()=>{x.fillRect(0,0,1,1)},200);document.getElementById("v").srcObject=c.captureStream(5)</script>')
 const SPY = '<script>window.__seen=[];new MutationObserver(m=>m.forEach(r=>r.addedNodes.forEach(n=>__seen.push(n.nodeName+":"+(n.textContent||"").slice(0,40))))).observe(document.documentElement,{childList:true,subtree:true})</script>'
 const server = http.createServer((req, res) => {
   if (req.url.startsWith('/translate_a/')) { res.writeHead(200, { 'content-type': 'application/json' }); res.end(JSON.stringify(['Le verre a toujours ete une matiere de lumiere, qui plie ce qui se trouve derriere lui et attrape le soleil sur ses bords.'])); return }
   if (/^\/pic[12]\.svg/.test(req.url)) { res.writeHead(200, { 'content-type': 'image/svg+xml' }); res.end(req.url.includes('1') ? PIC(25, 300) : PIC(190, 260)); return }
-  const m = req.url.match(/^\/(login|pk|article|video|signup)-(light|dark)/)
+  const m = req.url.match(/^\/(login|pk|article|video|signup|essay)-(light|dark)/)
   if (!m) { res.writeHead(404); res.end(); return }
-  const fn = { login: LOGIN, pk: PK, article: ARTICLE, video: VIDEO, signup: SIGNUP }[m[1]]
+  const fn = { login: LOGIN, pk: PK, article: ARTICLE, video: VIDEO, signup: SIGNUP, essay: ESSAY }[m[1]]
   res.writeHead(200, { 'content-type': 'text/html' }); res.end(fn(m[2]) + SPY)
 }).listen(0, '127.0.0.1')
 
@@ -126,6 +127,10 @@ async function main() {
     await js(`clearInterval(window.__sw)`); await wait(500)
     // reader
     if (theme !== 'cross') {
+      // an article with no picture: the masthead paints generative art from the page's colours
+      await go('/essay-' + site); L.__readerMode(wc); await wait(2200)
+      await shot(wc, 'reader-art-' + sfx)
+      if (theme === 'light') ok(await js(`!!document.querySelector('.lr-hero .lr-mono') && !!document.querySelector('.lr-hero .lr-gen') && !document.querySelector('.lr-cover')`), 'an article with no picture gets generative art and a type card')
       await go('/article-' + site)
       if (L.__readerMode) L.__readerMode(wc)
       else { const acc = L.D.settings.get('accent') || '#5b8cff'; await js(fs.readFileSync(path.join(__dirname, '../src/reader.js'), 'utf8').replace('__LUMEN_ACCENT__', acc).replace('__LUMEN_MOTION__', 'jelly')) }

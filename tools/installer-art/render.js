@@ -1,5 +1,5 @@
 // Lumen 4.1 installer and release art, rendered with headless Chromium from the same icon source as the app icon.
-//   xvfb-run -a npx electron tools/installer-art/render.js --no-sandbox
+//   xvfb-run -a -s '-screen 0 2560x1600x24' npx electron tools/installer-art/render.js --no-sandbox
 // Writes:
 //   build/dmg/background.png, build/dmg/background@2x.png   the Mac DMG window (660 x 420, and 1320 x 840 for Retina)
 //   build/nsis/installerSidebar.bmp, uninstallerSidebar.bmp  164 x 314, 24-bit BMP (NSIS wants BMP)
@@ -86,7 +86,7 @@ function headerHTML() {
 }
 function heroHTML(shot) {
   return `<style>${BASE_CSS}
-    .shot{position:absolute;right:-150px;top:70px;width:900px;border-radius:22px;transform:perspective(1800px) rotateY(-14deg) rotateX(4deg);transform-origin:100% 50%;
+    .shot{position:absolute;right:-110px;top:58px;width:1040px;border-radius:22px;transform:perspective(1800px) rotateY(-14deg) rotateX(4deg);transform-origin:100% 50%;
       box-shadow:0 0 0 1.5px rgba(255,255,255,.35),0 0 0 10px rgba(255,255,255,.06),0 50px 120px -20px rgba(10,0,40,.8),0 0 120px rgba(236,61,151,.35)}
     .ic{position:absolute;left:90px;top:126px;width:150px;height:150px;filter:drop-shadow(0 24px 34px rgba(20,0,60,.6))}
     .t{position:absolute;left:84px;top:300px;color:#fff;font:900 116px/.9 'Inter Display',sans-serif;letter-spacing:-.06em;text-shadow:0 6px 40px rgba(30,0,60,.4)}
@@ -155,7 +155,9 @@ app.whenReady().then(async () => {
     await win.webContents.executeJavaScript('Promise.all([...document.images].map(i => i.decode().catch(() => {}))).then(() => document.fonts.ready).then(() => new Promise(r => setTimeout(r, 300)))')
     const img = await win.webContents.capturePage({ x: 0, y: 0, width: w, height: h })
     win.destroy()
-    return img.getSize().width === w ? img : img.resize({ width: w, height: h, quality: 'best' })
+    // a window wider than the screen gets clamped, and stretching the capture back squashes everything: refuse instead
+    const got = img.getSize(); if (got.width !== w && Math.abs(got.width / got.height - w / h) > .01) throw new Error(`captured ${got.width}x${got.height} for ${w}x${h}: run under a screen at least ${w}px wide (xvfb-run -s '-screen 0 2560x1600x24')`)
+    return got.width === w ? img : img.resize({ width: w, height: h, quality: 'best' })
   }
   const rasterWin = new BrowserWindow({ show: false, webPreferences: { offscreen: true } })
   await rasterWin.loadURL('data:text/html,<body></body>')

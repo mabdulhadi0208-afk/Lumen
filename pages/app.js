@@ -38,10 +38,11 @@ function applyLook(s) {
   document.body.dataset.motion = s.motion
   Jelly.setMode(s.motion === 'lively' ? 'jelly' : s.motion)
   const was = window.Glass && Glass.on
-  if (window.Glass) { Glass.setMode(Jelly.getMode()); if (was !== Glass.on && typeof buildClock === 'function' && document.getElementById('clock')) buildClock() }
+  if (window.Glass) { Glass.setMode(page === 'newtab' || !page ? Jelly.getMode() : 'off'); if (was !== Glass.on && typeof buildClock === 'function' && document.getElementById('clock')) buildClock() }
 }
-Jelly.init({ buttons: '.btn, .ib, .seg button, .swatches button, .vc, .fchip, .npd-nav, .nav a, .ntp .foot a, .customize, .cswatch, .gtoggle, .sb-eng', cards: '.tile, .err .ico, .key, .wpb, .thb, .icb, .rc, .pcard, .clkb, .hero-ic, .an-dial', press: '.list .row, a.row.hit' })
-Jelly.smoothScroll(window)
+Jelly.init({ buttons: '.btn, .ib, .switch, .hero-chip, .seg button, .swatches button, .vc, .fchip, .npd-nav, .nav a, .ntp .foot a, .customize, .cswatch, .gtoggle, .sb-eng', cards: '.tile, .gl, .tries span, .err .ico, .key, .wpb, .thb, .icb, .rc, .pcard, .clkb, .hero-ic, .an-dial', press: '.list .row, a.row.hit' })
+// the pages scroll natively (passive, on the compositor); only the New Tab keeps the springy wheel
+if (page === 'newtab' || !page) Jelly.smoothScroll(window)
 
 // ======================================================================= new tab
 // The New Tab (home) lives in pages/home.js and pages/home.css. It defines newTab() and buildClock().
@@ -53,6 +54,8 @@ const SECTIONS = [
   ['extensions', 'Extensions', 'puzzle'], ['history', 'History', 'clock'], ['bookmarks', 'Bookmarks', 'star'], ['readlater', 'Read later', 'book'],
   ['parcels', 'Parcels', 'box'], ['downloads', 'Downloads', 'download'], ['about', 'About Lumen', 'info'],
 ]
+// 4.1: every section has its own vivid colour, in the sidebar chip, the hero, the cards and the stat tiles
+const SEC_HUE = { general: '#2f7bff', appearance: '#8b5cf6', apps: '#ff2d87', ai: '#ff7a1a', privacy: '#10b981', passwords: '#f5a300', sync: '#06b6d4', import: '#6366f1', extensions: '#7cc417', history: '#ec2f8b', bookmarks: '#ff5a36', readlater: '#a24bf5', parcels: '#e08a00', downloads: '#0ea5e9', about: 'var(--accent)' }
 const NAV_GROUPS = { general: 'Browser', passwords: 'You', history: 'Library' }
 // Nova: the page's cards come in one after another, 50ms apart, and pop in as they scroll into view
 function stagger(main) {
@@ -64,7 +67,8 @@ function stagger(main) {
 }
 function shell(active) {
   CUR_SECTION = active
-  root.innerHTML = `<div class="shell"><nav class="nav"><div class="navhead"><img class="navlogo" src="lumen://assets/icon-${esc(S.appIcon || 'default')}.png" alt=""><h1>Lumen</h1></div><div class="navsearch">${ICONS.search}<input type="search" id="setq" placeholder="Search settings" spellcheck="false" autocomplete="off"><kbd>/</kbd></div>${SECTIONS.map(([id, label, icon]) => `${NAV_GROUPS[id] ? `<div class="navgrp">${NAV_GROUPS[id]}</div>` : ''}<a title="${label}" href="${id === 'history' || id === 'bookmarks' || id === 'readlater' || id === 'downloads' || id === 'passwords' || id === 'extensions' || id === 'parcels' ? 'lumen://' + id : 'lumen://settings/' + id}" class="${id === active ? 'on' : ''}">${ICONS[icon]}${label}</a>`).join('')}</nav><main class="main rise" id="main"></main></div>`
+  document.body.style.setProperty('--sec', SEC_HUE[active] || 'var(--accent)')
+  root.innerHTML = `<div class="shell"><nav class="nav"><div class="navhead"><img class="navlogo" src="lumen://assets/icon-${esc(S.appIcon || 'default')}.png" alt=""><h1>Lumen</h1></div><div class="navsearch">${ICONS.search}<input type="search" id="setq" placeholder="Search settings" spellcheck="false" autocomplete="off"><kbd>/</kbd></div>${SECTIONS.map(([id, label, icon]) => `${NAV_GROUPS[id] ? `<div class="navgrp">${NAV_GROUPS[id]}</div>` : ''}<a title="${label}" href="${id === 'history' || id === 'bookmarks' || id === 'readlater' || id === 'downloads' || id === 'passwords' || id === 'extensions' || id === 'parcels' ? 'lumen://' + id : 'lumen://settings/' + id}" class="${id === active ? 'on' : ''}" style="--ic:${SEC_HUE[id] || 'var(--accent)'}">${ICONS[icon]}${label}</a>`).join('')}<div class="navfoot"><b>Lumen ${esc(VERSION || '')}</b></div></nav><main class="main rise" id="main"></main></div>`
   document.title = active === 'general' ? 'Settings' : (SECTIONS.find(s => s[0] === active) || [, 'Settings'])[1]
   bindSettingsSearch(active)
   stagger($('#main'))
@@ -118,14 +122,14 @@ const sw = (key, on) => `<label class="switch"><input type="checkbox" data-set="
 const row = (t, d, ctl) => `<div class="row"><div class="grow"><div class="t">${t}</div>${d ? `<div class="d">${d}</div>` : ''}</div>${ctl || ''}</div>`
 const seg = (key, opts, val) => `<div class="seg" data-seg="${key}">${opts.map(([v, l]) => `<button data-v="${v}" class="${String(v) === String(val) ? 'on' : ''}">${l}</button>`).join('')}</div>`
 // ---------------------------------------------------------------- Lumen 4.0 settings pieces
-const tint = n => `oklch(from var(--accent) l c calc(h + ${n}))`
+const tint = n => `oklch(from var(--sec, var(--accent)) l c calc(h + ${n}))`
 // a feature tile: its icon and live state on top, a tiny picture of what it does, then the words. The whole tile flips the switch.
 function ft(key, on, title, desc, icon, hue, art = '', o = {}) {
   return `<div class="ftile row ${on ? 'is-on' : ''} ${o.wide ? 'wide' : ''}" style="--ic:${tint(hue)}"><div class="ft-top"><span class="ft-ic">${ICONS[icon] || ''}</span><span class="ft-st"><i></i><b>${on ? 'On' : 'Off'}</b></span>${o.input || sw(key, on)}</div>${art ? `<div class="ft-art" aria-hidden="true">${art}</div>` : ''}<div class="grow"><div class="t">${title}</div>${desc ? `<div class="d">${desc}</div>` : ''}${o.extra || ''}</div></div>`
 }
 const ftCard = (h, tiles, before = '') => `<div class="card fcard">${h ? `<h3>${h}</h3>` : ''}${before}<div class="ftiles">${tiles.join('')}</div></div>`
 // live numbers at the top of a section
-const glance = items => `<div class="glance">${items.filter(Boolean).map(([v, l, icon, hue, cls = '', extra = '']) => `<div class="gl ${cls}" style="--ic:${tint(hue)}"><span class="gl-ic">${ICONS[icon] || ''}</span><div><b>${v}</b><span>${l}</span>${extra}</div></div>`).join('')}</div>`
+const glance = items => `<div class="glance">${items.filter(Boolean).map(([v, l, icon, hue, cls = '', extra = '']) => `<div class="gl ${cls}${String(v).replace(/<[^>]*>|&[a-z]+;/g, 'x').length > 7 ? ' long' : ''}" style="--ic:${tint(hue)}"><span class="gl-ic">${ICONS[icon] || ''}</span><div><b>${v}</b><span>${l}</span>${extra}</div></div>`).join('')}</div>`
 // big picture choices that behave like a segmented control (data-seg)
 const vchoice = (key, opts, val) => `<div class="vch" data-seg="${key}" role="group">${opts.map(([v, l, art, sub, inner]) => `<button class="vc ${String(v) === String(val) ? 'on' : ''}" data-v="${v}" aria-pressed="${String(v) === String(val)}"><span class="vc-art ${art}" aria-hidden="true">${inner || (art.startsWith('tabs') ? '<i></i><i></i><i></i>' : '<i></i>')}</span><b>${l}</b>${sub ? `<small>${sub}</small>` : ''}</button>`).join('')}</div>`
 const vrow = (t, d, body) => `<div class="row stack"><div class="grow"><div class="t">${t}</div>${d ? `<div class="d">${d}</div>` : ''}</div>${body}</div>`
@@ -888,7 +892,7 @@ async function about(m) {
   const st = await L.invoke('update', 'state')
   const desc = s => !s ? '' : s.status === 'checking' ? 'Checking for updates...' : s.status === 'downloading' ? `Downloading update... ${Math.round(s.progress || 0)}%` : s.status === 'ready' ? `Version ${esc(s.latest)} is ready. Restart to finish updating.` : s.status === 'available' ? (s.reason || `Version ${esc(s.latest)} is available.`) : s.status === 'uptodate' ? 'Lumen is up to date.' : s.status === 'unpacking' ? 'Unpacking the update...' : s.status === 'installing' ? 'Restarting...' : s.status === 'error' ? 'Could not check for updates. ' + esc(s.error || '') : ''
   const title = s => !s ? 'Updates' : s.status === 'ready' ? 'Ready to restart' : s.status === 'downloading' || s.status === 'unpacking' ? 'Getting the update' : s.status === 'checking' ? 'Checking' : s.status === 'uptodate' ? 'You have the latest Lumen' : s.status === 'available' ? 'An update is available' : s.status === 'error' ? 'Updates' : 'Updates'
-  m.innerHTML = `<div class="abouthero rise"><img class="ahicon" src="lumen://assets/icon-${esc(S.appIcon || 'default')}.png" alt=""><div><h2>Lumen</h2><div class="ahver">Version ${esc(VERSION)}</div><p class="lead">A fast, private browser with Chrome's engine and a calmer feel.</p>
+  m.innerHTML = `<div class="abouthero rise enter" style="--ic:var(--accent)">${heroBack(ICONS.info || '')}<img class="ahicon" src="lumen://assets/icon-${esc(S.appIcon || 'default')}.png" alt=""><div><h2>Lumen</h2><div class="ahver">Version ${esc(VERSION)}</div><p class="lead">A fast, private browser with Chrome's engine and a calmer feel.</p>
     <div class="ahbtns"><button class="btn" id="replay">${ICONS.play}Replay the intro</button><a class="btn" href="lumen://settings/general">${ICONS.gear}Settings</a></div></div></div>
   <div class="card"><h3>UPDATES</h3>
     <div class="row updrow"><span class="updorb" id="udorb"></span><div class="grow"><div class="t" id="udt"></div><div class="d"><span id="ud">${desc(st)}</span></div><div class="bar hidden" id="udbar"><i></i></div></div><div class="updbtns"><button class="btn" id="chk">Check for updates</button><button class="btn primary ${st && st.status === 'ready' ? '' : 'hidden'}" id="rst">${ICONS.reload}Restart</button></div></div>
@@ -945,7 +949,9 @@ const ERR_TRY = {
   other: ['Try again.', 'Go back and open the link again.', 'If it keeps happening, the site may be having trouble.'],
   crash: ['Reload. Most crashes do not happen twice.', 'Close tabs you are not using to free up memory.', 'If one site keeps crashing, try it in a private window.'],
 }
-const errScene = (art, big) => `<div class="scene" aria-hidden="true"><span class="orbit o2"></span><span class="orbit"></span><span class="bigk">${big}</span><span class="sat s1"></span><span class="sat s2"></span><span class="sat s3"></span><div class="ico"><svg viewBox="0 0 16 16" width="30" height="30" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">${art}</svg></div></div>`
+const errSvg = (art, w = 30) => `<svg viewBox="0 0 16 16" width="${w}" height="${w}" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">${art}</svg>`
+// error and crash pages open with the same stage as a settings section: lit glass, the icon tile, a huge title and a giant glyph
+const errHero = (art, why, code, title, text) => `<header class="hero errhero enter">${heroBack(errSvg(art, 16))}<div class="ico hero-ic" aria-hidden="true">${errSvg(art)}</div><div class="hero-tx"><div class="hero-eye"><span>${why}</span><i></i>${code ? `<b>Error ${code}</b>` : ''}</div><h1>${title}</h1><p>${text}</p></div></header>`
 const errTries = kind => `<div class="tries"><b>Things to try</b>${ERR_TRY[kind].map(t => `<span>${esc(t)}</span>`).join('')}</div>`
 function errorPage() {
   const p = new URLSearchParams(location.search)
@@ -953,9 +959,7 @@ function errorPage() {
   const [title, text] = ERRORS[code] || (parseInt(code) <= -200 && parseInt(code) > -300 ? ERRORS['-200'] : ['This page is not working', 'Something went wrong while loading it.'])
   const kind = ERR_KIND(code), host = hostOf(url), back = history.length > 1
   document.title = host || 'Error'
-  root.innerHTML = `<div class="err k-${kind}"><div class="errglow"></div><div class="err4">${errScene(ERR_ART[kind], esc(String(Math.abs(parseInt(code)) || '')))}<div class="rise">
-    <div class="crash-why">${{ offline: 'No internet', dns: 'Address not found', cert: 'Certificate problem', slow: 'Timed out', refused: 'Connection refused', other: 'Could not load' }[kind]}</div>
-    <h1>${esc(title)}</h1><p>${esc(text)}</p>
+  root.innerHTML = `<div class="err k-${kind}"><div class="errglow"></div><div class="err5">${errHero(ERR_ART[kind], { offline: 'No internet', dns: 'Address not found', cert: 'Certificate problem', slow: 'Timed out', refused: 'Connection refused', other: 'Could not load' }[kind], esc(String(Math.abs(parseInt(code)) || '')), esc(title), esc(text))}<div class="errbody">
     <code>${esc(host || url)}${desc ? '  ·  ' + esc(desc) : ''}</code>
     ${kind === 'offline' ? '<div class="errwait"><i></i>Lumen will reload the page as soon as you are back online</div>' : ''}
     <div class="erracts">${back ? `<button class="btn ${kind === 'cert' ? 'primary' : ''}" id="eback">${ICONS.back}${kind === 'cert' ? 'Back to safety' : 'Go back'}</button>` : ''}${kind === 'dns' && host ? `<button class="btn" id="esearch">${ICONS.search}Search for ${esc(host.replace(/^www\./, ''))}</button>` : ''}<button class="btn ${kind === 'cert' && back ? '' : 'primary'}" id="retry">${ICONS.reload}Try again</button></div>
@@ -975,9 +979,7 @@ function crashedPage() {
   const p = new URLSearchParams(location.search)
   const url = p.get('url') || '', host = hostOf(url), why = CRASH_WHY[p.get('reason')] || ''
   document.title = host ? host + ' crashed' : 'This tab crashed'
-  root.innerHTML = `<div class="err crash"><div class="errglow"></div><div class="err4">${errScene('<path d="M3 3.5h10a1 1 0 0 1 1 1v7a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1v-7a1 1 0 0 1 1-1zM2 6h12"/><path d="m6 8.2 1.6 1.6M7.6 8.2 6 9.8M8.6 8.2l1.6 1.6M10.2 8.2 8.6 9.8"/>', `<span class="bigic">${ICONS.crash || ''}</span>`)}<div class="rise">
-    <div class="crash-why">${esc(why || 'The page stopped working')}</div>
-    <h1>This tab crashed</h1><p>Something went wrong while showing ${host ? esc(host.replace(/^www\./, '')) : 'this page'}. Your other tabs are fine. Reload to try again.</p>
+  root.innerHTML = `<div class="err crash"><div class="errglow"></div><div class="err5">${errHero('<path d="M3 3.5h10a1 1 0 0 1 1 1v7a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1v-7a1 1 0 0 1 1-1zM2 6h12"/><path d="m6 8.2 1.6 1.6M7.6 8.2 6 9.8M8.6 8.2l1.6 1.6M10.2 8.2 8.6 9.8"/>', esc(why || 'The page stopped working'), '', 'This tab crashed', `Something went wrong while showing ${host ? esc(host.replace(/^www\./, '')) : 'this page'}. Your other tabs are fine. Reload to try again.`)}<div class="errbody">
     ${url ? `<code>${esc(url)}</code>` : '<div style="height:26px"></div>'}
     <div class="erracts"><button class="btn" id="cnew">${ICONS.plus}Open New Tab</button><button class="btn primary" id="creload">${ICONS.reload}Reload</button></div>
     ${errTries('crash')}
@@ -991,13 +993,20 @@ function crashedPage() {
 // Pages keep writing a plain <h2> and lead; this dresses them up as a lit liquid-glass hero with the section's icon,
 // in the same color as its chip in the sidebar.
 let CUR_SECTION = ''
-const HERO_HUE = [0, 40, 85, 140, 200, 250, 300]
 const HERO_ICON = { Search: 'search', Highlights: 'sparkle', 'Archived tabs': 'layers' }
 let heroSeen = ''
 function springPop(el, from) {
   // the hero icon lands with a real Jelly spring: scale and a small turn settle together
   if (!window.Jelly || Jelly.getMode() === 'off') return
   const s = new Jelly.Spring(from, 'jelly', v => { el.style.transform = `scale(${v.toFixed(4)}) rotate(${((1 - v) * -40).toFixed(2)}deg)` })
+  s.to(1)
+}
+// the hero's lights, grain and the giant watermark glyph: a soft glow, a deep shadow copy and the crisp outline
+const heroBack = glyph => `<i class="hero-orb a"></i><i class="hero-orb b"></i><i class="hero-orb c"></i><i class="hero-orb d"></i><i class="hero-grain" aria-hidden="true"></i><span class="hero-art glow" aria-hidden="true">${glyph}</span><span class="hero-art depth" aria-hidden="true">${glyph}</span><span class="hero-art" aria-hidden="true">${glyph}</span>`
+function springStage(el) {
+  // the whole stage settles in on a Jelly spring: it rises and grows a touch, then is still
+  if (!window.Jelly || Jelly.getMode() === 'off') return
+  const s = new Jelly.Spring(0, 'jelly', v => { el.style.translate = v >= .999 ? '' : `0 ${((1 - v) * 26).toFixed(2)}px`; el.style.scale = v >= .999 ? '' : (.965 + v * .035).toFixed(4) })
   s.to(1)
 }
 function buildHero(main) {
@@ -1007,12 +1016,16 @@ function buildHero(main) {
   const idx = Math.max(0, SECTIONS.findIndex(s => s[0] === CUR_SECTION))
   const icon = HERO_ICON[title] || (SECTIONS[idx] || [])[2] || 'gear'
   const hero = document.createElement('header'); hero.className = 'hero'
-  hero.style.setProperty('--ic', `oklch(from var(--accent) l c calc(h + ${HERO_HUE[idx % 7]}))`)
-  hero.innerHTML = `<i class="hero-orb a"></i><i class="hero-orb b"></i><i class="hero-orb c"></i><span class="hero-art" aria-hidden="true">${ICONS[icon] || ''}</span><span class="hero-ic" aria-hidden="true">${ICONS[icon] || ''}</span><div class="hero-tx"></div>`
+  hero.style.setProperty('--ic', title === 'Search' || !SEC_HUE[CUR_SECTION] ? 'var(--accent)' : SEC_HUE[CUR_SECTION])
+  // the eyebrow names the group the section lives in and where it sits in the list
+  let group = 'Settings'; for (let i = 0; i <= idx && i < SECTIONS.length; i++) if (NAV_GROUPS[SECTIONS[i][0]]) group = NAV_GROUPS[SECTIONS[i][0]]
+  if (title === 'Search') group = 'Settings'
+  const num = title === 'Search' ? '' : `<b>${String(idx + 1).padStart(2, '0')} / ${SECTIONS.length}</b>`
+  hero.innerHTML = `${heroBack(ICONS[icon] || '')}<span class="hero-ic" aria-hidden="true">${ICONS[icon] || ''}</span><div class="hero-tx"><div class="hero-eye" aria-hidden="true"><span>${esc(group)}</span><i></i>${num}</div></div>`
   main.insertBefore(hero, h2)
   const tx = hero.querySelector('.hero-tx'); tx.append(h2); if (lead) tx.append(lead)
   // a page that redraws itself keeps its hero still; a new page gets the full entrance
-  if (heroSeen !== title) { hero.classList.add('enter'); springPop(hero.querySelector('.hero-ic'), 0.45) }
+  if (heroSeen !== title) { hero.classList.add('enter'); springPop(hero.querySelector('.hero-ic'), 0.45); springStage(hero) }
   heroSeen = title
 }
 function segIndicator(g) {
@@ -1031,10 +1044,17 @@ function segIndicator(g) {
   g.addEventListener('click', () => requestAnimationFrame(() => place(true)))
   if (window.ResizeObserver) new ResizeObserver(() => place(false)).observe(g)
 }
+// card titles are written in capitals; 4.1 shows them as big sentence-case titles, names kept as names
+const KEEP_CASE = { LUMEN: 'Lumen', CLAUDE: 'Claude', API: 'API', AI: 'AI', CHROME: 'Chrome', SURGE: 'Surge', KOI: 'Koi' }
+function titleCase(h) {
+  const t = h.textContent.trim()
+  if (!t || t !== t.toUpperCase() || !/[A-Z]{2}/.test(t)) return
+  h.textContent = t.toLowerCase().split(' ').map((w, i) => KEEP_CASE[w.toUpperCase()] || (i ? w : w[0].toUpperCase() + w.slice(1))).join(' ')
+}
 function decorate() {
   const v = location.hash === '#highlights' || location.hash === '#archive' ? location.hash.slice(1) : page === 'settings' ? (sub || 'general') : page
   if (document.body.dataset.view !== v) document.body.dataset.view = v
-  const main = document.getElementById('main'); if (main) buildHero(main)
+  const main = document.getElementById('main'); if (main) { buildHero(main); main.querySelectorAll('.card > h3:not([data-tc]), .main > h3:not([data-tc])').forEach(h => { h.dataset.tc = '1'; titleCase(h) }) }
   if (window.Jelly) root.querySelectorAll('.seg:not(.has-ind)').forEach(segIndicator)
 }
 new MutationObserver(decorate).observe(root, { childList: true, subtree: true })

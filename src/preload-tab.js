@@ -475,7 +475,13 @@ if (location.protocol === 'lumen:') {
       .nv{--accent:#ff4fb8}
       .bub{position:absolute;left:0;top:0;display:flex;align-items:center;gap:2px;padding:4px;border-radius:999px;white-space:nowrap;
         transform-origin:50% 100%;animation:in .62s var(--jelly) both}
-      .bub.below{transform-origin:50% 0}
+      .bub.below{transform-origin:14px 0}
+      .bub.above{transform-origin:14px 100%}
+      .bub>button,.bub>.sep{max-width:140px;overflow:hidden;transition:max-width .55s var(--jelly),opacity .25s,padding .55s var(--jelly),margin .55s var(--jelly),background .18s,color .18s,transform .45s var(--jelly)}
+      .bub.mini{padding:3px;gap:0}
+      .bub.mini>button,.bub.mini>.sep{max-width:0;opacity:0;padding-left:0;padding-right:0;margin:0;pointer-events:none}
+      .bub.mini .orb{margin-right:0;box-shadow:0 0 0 0 rgba(255,79,184,.5);animation:pulse 2.4s ease-out .7s 2}
+      @keyframes pulse{0%{box-shadow:0 0 0 0 rgba(255,79,184,.45)}100%{box-shadow:0 0 0 12px rgba(255,79,184,0)}}
       .bub.out{animation:out .16s ease-in both}
       @keyframes in{0%{opacity:0;transform:translateY(8px) scale(.82)}35%{opacity:1}100%{opacity:1;transform:none}}
       @keyframes out{to{opacity:0;transform:scale(.92)}}
@@ -488,7 +494,7 @@ if (location.protocol === 'lumen:') {
       button:hover svg{color:#fff}
       button:active{transform:scale(.94);transition-duration:.08s}
       .sep{width:1px;height:18px;background:var(--line);margin:0 2px}
-      ${STILL ? '.bub{animation:none}' : ''}`
+      ${STILL ? '.bub,.orb{animation:none!important}.bub>button,.bub>.sep{transition:none}' : ''}`
     let cur = null, pending = 0
     const editable = n => { const el = n && (n.nodeType === 1 ? n : n.parentElement); return !!(el && el.closest && el.closest('input,textarea,select,[contenteditable=""],[contenteditable=true],[contenteditable=plaintext-only]')) }
     const close = quick => {
@@ -503,8 +509,12 @@ if (location.protocol === 'lumen:') {
       if (!s || s.isCollapsed || !s.rangeCount) return close(true)
       const text = String(s).trim()
       if (text.length < 2 || text.length > 6000 || editable(s.anchorNode) || editable(document.activeElement)) return close(true)
-      const r = s.getRangeAt(0).getBoundingClientRect()
+      const range = s.getRangeAt(0), r = range.getBoundingClientRect()
       if (!r.width && !r.height) return close(true)
+      // 4.1.1: anchor to the end of the selection, under its last line, so the bubble never covers the selected
+      // text or the line above it. It starts as a small orb and opens into the full bar on hover or focus.
+      const lines = [...range.getClientRects()].filter(q => q.width > 0 && q.height > 0)
+      const last = lines[lines.length - 1] || r, first = lines[0] || r
       close(true)
       const words = text.split(/\s+/).length
       const acts = [['explain', 'Explain'], words <= 4 ? ['define', 'Define'] : words >= 25 ? ['summarize', 'Summarize'] : null, ['translate', 'Translate'], ['rewrite', 'Rewrite'], ['ask', 'Ask']].filter(Boolean)
@@ -514,16 +524,23 @@ if (location.protocol === 'lumen:') {
       host.style.visibility = 'hidden'
       document.documentElement.appendChild(host)
       const bw = bub.offsetWidth, bh = bub.offsetHeight
-      const below = r.top < bh + 18
-      const x = Math.round(Math.max(8, Math.min(innerWidth - bw - 8, r.left + r.width / 2 - bw / 2)))
-      const y = Math.round(below ? r.bottom + 12 : r.top - bh - 12)
-      bub.classList.toggle('below', below)
+      bub.classList.add('mini')
+      const mw = bub.offsetWidth
+      const below = last.bottom + bh + 14 <= innerHeight || first.top < bh + 18
+      // the orb sits just past the end of the selection; the bar opens to the right, or shifts left near the edge
+      const ox = Math.round(Math.max(8, Math.min(innerWidth - mw - 8, last.right - mw / 2)))
+      const x = Math.min(ox, Math.max(8, innerWidth - bw - 8))
+      const y = Math.round(below ? last.bottom + 8 : first.top - bh - 8)
+      bub.classList.toggle('below', below); bub.classList.toggle('above', !below)
+      bub.style.marginLeft = (ox - x) + 'px'
       host.style.left = x + 'px'; host.style.top = y + 'px'; host.style.visibility = ''
+      const open = () => { if (!bub.classList.contains('mini')) return; bub.classList.remove('mini'); bub.style.transition = STILL ? 'none' : 'margin-left .55s var(--jelly)'; bub.style.marginLeft = '0px' }
+      bub.addEventListener('mouseenter', open); bub.addEventListener('focusin', open)
       glint(bub)
       // keep the page's selection while the bubble is pressed
       bub.addEventListener('mousedown', e => { e.preventDefault(); e.stopPropagation() })
       bub.addEventListener('click', e => { const b = e.target.closest('button'); if (b) press(b.dataset.a, text) })
-      cur = { host, bub, text, acts: acts.map(a => a[0]) }
+      cur = { host, bub, text, acts: acts.map(a => a[0]), open }
     }
     addEventListener('mouseup', e => {
       if (e.button !== 0 || (cur && e.composedPath().includes(cur.host))) return
@@ -535,7 +552,7 @@ if (location.protocol === 'lumen:') {
     addEventListener('resize', () => { if (cur) close(true) })
     addEventListener('blur', () => { if (cur) close(true) })
     // for tests: this lives in the preload's own world, which pages cannot see
-    globalThis.__lumenAISel = { shown: () => !!cur, actions: () => (cur ? cur.acts.slice() : []), press: a => { if (cur) press(a, cur.text) }, rect: () => (cur ? cur.host.getBoundingClientRect().toJSON() : null) }
+    globalThis.__lumenAISel = { shown: () => !!cur, actions: () => (cur ? cur.acts.slice() : []), press: a => { if (cur) press(a, cur.text) }, open: () => { if (cur) cur.open() }, mini: () => !!(cur && cur.bub.classList.contains('mini')), rect: () => (cur ? cur.bub.getBoundingClientRect().toJSON() : null) }
   })
 
   // ------------------------------------------------------------ Reader mode (src/reader.js runs in this world): remember its choices

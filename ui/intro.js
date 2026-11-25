@@ -23,17 +23,11 @@
 ;(function () {
   // ---- edit this list every release: it is the "New in Lumen" act of the film (only this version's changes)
   const WHATS_NEW = {
-    version: '4.1',
+    version: '4.1.1',
     items: [
-      { icon: 'sparkle', text: 'Ask Lumen: a chat for every tab, with streaming answers and cited quotes you can click to jump to' },
-      { icon: 'bolt', text: 'Opens in about 1 second instead of 4, with no freeze on first launch' },
-      { icon: 'search', text: 'Cmd K and address bar results as you type, in about 10 ms' },
-      { icon: 'tabs', text: 'Tab switching 3x faster, and every click and key answers within 20 ms' },
-      { icon: 'layers', text: 'Ask about all your tabs at once, or tell Cmd K to close all YouTube tabs' },
-      { icon: 'translate', text: 'Select text to Explain, Define, Summarize, Translate or Rewrite it, plus writing help in text boxes' },
-      { icon: 'key', text: 'Fast, Smart and Best models, set up in 3 steps' },
-      { icon: 'clock', text: 'A new Home banner: minimal, a premium clock, and Modern or Classic layouts' },
-      { icon: 'play', text: 'Jelly motion everywhere again, and a smooth glide when you scroll' },
+      { icon: 'sparkle', text: 'The Lumen AI bubble now waits as a small orb at the end of your selection, so it never covers what you are reading' },
+      { icon: 'play', text: 'Hover the orb and it springs open into Explain, Define, Translate, Rewrite and Ask, right under the text' },
+      { icon: 'bolt', text: 'Near the edge of the window the bar slides left to stay on screen, and it opens above when there is no room below' },
     ],
   }
 
@@ -1174,6 +1168,17 @@
     const v4 = logo.querySelector(':scope > .v4')
     anim(v4, [{ opacity: 0, transform: 'scale(2.8) translateY(-6%)', filter: `blur(22px) ${SPLIT(20)}` }, { opacity: 1, transform: 'scale(.96)', filter: `blur(0) ${SPLIT(3, .5)}`, offset: .5 }, { opacity: 1, transform: 'none', filter: `blur(0) ${SPLIT(0, 0)}` }], { duration: 760, delay: 1000, easing: 'cubic-bezier(.16,1,.3,1)' })
     setTimeout(() => { if (skip || still) return; SFX.hit(3); pop(.3, 7); sky.shock.push({ r: 10, a: .8 }); flare(.8); slabs(700) }, 1050)
+    // 4.1.1: the number leaves two afterimages that blast outward and burn off, like a light hit on film
+    setTimeout(() => {
+      if (skip || still || !v4.offsetParent) return
+      const host = v4.offsetParent
+      ;[[1.9, 900, .55], [2.8, 1300, .3]].forEach(([to, ms, o], i) => {
+        const gh = v4.cloneNode(true)
+        gh.style.cssText = `position:absolute;left:${v4.offsetLeft}px;top:${v4.offsetTop}px;margin:0;pointer-events:none;mix-blend-mode:screen;transform-origin:50% 55%`
+        host.appendChild(gh)
+        gh.animate([{ opacity: o, transform: 'scale(1)', filter: `blur(0) ${SPLIT(4, .6)}` }, { opacity: 0, transform: `scale(${to})`, filter: `blur(${10 + i * 8}px) ${SPLIT(14, .9)}` }], { duration: ms, delay: i * 90, easing: 'cubic-bezier(.16,1,.3,1)' }).finished.then(() => gh.remove(), () => gh.remove())
+      })
+    }, 1080)
     anim(logo.querySelector('.mirror .v4'), [{ opacity: 0 }, { opacity: 1 }], { duration: 600, delay: 1300 })
     anim(s.querySelector('.rule'), [{ transform: 'scaleX(0)' }, { transform: 'scaleX(1)' }], { duration: 1500, delay: 1200, easing: 'cubic-bezier(.16,1,.3,1)' })
     // a glass lens sweeps across the finished title, bending each letter as it passes, then the glint follows

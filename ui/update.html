@@ -409,6 +409,17 @@
   .curtain.out .beam41,.curtain.out .crown{transition:opacity .3s;opacity:0}
   @media (max-height:420px){.crown{inset:-16px}}
 
+  /* ---- 4.1.1: as the card settles, the Update now button sends out two rings of light (one shot, never looping),
+     and the version number lands with a chromatic split that pulls back into focus, like the intro's title hit. */
+  .btn{animation:ring411 1.5s 1s cubic-bezier(.2,.9,.3,1) backwards}
+  .ready-now .btn{animation:ring411 1.2s cubic-bezier(.2,.9,.3,1) backwards}
+  @keyframes ring411{
+    0%{box-shadow:inset 0 1px 0 rgba(255,255,255,.6),inset 0 -1px 0 rgba(255,255,255,.2),inset 0 -8px 14px -6px rgba(0,0,0,.2),0 0 0 0 color-mix(in srgb,var(--accent) 55%,transparent),0 0 0 4px color-mix(in srgb,var(--accent) 16%,transparent),0 10px 24px -6px color-mix(in srgb,var(--accent) 85%,transparent)}
+    100%{box-shadow:inset 0 1px 0 rgba(255,255,255,.6),inset 0 -1px 0 rgba(255,255,255,.2),inset 0 -8px 14px -6px rgba(0,0,0,.2),0 0 0 16px color-mix(in srgb,var(--accent) 0%,transparent),0 0 0 4px color-mix(in srgb,var(--accent) 16%,transparent),0 10px 24px -6px color-mix(in srgb,var(--accent) 85%,transparent)}}
+  .error .btn{animation:none}
+  .bignum{animation:numjelly 1.25s .2s cubic-bezier(.2,.9,.3,1) both,split411 1s .2s cubic-bezier(.2,.9,.3,1) both}
+  @keyframes split411{0%{filter:drop-shadow(-7px 0 0 rgba(255,60,120,.75)) drop-shadow(7px 0 0 rgba(60,170,255,.75)) blur(3px)}55%{filter:drop-shadow(-1.5px 0 0 rgba(255,60,120,.45)) drop-shadow(1.5px 0 0 rgba(60,170,255,.45)) blur(0)}100%{filter:none}}
+
   @media (prefers-reduced-motion:reduce){*,*::before,*::after{animation:none !important;transition:none !important}}
 </style></head><body>
 <svg class="defs" aria-hidden="true"><defs id="defs"><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" style="stop-color:var(--accent)"/><stop offset=".55" style="stop-color:var(--a2)"/><stop offset="1" style="stop-color:var(--a3)"/></linearGradient></defs></svg>

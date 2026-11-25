@@ -16,7 +16,7 @@ const { svg: iconSvg } = require('../icons/icon.js')
 
 const ROOT = path.join(__dirname, '..', '..')
 const SHOTS = '/tmp/lumen-shots'
-const SHOT = process.env.SHOT || path.join(SHOTS, '41-home-dark.png')
+const SHOT = process.env.SHOT || path.join(SHOTS, '41b-home-clock-dark.png')
 app.disableHardwareAcceleration()
 
 const b64 = s => Buffer.from(s).toString('base64')
@@ -97,7 +97,7 @@ function heroHTML(shot) {
     <div class="grain"></div><div class="motes">${MOTES(60, 1600, 640, 1.4)}</div>
     ${shot ? `<img class="shot" src="${shot}">` : ''}
     <img class="ic" src="${ICON(512)}"><div class="t">Lumen <span>4</span></div>
-    <div class="s">A browser that feels alive. Liquid glass, jelly motion, Surge and Koi built in.</div>`
+    <div class="s">A browser that feels alive. Liquid glass, jelly motion, and zero clutter.</div>`
 }
 function docSvg(size) {
   // a glossy page with a folded corner, a colour band and the Lumen planet on it

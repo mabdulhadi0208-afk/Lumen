@@ -240,7 +240,7 @@ function nativeDialog(host, opts) {
 }
 function dialogIcon(icon) {
   if (!icon) return null
-  if (typeof icon === 'string' && /^(key|lock|quit|link|leave|apps|puzzle|warning|info|question|user)$/.test(icon)) return { glyph: icon }
+  if (typeof icon === 'string' && /^(key|lock|quit|link|leave|apps|puzzle|warning|info|question|user|printer)$/.test(icon)) return { glyph: icon }
   const u = iconURL(icon)
   return u ? { src: u } : null
 }

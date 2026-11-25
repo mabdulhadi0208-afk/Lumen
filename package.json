@@ -66,7 +66,9 @@
           "pdf"
         ],
         "name": "Web document",
-        "role": "Viewer"
+        "role": "Viewer",
+        "rank": "Alternate",
+        "icon": "build/doc/document"
       }
     ],
     "mac": {
@@ -110,20 +112,23 @@
       "artifactName": "Lumen-mac-${arch}.${ext}",
       "contents": [
         {
-          "x": 150,
+          "x": 180,
           "y": 190
         },
         {
-          "x": 410,
+          "x": 480,
           "y": 190,
           "type": "link",
           "path": "/Applications"
         }
       ],
       "window": {
-        "width": 560,
-        "height": 380
-      }
+        "width": 660,
+        "height": 420
+      },
+      "background": "build/dmg/background.png",
+      "iconSize": 128,
+      "iconTextSize": 13
     },
     "win": {
       "icon": "build/icon.png",
@@ -143,7 +148,13 @@
       "allowElevation": true,
       "runAfterFinish": true,
       "createDesktopShortcut": true,
-      "shortcutName": "Lumen"
+      "shortcutName": "Lumen",
+      "installerIcon": "build/nsis/installerIcon.ico",
+      "uninstallerIcon": "build/nsis/uninstallerIcon.ico",
+      "installerHeaderIcon": "build/nsis/installerIcon.ico",
+      "installerSidebar": "build/nsis/installerSidebar.bmp",
+      "uninstallerSidebar": "build/nsis/uninstallerSidebar.bmp",
+      "installerHeader": "build/nsis/installerHeader.bmp"
     }
   }
 }

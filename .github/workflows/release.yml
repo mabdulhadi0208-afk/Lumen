@@ -207,14 +207,30 @@ jobs:
       # release notes: the bullet list from the release commit (what the update card shows), then install help
       - name: Release notes
         run: |
+          TAG="${{ steps.v.outputs.tag }}"
+          DL="https://github.com/${{ github.repository }}/releases/download/$TAG"
+          # the newest hero image committed under docs/release, pinned to this commit so it never changes under an old release
+          HERO=$(ls docs/release/*-hero.png 2>/dev/null | sort -V | tail -1 || true)
           {
-            echo "Lumen ${{ steps.v.outputs.tag }}"
+            if [ -n "$HERO" ]; then
+              echo "<p align=\"center\"><img src=\"https://raw.githubusercontent.com/${{ github.repository }}/${{ github.sha }}/$HERO\" alt=\"Lumen $TAG\" width=\"100%\"></p>"
+              echo
+            fi
+            echo "<h1 align=\"center\">Lumen $TAG</h1>"
+            echo
+            echo "<p align=\"center\"><a href=\"$DL/Lumen-mac-arm64.dmg\"><b>Download for Mac (Apple Silicon)</b></a> &nbsp;&middot;&nbsp; <a href=\"$DL/Lumen-mac-x64.dmg\"><b>Mac (Intel)</b></a> &nbsp;&middot;&nbsp; <a href=\"$DL/Lumen-win-x64.exe\"><b>Windows</b></a></p>"
+            echo
+            echo "## What's new"
             echo
             git log -1 --format=%B "${{ github.sha }}" | sed -e '1d' -e '/^Co-Authored-By:/d' -e '/^Claude-Session:/d' -e '/^- New test/d'
             echo
-            echo "Mac: download Lumen-mac-arm64.dmg (Apple Silicon) or Lumen-mac-x64.dmg (Intel), drag to Applications, right-click and Open the first time."
-            echo "Windows: run Lumen-win-x64.exe (SmartScreen: More info, Run anyway)."
-            echo "Already installed? Lumen updates itself."
+            echo "## Install"
+            echo
+            echo "| | |"
+            echo "|---|---|"
+            echo "| **Mac** | Download [Lumen-mac-arm64.dmg]($DL/Lumen-mac-arm64.dmg) (Apple Silicon) or [Lumen-mac-x64.dmg]($DL/Lumen-mac-x64.dmg) (Intel), drag Lumen to Applications, right-click and Open the first time. |"
+            echo "| **Windows** | Run [Lumen-win-x64.exe]($DL/Lumen-win-x64.exe) (SmartScreen: More info, Run anyway). |"
+            echo "| **Already installed?** | Lumen updates itself. |"
           } > notes.md
           cat notes.md
       - uses: softprops/action-gh-release@v2

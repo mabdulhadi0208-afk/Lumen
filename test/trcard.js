@@ -22,7 +22,7 @@ app.whenReady().then(async () => {
   ok(await ex(`document.getElementById('trcard').classList.contains('show')`), 'card shows')
   fs.writeFileSync('/tmp/lumen-shots/tr-1.png', (await w.ui.webContents.capturePage()).toPNG())
   await wait(500)
-  const w1 = await ex(`parseFloat(document.getElementById('tr-fill').style.width)`)
+  const w1 = await ex(`parseFloat(document.getElementById('tr-fill').style.width) || parseFloat(document.getElementById('tr-fill').dataset.p)`)
   fs.writeFileSync('/tmp/lumen-shots/tr-2.png', (await w.ui.webContents.capturePage()).toPNG())
   ok(w1 > 5 && w1 < 100, 'bar moving ' + w1 + ' / ' + await ex(`document.getElementById('tr-count').textContent`))
   await wait(2500)

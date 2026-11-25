@@ -184,6 +184,7 @@ h1 { font-size: 26px; }
 .dark { --banner: radial-gradient(60% 120% at 0% 0%, rgba(255, 255, 255, .2), transparent 60%), radial-gradient(50% 140% at 100% 100%, color-mix(in srgb, var(--accent3) 70%, transparent), transparent 70%), linear-gradient(120deg, color-mix(in srgb, var(--accent) 88%, #000), color-mix(in srgb, var(--accent2) 85%, #000) 55%, color-mix(in srgb, var(--accent3) 85%, #000)); }
 .incognito { --banner: radial-gradient(60% 120% at 0% 0%, rgba(255, 220, 255, .22), transparent 60%), radial-gradient(50% 140% at 100% 100%, rgba(255, 79, 184, .8), transparent 70%), linear-gradient(120deg, #6d3bd8, #a24bff 55%, #e0479f); }
 body[data-kind="danger"], body[data-kind="clear"] { --banner: radial-gradient(60% 120% at 0% 0%, rgba(255, 255, 255, .3), transparent 60%), linear-gradient(120deg, #e5484d, #f0703c 60%, #f3a03a); }
+body[data-kind="print"] { --banner: radial-gradient(60% 120% at 0% 0%, rgba(255, 255, 255, .34), transparent 60%), radial-gradient(50% 140% at 100% 100%, rgba(236, 61, 151, .8), transparent 70%), linear-gradient(120deg, #ffa62e, #f0553c 55%, #ec3d97); }
 #sheet { width: min(452px, calc(100vw - 32px)); padding: 10px 30px 26px; border-radius: 34px; text-align: center; top: 60px;
   box-shadow: var(--spec), var(--shadow), 0 0 0 8px color-mix(in srgb, var(--accent) 9%, transparent), 0 40px 140px -20px color-mix(in srgb, var(--accent) 55%, transparent); }
 #sheet::after { border-radius: 33px; }
@@ -342,6 +343,7 @@ const GLYPH = {
   info: I('<circle cx="8" cy="8" r="6"/><path d="M8 7.2v3.8M8 5v.1"/>'),
   question: I('<circle cx="8" cy="8" r="6"/><path d="M6.2 6.3a1.9 1.9 0 0 1 3.6.7c0 1.3-1.8 1.6-1.8 2.8M8 11.6v.1"/>'),
   user: I('<circle cx="8" cy="5.5" r="2.75"/><path d="M2.75 13.5a5.25 5.25 0 0 1 10.5 0"/>'),
+  printer: I('<path d="M4.5 6V2.5h7V6"/><rect x="2" y="6" width="12" height="5.5" rx="1.5"/><path d="M4.5 9.5h7V14h-7z"/>'),
 }
 const CHEV = I('<path d="M6.25 3.75 10.5 8l-4.25 4.25"/>')
 

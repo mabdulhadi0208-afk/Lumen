@@ -33,7 +33,7 @@ const settings = new Store('settings', {
   neverTranslate: [],
   alwaysTranslate: [],
   ntpShortcuts: null,        // null = most visited
-  ntpWallpaper: 'aurora',
+  ntpWallpaper: 'theme',      // Match theme: the home background follows the browser theme
   ntpClock: true,
   sync: { enabled: false, folder: '', lastSync: 0 },
   autoUpdate: true,

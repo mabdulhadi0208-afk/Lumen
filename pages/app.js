@@ -40,7 +40,7 @@ function applyLook(s) {
   const was = window.Glass && Glass.on
   if (window.Glass) { Glass.setMode(page === 'newtab' || !page ? Jelly.getMode() : 'off'); if (was !== Glass.on && typeof buildClock === 'function' && document.getElementById('clock')) buildClock() }
 }
-Jelly.init({ buttons: '.btn, .ib, .switch, .hero-chip, .seg button, .swatches button, .vc, .fchip, .npd-nav, .nav a, .ntp .foot a, .customize, .cswatch, .gtoggle, .sb-eng', cards: '.tile, .gl, .tries span, .err .ico, .key, .wpb, .thb, .icb, .rc, .pcard, .clkb, .hero-ic, .an-dial', press: '.list .row, a.row.hit' })
+Jelly.init({ buttons: '.btn, .ib, .switch, .hero-chip, .seg button, .swatches button, .vc, .fchip, .npd-nav, .nav a, .ntp .foot a, .hm-cust, .hm-foot a, .hm-ask, .hm-k, .hm-eng, .hm-more, .wpqb, .wpb, .customize, .cswatch, .gtoggle, .sb-eng', cards: '.tile, .gl, .tries span, .hm-stat, .hm-tile, .err .ico, .key, .wpb, .thb, .icb, .rc, .pcard, .clkb, .hero-ic, .an-dial', press: '.list .row, a.row.hit' })
 // the pages scroll natively (passive, on the compositor); only the New Tab keeps the springy wheel
 if (page === 'newtab' || !page) Jelly.smoothScroll(window)
 

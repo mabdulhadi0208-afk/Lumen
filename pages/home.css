@@ -149,7 +149,7 @@ body.home-page { overflow-x: hidden; }
     0 26px 44px -14px color-mix(in srgb, var(--accent) 60%, transparent), 0 8px 16px -8px color-mix(in srgb, var(--accent2) 60%, transparent); }
 .hm-ball.s1 { width: 150px; height: 150px; right: -34px; bottom: -62px; }
 .hm-ball.s2 { width: 54px; height: 54px; right: 5%; top: 26px; }
-.hm-ball.s3 { width: 26px; height: 26px; left: 44%; bottom: 30px; }
+.hm-ball.s3 { width: 26px; height: 26px; left: 3.5%; bottom: 22px; }
 .hm-hero.no-clock .hm-ball.s3 { display: none; }
 .hm-hero.enter .hm-ball { animation: hm-ballin 1.2s var(--spring) backwards; }
 .hm-hero.enter .hm-ball.s1 { animation-delay: .35s; }
@@ -159,27 +159,6 @@ body.home-page { overflow-x: hidden; }
 .ntp.private .hm-ball { --accent: #8a4dff; --accent2: #c04dff; --accent3: #ff6fc0; }
 @container hero (max-width: 760px) { .hm-ball.s2, .hm-ball.s3 { display: none; } .hm-ball.s1 { width: 120px; height: 120px; } }
 
-/* the clock tile: the glowing icon tile of the banner, big enough to hold the time */
-.hm-tile { position: relative; z-index: 1; flex: none; display: grid; place-items: center; padding: 26px 36px 30px; border-radius: 46px; color: #fff;
-  background: radial-gradient(70% 60% at 30% 0%, rgba(255,255,255,.42), transparent 60%),
-    radial-gradient(80% 80% at 100% 100%, color-mix(in srgb, var(--accent3) 85%, transparent), transparent 70%),
-    linear-gradient(150deg, color-mix(in srgb, var(--accent) 78%, #fff), var(--accent) 34%, var(--accent2) 72%, color-mix(in srgb, var(--accent3) 90%, var(--accent2)));
-  box-shadow: inset 0 2px 0 rgba(255,255,255,.7), inset 0 0 0 1px rgba(255,255,255,.28), inset 0 -14px 34px -8px color-mix(in srgb, var(--accent3) 70%, transparent), inset 0 -2px 0 rgba(0,0,0,.08),
-    0 0 0 10px color-mix(in srgb, var(--accent) 9%, transparent), 0 0 0 1px color-mix(in srgb, var(--accent) 30%, transparent),
-    0 34px 60px -14px color-mix(in srgb, var(--accent) 64%, transparent), 0 0 110px -10px color-mix(in srgb, var(--accent2) 60%, transparent); }
-/* the glossy top of the tile */
-.hm-tile::before { content: ''; position: absolute; left: 6%; right: 6%; top: 3px; height: 42%; border-radius: 42px 42px 60% 60% / 42px 42px 30% 30%; pointer-events: none;
-  background: linear-gradient(180deg, rgba(255,255,255,.3), rgba(255,255,255,0));
-  -webkit-mask: radial-gradient(90% 100% at 50% 0%, #000 40%, transparent 100%); }
-.hm-glyph { display: none; }
-.hm-hero.no-clock .hm-tile { width: 156px; height: 156px; padding: 0; border-radius: 44px; }
-.hm-hero.no-clock .hm-glyph { display: grid; place-items: center; }
-.hm-glyph svg { width: 74px; height: 74px; }
-.hm-hero.no-clock #clockslot { display: none; }
-.ck-analog .clock { margin: 0 -10px; }
-.hm-clock { position: relative; flex: none; display: flex; align-items: flex-end; gap: 8px; }
-.hm-ampm { margin: 0 0 calc(var(--fs, 120px) * .16) 2px; font: 800 26px/1 var(--display); letter-spacing: -.02em; color: #fff; opacity: .92; text-shadow: 0 2px 12px rgba(0,0,0,.16); }
-.hm-ampm:empty { display: none; }
 
 .hm-hi { position: relative; z-index: 1; flex: 1; min-width: 0; }
 .hm-date { display: inline-flex; align-items: center; gap: 10px; white-space: nowrap; max-width: 100%; height: 32px; margin: 0 0 16px; padding: 0 15px; border-radius: 999px;
@@ -213,10 +192,43 @@ body.home-page { overflow-x: hidden; }
   background: linear-gradient(105deg, transparent 36%, rgba(255,255,255,.42) 50%, transparent 64%); transform: translateX(-110%); opacity: 0; }
 .hm-hero.enter::after { animation: hm-sweep 1.5s .5s ease-out both; }
 @keyframes hm-sweep { 0% { transform: translateX(-110%); opacity: 1; } 100% { transform: translateX(110%); opacity: 1; } }
-.hm-tile::after { content: ''; position: absolute; inset: 0; border-radius: inherit; pointer-events: none;
-  background: linear-gradient(105deg, transparent 35%, rgba(255,255,255,.55) 50%, transparent 65%); transform: translateX(-120%); opacity: 0; }
-.hm-hero.enter .hm-tile::after { animation: hm-sweep 1.1s .3s ease-out both; }
-.hm-hero.enter .hm-tile { overflow: hidden; }
+
+/* ---------------------------------------------------------------- ambient life on the banner
+   Three pre-painted layers: drifting glow dots, twinkling sparkle specks and faint constellation lines.
+   They only move by transform and opacity (the compositor does it, nothing repaints), they pause when the
+   banner is off screen or the tab is hidden, and they hold still under Motion Off and reduced motion.
+   Then a single slow glint runs once along the rim after the entrance. Only the banner has these. */
+.hm-amb { position: absolute; inset: 0; z-index: -1; pointer-events: none; overflow: hidden; border-radius: inherit; }
+.hm-amb > i { position: absolute; display: block; will-change: transform, opacity; }
+.amb-dots { inset: -40px -260px -40px -40px;
+  background:
+    radial-gradient(circle, rgba(255,255,255,.9) 0 1px, rgba(255,255,255,.25) 1.6px, transparent 2.6px) 0 0 / 97px 83px,
+    radial-gradient(circle, oklch(from var(--accent) .9 .1 calc(h - 105)) 0 1.2px, transparent 3px) 41px 29px / 151px 127px,
+    radial-gradient(circle, oklch(from var(--accent) .9 .12 calc(h + 95) / .9) 0 1px, transparent 2.6px) 77px 61px / 211px 173px;
+  -webkit-mask: linear-gradient(100deg, transparent 0%, #000 30%, #000 80%, transparent 100%);
+  opacity: .55; animation: amb-drift 70s linear infinite alternate; }
+.amb-spark { inset: 0;
+  background:
+    radial-gradient(circle, #fff 0 1.4px, rgba(255,255,255,.4) 2.2px, transparent 4px) 120px 40px / 263px 197px,
+    radial-gradient(circle, #fff 0 1px, transparent 3px) 210px 150px / 331px 239px;
+  opacity: .3; animation: amb-twinkle 5.5s ease-in-out infinite alternate; }
+.amb-lines { inset: 0; width: 100%; height: 100%; opacity: .5; animation: amb-glow 11s ease-in-out infinite alternate; }
+.amb-lines svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+.amb-lines path { fill: none; stroke: rgba(255,255,255,.22); stroke-width: .8; vector-effect: non-scaling-stroke; stroke-dasharray: 2 3; }
+.amb-lines circle { fill: #fff; opacity: .75; }
+@keyframes amb-drift { from { transform: translate3d(0, 0, 0); } to { transform: translate3d(-200px, -18px, 0); } }
+@keyframes amb-twinkle { 0% { opacity: .2; } 45% { opacity: .75; } 100% { opacity: .35; } }
+@keyframes amb-glow { from { opacity: .3; } to { opacity: .65; } }
+.hm-hero.amb-paused .hm-amb > i { animation-play-state: paused; }
+/* the glint: one slow pass of light along the rim */
+.hm-rim { position: absolute; inset: 0; z-index: 6; border-radius: inherit; padding: 2px; pointer-events: none; overflow: hidden;
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor; mask-composite: exclude; }
+.hm-rim i { position: absolute; top: -50%; bottom: -50%; left: 0; width: 26%; opacity: 0;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,.95) 50%, transparent); transform: translateX(-120%) rotate(18deg); }
+.hm-hero.enter .hm-rim i { animation: amb-glint 2.6s 1.1s cubic-bezier(.45, 0, .2, 1) both; }
+@keyframes amb-glint { 0% { opacity: 1; transform: translateX(-120%) rotate(18deg); } 100% { opacity: 1; transform: translateX(480%) rotate(18deg); } }
+body[data-motion="off"] .hm-amb > i, body[data-motion="off"] .hm-rim i { animation: none !important; will-change: auto; }
+@media (prefers-reduced-motion: reduce) { .hm-amb > i, .hm-rim i { animation: none !important; will-change: auto; } }
 
 /* ---------------------------------------------------------------- the pulse: your day in big glass stat tiles */
 .hm-pulse { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 3fr); gap: 18px; }
@@ -267,51 +279,64 @@ body.home-page { overflow-x: hidden; }
 .hm-cust svg { width: 34px; height: 34px; padding: 8px; border-radius: 50%; color: var(--on-accent, #fff); background: linear-gradient(180deg, rgba(255,255,255,.35), transparent 55%), var(--nova); box-shadow: inset 0 1px 0 rgba(255,255,255,.45), 0 4px 12px var(--a50); transition: transform .7s var(--spring); }
 .hm-cust:hover svg { transform: rotate(180deg); }
 
-/* ---------------------------------------------------------------- the clock (Glass, Minimal, Analog), always on the hero's colour */
-.clock { position: relative; display: flex; align-items: center; justify-content: center; user-select: none; }
-.ck-glass .clock { --fs: 130px; height: calc(var(--fs) * 1.02); gap: calc(var(--fs) * .015); }
-.cg-cell { position: relative; flex: none; width: var(--cw); height: var(--ch); }
-.hm-hero.enter .cg-cell { animation: cgin 1s var(--spring) backwards; animation-delay: calc(.1s + var(--n) * 70ms); }
-@keyframes cgin { from { transform: translateY(40px) scale(.7) rotate(-6deg); } }
-.cg-cell > * { position: absolute; inset: 0; display: block; }
-.cg-cell .cg-body, .cg-cell .cg-rim, .cg-cell .cg-sh b, .cg-cell .cg-hi {
-  -webkit-mask-image: var(--m); -webkit-mask-size: 100% 1100%; -webkit-mask-repeat: no-repeat; -webkit-mask-position: 0 calc(var(--p, 0) * 10%); }
-.cg-cell .cg-rim { -webkit-mask-image: var(--mr); }
-.cg-cell.colon .cg-body, .cg-cell.colon .cg-rim, .cg-cell.colon .cg-sh b, .cg-cell.colon .cg-hi { -webkit-mask-size: 100% 100%; -webkit-mask-position: 0 0; }
-.cg-sh { filter: blur(calc(var(--fs) * .08)); transform: translateY(calc(var(--fs) * .05)); opacity: .75; }
-.cg-sh b { position: absolute; inset: 0; background: color-mix(in srgb, var(--accent3) 70%, #fff 10%); }
-.cg-body { backdrop-filter: var(--lens, ) blur(1.5px) saturate(2.2) brightness(1.35) contrast(1.05);
-  background: linear-gradient(175deg, rgba(255,255,255,.62), rgba(255,255,255,.22) 45%, color-mix(in srgb, var(--accent3) 30%, transparent) 100%); }
-.cg-rim { background: linear-gradient(165deg, #fff 0%, color-mix(in srgb, var(--accent3) 60%, #fff) 30%, rgba(255,255,255,.55) 52%, color-mix(in srgb, var(--accent2) 55%, #fff) 80%, #fff); }
-.cg-hi { background: radial-gradient(60% 40% at 35% 18%, rgba(255,255,255,.95), rgba(255,255,255,0) 70%); mix-blend-mode: screen; }
-.ck-minimal .clock { font: 250 clamp(84px, 9.6vw, 136px)/1 var(--display); letter-spacing: -.045em; font-variant-numeric: tabular-nums; color: #fff; gap: 0; }
-.ck-minimal .hm-ampm { display: none; }
-.ck-minimal { filter: none; }
-.mn-cell { display: inline-block; height: 1em; overflow: hidden; line-height: 1; }
-.mn-strip { display: flex; flex-direction: column; transform: translateY(calc(var(--p, 0) * -1em)); }
-.mn-strip span { height: 1em; display: block; }
-.mn-colon { display: inline-block; margin: 0 .03em; transform: translateY(-.06em); color: color-mix(in srgb, var(--accent3) 50%, #fff); transition: opacity .3s; }
-.clock.blink .mn-colon { opacity: .35; }
-.mn-sec { align-self: flex-start; margin: .16em 0 0 .12em; display: inline-flex; font-size: .24em; font-weight: 600; letter-spacing: 0; color: #fff; text-shadow: none;
-  padding: .12em .32em; border-radius: 999px; background: rgba(255,255,255,.16); box-shadow: inset 0 0 0 1px rgba(255,255,255,.24); }
-.ck-analog .clock { width: clamp(150px, 15vw, 186px); aspect-ratio: 1; }
-.an-dial { position: relative; width: 100%; height: 100%; border-radius: 50%; --lens-k: 1.4;
-  background-color: rgba(255,255,255,.12); backdrop-filter: var(--lens, ) blur(3px) saturate(1.8) brightness(1.12);
-  box-shadow: inset 0 2px 1px rgba(255,255,255,.6), inset 0 -10px 30px -10px color-mix(in srgb, var(--accent3) 60%, transparent), inset 0 0 0 1px rgba(255,255,255,.28), var(--fringe), 0 24px 50px rgba(0,0,0,.22), 0 0 0 8px rgba(255,255,255,.07); }
-.hm-hero.enter .an-dial { animation: cgin 1s var(--spring) backwards; }
-.an-dial::after { content: ''; position: absolute; inset: 0; border-radius: inherit; padding: 1px; pointer-events: none; z-index: 2;
-  background: linear-gradient(135deg, rgba(255,255,255,.8), transparent 40%, transparent 62%, color-mix(in srgb, var(--accent3) 55%, transparent));
-  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor; mask-composite: exclude; }
-.an-dial::before { content: ''; position: absolute; inset: 7%; border-radius: 50%; pointer-events: none;
-  background: repeating-conic-gradient(from -.6deg, rgba(255,255,255,.95) 0 1.2deg, transparent 1.2deg 30deg), repeating-conic-gradient(from -.3deg, rgba(255,255,255,.4) 0 .6deg, transparent .6deg 6deg);
-  -webkit-mask: radial-gradient(closest-side, transparent 88%, #000 89%, #000 99%, transparent 100%); }
-.an-n { position: absolute; font: 800 calc(var(--d, 180px) * .095)/1 var(--display); color: rgba(255,255,255,.95); text-shadow: 0 2px 10px rgba(0,0,0,.25); transform: translate(-50%, -50%); }
-.an-n.n12 { left: 50%; top: 22%; } .an-n.n3 { left: 78%; top: 50%; } .an-n.n6 { left: 50%; top: 78%; } .an-n.n9 { left: 22%; top: 50%; }
-.an-hand { position: absolute; left: 50%; bottom: 50%; transform-origin: 50% 100%; transform: translateX(-50%) rotate(var(--a, 0deg)); border-radius: 999px; }
-.an-h { width: 3.6%; height: 26%; background: linear-gradient(180deg, #fff, rgba(255,255,255,.85)); box-shadow: 0 4px 12px rgba(0,0,0,.3); }
-.an-m { width: 2.6%; height: 37%; background: linear-gradient(180deg, #fff, rgba(255,255,255,.85)); box-shadow: 0 4px 12px rgba(0,0,0,.3); }
-.an-s { width: 1.1%; height: 52%; bottom: calc(50% - 9%); transform-origin: 50% 82.7%; background: linear-gradient(180deg, color-mix(in srgb, var(--accent3) 50%, #fff), var(--accent3) 80%); box-shadow: 0 0 10px var(--accent3); }
-.an-c { position: absolute; left: 50%; top: 50%; width: 7%; height: 7%; transform: translate(-50%, -50%); border-radius: 50%; background: radial-gradient(circle at 35% 30%, #fff, var(--accent3)); box-shadow: 0 0 0 3px rgba(255,255,255,.4), 0 0 14px var(--accent3); }
+/* ---------------------------------------------------------------- the clock: a lock screen, not a toy
+   Plain text in a modern grotesk with tabular figures, straight on the banner. Four styles:
+   Display (thin, huge, the default), Stacked (hours over minutes, medium weight), Watch (a hairline
+   watch face) and Off. The time is set once a second (aligned to the second) and nothing runs while the
+   tab is hidden: the colon dims as a one-step opacity change, seconds are a hairline that is redrawn
+   once a second, and a changed digit slides in once. No canvas, no SVG, no per-frame work. */
+.hm-tile { position: relative; z-index: 1; flex: none; display: block; }
+.hm-glyph { display: none; }
+.hm-hero.no-clock .hm-tile { display: none; }
+.hm-clock { position: relative; display: flex; flex-direction: column; align-items: flex-start; --fs: 150px;
+  --ckfont: "SF Pro Display", -apple-system, BlinkMacSystemFont, "Segoe UI Variable Display", "Segoe UI", Inter, "Helvetica Neue", system-ui, sans-serif;
+  --tint: oklch(from var(--accent) .86 .09 calc(h - 105)); }
+.ck-top { position: relative; display: flex; align-items: flex-start; }
+.clock { position: relative; display: flex; align-items: center; user-select: none; color: #fff;
+  font: 200 var(--fs)/.84 var(--ckfont); letter-spacing: -.045em; font-variant-numeric: tabular-nums; font-feature-settings: "tnum" 1; }
+.clock b { display: inline-block; font-weight: inherit;
+  background: linear-gradient(180deg, #fff 30%, var(--tint) 115%); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.ck-h, .ck-m { display: inline-flex; }
+/* the colon: two small dots, dimmed every other second (a step, not an animation) */
+.ck-col { display: flex; flex-direction: column; justify-content: center; gap: calc(var(--fs) * .19); margin: 0 calc(var(--fs) * .07) 0 calc(var(--fs) * .06); }
+.ck-col i { width: calc(var(--fs) * .052); height: calc(var(--fs) * .052); border-radius: 50%; background: #fff; box-shadow: 0 0 calc(var(--fs) * .06) rgba(255,255,255,.5); }
+.ck-col.dim i { opacity: .3; }
+.hm-ampm { margin: calc(var(--fs) * .1) 0 0 calc(var(--fs) * .07); font: 650 12.5px/1 var(--font); letter-spacing: .24em; color: rgba(255,255,255,.66); }
+.hm-ampm:empty { display: none; }
+/* seconds: a hairline under the time, with a glass reflection below it */
+.ck-sec { position: relative; align-self: stretch; height: 1px; margin-top: calc(var(--fs) * .16); background: linear-gradient(90deg, rgba(255,255,255,.34), rgba(255,255,255,.06)); }
+.ck-sec::after { content: ''; position: absolute; left: 0; right: 30%; top: 1px; height: calc(var(--fs) * .16); pointer-events: none;
+  background: radial-gradient(60% 100% at 30% 0%, rgba(255,255,255,.13), transparent 80%); }
+.ck-run { position: absolute; left: 0; right: 0; top: -.5px; height: 2px; border-radius: 2px; transform-origin: 0 50%; transform: scaleX(var(--s, 0));
+  background: linear-gradient(90deg, rgba(255,255,255,0), color-mix(in srgb, var(--tint) 60%, #fff)); }
+.ck-tip { position: absolute; inset: 0; transform: translateX(calc(var(--s, 0) * 100%)); pointer-events: none; }
+.ck-tip::before { content: ''; position: absolute; left: -3px; top: -2.5px; width: 6px; height: 6px; border-radius: 50%; background: #fff; box-shadow: 0 0 10px var(--tint), 0 0 2px #fff; }
+.ck-label { display: flex; justify-content: space-between; align-self: stretch; margin-top: 10px; font: 650 11px/1 var(--font); letter-spacing: .2em; text-transform: uppercase; color: rgba(255,255,255,.5); }
+/* Stacked: hours over minutes, medium weight, the minutes in the tint */
+.ck-minimal .clock { flex-direction: column; align-items: flex-start; font-size: calc(var(--fs) * .8); font-weight: 500; letter-spacing: -.06em; line-height: .82; }
+.ck-minimal .ck-m b { background: linear-gradient(180deg, var(--tint), oklch(from var(--accent) .7 .16 calc(h + 40))); -webkit-background-clip: text; background-clip: text; }
+.ck-minimal .ck-sec { margin-top: calc(var(--fs) * .12); }
+/* Watch: a hairline face, slim hands, a tinted second hand */
+.ck-analog .clock { width: calc(var(--fs) * 1.32); aspect-ratio: 1; display: block; letter-spacing: 0; }
+.wt { position: absolute; inset: 0; border-radius: 50%;
+  background: radial-gradient(circle at 50% 50%, rgba(255,255,255,.07), rgba(255,255,255,0) 70%);
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,.32), 0 0 0 calc(var(--fs) * .06) rgba(255,255,255,.03); }
+.wt::before { content: ''; position: absolute; inset: 5%; border-radius: 50%;
+  background: repeating-conic-gradient(from -.5deg, rgba(255,255,255,.9) 0 1deg, transparent 1deg 90deg), repeating-conic-gradient(from -.3deg, rgba(255,255,255,.35) 0 .6deg, transparent .6deg 30deg);
+  -webkit-mask: radial-gradient(closest-side, transparent 90%, #000 91%, #000 99%, transparent 100%); }
+.wh { position: absolute; left: 50%; bottom: 50%; transform-origin: 50% 100%; transform: translateX(-50%) rotate(var(--a, 0deg)); border-radius: 99px; }
+.wh.h { width: 4px; height: 25%; background: #fff; }
+.wh.m { width: 2.5px; height: 38%; background: #fff; }
+.wh.s { width: 1.2px; height: 46%; bottom: calc(50% - 8%); transform-origin: 50% 82.6%; background: var(--tint); box-shadow: 0 0 6px var(--tint); }
+.wc { position: absolute; left: 50%; top: 50%; width: 7px; height: 7px; margin: -3.5px 0 0 -3.5px; border-radius: 50%; background: #fff; box-shadow: 0 0 0 2px var(--tint); }
+/* the clock lands once */
+.hm-hero.enter .clock b, .hm-hero.enter .ck-col { animation: ck-in .9s var(--spring) backwards; animation-delay: calc(.12s + var(--n, 0) * 55ms); }
+.hm-hero.enter .ck-sec { animation: ck-line 1s var(--ease) .35s backwards; transform-origin: 0 50%; }
+.hm-hero.enter .wt, .hm-hero.enter .wh { animation: ck-pop .9s var(--spring) .1s backwards; }
+@keyframes ck-in { from { opacity: 0; transform: translateY(.22em); } }
+@keyframes ck-line { from { opacity: 0; transform: scaleX(.2); } }
+@keyframes ck-pop { from { opacity: 0; transform: translateX(-50%) rotate(calc(var(--a, 0deg) - 60deg)); } }
+.hm-hero.enter .wt { animation-name: ck-in; }
 
 /* ---------------------------------------------------------------- the search pill */
 .hm-sbox { position: relative; z-index: 6; }
@@ -579,14 +604,19 @@ body.home-page { overflow-x: hidden; }
 .clkb.on .cp { box-shadow: 0 0 0 3px var(--bg2), 0 0 0 5.5px var(--accent), 0 10px 26px var(--a30); }
 .clkb.on::after { top: -6px; right: -4px; }
 .clkb.on span { color: var(--fg); font-weight: 750; }
-.cp-glass b { font: 900 19px/1 var(--display); letter-spacing: -.04em; color: rgba(255,255,255,.35); -webkit-text-stroke: 1.2px #fff; text-shadow: 0 3px 8px rgba(0,0,0,.2); }
-.cp-minimal b { font: 250 21px/1 var(--display); letter-spacing: -.03em; color: #fff; }
-.cp-analog b { position: relative; width: 62%; aspect-ratio: 1; border-radius: 50%; background: rgba(255,255,255,.2); box-shadow: inset 0 1px 1px rgba(255,255,255,.7), inset 0 0 0 1px rgba(255,255,255,.3); }
+/* previews of the four clocks, drawn like the real ones */
+.clkb .cp { background: radial-gradient(70% 70% at 0% 0%, oklch(from var(--accent) .55 .2 h / .9), transparent 70%), radial-gradient(70% 70% at 100% 100%, oklch(from var(--accent) .6 .2 calc(h + 95) / .6), transparent 70%), oklch(from var(--accent) .2 .07 calc(h + 10)); }
+.cp b { font-family: "SF Pro Display", -apple-system, BlinkMacSystemFont, "Segoe UI Variable Display", "Segoe UI", Inter, system-ui, sans-serif; font-variant-numeric: tabular-nums; color: #fff; }
+.cp-glass b { font-size: 22px; font-weight: 200; letter-spacing: -.05em; }
+.cp-glass b::after, .cp-minimal b::after { content: ''; display: block; height: 1px; margin-top: 5px; background: linear-gradient(90deg, #fff 55%, rgba(255,255,255,.2) 55%); }
+.cp-minimal b { font-size: 17px; font-weight: 500; letter-spacing: -.06em; line-height: .86; white-space: pre; }
+.cp-minimal b i { font-style: normal; color: oklch(from var(--accent) .86 .09 calc(h - 105)); }
+.cp-analog b { position: relative; width: 58%; aspect-ratio: 1; border-radius: 50%; box-shadow: inset 0 0 0 1px rgba(255,255,255,.4);
+  background: repeating-conic-gradient(from -1deg, rgba(255,255,255,.9) 0 2deg, transparent 2deg 90deg); -webkit-mask: radial-gradient(closest-side, transparent 0 84%, #000 85%), linear-gradient(#000 0 0); -webkit-mask-composite: source-over; }
 .cp-analog b::before, .cp-analog b::after { content: ''; position: absolute; left: 50%; bottom: 50%; width: 2px; border-radius: 2px; background: #fff; transform-origin: 50% 100%; }
-.cp-analog b::before { height: 30%; transform: translateX(-50%) rotate(-50deg); }
-.cp-analog b::after { height: 42%; transform: translateX(-50%) rotate(60deg); background: color-mix(in srgb, var(--accent3) 50%, #fff); }
-.cp-off b { width: 46%; aspect-ratio: 1; border-radius: 50%; border: 1.5px dashed rgba(255,255,255,.7); position: relative; }
-.cp-off b::after { content: ''; position: absolute; left: 50%; top: -12%; bottom: -12%; width: 1.5px; background: rgba(255,255,255,.7); transform: rotate(45deg); }
+.cp-analog b::before { height: 26%; transform: translateX(-50%) rotate(-50deg); }
+.cp-analog b::after { width: 1px; height: 40%; transform: translateX(-50%) rotate(64deg); background: oklch(from var(--accent) .86 .09 calc(h - 105)); }
+.cp-off b { width: 46%; height: 1px; background: rgba(255,255,255,.55); }
 
 
 /* small segmented switch in a widget header */
@@ -771,8 +801,6 @@ body.home-page { overflow-x: hidden; }
 .hm-hero::before { padding: 2.5px; }
 .hm-foot { box-shadow: inset 0 2px 0 -.5px var(--lq-edge), inset 0 0 20px -8px var(--a30), var(--fringe), 0 14px 34px -10px var(--a30); }
 /* the glass digits: no backdrop, the tile's colours show through the tinted glass */
-.ntp.home .cg-body { backdrop-filter: none; background: linear-gradient(175deg, rgba(255,255,255,.78), rgba(255,255,255,.34) 45%, color-mix(in srgb, var(--accent3) 40%, rgba(255,255,255,.2)) 100%); }
-.ntp.home .an-dial { backdrop-filter: none; background-color: rgba(255,255,255,.16); }
 
 /* ---------------------------------------------------------------- theme backgrounds (Match theme and one per browser theme)
    The theme's own gradient (from ui/themes.js, passed in as --thbg) with a fine dust of light on top. Glass themes
@@ -826,14 +854,6 @@ body.home-page { overflow-x: hidden; }
 .ntp .hm-sub { color: rgba(255,255,255,.8); }
 .ntp .hm-hero .hm-date { color: #fff; background: rgba(255,255,255,.12); box-shadow: inset 0 1px 0 rgba(255,255,255,.35), inset 0 0 0 1px rgba(255,255,255,.18), 0 8px 22px rgba(0,0,30,.2); }
 .ntp .hm-hero .hm-dot { background: oklch(from var(--accent) .88 .14 calc(h + 175)); }
-/* the clock tile: cyan through the accent to violet, not pink */
-.ntp .hm-tile { background: radial-gradient(70% 60% at 28% 0%, rgba(255,255,255,.45), transparent 60%),
-    radial-gradient(70% 70% at 100% 100%, oklch(from var(--accent) .6 .25 calc(h + 95)), transparent 72%),
-    linear-gradient(150deg, oklch(from var(--accent) .8 .14 calc(h - 105)), var(--accent) 40%, oklch(from var(--accent) .52 .25 calc(h + 40)) 72%, oklch(from var(--accent) .58 .25 calc(h + 95)));
-  box-shadow: inset 0 2px 0 rgba(255,255,255,.75), inset 0 0 0 1px rgba(255,255,255,.3), inset 0 -16px 34px -8px oklch(from var(--accent) .45 .22 calc(h + 40) / .8),
-    0 0 0 10px rgba(255,255,255,.06), 0 0 0 1px rgba(255,255,255,.2), 0 34px 60px -12px rgba(0,0,20,.55), 0 0 120px -10px oklch(from var(--accent) .7 .2 calc(h - 105) / .6); }
-.ntp .cg-sh b { background: oklch(from var(--accent) .4 .2 calc(h + 40)); }
-.ntp .cg-rim { background: linear-gradient(165deg, #fff 0%, oklch(from var(--accent) .9 .1 calc(h - 105)) 30%, rgba(255,255,255,.6) 52%, oklch(from var(--accent) .9 .1 calc(h + 175)) 82%, #fff); }
 /* glass drops in three hues */
 .ntp .hm-ball.s1 { --accent2: oklch(from var(--accent) .62 .2 calc(h - 105)); --accent3: oklch(from var(--accent) .88 .12 calc(h - 90)); }
 .ntp .hm-ball.s2 { --accent2: oklch(from var(--accent) .72 .17 calc(h + 175)); --accent3: oklch(from var(--accent) .92 .12 calc(h + 180)); }
@@ -894,15 +914,12 @@ body.home-page { overflow-x: hidden; }
 .ntp.private .hm-orb.c { --o: #4f6bff; }
 .ntp.private .hm-orb.d { --o: #b44dff; }
 .ntp.private .hm-art { color: #b78cff; opacity: .14; }
-.ntp.private .hm-tile { background: radial-gradient(70% 60% at 30% 0%, rgba(255,255,255,.4), transparent 60%), radial-gradient(80% 80% at 100% 100%, rgba(255,80,180,.8), transparent 70%), linear-gradient(150deg, #a77bff, #7a3cff 40%, #5a3cff 75%, #c04dff);
-  box-shadow: inset 0 2px 0 rgba(255,255,255,.6), inset 0 0 0 1px rgba(255,255,255,.25), 0 0 0 10px rgba(140,80,255,.1), 0 34px 60px -14px rgba(120,60,255,.6), 0 0 110px -10px rgba(200,80,255,.5); }
 .ntp.private .hm-greet em { background: linear-gradient(100deg, #c9a6ff, #ff8fd0); -webkit-background-clip: text; background-clip: text; }
 .ntp.private .hm-search { --lg-img: linear-gradient(90deg, transparent 35%, rgba(150,80,255,.14) 75%, rgba(255,70,170,.14)); }
 .ntp.private .w-privacy { --ic: #9b5cff !important; }
 
 /* ---------------------------------------------------------------- narrow windows */
 @container hero (max-width: 760px) {
-  .hm-tile { padding: 20px 26px 24px; border-radius: 38px; }
   .hm-sub { font-size: 15.5px; }
 }
 @media (max-width: 1100px) { .hm-stat em { display: none; } }
@@ -927,8 +944,8 @@ body.home-page { overflow-x: hidden; }
 }
 
 /* ---------------------------------------------------------------- still under Motion Off and reduced motion */
-body[data-motion="off"] .hm-hero.enter, body[data-motion="off"] .hm-hero.enter *, body[data-motion="off"] .hm-hero.enter::after, body[data-motion="off"] .hm-hero.enter .hm-tile::after,
+body[data-motion="off"] .hm-hero.enter, body[data-motion="off"] .hm-hero.enter *, body[data-motion="off"] .hm-hero.enter::after,
 body[data-motion="off"] .hm-grid.enter > *, body[data-motion="off"] .hm-grid.enter * { animation: none !important; }
 @media (prefers-reduced-motion: reduce) {
-  .hm-hero.enter, .hm-hero.enter *, .hm-hero.enter::after, .hm-hero.enter .hm-tile::after, .hm-grid.enter > *, .hm-grid.enter *, .hm-sug.open, .ntp-bg.fadein { animation: none !important; }
+  .hm-hero.enter, .hm-hero.enter *, .hm-hero.enter::after, .hm-grid.enter > *, .hm-grid.enter *, .hm-sug.open, .ntp-bg.fadein { animation: none !important; }
 }

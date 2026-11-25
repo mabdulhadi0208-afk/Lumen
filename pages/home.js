@@ -1,7 +1,8 @@
 /* Lumen 4.1 home: the New Tab page (lumen://newtab).
  *
  * The hero is the Settings section banner taken all the way: a wide glass banner with a colour wash, pools of
- * light and a giant watermark, the clock in a big glowing tile, a huge title and a muted line about your day.
+ * light, drifting dots and a giant watermark, a lock-screen clock (thin tabular numerals, a seconds hairline),
+ * a huge title and a muted line about your day.
  * Under it: a fat search pill (suggestions, Cmd K, Ask), the pulse (big stat tiles for your day), and a grid of
  * liquid-glass widgets you can drag around on springs and switch on and off. The background is Match theme by
  * default (it follows the browser theme), or any theme, wallpaper or photo. The private window gets its own look.
@@ -93,99 +94,72 @@
   document.addEventListener('load', e => { if (e.target.classList && e.target.classList.contains('hm-fb') && e.target.naturalWidth > 1) e.target.parentNode.classList.add('has-fb') }, true)
 
   // ---------------------------------------------------------------- the clock: Glass, Minimal, Analog or Off (setting ntpClock)
-  const clockStyle = () => S.ntpClock === false || S.ntpClock === 'off' ? 'off' : S.ntpClock === 'minimal' || S.ntpClock === 'analog' ? S.ntpClock : 'glass'
+  // saved values stay as they were (true or 'glass', 'minimal', 'analog', false or 'off'); the new names map onto them
+  const clockStyle = () => { const v = S.ntpClock; return v === false || v === 'off' ? 'off' : v === 'minimal' || v === 'stacked' ? 'minimal' : v === 'analog' || v === 'watch' ? 'analog' : 'glass' }
   const nowText = d => d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }).replace(/\s?[AP]M/i, '').trim()
   const ampm = d => (d.toLocaleTimeString([], { hour: 'numeric' }).match(/[AP]M/i) || [''])[0].toUpperCase()
-  const CK = { timer: 0, cells: [], txt: '', glyph: null }
-  // the digits are cut out of glass: a mask strip of 0-9 (and a second 0, so 9 rolls forward into 0) per layer
-  function glyphStrips(fs) {
-    const fam = getComputedStyle(document.documentElement).getPropertyValue('--display').trim() || 'system-ui'
-    const key = fs + fam
-    const dpr = Math.min(2, devicePixelRatio || 1), font = `800 ${fs}px ${fam}`
-    if (CK.glyph && CK.glyph.key === key + dpr) return CK.glyph
-    // drawing and encoding the strips is the slowest thing on this page, so the last set is kept for the next tab
-    try { const c = JSON.parse(localStorage.getItem('lumen-glyphs') || 'null'); if (c && c.key === key + dpr) return (CK.glyph = c) } catch {}
-    const m = document.createElement('canvas').getContext('2d'); m.font = font
-    const cw = Math.ceil(Math.max(...'0123456789'.split('').map(c => m.measureText(c).width)) * 1.04 + fs * .02), ch = Math.ceil(fs * 1.02)
-    const asc = m.measureText('0').actualBoundingBoxAscent || fs * .72
-    const strip = kind => {
-      const c = document.createElement('canvas'); c.width = cw * dpr; c.height = ch * 11 * dpr
-      const x = c.getContext('2d'); x.scale(dpr, dpr); x.font = font; x.textAlign = 'center'; x.fillStyle = x.strokeStyle = '#fff'; x.lineJoin = 'round'
-      for (let i = 0; i < 11; i++) { const y = i * ch + ch / 2 + asc / 2, t = String(i % 10); if (kind === 'rim') { x.lineWidth = Math.max(1.5, fs * .026); x.strokeText(t, cw / 2, y) } else x.fillText(t, cw / 2, y) }
-      return `url(${c.toDataURL()})`
-    }
-    const ccw = Math.round(fs * .3), r = fs * .068
-    const colon = kind => {
-      const c = document.createElement('canvas'); c.width = ccw * dpr; c.height = ch * dpr
-      const x = c.getContext('2d'); x.scale(dpr, dpr); x.fillStyle = x.strokeStyle = '#fff'; x.lineWidth = Math.max(1.5, fs * .026)
-      for (const y of [ch / 2 - asc * .26, ch / 2 + asc * .3]) { x.beginPath(); x.arc(ccw / 2, y, r, 0, 7); if (kind === 'rim') x.stroke(); else x.fill() }
-      return `url(${c.toDataURL()})`
-    }
-    CK.glyph = { key: key + dpr, cw, ch, ccw, m: strip('fill'), mr: strip('rim'), cm: colon('fill'), cmr: colon('rim') }
-    try { localStorage.setItem('lumen-glyphs', JSON.stringify(CK.glyph)) } catch {}
-    return CK.glyph
-  }
-  const unwrap = (prev, t) => prev + ((((t - prev) % 360) + 540) % 360 - 180)
-  function rollSpring(set, p) {
-    const s = new Jelly.Spring(p, 'jelly', v => { set(v); if (v === 10 && !s.vel) setTimeout(() => { if (s.t === 10) s.set(0) }, 0) })
-    s.d = p
-    return s
-  }
-  const rollTo = (s, d) => { if (s.d === d) return; const cur = s.d; s.d = d; s.to(d === 0 && cur === 9 ? 10 : d) }
+  // ---------------------------------------------------------------- the clock itself
+  // Plain text (tabular figures), set once a second on a timer aligned to the second, and never while hidden.
+  // Display: thin and huge. Stacked: hours over minutes. Watch: a hairline face. A changed digit slides in once.
+  const CK = { timer: 0, txt: '', style: '', min: -1 }
   const anglesOf = d => ({ h: (d.getHours() % 12 + d.getMinutes() / 60) * 30, m: (d.getMinutes() + d.getSeconds() / 60) * 6, s: d.getSeconds() * 6 })
   function clockSize() {
     const hero = qs('#hero'), w = hero ? hero.clientWidth : innerWidth
-    return Math.round(w < 620 ? 84 : Math.min(168, Math.max(100, w * .122)))
+    return Math.round(w < 620 ? 96 : Math.min(176, Math.max(108, w * .138)))
   }
+  const hm = d => { const [h, m] = nowText(d).split(':'); return [h, m || '00'] }
+  const digitsHTML = (s, n0) => [...s].map((ch, i) => `<b style="--n:${n0 + i}">${ch}</b>`).join('')
   function buildClock() {
-    const c = qs('#clock'); if (!c) return
-    const style = clockStyle(), d = new Date(), txt = nowText(d)
-    CK.cells = []; CK.secs = null; CK.hands = null; CK.txt = txt; CK.style = style; CK.min = -1
+    const c = qs('#clock'), wrap = qs('#clockwrap'); if (!c || !wrap) return
+    const style = clockStyle(), d = new Date()
+    CK.style = style; CK.min = -1
+    wrap.style.setProperty('--fs', clockSize() + 'px')
     const ap = qs('#ampm'); if (ap) ap.textContent = ampm(d)
-    if (style === 'glass') {
-      const fs = clockSize(), g = glyphStrips(fs)
-      c.style.setProperty('--m', g.m); c.style.setProperty('--mr', g.mr); c.style.setProperty('--fs', fs + 'px')
-      c.innerHTML = [...txt].map((ch, n) => /\d/.test(ch)
-        ? `<span class="cg-cell" style="--cw:${g.cw}px;--ch:${g.ch}px;--n:${n};--p:${ch}"><i class="cg-sh"><b></b></i><i class="cg-body"></i><i class="cg-rim"></i><i class="cg-hi"></i></span>`
-        : `<span class="cg-cell colon" style="--cw:${g.ccw}px;--ch:${g.ch}px;--n:${n};--m:${g.cm};--mr:${g.cmr}"><i class="cg-sh"><b></b></i><i class="cg-body"></i><i class="cg-rim"></i><i class="cg-hi"></i></span>`).join('')
-      CK.cells = [...c.querySelectorAll('.cg-cell')].map((e, i) => /\d/.test(txt[i]) ? rollSpring(v => e.style.setProperty('--p', v.toFixed(4)), +txt[i]) : null)
-    } else if (style === 'minimal') {
-      const strip = '<span class="mn-strip">' + '01234567890'.split('').map(x => `<span>${x}</span>`).join('') + '</span>'
-      const digits = txt.replace(/\D/g, ''), s = String(d.getSeconds()).padStart(2, '0')
-      c.innerHTML = [...txt].map(ch => /\d/.test(ch) ? `<span class="mn-cell">${strip}</span>` : `<span class="mn-colon">${esc(ch)}</span>`).join('') + `<span class="mn-sec"><span class="mn-cell">${strip}</span><span class="mn-cell">${strip}</span></span>`
-      const cells = [...c.querySelectorAll(':scope > .mn-cell')], secs = [...c.querySelectorAll('.mn-sec .mn-cell')]
-      cells.forEach((e, i) => e.style.setProperty('--p', digits[i])); secs.forEach((e, i) => e.style.setProperty('--p', s[i]))
-      CK.cells = cells.map((e, i) => rollSpring(v => e.style.setProperty('--p', v.toFixed(4)), +digits[i]))
-      CK.secs = secs.map((e, i) => rollSpring(v => e.style.setProperty('--p', v.toFixed(4)), +s[i]))
-    } else if (style === 'analog') {
-      c.innerHTML = `<div class="an-dial"><b class="an-n n12">12</b><b class="an-n n3">3</b><b class="an-n n6">6</b><b class="an-n n9">9</b><i class="an-hand an-h"></i><i class="an-hand an-m"></i><i class="an-hand an-s"></i><i class="an-c"></i></div>`
-      c.querySelector('.an-dial').style.setProperty('--d', c.offsetWidth + 'px')
-      const hand = sel => { const e = c.querySelector(sel); return new Jelly.Spring(0, 'jelly', v => e.style.setProperty('--a', v.toFixed(2) + 'deg')) }
-      CK.hands = { h: hand('.an-h'), m: hand('.an-m'), s: hand('.an-s') }
-      const a = anglesOf(d); for (const k in a) CK.hands[k].set(a[k])
+    if (style === 'analog') {
+      c.innerHTML = '<i class="wt"></i><i class="wh h"></i><i class="wh m"></i><i class="wh s"></i><i class="wc"></i>'
+      CK.txt = ''
+    } else {
+      const [h, m] = hm(d)
+      c.innerHTML = style === 'minimal'
+        ? `<span class="ck-h">${digitsHTML(h.padStart(2, '0'), 0)}</span><span class="ck-m">${digitsHTML(m, 2)}</span>`
+        : `<span class="ck-h">${digitsHTML(h, 0)}</span><span class="ck-col" style="--n:${h.length}"><i></i><i></i></span><span class="ck-m">${digitsHTML(m, h.length + 1)}</span>`
+      CK.txt = h + ':' + m
     }
+    paintSeconds(d)
+  }
+  // once a second: the seconds hairline, the colon, the watch hands
+  function paintSeconds(d) {
+    const wrap = qs('#clockwrap'); if (!wrap) return
+    const s = d.getSeconds()
+    wrap.style.setProperty('--s', (s / 59).toFixed(4))
+    const col = wrap.querySelector('.ck-col'); if (col) col.classList.toggle('dim', s % 2 === 1)
+    if (CK.style === 'analog') { const a = anglesOf(d); for (const k of ['h', 'm', 's']) { const e = wrap.querySelector('.wh.' + k); if (e) e.style.setProperty('--a', a[k].toFixed(2) + 'deg') } }
+  }
+  // the minute changed: only the digits that differ are replaced, each slides up into place once
+  function setDigits(d) {
+    const c = qs('#clock'); if (!c || CK.style === 'analog') return
+    let [h, m] = hm(d)
+    if (CK.style === 'minimal') h = h.padStart(2, '0')
+    const next = h + ':' + m
+    if (next === CK.txt) return
+    if (next.length !== CK.txt.length) { buildClock(); return }
+    const bs = [...c.querySelectorAll('b')], chars = (h + m).split('')
+    bs.forEach((b, i) => {
+      if (b.textContent === chars[i]) return
+      b.textContent = chars[i]
+      if (!still() && b.animate) b.animate([{ transform: 'translateY(.18em)', opacity: 0 }, { transform: 'none', opacity: 1 }], { duration: 420, easing: 'cubic-bezier(.2, .8, .2, 1)' })
+    })
+    CK.txt = next
+    const ap = qs('#ampm'); if (ap) ap.textContent = ampm(d)
   }
   function tickClock() {
     clearTimeout(CK.timer)
     if (document.hidden || !qs('#ntp')) return   // a hidden New Tab costs nothing; it catches up when shown
-    const c = qs('#clock'), d = new Date()
-    if (c) {
-      const txt = nowText(d)
-      if (CK.style === 'glass' || CK.style === 'minimal') {
-        if (txt.length !== CK.txt.length) buildClock()
-        else if (txt !== CK.txt) {
-          CK.txt = txt
-          if (CK.style === 'glass') [...txt].forEach((ch, i) => CK.cells[i] && rollTo(CK.cells[i], +ch))
-          else txt.replace(/\D/g, '').split('').forEach((ch, i) => CK.cells[i] && rollTo(CK.cells[i], +ch))
-        }
-        if (CK.secs) String(d.getSeconds()).padStart(2, '0').split('').forEach((ch, i) => rollTo(CK.secs[i], +ch))
-        if (CK.style === 'minimal') c.classList.toggle('blink', d.getSeconds() % 2 === 1)
-      } else if (CK.style === 'analog' && CK.hands) { const a = anglesOf(d); for (const k in a) CK.hands[k].to(unwrap(CK.hands[k].t, a[k])) }
-    }
+    const d = new Date()
+    if (qs('#clock')) { setDigits(d); paintSeconds(d) }
     if (CK.min !== d.getMinutes()) { CK.min = d.getMinutes(); heroText(d); paintZones(d); if (H.wp === 'auto' && skyFor(d.getHours()) !== H.sky) paintWallpaper(true) }
-    // only the seconds need a 1 s tick; Glass and Off wake once a minute
-    const secs = CK.style === 'minimal' || CK.style === 'analog'
-    CK.timer = setTimeout(tickClock, secs ? 1000 - Date.now() % 1000 + 8 : 60000 - Date.now() % 60000 + 20)
+    // wake once a second, just after it turns; Off only needs the minute
+    CK.timer = setTimeout(tickClock, CK.style === 'off' || !qs('#clock') ? 60000 - Date.now() % 60000 + 20 : 1000 - Date.now() % 1000 + 8)
   }
   document.addEventListener('visibilitychange', () => { if (!document.hidden && qs('#ntp')) { tickClock(); refreshApps() } })
 
@@ -295,7 +269,8 @@
 
   function clockMarkup(style) {
     if (style === 'off') return ''
-    return `<div class="hm-clock ck-${style}" id="clockwrap"><div class="clock" id="clock" role="timer" aria-live="off"></div>${style !== 'analog' ? '<span class="hm-ampm" id="ampm"></span>' : ''}</div>`
+    if (style === 'analog') return `<div class="hm-clock ck-${style}" id="clockwrap"><div class="clock" id="clock" role="timer" aria-live="off"></div></div>`
+    return `<div class="hm-clock ck-${style}" id="clockwrap"><div class="ck-top"><div class="clock" id="clock" role="timer" aria-live="off"></div><span class="hm-ampm" id="ampm"></span></div><div class="ck-sec" aria-hidden="true"><i class="ck-run"></i><i class="ck-tip"></i></div></div>`
   }
 
   // ---------------------------------------------------------------- weather (Open-Meteo, the city you typed; off by default)
@@ -830,7 +805,7 @@
     <div class="dh"><b>Customize</b><button class="ib" id="dclose" title="Close" aria-label="Close">${ICONS.close}</button></div>
     <p class="dsub">Make your home yours. Drag widgets on the page to move them.</p>
     <div class="dl">Clock</div>
-    <div class="clkpick" id="clk">${[['glass', 'Glass', '<b>9:41</b>'], ['minimal', 'Minimal', '<b>9:41</b>'], ['analog', 'Analog', '<b></b>'], ['off', 'Off', '<b></b>']].map(([v, l, art]) => `<button class="clkb ${style === v ? 'on' : ''}" data-clk="${v}" title="${l} clock"><i class="cp cp-${v}">${art}</i><span>${l}</span></button>`).join('')}</div>
+    <div class="clkpick" id="clk">${[['glass', 'Display', '<b>9:41</b>'], ['minimal', 'Stacked', '<b>09\n<i>41</i></b>'], ['analog', 'Watch', '<b></b>'], ['off', 'Off', '<b></b>']].map(([v, l, art]) => `<button class="clkb ${style === v ? 'on' : ''}" data-clk="${v}" title="${l} clock"><i class="cp cp-${v}">${art}</i><span>${l}</span></button>`).join('')}</div>
     <div class="dl">Greeting</div>
     <label class="dfield"><span>Your name, for the greeting</span><input id="hmname" placeholder="Optional" maxlength="40" value="${esc(S.ntpName || '')}" spellcheck="false" autocomplete="off"></label>
     <div class="dl">Theme backgrounds</div>
@@ -994,7 +969,7 @@
     <div class="ntp-bg"></div>
     <div class="hm-wrap">
       <header class="hm-hero hm-lq enter ${style === 'off' ? 'no-clock' : ''}" id="hero">
-        <i class="hm-orb a"></i><i class="hm-orb b"></i><i class="hm-orb c"></i><i class="hm-orb d"></i><i class="hm-dots"></i><i class="hm-ball s1"></i><i class="hm-ball s2"></i><i class="hm-ball s3"></i>
+        <i class="hm-orb a"></i><i class="hm-orb b"></i><i class="hm-orb c"></i><i class="hm-orb d"></i><i class="hm-dots"></i><span class="hm-amb" aria-hidden="true"><i class="amb-dots"></i><i class="amb-spark"></i><i class="amb-lines"><svg viewBox="0 0 1000 360" preserveAspectRatio="xMidYMid slice"><path d="M60 300 L120 270 L190 292 L250 262 L300 300"/><path d="M390 50 L450 80 L520 40 L575 70 L560 118"/><path d="M860 300 L910 250 L965 280 L940 330 Z"/>${[[60, 300], [120, 270], [190, 292], [250, 262], [300, 300], [390, 50], [450, 80], [520, 40], [575, 70], [560, 118], [860, 300], [910, 250], [965, 280], [940, 330]].map(([x, y], i) => `<circle cx="${x}" cy="${y}" r="${i % 3 ? 1.6 : 2.4}"/>`).join('')}</svg></i></span><span class="hm-rim" aria-hidden="true"><i></i></span><i class="hm-ball s1"></i><i class="hm-ball s2"></i><i class="hm-ball s3"></i>
         <span class="hm-art" aria-hidden="true">${p ? ICONS.mask : sunUp ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.05" stroke-linecap="round"><circle cx="12" cy="12" r="4.4"/><path d="M12 1.6v2.6M12 19.8v2.6M1.6 12h2.6M19.8 12h2.6M4.65 4.65l1.84 1.84M17.51 17.51l1.84 1.84M4.65 19.35l1.84-1.84M17.51 6.49l1.84-1.84"/></svg>' : '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linejoin="round"><path d="M19.5 14.2A8 8 0 0 1 9.8 4.5a8 8 0 1 0 9.7 9.7z"/><path d="M17 3.2l.5 1.3 1.3.5-1.3.5-.5 1.3-.5-1.3-1.3-.5 1.3-.5zM21 8.4l.3.8.8.3-.8.3-.3.8-.3-.8-.8-.3.8-.3z"/></svg>'}</span>
         <div class="hm-tile" id="cktile">
           <span class="hm-glyph" aria-hidden="true">${p ? ICONS.mask : sunUp ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.5v2.2M12 19.3v2.2M2.5 12h2.2M19.3 12h2.2M5.3 5.3l1.6 1.6M17.1 17.1l1.6 1.6M5.3 18.7l1.6-1.6M17.1 6.9l1.6-1.6"/></svg>' : '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"><path d="M19.5 14.2A8 8 0 0 1 9.8 4.5a8 8 0 1 0 9.7 9.7z"/></svg>'}</span>
@@ -1032,8 +1007,12 @@
     paintWallpaper(false)
     heroText(); choreograph()
     try { performance.mark('lumen-home-shell') } catch {}
-    // the glass digits are cut from canvases; draw them right after the first frame, not before it
-    requestAnimationFrame(() => setTimeout(() => { buildClock(); tickClock() }, 0))
+    // the clock is plain text now, so it is in the very first frame
+    buildClock(); tickClock()
+    // the banner's ambient dots only move while the banner is on screen and the tab is visible
+    { const hero = qs('#hero'), pause = () => hero.classList.toggle('amb-paused', document.hidden || hero.dataset.off === '1')
+      if (window.IntersectionObserver) new IntersectionObserver(es => { hero.dataset.off = es[0].isIntersecting ? '' : '1'; pause() }).observe(hero)
+      if (!newTab.vis) { newTab.vis = true; document.addEventListener('visibilitychange', () => { const h = qs('#hero'); if (h) h.classList.toggle('amb-paused', document.hidden || h.dataset.off === '1') }) } }
     bindSearch()
     setTimeout(() => { const q = qs('#q'); if (q) q.focus() }, 30)
     await loadData(); H.ready = true

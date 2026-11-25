@@ -61,8 +61,14 @@ app.whenReady().then(async () => {
       const pid = wc.getOSProcessId()
       app.getAppMetrics(); await wait(20000)
       const m = app.getAppMetrics().find(x => x.pid === pid)
-      say('idle CPU of the New Tab renderer over 20 s: ' + (m ? m.cpu.percentCPUUsage.toFixed(2) : '?') + '%')
-      say('animations still running when idle: ' + await pg(`document.getAnimations().filter(a => a.playState === 'running').length`))
+      const g1 = app.getAppMetrics().find(x => x.type === 'GPU')
+      say('idle CPU of the New Tab renderer over 20 s, banner dots drifting: ' + (m ? m.cpu.percentCPUUsage.toFixed(2) : '?') + '%' + (g1 ? ', GPU process ' + g1.cpu.percentCPUUsage.toFixed(2) + '%' : ''))
+      say('animations running when idle: ' + await pg(`JSON.stringify((() => { const r = document.getAnimations().filter(a => a.playState === 'running'), amb = r.filter(a => a.effect && a.effect.target && a.effect.target.closest('.hm-amb')); return { bannerDots: amb.length, other: r.length - amb.length } })())`))
+      // and the same 20 s with the banner scrolled away (the dots pause)
+      await pg(`scrollTo(0, document.documentElement.scrollHeight)`); await wait(1500)
+      app.getAppMetrics(); await wait(20000)
+      const m2 = app.getAppMetrics().find(x => x.pid === pid), gpu = app.getAppMetrics().find(x => x.type === 'GPU')
+      say('idle CPU with the banner off screen (dots paused): ' + (m2 ? m2.cpu.percentCPUUsage.toFixed(2) : '?') + '%' + (gpu ? ', GPU process ' + gpu.cpu.percentCPUUsage.toFixed(2) + '%' : ''))
     }
   }
   app.exit(0)

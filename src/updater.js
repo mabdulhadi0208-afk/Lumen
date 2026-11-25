@@ -85,8 +85,31 @@ function showCard() {
   popup.once('ready-to-show', () => { popup.showInactive(); push() })
   popup.on('closed', () => (popup = null))
 }
-function cardHeight() { const n = Math.min(6, (state.notes || []).length); return n ? 256 + n * 24 : 214 }   // room for the notes and the progress bar
+function cardHeight() { const n = Math.min(6, (state.notes || []).length); return n ? 272 + n * 26 : 226 }   // room for the notes and the progress bar
 function fitCard() { if (popup && !popup.isDestroyed()) { const b = popup.getBounds(), h = cardHeight(); if (b.height !== h) popup.setBounds({ ...b, height: h }) } }
+// The restart screen: when Lumen restarts to update, the card grows into a full-screen ink frame (the app icon in a
+// glass orb and the new number) and holds it for a moment before Lumen quits. The relaunched window opens on that same
+// frame (main.js paints it in the same ink and the browser chrome plays Intro.arrive), so there is never a grey window.
+// Purely visual: if anything about it fails, Lumen quits on the old schedule and the update goes ahead the same.
+const CURTAIN_MS = 1300
+function curtain() {
+  try {
+    if (!C || !C.cardEnabled()) return false
+    if (!popup || popup.isDestroyed()) showCard()
+    if (!popup || popup.isDestroyed()) return false
+    const d = screen.getDisplayNearestPoint(screen.getCursorScreenPoint()).bounds
+    popup.setResizable(true); popup.setBounds(d); popup.setResizable(false)
+    if (popup.webContents.isLoading()) popup.once('ready-to-show', () => { try { popup.showInactive() } catch {} }); else popup.showInactive()
+    return true
+  } catch (e) { log('restart screen failed:', e.message); return false }
+}
+// true for the windows Lumen opens right after an update restarted it (until start() runs)
+let arriveFlag = null, booted = false
+function arriving() {
+  if (booted) return false
+  if (arriveFlag === null) { try { arriveFlag = fs.existsSync(path.join(app.getPath('userData'), 'just-updated')) } catch { arriveFlag = false } }
+  return arriveFlag
+}
 function hideCard() { if (popup && !popup.isDestroyed()) popup.hide() }
 function showCardIfAllowed(manual) { if (manual || Date.now() > snoozedUntil) showCard() }
 
@@ -186,14 +209,15 @@ async function install(relaunch = true, { fromQuit = false } = {}) {
   const marker = path.join(app.getPath('userData'), 'just-updated')
   if (IS_WIN) {
     try { fs.writeFileSync(marker, '') } catch {}
-    set({ status: 'installing' }); log('installing (windows)', state.latest)
+    const hold = !fromQuit && curtain() ? CURTAIN_MS : 400
+    set({ status: 'installing', exitAt: fromQuit ? 0 : Date.now() + hold }); log('installing (windows)', state.latest)
     const exe = process.execPath, cmd = path.join(updDir(), 'update.cmd'), wl = path.join(app.getPath('logs'), 'update.log')
     fs.writeFileSync(cmd, ['@echo off', 'setlocal', `set "LOG=${wl}"`, `echo === %DATE% %TIME% installing ${state.latest} >> "%LOG%"`, 'timeout /t 2 /nobreak >nul', 'set N=0', ':try',
       `"${state.staged}" /S${relaunch ? ' --force-run' : ''}`, 'set RC=%ERRORLEVEL%', 'echo installer exit %RC% >> "%LOG%"', 'if "%RC%"=="0" goto ok', 'set /a N+=1', 'if %N% GEQ 4 goto fail', 'timeout /t 3 /nobreak >nul', 'goto try',
       ':ok', relaunch ? 'timeout /t 6 /nobreak >nul' : 'rem', relaunch ? `tasklist /FI "IMAGENAME eq Lumen.exe" | find /I "Lumen.exe" >nul || start "" "${exe}"` : 'rem', 'echo done >> "%LOG%"', 'exit /b 0',
       ':fail', 'echo all attempts failed, reopening the current version >> "%LOG%"', `start "" "${exe}"`, 'exit /b 1'].join('\r\n'))
     spawn('cmd.exe', ['/c', cmd], { detached: true, stdio: 'ignore', windowsHide: true }).unref()
-    if (!fromQuit) setTimeout(() => app.exit(0), 400)
+    if (!fromQuit) setTimeout(() => app.exit(0), hold)
     return snapshot()
   }
   const sv = stagedVersion(state.staged)
@@ -222,11 +246,14 @@ sleep 8; pgrep -f "$APP/Contents/MacOS/Lumen" >/dev/null || { echo "no Lumen run
 echo "=== done"
 `)
   fs.chmodSync(script, 0o755)
-  set({ status: 'installing' }); log('installing', sv)
+  // the swap script waits for this process to exit (up to 6 s) before it touches anything, so holding the restart
+  // screen for CURTAIN_MS first is safe
+  const hold = !fromQuit && relaunch && curtain() ? CURTAIN_MS : 150
+  set({ status: 'installing', exitAt: fromQuit ? 0 : Date.now() + hold }); log('installing', sv)
   spawn('/bin/bash', [script], { detached: true, stdio: 'ignore' }).unref()
   if (!fromQuit) {
-    setTimeout(() => app.exit(0), 150)
-    setTimeout(() => { try { process.kill(process.pid, 'SIGKILL') } catch {} }, 2500)   // if Electron will not die, make it
+    setTimeout(() => app.exit(0), hold)
+    setTimeout(() => { try { process.kill(process.pid, 'SIGKILL') } catch {} }, hold + 2350)   // if Electron will not die, make it
   }
   return snapshot()
 }
@@ -245,6 +272,7 @@ async function poll() {
 
 function start(ctx) {
   C = ctx
+  booted = true
   enabled = !!ctx.autoUpdate()
   skipVersion = ctx.skipped() || null
   if (!app.isPackaged && process.env.LUMEN_SELFTEST !== 'swap') return
@@ -278,7 +306,7 @@ function setEnabled(on) {
 }
 
 module.exports = {
-  REPO, start, check, download, install, setEnabled, __releaseInfo: releaseInfo, __sha256File: sha256File,
+  REPO, start, check, arriving, download, install, setEnabled, __releaseInfo: releaseInfo, __sha256File: sha256File,
   later: () => { snoozedUntil = Date.now() + 2 * 3600000; hideCard() },
   skip: () => { skipVersion = state.latest; try { C.setSkipped(skipVersion) } catch {} hideCard() },
   cancel: () => { try { dlProc && dlProc.kill('SIGTERM') } catch {} set({ status: 'available', progress: 0 }) },

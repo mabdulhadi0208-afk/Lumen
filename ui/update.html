@@ -1,122 +1,128 @@
 <!DOCTYPE html><html><head><meta charset="utf-8"><style>
-  /* Lumen update card, Glow-up 2.0 (1.23). A slab of real liquid glass: the card carries its own living light field
-     (aurora, caustics, drifting light bars, star dust), and every piece on top of it is a lens that bends that light
-     (an SVG displacement map on the backdrop, strongest at the rim, with a chromatic fringe), lit by a glint that
-     follows your pointer and a caustic glow from below. The version change is a glass tube that fills with liquid
-     light as the download runs, the notes sit on a glass panel, and the restart screen warps through a tunnel of
-     rings into the new version while its number rolls in like an odometer. Everything follows your accent color.
-     With reduced motion it is still frosted glass, with no movement. */
+  /* Lumen update card, 4.0. A slab of Nova glass with the energy of a Settings section hero: saturated light blobs
+     behind a glass bezel, a big faint outline mark, the real app icon on a glowing tile wrapped in the progress ring,
+     a huge gradient title, the version change as a glass tube that fills with light, and the notes on a glass panel.
+     Everything moves once, when it has something to say (it opens, the download moves, it finishes), and then holds
+     perfectly still: nothing loops while the card sits on screen.
+     Restarting turns the card into the restart screen: it grows to fill the display in deep ink, the icon sits in a
+     glass orb, the new number lands, and the whole frame folds into a point of light just before Lumen quits. The
+     relaunched window opens on that same frame (Intro.arrive in ui/intro.js), so the restart never shows grey.
+     With reduced motion it is the same glass, still. */
   :root{--accent:#5b8cff;--a2:oklch(from var(--accent) calc(l - .02) c calc(h + 40));--a3:oklch(from var(--accent) calc(l + .04) c calc(h + 95));
     --nova:linear-gradient(135deg,var(--accent),var(--a2) 55%,var(--a3));
-    --base:#eef0f8;--fg:#13141b;--fg2:rgba(19,20,27,.66);--fg3:rgba(19,20,27,.44);--line:rgba(20,24,40,.1);--hover:rgba(20,24,40,.06);
-    --tint:rgba(255,255,255,.42);--tint2:rgba(255,255,255,.16);--spec:rgba(255,255,255,.95);--rimlo:rgba(255,255,255,.5);--ink:color-mix(in oklab,var(--accent) 72%,#000);
+    --base:#f5f6fb;--fg:#13141b;--fg2:rgba(19,20,27,.66);--fg3:rgba(19,20,27,.44);--line:rgba(20,24,40,.1);
+    --tint:rgba(255,255,255,.62);--tint2:rgba(255,255,255,.3);--spec:rgba(255,255,255,.95);--rimlo:rgba(255,255,255,.5);--ink:color-mix(in oklab,var(--accent) 72%,#000);
+    --hi:color-mix(in oklab,var(--accent) 42%,#fff);--hi3:color-mix(in oklab,var(--a3) 46%,#fff);
     --mx:30%;--my:10%;
     --head:ui-rounded,"SF Pro Rounded","SF Pro Display",-apple-system,system-ui,sans-serif;
     --spring:cubic-bezier(.3,1.3,.5,1);--ease:cubic-bezier(.22,1,.36,1)}
-  @media (prefers-color-scheme:dark){:root{--base:#090b14;--fg:#f0f1f8;--fg2:rgba(240,241,248,.68);--fg3:rgba(240,241,248,.42);--line:rgba(255,255,255,.11);--hover:rgba(255,255,255,.08);
-    --tint:rgba(255,255,255,.07);--tint2:rgba(255,255,255,.02);--spec:rgba(255,255,255,.3);--rimlo:rgba(255,255,255,.08);--ink:color-mix(in oklab,var(--accent) 50%,#fff)}}
+  @media (prefers-color-scheme:dark){:root{--base:#0a0c15;--fg:#f0f1f8;--fg2:rgba(240,241,248,.7);--fg3:rgba(240,241,248,.44);--line:rgba(255,255,255,.11);
+    --tint:rgba(255,255,255,.09);--tint2:rgba(255,255,255,.03);--spec:rgba(255,255,255,.3);--rimlo:rgba(255,255,255,.08);--ink:color-mix(in oklab,var(--accent) 45%,#fff)}}
   html,body{margin:0;height:100%;background:transparent;font:13px/1.45 -apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI Variable Text","Segoe UI",system-ui,sans-serif;color:var(--fg);-webkit-font-smoothing:antialiased;-webkit-user-select:none;overflow:hidden}
   svg.defs{position:absolute;width:0;height:0}
 
   /* the slab */
-  .card{position:absolute;inset:12px;border-radius:26px;background:var(--base);overflow:hidden;isolation:isolate;
-    box-shadow:0 0 0 .5px var(--line),0 2px 6px rgba(10,14,30,.16),0 8px 12px -6px color-mix(in srgb,var(--accent) 45%,transparent);
-    animation:pop 1s cubic-bezier(.2,1.15,.3,1);transition:transform .7s var(--ease)}
-  @keyframes pop{from{transform:perspective(900px) translateY(-8px) rotateX(12deg) scale(.94)}to{transform:none}}
-  /* the living light field the glass refracts */
+  .card{position:absolute;inset:12px;border-radius:28px;background:var(--base);overflow:hidden;isolation:isolate;
+    box-shadow:0 0 0 .5px var(--line),0 2px 6px rgba(10,14,30,.16),0 10px 14px -8px color-mix(in srgb,var(--accent) 50%,transparent);
+    animation:pop .9s cubic-bezier(.2,1.15,.3,1);transition:transform .7s var(--ease)}
+  @keyframes pop{from{transform:perspective(900px) translateY(-10px) rotateX(14deg) scale(.93);opacity:.4}to{transform:none;opacity:1}}
+  /* the hero light: saturated blobs that drift into place once and stay */
   .bg{position:absolute;inset:0;z-index:0;pointer-events:none;overflow:hidden}
-  .bg .au{position:absolute;inset:-60px;filter:blur(30px)}
-  .bg .au i{position:absolute;width:300px;height:200px;border-radius:50%;animation:drift 14s ease-in-out 2 alternate}
-  .bg .au i:nth-child(1){left:-40px;top:-90px;background:color-mix(in srgb,var(--accent) 70%,transparent)}
-  .bg .au i:nth-child(2){right:-30px;top:-60px;background:color-mix(in srgb,var(--a2) 60%,transparent);animation-duration:17s;animation-delay:-5s}
-  .bg .au i:nth-child(3){left:34%;bottom:-120px;background:color-mix(in srgb,var(--a3) 55%,transparent);animation-duration:21s;animation-delay:-9s}
-  .bg .au i:nth-child(4){left:12%;bottom:-140px;width:200px;background:color-mix(in srgb,var(--accent) 45%,transparent);animation-duration:19s;animation-delay:-3s}
-  @keyframes drift{0%{transform:translate(0,0) scale(1)}50%{transform:translate(70px,30px) scale(1.18)}100%{transform:translate(-40px,46px) scale(.92)}}
-  @media (prefers-color-scheme:light){.bg .au{opacity:.85}}
-  /* caustic light: two slowly turning ripple fields that interfere */
-  .bg .cs{position:absolute;left:50%;top:50%;width:900px;height:900px;margin:-450px 0 0 -450px;opacity:.22;mix-blend-mode:overlay;
-    background:repeating-radial-gradient(circle at 40% 45%,transparent 0 14px,rgba(255,255,255,.9) 16px,transparent 19px 30px),repeating-radial-gradient(circle at 62% 58%,transparent 0 18px,rgba(255,255,255,.7) 20px,transparent 23px 36px);animation:turn 40s linear infinite}
-  @media (prefers-color-scheme:dark){.bg .cs{opacity:.12;mix-blend-mode:screen}}
-  @keyframes turn{to{transform:rotate(360deg)}}
-  /* light bars drifting through, so the lenses have lines to bend */
-  .bg .lb{position:absolute;inset:-40px -200px;opacity:.5;background:repeating-linear-gradient(105deg,transparent 0 46px,color-mix(in srgb,var(--accent) 26%,transparent) 48px 52px,transparent 54px 110px,rgba(255,255,255,.45) 112px 114px,transparent 116px 170px);animation:bars 16s linear infinite}
-  @media (prefers-color-scheme:dark){.bg .lb{opacity:.35;background:repeating-linear-gradient(105deg,transparent 0 46px,color-mix(in srgb,var(--accent) 40%,transparent) 48px 52px,transparent 54px 110px,rgba(255,255,255,.14) 112px 114px,transparent 116px 170px)}}
-  @keyframes bars{to{transform:translateX(170px)}}
+  .bg .au{position:absolute;inset:-60px;filter:blur(34px)}
+  .bg .au i{position:absolute;width:320px;height:210px;border-radius:50%;animation:settle 2.4s var(--ease) both}
+  .bg .au i:nth-child(1){left:-50px;top:-100px;background:color-mix(in srgb,var(--accent) 78%,transparent);--dx:-60px;--dy:-30px}
+  .bg .au i:nth-child(2){right:-40px;top:-80px;background:color-mix(in srgb,var(--a2) 70%,transparent);--dx:60px;--dy:-20px;animation-delay:.08s}
+  .bg .au i:nth-child(3){left:38%;bottom:-150px;background:color-mix(in srgb,var(--a3) 60%,transparent);--dx:20px;--dy:60px;animation-delay:.16s}
+  .bg .au i:nth-child(4){left:6%;bottom:-170px;width:220px;background:color-mix(in srgb,var(--accent) 50%,transparent);--dx:-30px;--dy:50px;animation-delay:.24s}
+  @keyframes settle{from{transform:translate(var(--dx),var(--dy)) scale(.7);opacity:0}}
+  @media (prefers-color-scheme:light){.bg .au{opacity:.78}}
+  /* still light bars, so the glass has lines to show through it */
+  .bg .lb{position:absolute;inset:-40px -200px;opacity:.45;background:repeating-linear-gradient(105deg,transparent 0 46px,color-mix(in srgb,var(--accent) 24%,transparent) 48px 51px,transparent 53px 110px,rgba(255,255,255,.45) 112px 113px,transparent 115px 170px)}
+  @media (prefers-color-scheme:dark){.bg .lb{opacity:.3;background:repeating-linear-gradient(105deg,transparent 0 46px,color-mix(in srgb,var(--accent) 40%,transparent) 48px 51px,transparent 53px 110px,rgba(255,255,255,.12) 112px 113px,transparent 115px 170px)}}
   .bg .dust{position:absolute;inset:0;opacity:0;background-image:radial-gradient(1px 1px at 12% 22%,#fff,transparent),radial-gradient(1px 1px at 33% 68%,#fff,transparent),radial-gradient(1.4px 1.4px at 58% 18%,#fff,transparent),radial-gradient(1px 1px at 76% 54%,#fff,transparent),radial-gradient(1px 1px at 90% 30%,#fff,transparent),radial-gradient(1.2px 1.2px at 47% 88%,#fff,transparent),radial-gradient(1px 1px at 6% 80%,#fff,transparent),radial-gradient(1px 1px at 68% 84%,#fff,transparent)}
-  @media (prefers-color-scheme:dark){.bg .dust{opacity:.5}}
-  /* a big faint outline mark, like the section heroes in Settings */
-  .art{position:absolute;right:-26px;top:50%;width:190px;height:190px;margin-top:-95px;z-index:1;color:var(--accent);opacity:.13;transform:rotate(-12deg);pointer-events:none;animation:artin 1.4s .1s cubic-bezier(.16,1,.3,1) both}
-  .art svg{width:100%;height:100%;fill:none;stroke:currentColor;stroke-width:1.1;stroke-linecap:round;stroke-linejoin:round;filter:drop-shadow(0 0 12px color-mix(in srgb,var(--accent) 60%,transparent))}
-  @media (prefers-color-scheme:dark){.art{opacity:.16;color:color-mix(in srgb,var(--accent) 60%,#fff)}}
-  @keyframes artin{from{transform:rotate(-30deg) scale(1.25);opacity:0}}
+  @media (prefers-color-scheme:dark){.bg .dust{opacity:.55}}
+  /* the big faint outline mark of a section hero */
+  .art{position:absolute;right:-34px;top:-30px;width:220px;height:220px;z-index:1;color:var(--accent);opacity:.14;transform:rotate(-12deg);pointer-events:none;animation:artin 1.4s .1s cubic-bezier(.16,1,.3,1) both}
+  .art svg{width:100%;height:100%;fill:none;stroke:currentColor;stroke-width:1;stroke-linecap:round;stroke-linejoin:round}
+  @media (prefers-color-scheme:dark){.art{opacity:.18;color:color-mix(in srgb,var(--accent) 60%,#fff)}}
+  @keyframes artin{from{transform:rotate(-34deg) scale(1.3);opacity:0}}
   .error .art{color:#ff6b6b}
-  /* the bezel: a full-size lens over the light field, so the whole slab bends light at its rim */
-  .bezel{position:absolute;inset:0;z-index:1;border-radius:inherit;pointer-events:none;backdrop-filter:blur(14px) saturate(1.7);
-    background:radial-gradient(60% 70% at var(--mx) var(--my),rgba(255,255,255,.2),transparent 70%),linear-gradient(180deg,var(--tint2),transparent 40%);
-    box-shadow:inset 0 1px 0 var(--spec),inset 0 -1px 0 var(--rimlo),inset 2px 0 0 rgba(255,90,150,.14),inset -2px 0 0 rgba(90,200,255,.16),inset 0 -30px 50px -30px color-mix(in srgb,var(--accent) 45%,transparent)}
+  /* the new version number, huge and faint behind the hero, like a trailer's title */
+  .bignum{position:absolute;right:58px;top:-6px;z-index:1;pointer-events:none;font:800 128px/1 var(--head);letter-spacing:-.06em;white-space:nowrap;opacity:.16;
+    background:linear-gradient(160deg,var(--accent),var(--a3));-webkit-background-clip:text;background-clip:text;color:transparent;animation:numin 1.3s .15s cubic-bezier(.16,1,.3,1) both}
+  @media (prefers-color-scheme:dark){.bignum{opacity:.22}}
+  @keyframes numin{from{transform:translateY(20px) scale(1.15);opacity:0}}
+  .bignum:empty+.art,.error .bignum{display:none}
+  .has-big .art{display:none}.error .art{display:block}
+  /* the bezel: frosted glass over the light field */
+  .bezel{position:absolute;inset:0;z-index:1;border-radius:inherit;pointer-events:none;backdrop-filter:blur(16px) saturate(1.7);
+    background:radial-gradient(60% 70% at var(--mx) var(--my),rgba(255,255,255,.22),transparent 70%),linear-gradient(180deg,var(--tint2),transparent 45%);
+    box-shadow:inset 0 1px 0 var(--spec),inset 0 -1px 0 var(--rimlo),inset 2px 0 0 rgba(255,90,150,.14),inset -2px 0 0 rgba(90,200,255,.16),inset 0 -34px 50px -30px color-mix(in srgb,var(--accent) 45%,transparent)}
   .card::after{content:'';position:absolute;inset:0;border-radius:inherit;padding:1px;z-index:6;pointer-events:none;background:linear-gradient(135deg,color-mix(in srgb,var(--accent) 90%,#fff),rgba(255,255,255,.2) 25%,transparent 45%,transparent 60%,rgba(255,255,255,.15) 75%,var(--a3));
     -webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask-composite:exclude;opacity:.9}
-  .sheen{position:absolute;inset:0;pointer-events:none;z-index:5;background:linear-gradient(105deg,transparent 35%,rgba(255,255,255,.28) 48%,transparent 60%);transform:translateX(-120%);animation:sheen 1.6s .35s cubic-bezier(.3,.7,.2,1) forwards}
+  .sheen{position:absolute;inset:0;pointer-events:none;z-index:5;background:linear-gradient(105deg,transparent 35%,rgba(255,255,255,.3) 48%,transparent 60%);transform:translateX(-120%);animation:sheen 1.5s .3s cubic-bezier(.3,.7,.2,1) forwards}
   @keyframes sheen{to{transform:translateX(120%)}}
-  .edge{position:absolute;left:0;bottom:0;height:2px;width:0;z-index:6;background:var(--nova);box-shadow:0 0 12px var(--accent),0 0 2px var(--accent);transition:width .5s var(--ease),opacity .4s;opacity:0;border-radius:0 2px 2px 0}
+  .edge{position:absolute;left:0;bottom:0;height:3px;width:0;z-index:6;background:var(--nova);box-shadow:0 0 14px var(--accent),0 0 2px var(--accent);transition:width .5s var(--ease),opacity .4s;opacity:0;border-radius:0 3px 3px 0}
   .busy .edge,.ready .edge{opacity:1}
 
-  /* glass pieces: each is a lens over the light field (the lens itself is set from script) */
-  .gl{position:relative;background:radial-gradient(70% 90% at var(--mx) var(--my),rgba(255,255,255,.3),transparent 70%),linear-gradient(170deg,var(--tint),var(--tint2));backdrop-filter:blur(16px) saturate(1.8);
-    box-shadow:inset 0 1px 0 var(--spec),inset 0 -1px 0 var(--rimlo),inset 1.5px 0 0 rgba(255,90,150,.14),inset -1.5px 0 0 rgba(90,200,255,.16),inset 0 -12px 22px -14px color-mix(in srgb,var(--accent) 50%,transparent),0 0 0 .5px var(--line),0 6px 18px -8px rgba(10,14,40,.3)}
+  /* glass pieces */
+  .gl{position:relative;background:radial-gradient(70% 90% at var(--mx) var(--my),rgba(255,255,255,.3),transparent 70%),linear-gradient(170deg,var(--tint),var(--tint2));backdrop-filter:blur(14px) saturate(1.8);
+    box-shadow:inset 0 1px 0 var(--spec),inset 0 -1px 0 var(--rimlo),inset 1.5px 0 0 rgba(255,90,150,.14),inset -1.5px 0 0 rgba(90,200,255,.16),inset 0 -12px 22px -14px color-mix(in srgb,var(--accent) 50%,transparent),0 0 0 .5px var(--line),0 8px 20px -10px color-mix(in srgb,var(--accent) 45%,transparent)}
 
-  .in{position:relative;z-index:2;height:100%;display:flex;flex-direction:column;padding:14px 16px 14px 14px;gap:10px;box-sizing:border-box}
-  .top{display:flex;align-items:center;gap:14px;-webkit-app-region:drag;height:56px;flex:none}
-  /* the app icon on a glass tile, wrapped in the progress ring */
-  .ic{position:relative;width:56px;height:56px;flex:none;display:grid;place-items:center;border-radius:18px;transition:transform .8s var(--spring)}
-  .ic::before{content:'';position:absolute;inset:8px;border-radius:14px;background:var(--nova);filter:blur(14px);opacity:.6;z-index:-1}
+  .in{position:relative;z-index:2;height:100%;display:flex;flex-direction:column;padding:14px 16px 14px 14px;gap:9px;box-sizing:border-box}
+  .top{display:flex;align-items:center;gap:15px;-webkit-app-region:drag;height:70px;flex:none}
+  /* the app icon on a glowing gradient tile, wrapped in the progress ring */
+  .ic{position:relative;width:66px;height:66px;flex:none;display:grid;place-items:center;border-radius:22px;transition:transform .8s var(--spring)}
+  .ic::before{content:'';position:absolute;inset:6px;border-radius:18px;background:var(--nova);filter:blur(16px);opacity:.75;z-index:-1}
   .card:hover .ic{transform:scale(1.04) rotate(-3deg)}
-  .ic img{position:relative;width:40px;height:40px;border-radius:11px;box-shadow:inset 0 1px 0 rgba(255,255,255,.4),0 6px 16px color-mix(in srgb,var(--accent) 50%,transparent)}
-  .ic svg.ring{position:absolute;inset:-4px;width:64px;height:64px;transform:rotate(-90deg);opacity:0;transition:opacity .4s}
+  .ic img{position:relative;width:48px;height:48px;border-radius:13px;box-shadow:inset 0 1px 0 rgba(255,255,255,.4),0 8px 18px color-mix(in srgb,var(--accent) 55%,transparent)}
+  .ic svg.ring{position:absolute;inset:-4px;width:74px;height:74px;transform:rotate(-90deg);opacity:0;transition:opacity .4s}
   .ic svg.ring rect{fill:none;stroke-width:3;stroke-linecap:round}
   .ic svg.ring .bgc{stroke:var(--line)}
   .ic svg.ring .fg{stroke:url(#g);stroke-dasharray:226;stroke-dashoffset:226;transition:stroke-dashoffset .6s var(--ease);filter:drop-shadow(0 0 4px color-mix(in srgb,var(--accent) 85%,transparent))}
   .busy .ic svg.ring,.ready .ic svg.ring{opacity:1}
-  .spin .ic svg.ring .fg{stroke-dashoffset:170;animation:dash 1.4s linear infinite}
+  .spin .ic svg.ring .fg{stroke-dashoffset:170;animation:dash 1.4s linear 8}
   @keyframes dash{to{stroke-dashoffset:-56}}
+  .ic .badge{position:absolute;right:-3px;bottom:-3px;width:24px;height:24px;border-radius:50%;display:none;place-items:center;background:var(--nova);box-shadow:0 0 0 3px var(--base),0 4px 12px color-mix(in srgb,var(--accent) 60%,transparent)}
+  .ic .badge svg{width:13px;height:13px;stroke:#fff;fill:none;stroke-width:3;stroke-linecap:round;stroke-linejoin:round}
+  .uptodate .ic .badge,.ready .ic .badge{display:grid;animation:chk .7s .15s cubic-bezier(.3,1.6,.5,1) both}
+  @keyframes chk{from{transform:scale(0) rotate(-60deg)}}
   .t{flex:1;min-width:0}
-  .t .kick{display:block;font:800 10px/1 var(--font,inherit);letter-spacing:.2em;text-transform:uppercase;color:color-mix(in srgb,var(--accent) 75%,var(--fg2));margin-bottom:5px}
-  .t b{display:block;font:800 21px/1.12 var(--head);letter-spacing:-.035em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding-bottom:1px;
-    background:linear-gradient(100deg,var(--fg) 40%,var(--ink));-webkit-background-clip:text;background-clip:text;color:transparent}
+  .t .kick{display:inline-flex;align-items:center;gap:7px;font:800 10px/1 inherit;letter-spacing:.22em;text-transform:uppercase;color:color-mix(in srgb,var(--accent) 78%,var(--fg2));margin-bottom:6px}
+  .t .kick::before{content:'';width:6px;height:6px;border-radius:50%;background:var(--nova);box-shadow:0 0 8px var(--accent)}
+  .t b{display:block;font:800 25px/1.1 var(--head);letter-spacing:-.04em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding-bottom:2px;
+    background:linear-gradient(100deg,var(--fg) 30%,var(--ink) 75%,color-mix(in oklab,var(--a3) 70%,var(--fg)));-webkit-background-clip:text;background-clip:text;color:transparent}
   .t small{display:block;margin-top:3px;color:var(--fg2);font-size:12.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .x{-webkit-app-region:no-drag;align-self:flex-start;width:30px;height:30px;flex:none;border:0;border-radius:11px;color:var(--fg2);display:grid;place-items:center;cursor:default;transition:color .2s,transform .5s var(--spring)}
-  .x{background:radial-gradient(70% 90% at 30% 0%,rgba(255,255,255,.3),transparent 70%),color-mix(in srgb,var(--base) 62%,transparent) !important}
   .x:hover{color:var(--fg);transform:rotate(90deg)}.x:active{transform:scale(.9)}
 
-  /* the version change: a glass tube between the two numbers that fills with liquid light */
-  .ver{display:flex;align-items:center;gap:10px;height:34px;flex:none;padding:0 4px;border-radius:999px;box-sizing:border-box}
+  /* the version change: a glass tube between the two numbers that fills with light */
+  .ver{display:flex;align-items:center;gap:10px;height:38px;flex:none;padding:0 4px 0 6px;border-radius:999px;box-sizing:border-box}
   .chip{font-size:11.5px;font-weight:800;padding:5px 11px;border-radius:999px;color:var(--fg2);font-variant-numeric:tabular-nums;white-space:nowrap;line-height:16px}
-  .chip.v{color:#fff;background:var(--nova);box-shadow:inset 0 1px 0 rgba(255,255,255,.45),0 0 0 3px color-mix(in srgb,var(--accent) 18%,transparent),0 4px 14px color-mix(in srgb,var(--accent) 50%,transparent);overflow:hidden;display:inline-flex}
+  .chip.v{color:#fff;font:800 13px/18px var(--head);padding:5px 13px;background:var(--nova);box-shadow:inset 0 1px 0 rgba(255,255,255,.45),0 0 0 3px color-mix(in srgb,var(--accent) 18%,transparent),0 6px 16px color-mix(in srgb,var(--accent) 55%,transparent);overflow:hidden;display:inline-flex}
   .solo #from{display:none}
   .bar{position:relative;flex:1;height:10px;border-radius:999px;overflow:hidden;background:color-mix(in srgb,var(--fg) 7%,transparent);box-shadow:inset 0 1px 2px rgba(0,0,0,.18),inset 0 0 0 .5px var(--line)}
   .bar i{position:absolute;left:0;top:0;bottom:0;width:0;border-radius:999px;background:var(--nova);box-shadow:0 0 14px color-mix(in srgb,var(--accent) 75%,transparent),inset 0 1px 0 rgba(255,255,255,.55),inset 0 -2px 3px rgba(0,0,0,.15);transition:width .5s var(--ease);overflow:hidden}
-  .bar i::before{content:'';position:absolute;inset:0 -20px;background:repeating-linear-gradient(115deg,transparent 0 8px,rgba(255,255,255,.28) 8px 12px);animation:flow .9s linear infinite}
-  @keyframes flow{to{transform:translateX(20px)}}
-  .bar i::after{content:'';position:absolute;inset:0;background:linear-gradient(90deg,transparent,rgba(255,255,255,.7),transparent);transform:translateX(-100%);animation:shine 1.6s ease-in-out infinite}
-  @keyframes shine{to{transform:translateX(100%)}}
-  .bar .trav{position:absolute;top:1px;left:0;width:30px;height:8px;border-radius:999px;background:radial-gradient(closest-side,#fff,color-mix(in srgb,var(--accent) 60%,transparent),transparent);opacity:0;animation:travel 2.4s 1s ease-in-out infinite}
-  @keyframes travel{0%{left:-30px;opacity:0}20%,80%{opacity:1}100%{left:100%;opacity:0}}
-  .busy .bar .trav,.ready .bar .trav{display:none}
-  .spin .bar i{width:34% !important;animation:slide 1.2s ease-in-out infinite}@keyframes slide{from{transform:translateX(-100%)}to{transform:translateX(300%)}}
+  /* the liquid's bright head: it rides along with the progress, no loop */
+  .bar i::after{content:'';position:absolute;right:0;top:0;bottom:0;width:26px;border-radius:999px;background:radial-gradient(closest-side,#fff,rgba(255,255,255,0));opacity:.85}
+  .spin .bar i{width:34% !important;animation:slide 1.2s ease-in-out 10}@keyframes slide{from{transform:translateX(-100%)}to{transform:translateX(300%)}}
+  .arrow{width:18px;height:18px;flex:none;color:var(--fg3)}
+  .solo .arrow{display:none}
 
-  /* what is new, on a glass panel, from the top down */
-  .np{display:none;flex-direction:column;flex:none;padding:8px 12px 10px;border-radius:18px}
+  /* what is new, on a glass panel */
+  .np{display:none;flex-direction:column;flex:none;padding:8px 12px 9px;border-radius:20px}
   .has-notes .np{display:flex}
-  .nh{display:flex;align-items:center;gap:8px;height:16px;margin-bottom:4px;font-size:10.5px;font-weight:800;letter-spacing:.16em;text-transform:uppercase;color:var(--fg3)}
+  .nh{display:flex;align-items:center;gap:8px;height:18px;margin-bottom:3px;font-size:10.5px;font-weight:800;letter-spacing:.18em;text-transform:uppercase;color:var(--fg3)}
   .nh::after{content:'';flex:1;height:1px;background:linear-gradient(90deg,var(--line),transparent)}
-  .notes{margin:0;list-style:none;padding:0;display:flex;flex-direction:column;justify-content:flex-start;font-size:12.8px;color:var(--fg)}
-  .notes li{position:relative;height:24px;line-height:24px;padding-left:22px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;animation:li .7s cubic-bezier(.3,1.3,.5,1) both}
-  .notes li::before{content:'';position:absolute;left:3px;top:8px;width:8px;height:8px;border-radius:3px;transform:rotate(45deg);background:var(--nova);box-shadow:0 0 8px color-mix(in srgb,var(--accent) 65%,transparent),inset 0 1px 0 rgba(255,255,255,.5)}
+  .nh em{order:2;font-style:normal;letter-spacing:.04em;text-transform:none;font-size:10.5px;color:color-mix(in srgb,var(--accent) 75%,var(--fg2));padding:2px 8px;border-radius:999px;background:color-mix(in srgb,var(--accent) 12%,transparent)}
+  .notes{margin:0;list-style:none;padding:0;display:flex;flex-direction:column;font-size:13px;color:var(--fg);counter-reset:n}
+  .notes li{position:relative;height:26px;line-height:26px;padding-left:30px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;animation:li .7s cubic-bezier(.3,1.3,.5,1) both;counter-increment:n}
+  .notes li::before{content:counter(n);position:absolute;left:0;top:4px;width:18px;height:18px;border-radius:7px;display:grid;place-items:center;font:800 10px/18px var(--head);color:#fff;text-align:center;background:var(--nova);box-shadow:0 0 8px color-mix(in srgb,var(--accent) 55%,transparent),inset 0 1px 0 rgba(255,255,255,.5)}
   .notes li+li{box-shadow:inset 0 1px 0 color-mix(in srgb,var(--line) 70%,transparent)}
-  @keyframes li{from{transform:translateX(-10px);opacity:.5}to{transform:none;opacity:1}}
+  @keyframes li{from{transform:translateX(-12px);opacity:0}to{transform:none;opacity:1}}
 
-  /* the bottom row: skip, verified and progress text on the left, the actions on the right */
-  .row{display:flex;align-items:center;gap:8px;margin-top:auto;height:40px;flex:none}
+  /* the bottom row */
+  .row{display:flex;align-items:center;gap:8px;margin-top:auto;height:42px;flex:none}
   .lft{flex:1;min-width:0;display:flex;align-items:center;gap:8px}
   .chip.ok{display:none;align-items:center;gap:5px;color:#0f9f74;background:rgba(18,184,134,.14);box-shadow:inset 0 0 0 1px rgba(18,184,134,.26),0 0 12px rgba(18,184,134,.18)}
   .chip.ok svg{width:11px;height:11px;stroke:currentColor;fill:none;stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round}
@@ -126,23 +132,22 @@
   .busy .meta{display:block}
   #m2{font-size:11.5px;color:var(--fg3);white-space:nowrap;padding-left:6px}
   .busy #m2,.available #m2,.ready #m2{display:none}
-  .btn{-webkit-app-region:no-drag;position:relative;overflow:hidden;isolation:isolate;border:0;height:40px;padding:0 22px;border-radius:999px;font:800 13.5px/1 var(--head);letter-spacing:-.01em;color:#fff;cursor:default;white-space:nowrap;
-    background:radial-gradient(70% 90% at var(--mx) 0%,rgba(255,255,255,.35),transparent 70%),linear-gradient(135deg,color-mix(in srgb,var(--accent) 88%,transparent),color-mix(in srgb,var(--a2) 84%,transparent) 55%,color-mix(in srgb,var(--a3) 84%,transparent));
-    backdrop-filter:blur(8px) saturate(1.8);text-shadow:0 1px 2px rgba(0,0,0,.18);
-    box-shadow:inset 0 1px 0 rgba(255,255,255,.6),inset 0 -1px 0 rgba(255,255,255,.2),inset 0 -8px 14px -6px rgba(0,0,0,.2),0 0 0 4px color-mix(in srgb,var(--accent) 16%,transparent),0 8px 20px -6px color-mix(in srgb,var(--accent) 80%,transparent);transition:transform .55s var(--spring),filter .2s,opacity .2s}
+  .btn{-webkit-app-region:no-drag;position:relative;overflow:hidden;isolation:isolate;border:0;height:42px;padding:0 24px;border-radius:999px;font:800 14px/1 var(--head);letter-spacing:-.01em;color:#fff;cursor:default;white-space:nowrap;
+    background:radial-gradient(70% 90% at var(--mx) 0%,rgba(255,255,255,.35),transparent 70%),var(--nova);text-shadow:0 1px 2px rgba(0,0,0,.18);
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.6),inset 0 -1px 0 rgba(255,255,255,.2),inset 0 -8px 14px -6px rgba(0,0,0,.2),0 0 0 4px color-mix(in srgb,var(--accent) 16%,transparent),0 10px 24px -6px color-mix(in srgb,var(--accent) 85%,transparent);transition:transform .55s var(--spring),filter .2s,opacity .2s}
   .btn:hover{transform:translateY(-1px);filter:brightness(1.08)}.btn:active{transform:scale(.96)}.btn[disabled]{opacity:.55;pointer-events:none}
-  .btn::after{content:'';position:absolute;inset:0;background:linear-gradient(105deg,transparent 30%,rgba(255,255,255,.55) 50%,transparent 70%);transform:translateX(-130%);z-index:-1;animation:btnshine 1.2s .9s ease-out forwards}
+  .btn::after{content:'';position:absolute;inset:0;background:linear-gradient(105deg,transparent 30%,rgba(255,255,255,.55) 50%,transparent 70%);transform:translateX(-130%);z-index:-1;animation:btnshine 1.2s .8s ease-out forwards}
   .ready-now .btn::after{animation:btnshine 1.1s ease-out}
-  .ready .btn::after{animation:btnshine 2.6s 1s ease-in-out infinite}
+  .ready .btn::after{animation:btnshine 2.4s .9s ease-in-out 3}
   @keyframes btnshine{from{transform:translateX(-130%)}to{transform:translateX(130%)}}
-  .lnk{-webkit-app-region:no-drag;border:0;background-color:color-mix(in srgb,var(--base) 30%,transparent);font:650 12.5px/1 inherit;font-family:inherit;color:var(--fg);height:34px;padding:0 14px;border-radius:999px;cursor:default;white-space:nowrap;transition:transform .5s var(--spring),filter .2s}
+  .lnk{-webkit-app-region:no-drag;border:0;background-color:color-mix(in srgb,var(--base) 30%,transparent);font:650 12.5px/1 inherit;font-family:inherit;color:var(--fg);height:36px;padding:0 15px;border-radius:999px;cursor:default;white-space:nowrap;transition:transform .5s var(--spring),filter .2s}
   .lnk:hover{transform:translateY(-1px);filter:brightness(1.06)}.lnk:active{transform:scale(.96)}
   #skip{background:none;box-shadow:none;backdrop-filter:none;color:var(--fg2);padding:0 8px}
   #skip:hover{color:var(--fg)}
   .error .btn{background:linear-gradient(135deg,#ffa94d,#ff6b6b);box-shadow:inset 0 1px 0 rgba(255,255,255,.5),0 0 0 4px rgba(255,107,107,.16),0 8px 20px -6px rgba(255,107,107,.75)}
-  .error .bg .au i:nth-child(1),.error .bg .au i:nth-child(4){background:rgba(255,107,107,.5)}
+  .error .bg .au i:nth-child(1),.error .bg .au i:nth-child(4){background:rgba(255,107,107,.55)}
   .error .ic::before{background:linear-gradient(135deg,#ffa94d,#ff6b6b)}
-  .error .t .kick{color:#e8590c}
+  .error .t .kick{color:#e8590c}.error .t .kick::before{background:#ff6b6b;box-shadow:0 0 8px #ff6b6b}
   .error .in{animation:shake .5s .2s cubic-bezier(.36,.07,.19,.97) both}
   @keyframes shake{20%,60%{transform:translateX(-3px)}40%,80%{transform:translateX(3px)}}
   .ready-now .ic img{animation:jelly 1s cubic-bezier(.3,1.5,.5,1)}
@@ -150,64 +155,66 @@
   .fx{position:absolute;inset:0;pointer-events:none;z-index:7}
   .fx b{position:absolute;width:7px;height:7px;border-radius:50%;background:var(--nova);box-shadow:0 0 10px color-mix(in srgb,var(--accent) 70%,transparent)}
   .fx b:nth-child(3n){width:5px;height:5px;border-radius:2px;background:#fff}
-
-  /* the restart screen: a tunnel of rings, the icon inside a glass orb, and the new number rolling in */
-  .done{position:absolute;inset:0;z-index:8;display:none;align-items:center;justify-content:center;gap:24px;padding:0 34px;overflow:hidden;background:var(--base)}
-  .installing .done{display:flex;animation:dz .7s var(--ease)}
-  @keyframes dz{from{transform:scale(1.06);opacity:.6}}
-  .done .bg{z-index:0}
-  .done .tun{position:absolute;left:30%;top:50%;width:0;height:0;pointer-events:none}
-  .done .tun i{position:absolute;left:-60px;top:-60px;width:120px;height:120px;border-radius:50%;border:2px solid color-mix(in srgb,var(--accent) 70%,transparent);box-shadow:0 0 16px color-mix(in srgb,var(--accent) 50%,transparent),inset 0 0 10px color-mix(in srgb,var(--a3) 40%,transparent);opacity:0;animation:tunnel 2.4s cubic-bezier(.5,0,.8,.6) infinite}
-  .done .tun i:nth-child(2){animation-delay:.6s;border-color:color-mix(in srgb,var(--a2) 70%,transparent)}.done .tun i:nth-child(3){animation-delay:1.2s;border-color:color-mix(in srgb,var(--a3) 70%,transparent)}.done .tun i:nth-child(4){animation-delay:1.8s}
-  @keyframes tunnel{0%{transform:scale(.3);opacity:0}15%{opacity:.9}100%{transform:scale(6);opacity:0}}
-  .done .rays{position:absolute;left:30%;top:50%;width:760px;height:760px;margin:-380px 0 0 -380px;pointer-events:none;opacity:.5;
-    background:repeating-conic-gradient(from 0deg,color-mix(in srgb,var(--accent) 34%,transparent) 0 3deg,transparent 3deg 15deg);-webkit-mask:radial-gradient(closest-side,#000 6%,transparent 58%);mask:radial-gradient(closest-side,#000 6%,transparent 58%);animation:turn 30s linear infinite}
-  .done .streak{position:absolute;left:0;right:0;top:50%;height:2px;margin-top:-1px;pointer-events:none;background:linear-gradient(90deg,transparent,color-mix(in srgb,var(--accent) 60%,transparent) 15%,rgba(255,255,255,.95) 30%,color-mix(in srgb,var(--a3) 60%,transparent) 45%,transparent 80%);opacity:.6;filter:blur(.5px)}
-  .done .orb{position:relative;z-index:1;flex:none;width:108px;height:108px;border-radius:50%;display:grid;place-items:center;
-    background:radial-gradient(circle at 34% 26%,rgba(255,255,255,.55),rgba(255,255,255,.08) 20%,transparent 36%),radial-gradient(circle at 60% 80%,color-mix(in srgb,var(--a3) 30%,transparent),transparent 50%);
-    backdrop-filter:blur(3px) saturate(1.8);box-shadow:inset 0 2px 1px rgba(255,255,255,.6),inset 0 -8px 18px color-mix(in srgb,var(--accent) 45%,transparent),inset 3px 0 0 rgba(255,90,150,.2),inset -3px 0 0 rgba(90,200,255,.2),0 0 0 1px rgba(255,255,255,.2),0 16px 40px -8px color-mix(in srgb,var(--accent) 60%,transparent)}
-  .done .orb::before,.done .orb::after{content:'';position:absolute;inset:0;border-radius:50%;border:2px solid color-mix(in srgb,var(--accent) 65%,transparent);animation:ripple 2s ease-out infinite}
-  .done .orb::after{animation-delay:1s;border-color:color-mix(in srgb,var(--a3) 60%,transparent)}
-  @keyframes ripple{from{transform:scale(1);opacity:.9}to{transform:scale(1.8);opacity:0}}
-  .done .orb .halo{position:absolute;inset:18px;border-radius:50%;background:var(--nova);filter:blur(16px);opacity:.7;animation:breathe 1.8s ease-in-out infinite alternate}
-  @keyframes breathe{to{transform:scale(1.2);opacity:.95}}
-  .done .orb img{position:relative;width:64px;height:64px;border-radius:18px;box-shadow:inset 0 1px 0 rgba(255,255,255,.4),0 10px 24px color-mix(in srgb,var(--accent) 55%,transparent);animation:float 2.4s ease-in-out infinite alternate}
-  @keyframes float{to{transform:translateY(-3px) rotate(-2deg)}}
-  .done .orb .chk{position:absolute;right:2px;bottom:2px;width:28px;height:28px;border-radius:50%;background:var(--nova);display:grid;place-items:center;box-shadow:0 0 0 3px var(--base),0 4px 12px color-mix(in srgb,var(--accent) 60%,transparent);animation:chk .8s .3s cubic-bezier(.3,1.6,.5,1) both}
-  @keyframes chk{from{transform:scale(0) rotate(-60deg)}}
-  .done .orb .chk svg{width:15px;height:15px;stroke:#fff;fill:none;stroke-width:3;stroke-linecap:round;stroke-linejoin:round}
-  .done .dt{position:relative;z-index:1;min-width:0;display:flex;flex-direction:column;gap:6px}
-  .done .dt .kick{font:800 10px/1 inherit;letter-spacing:.24em;text-transform:uppercase;color:color-mix(in srgb,var(--accent) 75%,var(--fg2))}
-  .done .dt b{font:800 28px/1.1 var(--head);letter-spacing:-.04em;background:linear-gradient(100deg,var(--fg) 30%,var(--ink));-webkit-background-clip:text;background-clip:text;color:transparent;padding-bottom:2px}
-  .done .dt small{font-size:13px;color:var(--fg2)}
-  .done .dver{display:flex;align-items:center;gap:8px;align-self:flex-start;margin-top:4px;padding:3px;border-radius:999px}
-  .done .dver .arr{width:22px;height:2px;border-radius:2px;background:linear-gradient(90deg,var(--line),var(--accent));position:relative}
-  .done .dver .arr::after{content:'';position:absolute;right:-1px;top:-3px;width:6px;height:6px;border-top:2px solid var(--accent);border-right:2px solid var(--accent);transform:rotate(45deg)}
-  .done .dots{display:flex;gap:5px;margin-top:6px}
-  .done .dots i{width:6px;height:6px;border-radius:50%;background:var(--accent);animation:dot 1.2s ease-in-out infinite}
-  .done .dots i:nth-child(2){animation-delay:.15s;background:var(--a2)}.done .dots i:nth-child(3){animation-delay:.3s;background:var(--a3)}
-  @keyframes dot{50%{transform:translateY(-4px) scale(1.2)}}
   /* rolling digits: each digit is a little odometer drum */
-  .od{display:inline-block;height:16px;overflow:hidden;vertical-align:top}
-  .od span{display:block;height:16px;line-height:16px;text-align:center}
+  .od{display:inline-block;height:18px;overflow:hidden;vertical-align:top}
+  .od span{display:block;height:18px;line-height:18px;text-align:center}
   .od .drum{display:block;transition:transform 1.1s cubic-bezier(.2,1.1,.3,1)}
-  @media (prefers-reduced-motion:reduce){.card,.notes li,.installing .done,.error .in,.done .orb .chk{animation:none}
-    .bg *,.bar i::before,.bar i::after,.bar .trav,.sheen,.btn::after,.done .rays,.done .tun i,.done .orb::before,.done .orb::after,.done .orb .halo,.done .orb img,.done .dots i{animation:none}
-    .done .tun{display:none}.od .drum{transition:none}}
+
+  /* ---- the restart screen: deep ink over the whole display, the icon in a glass orb, the new number */
+  .curtain{position:fixed;inset:0;z-index:20;display:none;place-items:center;overflow:hidden;color:#eef0fb;-webkit-app-region:no-drag;
+    background:radial-gradient(40% 50% at 30% 30%,color-mix(in srgb,var(--accent) 30%,transparent),transparent 70%),radial-gradient(40% 50% at 72% 70%,color-mix(in srgb,var(--a3) 24%,transparent),transparent 70%),
+      radial-gradient(1px 1px at 12% 22%,#fff,transparent),radial-gradient(1px 1px at 33% 68%,#fff,transparent),radial-gradient(1.4px 1.4px at 58% 18%,#fff,transparent),radial-gradient(1px 1px at 76% 54%,#fff,transparent),radial-gradient(1px 1px at 90% 30%,#fff,transparent),radial-gradient(1.2px 1.2px at 47% 88%,#fff,transparent),#05060d}
+  .installing .curtain{display:grid;animation:cin .6s var(--ease) both}
+  .installing .card{visibility:hidden}
+  @keyframes cin{from{opacity:0}}
+  .curtain .rays{position:absolute;left:50%;top:50%;width:160vmax;height:160vmax;margin:-80vmax 0 0 -80vmax;pointer-events:none;opacity:.45;
+    background:repeating-conic-gradient(from 0deg,color-mix(in srgb,var(--accent) 30%,transparent) 0 2.5deg,transparent 2.5deg 14deg);-webkit-mask:radial-gradient(closest-side,#000 4%,transparent 50%);mask:radial-gradient(closest-side,#000 4%,transparent 50%);animation:rays 2.6s var(--ease) both}
+  @keyframes rays{from{transform:rotate(-40deg) scale(.4);opacity:0}}
+  .curtain .streak{position:absolute;left:0;right:0;top:50%;height:2px;margin-top:-1px;pointer-events:none;background:linear-gradient(90deg,transparent,color-mix(in srgb,var(--accent) 60%,transparent) 20%,rgba(255,255,255,.95) 50%,color-mix(in srgb,var(--a3) 60%,transparent) 80%,transparent);opacity:.5;animation:streak 1.4s var(--ease) both}
+  @keyframes streak{from{transform:scaleX(0);opacity:1}}
+  .curtain .rings i{position:absolute;left:50%;top:50%;width:30vmin;height:30vmin;margin:-15vmin 0 0 -15vmin;border-radius:50%;border:2px solid color-mix(in srgb,var(--hi) 70%,transparent);box-shadow:0 0 24px color-mix(in srgb,var(--accent) 50%,transparent);opacity:0;animation:ring 1.6s cubic-bezier(.2,.8,.3,1) 2}
+  .curtain .rings i:nth-child(2){animation-delay:.4s;border-color:color-mix(in srgb,var(--a3) 70%,transparent)}.curtain .rings i:nth-child(3){animation-delay:.8s;border-color:color-mix(in srgb,var(--a2) 70%,transparent)}
+  @keyframes ring{0%{transform:scale(.4);opacity:0}15%{opacity:.8}100%{transform:scale(3.4);opacity:0}}
+  .cm{position:relative;display:flex;flex-direction:column;align-items:center;gap:14px;text-align:center;animation:cmin .9s .1s cubic-bezier(.16,1,.3,1) both}
+  @keyframes cmin{from{transform:scale(.8);opacity:0}}
+  .corb{position:relative;width:min(150px,22vmin);height:min(150px,22vmin);border-radius:50%;display:grid;place-items:center;
+    background:radial-gradient(circle at 34% 26%,rgba(255,255,255,.45),rgba(255,255,255,.06) 22%,transparent 38%),radial-gradient(circle at 60% 80%,color-mix(in srgb,var(--a3) 34%,transparent),transparent 52%);
+    backdrop-filter:blur(3px) saturate(1.8);box-shadow:inset 0 2px 1px rgba(255,255,255,.5),inset 0 -10px 24px color-mix(in srgb,var(--accent) 50%,transparent),inset 3px 0 0 rgba(255,90,150,.22),inset -3px 0 0 rgba(90,200,255,.22),0 0 0 1px rgba(255,255,255,.14),0 0 80px color-mix(in srgb,var(--accent) 55%,transparent)}
+  .corb img{width:62%;height:62%;border-radius:24%}
+  .corb svg{position:absolute;inset:-14px;width:calc(100% + 28px);height:calc(100% + 28px);transform:rotate(-90deg)}
+  .corb svg circle{fill:none;stroke-width:2.5;stroke-linecap:round}
+  .corb svg .bgc{stroke:rgba(255,255,255,.12)}
+  .corb svg .fg{stroke:url(#g);stroke-dasharray:100;stroke-dashoffset:100;filter:drop-shadow(0 0 6px var(--accent))}
+  .ck{font:800 11px/1 inherit;letter-spacing:.42em;text-transform:uppercase;color:var(--hi);margin-top:10px}
+  .curtain b{font:800 clamp(30px,7.4vmin,92px)/1 var(--head);letter-spacing:-.045em;padding-bottom:.06em;background:linear-gradient(100deg,#fff 20%,var(--hi) 60%,var(--hi3));-webkit-background-clip:text;background-clip:text;color:transparent;white-space:nowrap}
+  .curtain small{font-size:14px;color:rgba(220,226,255,.7)}
+  .cv{display:flex;align-items:center;gap:10px;margin-top:4px;padding:4px;border-radius:999px;background:rgba(255,255,255,.07);box-shadow:inset 0 1px 0 rgba(255,255,255,.14),0 0 0 1px rgba(255,255,255,.07)}
+  .cv .chip{color:rgba(230,234,255,.7)}
+  .cv .arrow{color:rgba(230,234,255,.5)}
+  /* short windows (the card-sized test window): the same frame, laid out in a row */
+  @media (max-height:420px){.cm{flex-direction:row;gap:22px;text-align:left}.cm .ctx{display:flex;flex-direction:column;align-items:flex-start;gap:7px}.ck{margin-top:0}.corb{width:96px;height:96px}.curtain b{font-size:34px}}
+  @media (min-height:421px){.cm .ctx{display:contents}}
+  /* the last moment before Lumen quits: the frame folds into a point of light, and the new window opens out of it */
+  .curtain.out .cm{transition:transform .42s cubic-bezier(.6,0,.8,.3),opacity .42s ease-in;transform:scale(.12);opacity:0}
+  .curtain.out .rays,.curtain.out .streak{transition:opacity .3s;opacity:0}
+  .curtain .pt{position:absolute;left:50%;top:50%;width:12px;height:12px;margin:-6px 0 0 -6px;border-radius:50%;background:#fff;box-shadow:0 0 30px 10px color-mix(in srgb,var(--hi) 80%,transparent),0 0 90px 30px color-mix(in srgb,var(--accent) 60%,transparent);opacity:0;transform:scale(.2)}
+  .curtain.out .pt{transition:opacity .25s .25s,transform .4s .2s cubic-bezier(.3,1.4,.5,1);opacity:1;transform:none}
+
+  @media (prefers-reduced-motion:reduce){*,*::before,*::after{animation:none !important;transition:none !important}}
 </style></head><body>
 <svg class="defs" aria-hidden="true"><defs id="defs"><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" style="stop-color:var(--accent)"/><stop offset=".55" style="stop-color:var(--a2)"/><stop offset="1" style="stop-color:var(--a3)"/></linearGradient></defs></svg>
 <div class="card" id="card">
-  <div class="bg"><div class="au"><i></i><i></i><i></i><i></i></div><div class="cs"></div><div class="lb"></div><div class="dust"></div></div>
-  <div class="bezel" data-lens="bezel"></div><div class="art" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9.5"/><path d="M12 7v9m-4-4 4 4 4-4"/><path d="M4.5 12a7.5 7.5 0 0 1 4-6.6" opacity=".5"/></svg></div><div class="sheen"></div><div class="fx" id="fx"></div><i class="edge" id="edge"></i>
+  <div class="bg"><div class="au"><i></i><i></i><i></i><i></i></div><div class="lb"></div><div class="dust"></div></div>
+  <div class="bezel"></div><div class="bignum" id="bignum"></div><div class="art" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9.5"/><path d="M12 7v9m-4-4 4 4 4-4"/><path d="M4.5 12a7.5 7.5 0 0 1 4-6.6" opacity=".5"/></svg></div><div class="sheen"></div><div class="fx" id="fx"></div><i class="edge" id="edge"></i>
   <div class="in">
     <div class="top">
-      <div class="ic gl"><img id="icon" src="../pages/icon-default.png" alt=""><svg class="ring" viewBox="0 0 64 64"><rect class="bgc" x="2" y="2" width="60" height="60" rx="21"/><rect class="fg" id="arc" x="2" y="2" width="60" height="60" rx="21" pathLength="226"/></svg></div>
+      <div class="ic gl"><img id="icon" src="../pages/icon-default.png" alt=""><svg class="ring" viewBox="0 0 64 64"><rect class="bgc" x="2" y="2" width="60" height="60" rx="21"/><rect class="fg" id="arc" x="2" y="2" width="60" height="60" rx="21" pathLength="226"/></svg><span class="badge"><svg viewBox="0 0 16 16"><path d="m3.5 8.5 3 3 6-7"/></svg></span></div>
       <div class="t"><span class="kick" id="kick">Software update</span><b id="title">Update Lumen</b><small id="sub"></small></div>
       <button class="x gl" id="close" title="Hide">
         <svg viewBox="0 0 16 16" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><path d="m4 4 8 8M12 4l-8 8"/></svg></button>
     </div>
-    <div class="ver gl" id="ver"><span class="chip" id="from"></span><div class="bar" id="bar"><i id="fill"></i><span class="trav"></span></div><span class="chip v" id="to"></span></div>
-    <div class="np gl"><div class="nh" id="nh">What is new</div><ul class="notes" id="notes"></ul></div>
+    <div class="ver gl" id="ver"><span class="chip" id="from"></span><div class="bar" id="bar"><i id="fill"></i></div><svg class="arrow" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8h9m-3.5-3.5L12 8l-3.5 3.5"/></svg><span class="chip v" id="to"></span></div>
+    <div class="np gl"><div class="nh"><span id="nh">What is new</span><em id="nc"></em></div><ul class="notes" id="notes"></ul></div>
     <div class="row">
       <div class="lft">
         <button class="lnk" id="skip">Skip this version</button>
@@ -219,94 +226,68 @@
       <button class="btn" id="go">Update now</button>
     </div>
   </div>
-  <div class="done"><div class="bg"><div class="au"><i></i><i></i><i></i><i></i></div><div class="lb"></div><div class="dust"></div></div><div class="rays"></div><div class="tun"><i></i><i></i><i></i><i></i></div><div class="streak"></div>
-    <div class="orb"><div class="halo"></div><img id="dicon" src="../pages/icon-default.png" alt=""><span class="chk"><svg viewBox="0 0 16 16"><path d="m3.5 8.5 3 3 6-7"/></svg></span></div>
-    <div class="dt"><span class="kick">Installing the update</span><b>Restarting Lumen</b><small>Your tabs come right back</small><div class="dver gl"><span class="chip" id="dfrom"></span><i class="arr"></i><span class="chip v" id="dto"></span></div><div class="dots"><i></i><i></i><i></i></div></div>
-  </div>
 </div>
+<div class="curtain" id="curtain" aria-live="polite"><div class="rays"></div><div class="streak"></div><div class="rings"><i></i><i></i><i></i></div>
+  <div class="cm"><div class="corb"><svg viewBox="0 0 100 100"><circle class="bgc" cx="50" cy="50" r="48" pathLength="100"/><circle class="fg" id="carc" cx="50" cy="50" r="48" pathLength="100"/></svg><img id="dicon" src="../pages/icon-default.png" alt=""></div>
+    <div class="ctx"><span class="ck" id="ck">Installing the update</span><b id="ctitle">Restarting Lumen</b><small>Your tabs come right back</small>
+      <div class="cv"><span class="chip" id="dfrom"></span><svg class="arrow" viewBox="0 0 16 16" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8h9m-3.5-3.5L12 8l-3.5 3.5"/></svg><span class="chip v" id="dto"></span></div></div></div>
+  <i class="pt"></i></div>
 <script>
 const $ = s => document.querySelector(s), api = window.lumenUpdate
 const fmt = b => (b / 1048576).toFixed(1) + ' MB', secs = s => s >= 90 ? Math.round(s / 60) + ' min' : Math.max(1, Math.round(s)) + ' s'
 const v = x => String(x || '').replace(/^v/, '')
 const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c])
 const still = matchMedia('(prefers-reduced-motion: reduce)').matches
-let U = {}, notesKey = '', lastStatus = ''
-
-// ---------------------------------------------------------------- real liquid glass
-// A displacement map for a rounded rectangle (or a ball): no shift in the middle, bending hardest at the rim.
-function lensMap(w, h, r, edge, ball) {
-  const k = Math.min(1, 220 / Math.max(w, h)), cw = Math.max(2, Math.round(w * k)), ch = Math.max(2, Math.round(h * k))
-  const c = document.createElement('canvas'); c.width = cw; c.height = ch
-  const g = c.getContext('2d'), im = g.createImageData(cw, ch), R = Math.min(r * k, cw / 2, ch / 2), E = Math.max(1, edge * k), RB = Math.min(cw, ch) / 2
-  for (let y = 0; y < ch; y++) for (let x = 0; x < cw; x++) {
-    const px = x + .5 - cw / 2, py = y + .5 - ch / 2, i = (y * cw + x) * 4
-    let nx = 0, ny = 0, m = 0
-    if (ball) { const l = Math.hypot(px, py), rr = l / RB; if (rr < 1 && l > 0) { nx = px / l; ny = py / l; m = rr * .6 + Math.pow(Math.max(0, rr - .7) / .3, 2) * .4 } }
-    else {
-      const qx = Math.abs(px) - (cw / 2 - R), qy = Math.abs(py) - (ch / 2 - R); let d
-      if (qx > 0 && qy > 0) { const l = Math.hypot(qx, qy) || 1; nx = qx / l * Math.sign(px); ny = qy / l * Math.sign(py); d = R - l }
-      else if (qx > qy) { nx = Math.sign(px); d = R - qx } else { ny = Math.sign(py); d = R - qy }
-      const t = Math.max(0, Math.min(1, 1 - d / E)); m = t * t
-    }
-    im.data[i] = 128 - nx * m * 127; im.data[i + 1] = 128 - ny * m * 127; im.data[i + 2] = 128; im.data[i + 3] = 255
-  }
-  g.putImageData(im, 0, 0); return c.toDataURL()
-}
-const cache = {}; let lensN = 0
-// three displacement passes (red bends most, blue least) give the chromatic fringe at the rim
-function lens(el, o = {}) {
-  if (still) return
-  // Speed: the card's light field keeps moving, so a displacement lens over it was recomputed every frame (often on the CPU).
-  // Plain frosted glass looks nearly the same and keeps the card smooth while it downloads.
-  el.style.backdropFilter = `blur(${o.blur ?? 6}px) saturate(${o.sat ?? 1.8})`; return
-  const w = Math.round(el.offsetWidth), h = Math.round(el.offsetHeight); if (w < 4 || h < 4) return
-  const r = Math.min(parseFloat(getComputedStyle(el).borderTopLeftRadius) || 0, w / 2, h / 2)
-  const S = o.scale ?? Math.min(36, Math.max(10, Math.min(w, h) * .4)), edge = o.edge ?? Math.min(30, Math.max(8, Math.min(w, h) * .4))
-  const key = [w, h, Math.round(r), Math.round(S), Math.round(edge), o.ball ? 1 : 0].join('x')
-  let id = cache[key]
-  if (!id) {
-    id = cache[key] = 'lens' + (++lensN)
-    const pass = (f, n, mtx) => `<feDisplacementMap in="SourceGraphic" in2="m" scale="${(S * f).toFixed(1)}" xChannelSelector="R" yChannelSelector="G"/><feColorMatrix type="matrix" values="${mtx}" result="${n}"/>`
-    $('#defs').insertAdjacentHTML('beforeend', `<filter id="${id}" x="0" y="0" width="${w}" height="${h}" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB"><feImage href="${lensMap(w, h, r, edge, o.ball)}" x="0" y="0" width="${w}" height="${h}" preserveAspectRatio="none" result="m"/>` +
-      pass(1, 'cr', '1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1 0') + pass(.93, 'cg', '0 0 0 0 0 0 1 0 0 0 0 0 0 0 0 0 0 0 1 0') + pass(.86, 'cb', '0 0 0 0 0 0 0 0 0 0 0 0 1 0 0 0 0 0 1 0') +
-      '<feBlend in="cr" in2="cg" mode="screen" result="rg"/><feBlend in="rg" in2="cb" mode="screen"/></filter>')
-  }
-  el.style.backdropFilter = `url(#${id}) blur(${o.blur ?? 6}px) saturate(${o.sat ?? 1.8})`
-}
-const LENSES = [['.bezel', { scale: 34, edge: 28, blur: 1.5, sat: 1.5 }], ['.ic', { scale: 22, edge: 18, blur: 3 }], ['#ver', { scale: 18, edge: 14, blur: 4 }], ['.np', { scale: 26, edge: 20, blur: 5 }],
-  ['#close', { scale: 12, edge: 10, blur: 3 }], ['#later', { scale: 14, edge: 12, blur: 3 }], ['#go', { scale: 16, edge: 14, blur: 3, sat: 2 }], ['.done .orb', { ball: true, scale: 60, blur: 1, sat: 1.6 }], ['.dver', { scale: 12, edge: 10, blur: 3 }]]
-if (!still) { const ro = new ResizeObserver(es => es.forEach(e => lens(e.target, e.target.__lens))); for (const [s, o] of LENSES) { const el = $(s); el.__lens = o; ro.observe(el) } }
-// the glint follows the pointer, and drifts by itself while the pointer is away
-const card = $('#card'); let pointerAt = 0
+let U = {}, notesKey = '', lastStatus = '', outT = 0, lastExit = null
+const card = $('#card')
+// the glint follows the pointer while it is over the card, and otherwise stays put (no idle loop)
 function glint(x, y) { card.style.setProperty('--mx', (x * 100).toFixed(1) + '%'); card.style.setProperty('--my', (y * 100).toFixed(1) + '%') }
-if (!still) (function idle(t) { if (performance.now() - pointerAt > 1500) glint(.5 + Math.sin(t / 2400) * .38, .1 + Math.cos(t / 3100) * .2); requestAnimationFrame(idle) })(0)
 
 // the download finished while you watched: sparks fly out of the icon
 function burst() {
   const fx = $('#fx'), ic = $('.ic').getBoundingClientRect(), cr = card.getBoundingClientRect()
   const x0 = ic.left - cr.left + ic.width / 2, y0 = ic.top - cr.top + ic.height / 2
-  for (let i = 0; i < 26; i++) {
-    const d = document.createElement('b'), a = Math.random() * Math.PI * 2, r = 50 + Math.random() * 110, s = .5 + Math.random() * .8
+  for (let i = 0; i < 28; i++) {
+    const d = document.createElement('b'), a = Math.random() * Math.PI * 2, r = 50 + Math.random() * 120, s = .5 + Math.random() * .8
     d.style.left = x0 + 'px'; d.style.top = y0 + 'px'; fx.appendChild(d)
-    d.animate([{ transform: 'translate(-50%,-50%) scale(0)', opacity: 1 }, { transform: `translate(calc(-50% + ${Math.cos(a) * r}px), calc(-50% + ${Math.sin(a) * r}px)) scale(${s})`, opacity: 1, offset: .55 }, { transform: `translate(calc(-50% + ${Math.cos(a) * r * 1.25}px), calc(-50% + ${Math.sin(a) * r * 1.25 + 24}px)) scale(0)`, opacity: 0 }], { duration: 900 + Math.random() * 500, easing: 'cubic-bezier(.2,.9,.3,1)', fill: 'forwards' }).onfinish = () => d.remove()
+    if (!still) d.animate([{ transform: 'translate(-50%,-50%) scale(0)', opacity: 1 }, { transform: `translate(calc(-50% + ${Math.cos(a) * r}px), calc(-50% + ${Math.sin(a) * r}px)) scale(${s})`, opacity: 1, offset: .55 }, { transform: `translate(calc(-50% + ${Math.cos(a) * r * 1.25}px), calc(-50% + ${Math.sin(a) * r * 1.25 + 24}px)) scale(0)`, opacity: 0 }], { duration: 900 + Math.random() * 500, easing: 'cubic-bezier(.2,.9,.3,1)', fill: 'forwards' }).onfinish = () => d.remove()
     setTimeout(() => d.remove(), 1600)   // also when the card is hidden and animations pause
   }
 }
 // a version number that rolls in digit by digit like an odometer, once per version
 function roll(el, ver) {
   if (el.dataset.v === ver) return; el.dataset.v = ver
-  el.innerHTML = ver.split('').map((c, i) => /\d/.test(c) ? `<span class="roll od"><span class="drum" style="transition-delay:${.15 + i * .07}s">${[0, 1, 2, 3, 4, 5, 6, 7, 8, 9].map(n => `<span>${n}</span>`).join('')}<span>${c}</span></span></span>` : `<span class="roll od"><span>${esc(c)}</span></span>`).join('')
-  requestAnimationFrame(() => requestAnimationFrame(() => el.querySelectorAll('.drum').forEach(d => { d.style.transform = 'translateY(-160px)' })))
-  if (still) el.querySelectorAll('.drum').forEach(d => { d.style.transform = 'translateY(-160px)' })
+  el.innerHTML = ver.split('').map((c, i) => /\d/.test(c) ? `<span class="od"><span class="drum" style="transition-delay:${.15 + i * .07}s">${[0, 1, 2, 3, 4, 5, 6, 7, 8, 9].map(n => `<span>${n}</span>`).join('')}<span>${c}</span></span></span>` : `<span class="od"><span>${esc(c)}</span></span>`).join('')
+  const land = () => el.querySelectorAll('.drum').forEach(d => { d.style.transform = 'translateY(-180px)' })
+  if (still) return land()
+  void el.offsetWidth; setTimeout(land, 30)
+}
+// the restart screen folds into a point of light just before Lumen quits, and its ring fills until then
+const STEPS = ['Installing the update', 'Swapping in the new version', 'Restarting Lumen']
+let stepT = []
+function curtainTimeline(u) {
+  clearTimeout(outT); stepT.forEach(clearTimeout); stepT = []
+  const total = u.exitAt ? Math.max(0, u.exitAt - Date.now()) : 0
+  $('#ck').textContent = STEPS[0]
+  if (!still && total > 600) STEPS.slice(1).forEach((t, i) => stepT.push(setTimeout(() => { const ck = $('#ck'); ck.textContent = t; ck.animate([{ opacity: 0, transform: 'translateY(6px)' }, { opacity: 1, transform: 'none' }], { duration: 260, easing: 'cubic-bezier(.2,.9,.3,1)' }) }, (i + 1) * total / 3.2)))
+  const left = u.exitAt ? u.exitAt - Date.now() : 0, arc = $('#carc')
+  if (still) { arc.style.strokeDashoffset = '0'; return }
+  if (left > 0) {
+    arc.style.transition = 'none'; arc.style.strokeDashoffset = '100'; void arc.getBoundingClientRect()
+    arc.style.transition = `stroke-dashoffset ${Math.max(300, left - 450)}ms cubic-bezier(.4,0,.2,1)`; arc.style.strokeDashoffset = '0'
+    outT = setTimeout(() => $('#curtain').classList.add('out'), Math.max(0, left - 430))
+  } else { arc.style.transition = 'stroke-dashoffset 1s cubic-bezier(.4,0,.2,1)'; arc.style.strokeDashoffset = '0' }
 }
 function paint(u) {
   U = u
   if (/^#[0-9a-f]{6}$/i.test(u.accent || '')) document.documentElement.style.setProperty('--accent', u.accent)
   if (u.status === 'ready' && lastStatus && lastStatus !== 'ready') { setTimeout(() => { card.classList.add('ready-now'); burst(); setTimeout(() => card.classList.remove('ready-now'), 1200) }, 30) }
+  const entering = u.status === 'installing' && lastStatus !== 'installing'
   lastStatus = u.status || ''
   const busy = ['checking', 'downloading', 'verifying', 'unpacking'].includes(u.status)
   const spin = u.status === 'checking' || u.status === 'verifying' || u.status === 'unpacking' || (u.status === 'downloading' && !u.size)
   const notes = (u.notes || []).slice(0, 6)
+  document.body.className = u.status === 'installing' ? 'installing' : ''
   card.className = 'card ' + [u.status, busy && 'busy', spin && 'spin', notes.length && 'has-notes', u.verified && 'verified', card.classList.contains('ready-now') && 'ready-now'].filter(Boolean).join(' ')
   // the version change: from the version you have to the one that is coming
   const from = u.latest && u.status !== 'uptodate' ? v(u.current) : ''
@@ -314,6 +295,10 @@ function paint(u) {
   $('#from').textContent = from; $('#dfrom').textContent = v(u.current)
   $('#ver').classList.toggle('solo', !from || from === toV)
   roll($('#to'), toV); roll($('#dto'), v(u.latest || u.current))
+  const big = v(u.status === 'uptodate' ? u.current : u.latest || u.current).split('.').slice(0, 2).join('.')
+  $('#bignum').textContent = big; card.classList.toggle('has-big', !!big)
+  $('#ctitle').textContent = 'Lumen ' + v(u.latest || u.current).replace(/\.0$/, '')
+  if (entering || (u.status === 'installing' && u.exitAt && u.exitAt !== lastExit)) { lastExit = u.exitAt; curtainTimeline(u) }
   const T = {
     available: ['Update available', `Lumen ${v(u.latest)} is here`, u.size ? `${fmt(u.size)}, downloads quietly in the background` : 'Downloads quietly in the background'],
     checking: ['Software update', 'Checking for updates', 'One moment'],
@@ -326,13 +311,14 @@ function paint(u) {
     uptodate: ['All set', `Lumen ${v(u.current)} is up to date`, 'You have the newest version'],
   }[u.status] || ['Software update', 'Update Lumen', '']
   $('#kick').textContent = T[0]; $('#title').textContent = T[1]; $('#sub').textContent = T[2]; $('#sub').title = T[2]
-  // progress: the ring around the icon, the liquid in the tube and the card's own edge
+  // progress: the ring around the icon, the light in the tube and the card's own edge
   const pct = u.status === 'downloading' ? (u.progress || 0) : ['verifying', 'unpacking', 'ready', 'uptodate'].includes(u.status) ? 100 : 0
   $('#arc').style.strokeDashoffset = String(226 - 226 * pct / 100)
   $('#fill').style.width = pct + '%'; $('#edge').style.width = (u.status === 'uptodate' ? 0 : pct) + '%'
   $('#m1').textContent = u.status === 'downloading' && u.size ? `${fmt(u.bytes || 0)} of ${fmt(u.size)}  ·  ${u.progress || 0}%` : u.status === 'checking' ? 'Asking GitHub' : u.status === 'verifying' ? 'Checking the fingerprint' : u.status === 'unpacking' ? 'Unpacking' : ''
   $('#m2').textContent = u.lastCheck ? `Checked ${new Date(u.lastCheck).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : ''
   $('#nh').textContent = u.latest && u.status !== 'uptodate' ? `What is new in ${v(u.latest)}` : 'What is new'
+  $('#nc').textContent = notes.length ? `${notes.length} ${notes.length === 1 ? 'change' : 'changes'}` : ''
   const key = v(u.latest) + notes.join('|')
   if (key !== notesKey) { notesKey = key; $('#notes').innerHTML = notes.map((n, i) => `<li style="animation-delay:${.15 + i * .06}s" title="${esc(n)}">${esc(n)}</li>`).join('') }
   const b = $('#go'); b.disabled = false
@@ -355,11 +341,12 @@ $('#go').onclick = () => {
 }
 $('#later').onclick = () => api.action('later'); $('#skip').onclick = () => api.action('skip'); $('#close').onclick = () => api.action('later')
 addEventListener('mousemove', e => {
+  if (U.status === 'installing') return
   const r = card.getBoundingClientRect(), x = (e.clientX - r.left) / r.width, y = (e.clientY - r.top) / r.height
-  pointerAt = performance.now(); glint(x, y)
+  glint(x, y)
   if (!still) card.style.transform = `perspective(1000px) rotateX(${(-(y - .5) * 2).toFixed(2)}deg) rotateY(${((x - .5) * 2.6).toFixed(2)}deg)`
 })
 addEventListener('mouseleave', () => { card.style.transform = '' })
-addEventListener('keydown', e => { if (e.key === 'Escape') api.action('later') })
+addEventListener('keydown', e => { if (e.key === 'Escape' && U.status !== 'installing') api.action('later') })
 ;(async () => { const s = await api.action('state') || {}; if (s.appIcon) $('#icon').src = $('#dicon').src = `../pages/icon-${s.appIcon}.png`; paint(s); api.on(paint) })()
 </script></body></html>

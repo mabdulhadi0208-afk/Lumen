@@ -443,7 +443,7 @@ function updateTray() {
   if (IS_MAC) tray.setTitle(titles.length ? ' ' + titles.join('  ') : ''); else tray.setToolTip(['Surge', ...titles].join('  '));
   const items = [];
   for (const [id, e] of Object.entries(trayExtras)) if (e?.menu?.length) { items.push(...e.menu); items.push({ type: 'separator' }); }
-  trayMenu = Menu.buildFromTemplate([
+  trayMenu = ([   // the template; drawn by the Nova menu on right-click
     ...items,
     { label: 'Settings…', accelerator: 'Cmd+,', click: () => openSettings() },
     { label: 'Quick Notes', accelerator: 'Cmd+Shift+N', click: toggleNotes },
@@ -568,7 +568,7 @@ app.whenReady().then(async () => {
   tray = new Tray(trayIcon()); tray.setIgnoreDoubleClickEvents(true); tray.setToolTip('Surge');
   if (IS_MAC && process.env.SURGE_SELFTEST) { try { const t = trayChip({ level: 67, charging: true }); log('tray chip selftest ' + (t ? 'pass' : 'FAIL')); try { const C = require('./traychip.js'), L = C.chipLayout({ level: 67, charging: true }, { scale: 2 }); let n = 0; for (let f = 0; f < C.FRAMES; f++) { const im = nativeImage.createFromBuffer(C.chipFramePNG(L, f), { scaleFactor: 2 }); if (!im.isEmpty() && im.getSize().width === 40) { tray.setImage(im); n++; } } log(n === C.FRAMES ? 'tray chip flow ok ' + n + ' frames' : 'tray chip flow FAIL ' + n); tray.setImage(trayIcon()); } catch (e) { log('tray chip flow FAIL ' + e.message); } log('tray svg icon ' + (trayIconRaw({ level: 50 }).isEmpty() ? 'EMPTY' : 'ok') + ', fallback ' + (trayIcon({ level: 50 }).isEmpty() ? 'EMPTY' : 'ok') + ', bolt ' + (trayIcon().isEmpty() ? 'EMPTY' : 'ok')); } catch (e) { log('tray chip selftest FAIL ' + e.message); } }
   tray.on('click', togglePopover);
-  tray.on('right-click', () => trayMenu && tray.popUpContextMenu(trayMenu));
+  tray.on('right-click', () => { if (!trayMenu) return; try { require('./lumen-menu.js').popup(trayMenu, tray.getBounds(), { battery, on: running.size, muted: !!settings.muted, total: Object.keys(MODULES).length }); } catch (e) { log('nova menu ' + (e && e.message)); tray.popUpContextMenu(Menu.buildFromTemplate(trayMenu)); } });
   if (IS_WIN) app.setAppUserModelId('app.surge.glow');
   updateTray(); ensurePopover();
   let dispT; const rebuild = () => { clearTimeout(dispT); dispT = setTimeout(() => { createOverlays(); running.forEach(id => MODULES[id].onSettings?.(ctx)); }, 600); };

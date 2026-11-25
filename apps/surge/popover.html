@@ -104,7 +104,7 @@
 
   .sec{display:flex;align-items:baseline;gap:8px;min-height:15px} .sec .sx{color:var(--ink);font-weight:600;animation:sx .5s var(--spring-soft)} @keyframes sx{from{opacity:0;translate:-8px 0}}
 </style><script>window.FLUID={blobs:1,pop:'#mout'}</script><link rel="stylesheet" href="fluid.css"><script defer src="fluid.js"></script><link rel="stylesheet" href="fx.css"><script defer src="fx.js"></script>
-<link rel="stylesheet" href="lumen-glow.css"><script defer src="lumen-glass.js"></script></head>
+<link rel="stylesheet" href="lumen-glow.css"><script defer src="lumen-glass.js"></script><script defer src="lumen-update.js"></script></head>
 <body>
 <div class="arrow"></div>
 <div class="panel">
@@ -150,7 +150,7 @@ async function state(){ const st=await api?.action('caffeine','state'); $('#qCaf
   const f=await api?.action('focus','state'); $('#qFocus').classList.toggle('live',!!f&&f.phase!=='idle'); $('#qFocus').lastChild.textContent=f&&f.phase!=='idle'?`${f.mm}:${f.ss}`:'Focus';
   const sp=await api?.action('spotlight','state'); $('#qSpot').classList.toggle('live',!!sp?.on);
   hook=await api?.hookState()||hook; document.querySelectorAll('.m').forEach(b=>{ const m=MODS.find(x=>x.id===b.dataset.m); b.classList.toggle('need',!!(m?.needsHook&&hook!=='running')); }); $('#axT').textContent = hook==='stale' ? 'Keyboard & mouse permission is stuck' : 'Keyboard & mouse need Accessibility'; $('#axBtn').textContent = hook==='stale' ? 'Repair' : 'Allow'; $('#ax').style.display = (hook==='needs-accessibility'||hook==='error'||hook==='stale') && MODS.some(m=>m.needsHook&&S.modules[m.id]?.enabled) ? 'flex' : 'none';
-  const u=await api?.action('updater','state'); if(u){ $('#ver').textContent='v'+u.current; const box=$('#upd'); if(['ready','available','downloading','unpacking'].includes(u.status)){ box.style.display='flex'; $('#updT').textContent=u.status==='ready'?`Surge ${u.latest} is ready`:u.status==='downloading'?`Downloading ${u.latest}… ${u.progress||0}%`:u.status==='unpacking'?`Unpacking ${u.latest}…`:`Surge ${u.latest} available`; $('#updBtn').textContent=u.status==='ready'?'Restart':(u.status==='downloading'||u.status==='unpacking')?'…':'Update'; $('#updBtn').disabled=(u.status==='downloading'||u.status==='unpacking'); } else box.style.display='none'; }
+  const u=await api?.action('updater','state'); if(u){ $('#ver').textContent='v'+u.current; const box=$('#upd'); if(['ready','available','downloading','verifying','unpacking','installing','error'].includes(u.status)&&(u.status!=='error'||u.latest)){ box.style.display='flex'; if(window.lumenUpd) lumenUpd(box,u,{text:$('#updT'),btn:$('#updBtn'),poll:state}); else { $('#updT').textContent=u.status==='ready'?`Surge ${u.latest} is ready`:u.status==='downloading'?`Downloading ${u.latest}… ${u.progress||0}%`:u.status==='unpacking'?`Unpacking ${u.latest}…`:`Surge ${u.latest} available`; $('#updBtn').textContent=u.status==='ready'?'Restart':(u.status==='downloading'||u.status==='unpacking')?'…':'Update'; $('#updBtn').disabled=(u.status==='downloading'||u.status==='unpacking'); } } else box.style.display='none'; }
   const c=await api?.action('clip','last'); $('#clip').textContent=c?('Clipboard: '+c.replace(/\s+/g,' ').slice(0,28)+(c.length>28?'…':'')):'Clipboard: —'; }
 $('#master').oninput=e=>{ e.target.style.setProperty('--p',e.target.value*100+'%'); $('#mout').textContent=Math.round(e.target.value*100)+'%'; S.masterVolume=+e.target.value; clearTimeout(window._mt); window._mt=setTimeout(()=>api?.setSettings({masterVolume:+e.target.value}),120); };
 $('#master').onchange=()=>api?.testSound('key',{preset:S.modules.keys?.preset,volume:S.modules.keys?.volume??.6,kind:'key'});
@@ -162,7 +162,7 @@ $('#qSpot').onclick=async()=>{ if(!S.modules.spotlight?.enabled){ S.modules.spot
 $('#qNotes').onclick=()=>{ api?.toggleNotes(); api?.hide(); };
 $('#quit').onclick=()=>api?.quit();
 $('#axBtn').onclick=()=>{ if(hook==='stale'){ toast('Repairing — Surge will restart'); api?.repairAccessibility(); } else api?.openAccessibility(); };
-$('#updBtn').onclick=async()=>{ const u=await api?.action('updater','state'); if(u?.status==='ready'){ api?.action('updater','install'); toast('Restarting…'); } else { api?.action('updater','download'); toast('Downloading…'); } };
+$('#updBtn').onclick=async()=>{ const u=await api?.action('updater','state'); if(u?.status==='ready'){ api?.action('updater','install'); toast('Restarting Lumen'); } else if(u?.status==='error'){ api?.action('updater','check'); toast('Checking again'); } else { api?.action('updater','download'); toast('Downloading Lumen '+String(u?.latest||'').replace(/^v/,'')); } setTimeout(state,400); };
 $('#ver').onclick=async()=>{ toast('Checking…'); const u=await api?.action('updater','check'); toast(u?.status==='available'?`${u.latest} available`:u?.status==='uptodate'?'Up to date':'Check failed'); state(); };
 (async()=>{ MODS=await api?.listModules()||[]; S=await api?.getSettings()||S; hook=await api?.hookState()||hook; build(); paint(); batt(); state();
   api?.on('settings:update',s=>{S=s;paint();});
@@ -172,7 +172,7 @@ async function sndCheck(){ const d=await api?.soundDiag?.(); if(!d) return; cons
   $('#chkT').innerHTML=`Keys heard <b style="color:var(--ink)">${d.keyCount}</b> · sounds sent <b style="color:var(--ink)">${d.soundCount}</b> · engine <b style="color:var(--ink)">${(d.audioState||'idle').replace(/^rebuilt.*→ /,'')}</b>${d.code==='waiting'?' · press a key':''}`;
   $('#snd').style.display=f&&!dup?'flex':'none'; if(f){ $('#sndT').textContent='No sound: '+d.text; $('#sndBtn').textContent=f[0]; $('#sndBtn').onclick=async()=>{ await f[1](); setTimeout(sndCheck,400); }; } }
 $('#chkBtn').onclick=()=>{ api?.testSound('key',{preset:S.modules?.keys?.preset,volume:.9,kind:'key'}); setTimeout(()=>api?.testSound('key',{preset:S.modules?.keys?.preset,volume:.9,kind:'space'}),160); setTimeout(()=>api?.testSound('bell',{volume:.8}),380); setTimeout(sndCheck,600); };
-sndCheck(); setInterval(sndCheck,1000); addEventListener('focus',sndCheck);
+sndCheck(); setInterval(()=>{ if(!document.hidden) sndCheck(); },1000); addEventListener('focus',sndCheck);
 // the window grows/shrinks to fit its content — nothing (alerts, footer) may ever be cut off
 let lastH=0; function fitH(){ const q=document.querySelector('.quick'), f=document.querySelector('footer'); if(!q||!f) return; const h=Math.min(860,Math.ceil(q.offsetTop+q.offsetHeight+f.offsetHeight+44)); if(Math.abs(h-lastH)>1){ lastH=h; api?.popoverHeight?.(h); } }
 new MutationObserver(rs=>{ /* only layout-changing mutations matter; cursor effects restyle things every frame */ if(rs.some(r=>r.type==='childList'?!(r.target.closest&&r.target.closest('.fl-layer,.grid .m,.q,header')):(r.attributeName==='style'&&(r.target.classList.contains('upd')||r.target.id==='chk'||r.target.id==='grid'))||(r.attributeName==='class'&&r.target.classList.contains('panel')))) requestAnimationFrame(fitH); }).observe(document.querySelector('.panel'),{childList:true,subtree:true,attributes:true,attributeFilter:['style','class']}); setInterval(fitH,1000); requestAnimationFrame(fitH); function restage(){ document.querySelectorAll('.m').forEach((el,i)=>el.style.setProperty('--i',i)); document.querySelectorAll('.q').forEach((el,i)=>el.style.setProperty('--i',i)); const p=document.querySelector('.panel'); p.classList.remove('show'); void p.offsetWidth; p.classList.add('show'); }
@@ -182,7 +182,7 @@ function pour(){ const hd=document.querySelector('header'), liq=document.getElem
   const to=parseInt(p.textContent)||0; if(!to) return; const t0=performance.now(); cancelAnimationFrame(pour.r); const step=n=>{ const k=Math.min(1,(n-t0)/900), e=1-Math.pow(1-k,3); p.textContent=Math.round(to*e)+'%'; if(k<1) pour.r=requestAnimationFrame(step); }; pour.r=requestAnimationFrame(step); }
 setTimeout(pour,400); setTimeout(restage,60);
 api?.on('popover:edge',e=>document.body.classList.toggle('bottom',e==='bottom')); api?.on('popover:show',()=>{ hook=''; api?.hookState().then(h=>{hook=h;}); batt(); state(); document.querySelector('.panel').style.animation='none'; void document.querySelector('.panel').offsetWidth; document.querySelector('.panel').style.animation=''; });
-  setInterval(()=>{ batt(); state(); },2000); })();
+  setInterval(()=>{ if(document.hidden) return; batt(); state(); },2000); })();
 addEventListener('keydown',e=>{ if(e.key==='Escape') api?.hide(); });
 </script>
 </body></html>

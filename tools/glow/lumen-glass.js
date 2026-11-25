@@ -150,7 +150,22 @@
     }
   }
 
+  /* ---------------------------------------------------------------- 4.0 speed: nothing loops forever */
+  // Surge and Koi windows stay loaded (and often on screen, like the Dock) all day, so a looping animation there costs
+  // CPU and GPU the whole time. Every animation that would repeat forever plays twice and rests instead; under reduced
+  // motion it does not play at all. Entrance, hover and press motion are untouched. An element can opt out with
+  // data-loop (a spinner while something is really busy).
+  const film = tag === 'kapp' && /mode=tour/.test(location.search)   // Koi's tour is a film you watch: it keeps its motion
+  const rest = a => { if (film) return; try { if (!a.effect || a.effect.getTiming().iterations !== Infinity) return; const t = a.effect.target; if (t && t.closest && t.closest('[data-loop]')) return; a.effect.updateTiming({ iterations: still() ? 0 : 2 }) } catch {} }
+  d.addEventListener('animationstart', e => {
+    const el = e.target; if (!el || !el.getAnimations) return
+    for (const a of el.getAnimations({ subtree: true })) if (a.animationName === e.animationName && a.effect && a.effect.target === el && (a.effect.pseudoElement || '') === (e.pseudoElement || '')) rest(a)
+  }, true)
+  const restAll = () => { try { d.getAnimations().forEach(rest) } catch {} }
+  restAll(); addEventListener('load', restAll)
+
   /* ---------------------------------------------------------------- start */
-  const start = () => { decorate(); scanLens(); new MutationObserver(() => { clearTimeout(start.t); start.t = setTimeout(() => { decorate(); scanLens() }, 60) }).observe(d.body, { childList: true, subtree: true }) }
+  // only windows with lens surfaces or hero banners need to watch for new content (the Dock re-renders every second)
+  const start = () => { decorate(); scanLens(); if (!LENS[tag] && !HERO[tag]) return; new MutationObserver(() => { clearTimeout(start.t); start.t = setTimeout(() => { decorate(); scanLens() }, 60) }).observe(d.body, { childList: true, subtree: true }) }
   if (d.body) start(); else addEventListener('DOMContentLoaded', start)
 })()

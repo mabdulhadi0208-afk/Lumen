@@ -47,7 +47,7 @@ body.dk .seg .th{background:rgba(255,255,255,.2);box-shadow:0 3px 10px rgba(0,0,
 
 @keyframes rin{0%{opacity:0;transform:translateY(12px) scale(.94)}60%{opacity:1;transform:translateY(-2px) scale(1.01)}100%{opacity:1;transform:none}}
 .row{animation:rin .6s cubic-bezier(.3,1.9,.5,1) both}.row:nth-of-type(1){animation-delay:.12s}.row:nth-of-type(2){animation-delay:.17s}.row:nth-of-type(3){animation-delay:.22s}.row:nth-of-type(4){animation-delay:.27s}.row:nth-of-type(5){animation-delay:.32s}
-</style><link rel="stylesheet" href="lumen-glow.css"><script defer src="lumen-glass.js"></script></head><body>
+</style><link rel="stylesheet" href="lumen-glow.css"><script defer src="lumen-glass.js"></script><script defer src="lumen-update.js"></script></head><body>
 <div id="wrap"><div id="panel"><div class="aura"></div><div class="in" id="in">
  <div class="hd it"><div class="lg"><svg width="22" height="22" viewBox="0 0 120 120" fill="none"><circle cx="60" cy="60" r="46" stroke="#fff" stroke-width="9" stroke-linecap="round"/><circle cx="60" cy="60" r="17" fill="#fff"/></svg></div><div><b>Koi</b><small id="ver">v1.0</small></div><div class="pill" id="pill"><i></i><span>Up to date</span></div></div>
  <button class="go it" id="open"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round"><path d="M12 12L6 5M12 12h9M12 12l-6 7"/></svg><span>Open the fan</span><span class="ki" id="ki"></span></button>
@@ -57,25 +57,28 @@ body.dk .seg .th{background:rgba(255,255,255,.2);box-shadow:0 3px 10px rgba(0,0,
  <div class="sg it"><span>Size</span><div class="seg" id="s-size"><div class="th"></div><button data-v=".85">S</button><button data-v="1">M</button><button data-v="1.2">B</button><button data-v="1.4">XL</button></div></div>
  <div class="sg it"><span>Motion</span><div class="seg" id="s-speed"><div class="th"></div><button data-v=".7">Soft</button><button data-v="1">Normal</button><button data-v="1.3">Fast</button></div></div>
  <div class="lbl it">General</div>
- <div class="row it" id="r-sound"><div class="ic">♪</div>Sounds<div class="tg" id="t-sound"><i></i></div></div>
- <div class="row it" id="r-login"><div class="ic">⏻</div>Launch at login<div class="tg" id="t-login"><i></i></div></div>
- <div class="row it" id="r-auto"><div class="ic">⇩</div>Auto-download updates<div class="tg" id="t-auto"><i></i></div></div>
+ <div class="row it" id="r-sound"><div class="ic"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11 5 6.5 9H3.5v6h3L11 19z"/><path d="M15.5 8.5a5 5 0 0 1 0 7M18.5 5.5a9 9 0 0 1 0 13"/></svg></div>Sounds<div class="tg" id="t-sound"><i></i></div></div>
+ <div class="row it" id="r-login"><div class="ic"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.5v8"/><path d="M6.3 6.8a8 8 0 1 0 11.4 0"/></svg></div>Launch at login<div class="tg" id="t-login"><i></i></div></div>
+ <div class="row it" id="r-auto"><div class="ic"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11M7 10.5l5 5 5-5M5 20h14"/></svg></div>Auto-download updates<div class="tg" id="t-auto"><i></i></div></div>
  <div class="sep it"></div>
- <div class="row it" data-a="hotkeys"><div class="ic">⌥</div>Hotkeys…<span class="r">⌥ Space</span></div>
- <div class="row it" data-a="tour"><div class="ic">▶</div>Replay the tour</div>
- <div class="row it" data-a="update"><div class="ic">↻</div>Check for updates</div>
- <div class="row it dg" data-a="quit"><div class="ic">✕</div>Quit Koi</div>
+ <div class="row it" data-a="hotkeys"><div class="ic"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="2.5" y="6" width="19" height="12" rx="3"/><path d="M6.5 10h.1M10 10h.1M13.5 10h.1M17.5 10h.1M7.5 14h9"/></svg></div>Hotkeys…<span class="r">⌥ Space</span></div>
+ <div class="row it" data-a="tour"><div class="ic"><svg viewBox="0 0 24 24" aria-hidden="true"><path class="fill" d="M8.5 5.8v12.4a.8.8 0 0 0 1.2.7l9.6-6.2a.8.8 0 0 0 0-1.4L9.7 5.1a.8.8 0 0 0-1.2.7z"/></svg></div>Replay the tour</div>
+ <div class="row it" data-a="update"><div class="ic"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19.5 12a7.5 7.5 0 1 1-2.2-5.3"/><path d="M19.5 4.5v4.2h-4.2"/></svg></div>Check for updates</div>
+ <div class="row it dg" data-a="quit"><div class="ic"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 7l10 10M17 7 7 17"/></svg></div>Quit Koi</div>
  <div class="ft it" id="ft"></div>
 </div></div></div>
 <script>
 const $=s=>document.querySelector(s),$$=s=>[...document.querySelectorAll(s)],api=window.koiAPI&&window.koiAPI.pop;
 // ---------- tiny spring engine (jelly, tuned) ----------
 const SP=new Set();
-class Sp{constructor(x,k=240,c=15,cb){this.x=x;this.v=0;this.t=x;this.k=k;this.c=c;this.cb=cb;SP.add(this)}
+class Sp{constructor(x,k=240,c=15,cb){this.x=x;this.v=0;this._t=x;this.k=k;this.c=c;this.cb=cb;SP.add(this)}
+ get t(){return this._t} set t(v){this._t=v;wake()}
  step(dt){this.v+=((this.t-this.x)*this.k-this.v*this.c)*dt;this.x+=this.v*dt;this.cb&&this.cb(this)}
  set(t){this.t=t}}
-let last=performance.now();
-(function loop(now){const dt=Math.min(.033,(now-last)/1000);last=now;SP.forEach(s=>s.step(dt));requestAnimationFrame(loop)})(last);
+let last=performance.now(),rafOn=0,still=0;
+function wake(){still=0;if(!rafOn){rafOn=1;last=performance.now();requestAnimationFrame(loop)}}
+function loop(now){const dt=Math.min(.033,(now-last)/1000);last=now;let mv=0;SP.forEach(s=>{s.step(dt);if(!mv&&(Math.abs(s.v)>.002||Math.abs(s._t-s.x)>.002))mv=1});still=mv?0:still+1;if(still>24){rafOn=0;return}requestAnimationFrame(loop)}
+wake();addEventListener('pointermove',wake,{passive:true});addEventListener('pointerdown',wake,{passive:true});setTimeout(()=>{if(!items.length)for(const a of document.getAnimations()){try{if(a.effect&&a.effect.getTiming().iterations!==1)a.finish()}catch(e){}}},1500);
 // ---------- state ----------
 let S={theme:'light',size:1,speed:1.3,sound:false,login:false,autoDownload:true,shortcut:'⌥ Space',version:'',upd:{status:'idle'}};
 const segs={};
@@ -117,7 +120,7 @@ function show(anchor){
   y.cb=apply;o.cb=apply;sc.cb=apply;itemSp.push(y,o,sc);setTimeout(()=>{y.t=0;o.t=1;sc.t=1},60+i*28)});
  setTimeout(()=>{api&&api.size(panel.offsetHeight+30)},30);
 }
-function hide(){ps.t=.9;py.t=-8;po.t=0;po.k=420;po.c=30}
+function hide(){ps.t=.9;py.t=-8;po.t=0;po.k=420;po.c=30;clearTimeout(hide.r);hide.r=setTimeout(()=>{for(const a of document.getAnimations()){try{if(a.effect&&a.effect.getTiming().iterations!==1)a.finish()}catch(e){}}},400)}
 // rows' transform is owned by jelly(); entrance handled via opacity only
 // ---------- render ----------
 function fmt(u){return u}
@@ -130,16 +133,17 @@ function render(){
  const u=S.upd||{},pill=$('#pill'),ub=$('#upb');pill.className='pill';
  const st=u.status;
  if(st==='ready'){pill.classList.add('up');pill.querySelector('span').textContent='Update ready';ub.classList.add('show');$('#upt').textContent='Koi '+String(u.latest).replace(/^v/,'')+' is ready';$('#ups').textContent='Restart to switch — about 3 seconds';$('#upgo').textContent='Restart'}
- else if(st==='available'||st==='downloading'||st==='unpacking'){pill.classList.add('up');pill.querySelector('span').textContent=st==='available'?'Update found':(u.progress||0)+'%';ub.classList.add('show');$('#upt').textContent='Koi '+String(u.latest).replace(/^v/,'');$('#ups').textContent=st==='available'?'Ready to download':st==='unpacking'?'Unpacking…':'Downloading '+(u.progress||0)+'%';$('#upgo').textContent=st==='available'?'Get it':'…'}
+ else if(st==='available'||st==='downloading'||st==='verifying'||st==='unpacking'||st==='installing'){pill.classList.add('up');pill.querySelector('span').textContent=st==='available'?'Update found':(u.progress||0)+'%';ub.classList.add('show');$('#upt').textContent='Koi '+String(u.latest).replace(/^v/,'');$('#ups').textContent=st==='available'?'Ready to download':st==='unpacking'?'Unpacking…':'Downloading '+(u.progress||0)+'%';$('#upgo').textContent=st==='available'?'Get it':'…'}
  else if(st==='checking'){pill.querySelector('span').textContent='Checking…';ub.classList.remove('show')}
  else if(st==='error'){pill.classList.add('err');pill.querySelector('span').textContent='Update hiccup';ub.classList.remove('show')}
  else{pill.querySelector('span').textContent='Up to date';ub.classList.remove('show')}
+ if(window.lumenUpd&&ub.classList.contains('show'))lumenUpd(ub,u,{text:ub.querySelector('div'),btn:$('#upgo'),poll:async()=>{if(!api)return;Object.assign(S,await api.get());render()}});
  $('#ft').textContent=u.lastCheck?'Last checked '+new Date(u.lastCheck).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}):'';
  tick();
 }
 function tick(){clearTimeout(tick.t);tick.t=setTimeout(()=>{api&&api.size(panel.offsetHeight+30)},40)}
 $('#open').onclick=()=>api&&api.action('open');
-$('#upgo').onclick=()=>{const st=(S.upd||{}).status;api&&api.action(st==='ready'?'install':'download')};
+$('#upgo').onclick=()=>{const st=(S.upd||{}).status;if(['downloading','verifying','unpacking','installing'].includes(st))return;api&&api.action(st==='ready'?'install':'download');setTimeout(async()=>{if(api){Object.assign(S,await api.get());render()}},400)};
 $$('[data-a]').forEach(r=>r.onclick=()=>api&&api.action(r.dataset.a));
 if(api){api.onState(s=>{S=Object.assign(S,s);render()});api.onShow(d=>{S=Object.assign(S,d.state);render();show(d.anchor)});api.onHide(()=>hide());api.get().then(s=>{S=Object.assign(S,s);render()})}
 else{render();show(200)}

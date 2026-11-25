@@ -1,0 +1,126 @@
+/* ════════════════════════════════════════════════════════════════════════════════════════════════════════════════
+   Lumen 4.0 for Surge (docs/NOVA.md). Loaded last in every Surge window.
+   - the menu-bar right-click menu, drawn by Lumen (lumen-menu.html)
+   - the update card in Surge's menu and its Updates page
+   ════════════════════════════════════════════════════════════════════════════════════════════════════════════════ */
+.lu-card[data-st=idle] .lu-steps,.lu-card[data-st=uptodate] .lu-steps,.lu-card[data-st=checking] .lu-steps,.lu-card[data-st=error] .lu-steps{display:none}
+
+/* ---------------------------------------------------------------- Surge's menu: the update banner */
+[data-lg=popover] #upd.lu{align-items:center;gap:13px;padding:13px 13px 13px 14px!important;margin:8px 12px 0!important;border-radius:22px!important;position:relative;overflow:hidden;
+  background:var(--nv-glint-sm),radial-gradient(120% 160% at 0% 0%,rgb(from var(--nv-a) r g b / .42),transparent 60%),radial-gradient(90% 120% at 100% 100%,rgb(from var(--nv-a3) r g b / .22),transparent 60%),linear-gradient(180deg,rgba(30,35,60,.72),rgba(14,16,30,.82))!important;
+  box-shadow:var(--nv-fringe),var(--nv-caustic),0 0 0 1px rgb(from var(--nv-a) r g b / .4),0 0 0 5px rgb(from var(--nv-a) r g b / .1),0 16px 34px -16px var(--nv-a)!important}
+[data-lg=popover] #upd.lu svg{animation:none!important;stroke:#fff}
+[data-lg=popover] #upd.lu .lu-ic svg{width:21px;height:21px}
+[data-lg=popover] #upd.lu .lu-v svg{stroke:var(--nv-a);width:14px;height:8px}
+[data-lg=popover] #upd.lu #updT{font-size:12px;color:var(--nv-tx)}
+[data-lg=popover] #upd.lu .lu-t{background:linear-gradient(100deg,#fff 45%,color-mix(in oklab,var(--nv-a3) 70%,#fff));-webkit-background-clip:text;background-clip:text;color:transparent}
+[data-lg=popover] #upd.lu .lu-s{color:var(--nv-mut)}
+[data-lg=popover] #upd.lu #updBtn{flex:none;padding:9px 15px!important;font:800 12.5px var(--nv-head)!important;border-radius:99px!important;min-width:58px;text-align:center;
+  background:linear-gradient(110deg,transparent 30%,rgba(255,255,255,.5) 48%,transparent 66%) no-repeat -160% 0/60% 100%,radial-gradient(90% 140% at 30% -20%,rgba(255,255,255,.45),transparent 55%),var(--nova)!important;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.5),0 0 0 3px rgb(from var(--nv-a) r g b / .2),0 8px 18px -8px var(--nv-a)!important}
+[data-lg=popover] #upd.lu.lu-busy #updBtn{background:rgba(255,255,255,.08)!important;box-shadow:inset 0 0 0 1px rgba(255,255,255,.14)!important;color:var(--nv-tx)!important;font-variant-numeric:tabular-nums}
+
+/* ---------------------------------------------------------------- the right-click menu (lumen-menu.html) */
+[data-lg=menu],[data-lg=menu] body{margin:0;background:transparent;overflow:hidden;color:var(--nv-tx);font:600 13.5px/1.2 system-ui,-apple-system,"SF Pro Text","Segoe UI",sans-serif;-webkit-font-smoothing:antialiased;user-select:none;cursor:default}
+[data-lg=menu] body{padding:14px}
+[data-lg=menu] .mn{position:relative;width:100%;box-sizing:border-box;padding:8px;border-radius:24px;border:1px solid transparent;overflow:hidden;transform-origin:50% 0;
+  background:var(--nv-glint) padding-box,linear-gradient(180deg,rgba(255,255,255,.1),rgba(255,255,255,0) 22%) padding-box,radial-gradient(90% 60% at 100% 0%,rgb(from var(--nv-a3) r g b / .22),transparent 70%) padding-box,radial-gradient(90% 70% at 0% 100%,rgb(from var(--nv-a) r g b / .26),transparent 70%) padding-box,linear-gradient(180deg,rgba(24,28,48,.97),rgba(11,13,24,.98)) padding-box,var(--nv-rim) border-box;
+  box-shadow:var(--nv-fringe),var(--nv-caustic),0 2px 6px rgba(0,0,10,.3),0 22px 50px -16px rgba(0,0,10,.8),0 0 40px -18px var(--nv-a)}
+[data-lg=menu] body.up .mn{transform-origin:50% 100%}
+[data-lg=menu] .mn.in{animation:mnIn .46s var(--spring) both}
+@keyframes mnIn{from{opacity:0;transform:translateY(-8px) scale(.94)}to{opacity:1;transform:none}}
+[data-lg=menu] body.up .mn.in{animation-name:mnUp}
+@keyframes mnUp{from{opacity:0;transform:translateY(8px) scale(.94)}to{opacity:1;transform:none}}
+[data-lg=menu] body.out .mn{opacity:0;transform:scale(.96);transition:opacity .12s,transform .12s}
+[data-lg=menu] .mn-hd{display:flex;align-items:center;gap:11px;padding:6px 8px 12px;margin-bottom:6px;border-bottom:1px solid rgba(255,255,255,.07)}
+[data-lg=menu] .mn-logo{width:34px;height:34px;flex:none;border-radius:11px;display:grid;place-items:center;
+  background:radial-gradient(circle at 32% 22%,rgba(255,255,255,.55),transparent 46%),var(--nova);box-shadow:inset 0 1px 0 rgba(255,255,255,.55),inset 0 -5px 10px -5px rgba(0,0,40,.4),0 0 0 3px rgb(from var(--nv-a) r g b / .16),0 8px 18px -6px var(--nv-a)}
+[data-lg=menu] .mn-logo svg{width:18px;height:18px;fill:#fff;stroke:#fff;stroke-width:1;stroke-linejoin:round;filter:drop-shadow(0 1px 2px rgba(0,0,40,.4))}
+[data-lg=menu] .mn-tt{display:flex;flex-direction:column;gap:2px}
+[data-lg=menu] .mn-tt b{font:800 17px/1 var(--nv-head);letter-spacing:-.03em;background:linear-gradient(100deg,#fff 40%,color-mix(in oklab,var(--nv-a3) 70%,#fff));-webkit-background-clip:text;background-clip:text;color:transparent}
+[data-lg=menu] .mn-tt small{font:650 11px/1 var(--nv-head);color:var(--nv-mut)}
+[data-lg=menu] .mn-list{display:flex;flex-direction:column;gap:1px}
+[data-lg=menu] .mi{all:unset;box-sizing:border-box;display:flex;align-items:center;gap:10px;width:100%;min-height:36px;padding:5px 8px 5px 5px;border-radius:13px;position:relative;color:var(--nv-tx);
+  transition:background .18s,transform .45s var(--spring),box-shadow .2s}
+[data-lg=menu] .mn.in .mi{animation:miIn .5s var(--spring) both;animation-delay:calc(60ms + var(--i,0) * 26ms)}
+@keyframes miIn{from{opacity:0;transform:translateY(-5px)}to{opacity:1;transform:none}}
+[data-lg=menu] .mi .ic{width:27px;height:27px;flex:none;border-radius:9px;display:grid;place-items:center;color:color-mix(in oklab,var(--nv-a) 60%,#fff);
+  background:radial-gradient(circle at 35% 20%,rgba(255,255,255,.22),transparent 50%),rgb(from var(--nv-a) r g b / .16);box-shadow:inset 0 0 0 1px rgb(from var(--nv-a) r g b / .22),var(--nv-spec);transition:background .2s,color .2s,box-shadow .2s}
+[data-lg=menu] .mi .ic svg{width:15px;height:15px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+[data-lg=menu] .mi .lb{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+[data-lg=menu] button.mi:focus,[data-lg=menu] button.mi:hover{background:var(--nv-glint-sm),linear-gradient(90deg,rgb(from var(--nv-a) r g b / .26),rgb(from var(--nv-a3) r g b / .12));box-shadow:inset 0 0 0 1px rgb(from var(--nv-a) r g b / .3);transform:translateX(2px);outline:0}
+[data-lg=menu] button.mi:focus .ic,[data-lg=menu] button.mi:hover .ic{color:#fff;background:radial-gradient(circle at 35% 20%,rgba(255,255,255,.5),transparent 48%),var(--nova);box-shadow:inset 0 1px 0 rgba(255,255,255,.4),0 0 0 3px rgb(from var(--nv-a) r g b / .18),0 4px 12px -4px var(--nv-a)}
+[data-lg=menu] button.mi:active{transform:scale(.97)}
+[data-lg=menu] .mi.flash{background:var(--nova)!important;color:#fff}
+[data-lg=menu] .mi.off{opacity:.45}
+[data-lg=menu] .mi.st{min-height:30px;font-size:12px;font-weight:650;color:var(--nv-mut);padding:4px 8px 4px 5px}
+[data-lg=menu] .mi.st .ic{background:rgba(255,255,255,.05);box-shadow:inset 0 0 0 1px rgba(255,255,255,.08);color:var(--nv-mut)}
+[data-lg=menu] .mi.dg .ic{color:#ff6b6b;background:rgba(255,69,58,.14);box-shadow:inset 0 0 0 1px rgba(255,69,58,.24)}
+[data-lg=menu] button.mi.dg:hover,[data-lg=menu] button.mi.dg:focus{background:linear-gradient(90deg,rgba(255,69,58,.24),rgba(255,69,58,.08));box-shadow:inset 0 0 0 1px rgba(255,69,58,.3)}
+[data-lg=menu] button.mi.dg:hover .ic,[data-lg=menu] button.mi.dg:focus .ic{background:linear-gradient(135deg,#ff6b6b,#ff3b5c);box-shadow:0 0 0 3px rgba(255,69,58,.2)}
+[data-lg=menu] .kb{display:flex;gap:3px;flex:none}
+[data-lg=menu] kbd{font:750 11px/1 var(--nv-head);min-width:12px;text-align:center;padding:4px 6px;border-radius:7px;color:var(--nv-mut);background:rgba(255,255,255,.06);box-shadow:inset 0 0 0 1px rgba(255,255,255,.09),inset 0 -1px 0 rgba(0,0,0,.3)}
+[data-lg=menu] button.mi:hover kbd,[data-lg=menu] button.mi:focus kbd{color:var(--nv-tx);background:rgba(255,255,255,.1)}
+[data-lg=menu] .sw{position:relative;flex:none;width:36px;height:21px;border-radius:99px;background:rgba(0,0,12,.45);box-shadow:inset 0 2px 4px rgba(0,0,0,.5),inset 0 0 0 1px rgba(255,255,255,.08);transition:background .25s}
+[data-lg=menu] .sw i{position:absolute;top:2.5px;left:2.5px;width:16px;height:16px;border-radius:50%;background:radial-gradient(circle at 40% 28%,#fff 0 30%,#eef1fa 60%,#cfd5e6);box-shadow:0 2px 5px rgba(0,0,20,.4);transition:transform .45s var(--spring)}
+[data-lg=menu] .sw.on{background:radial-gradient(80% 120% at 30% -10%,rgba(255,255,255,.4),transparent 55%),var(--nova);box-shadow:inset 0 1px 0 rgba(255,255,255,.3),0 0 0 3px rgb(from var(--nv-a) r g b / .18)}
+[data-lg=menu] .sw.on i{transform:translateX(15px)}
+[data-lg=menu] .rd{width:16px;height:16px;border-radius:50%;flex:none;box-shadow:inset 0 0 0 1.5px rgba(255,255,255,.2)}
+[data-lg=menu] .rd.on{background:var(--nova);box-shadow:inset 0 0 0 4px rgba(10,12,22,.9),0 0 0 3px rgb(from var(--nv-a) r g b / .2)}
+[data-lg=menu] .cnt{font:800 10.5px/1 var(--nv-head);padding:3px 7px;border-radius:99px;color:var(--nv-mut);background:rgba(255,255,255,.07)}
+[data-lg=menu] .cnt:empty{display:none}
+[data-lg=menu] .chev{width:14px;height:14px;flex:none;fill:none;stroke:var(--nv-mut);stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round;transition:transform .45s var(--spring)}
+[data-lg=menu] .mi.open .chev{transform:rotate(90deg)}
+[data-lg=menu] .sub{display:grid;grid-template-rows:0fr;transition:grid-template-rows .42s var(--spring-soft)}
+[data-lg=menu] .sub.open{grid-template-rows:1fr}
+[data-lg=menu] .subin{overflow:hidden;min-height:0;margin-left:18px;padding-left:9px;border-left:1.5px solid rgb(from var(--nv-a) r g b / .3)}
+[data-lg=menu] .sub .mi{min-height:31px;font-size:12.5px}
+[data-lg=menu] .sub .mi .ic{width:22px;height:22px;border-radius:7px}
+[data-lg=menu] .sub .mi .ic svg{width:12px;height:12px}
+[data-lg=menu] .ms{height:1px;margin:5px 10px;background:linear-gradient(90deg,transparent,rgba(255,255,255,.1) 15%,rgba(255,255,255,.1) 85%,transparent)}
+@media (prefers-reduced-motion:reduce){[data-lg=menu] *{animation:none!important;transition:none!important}}
+
+/* ---------------------------------------------------------------- the menu's live header line */
+[data-lg=menu] .mn-stats{display:flex;flex-wrap:wrap;gap:6px;padding:0 8px 11px;margin:-6px 0 6px;border-bottom:1px solid rgba(255,255,255,.07)}
+[data-lg=menu] .mn-stats[hidden]{display:none}
+[data-lg=menu] .mn-hd:has(+ .mn-stats:not([hidden])){border-bottom:0;margin-bottom:0}
+[data-lg=menu] .ch{display:inline-flex;align-items:center;gap:6px;padding:4px 9px 4px 7px;border-radius:99px;font:750 11px/1 var(--nv-head);color:var(--nv-tx);background:rgba(255,255,255,.06);box-shadow:inset 0 0 0 1px rgba(255,255,255,.08);font-variant-numeric:tabular-nums}
+[data-lg=menu] .ch em{font-style:normal;color:var(--nv-mut);font-weight:650}
+[data-lg=menu] .ch .cell{position:relative;width:20px;height:10px;border-radius:3px;box-shadow:inset 0 0 0 1.3px rgba(255,255,255,.45)}
+[data-lg=menu] .ch .cell::after{content:"";position:absolute;right:-3px;top:3px;width:2px;height:4px;border-radius:0 1px 1px 0;background:rgba(255,255,255,.45)}
+[data-lg=menu] .ch .cell i{position:absolute;left:2px;top:2px;bottom:2px;width:calc((100% - 4px) * var(--lv) / 100);border-radius:1.5px;background:linear-gradient(90deg,var(--nv-a),var(--nv-a3));box-shadow:0 0 6px var(--nv-a)}
+[data-lg=menu] .ch.chg .cell i{background:linear-gradient(90deg,#34c759,#7cf5a6);box-shadow:0 0 6px #34c759}
+[data-lg=menu] .ch.low .cell i{background:linear-gradient(90deg,#ff453a,#ff8a65);box-shadow:0 0 6px #ff453a}
+[data-lg=menu] .ch .dots{display:inline-flex;gap:2px}
+[data-lg=menu] .ch .dots i{width:5px;height:5px;border-radius:50%;background:var(--nova);box-shadow:0 0 5px var(--nv-a)}
+[data-lg=menu] .ch .dots:empty{display:none}
+[data-lg=menu] .ch.mute{color:#ffb4ab;background:rgba(255,69,58,.12);box-shadow:inset 0 0 0 1px rgba(255,69,58,.25);padding-left:9px}
+
+/* ---------------------------------------------------------------- Quick Notes, 4.0: a note card with a hero header */
+[data-lg=notes] header{gap:11px!important;padding-top:14px!important;padding-bottom:12px!important;font:800 19px/1 var(--nv-head)!important;letter-spacing:-.03em}
+[data-lg=notes] header i{width:30px!important;height:30px!important;border-radius:10px!important;flex:none;position:relative;animation:none!important;
+  background:radial-gradient(circle at 32% 22%,rgba(255,255,255,.55),transparent 46%),var(--nova)!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.5),inset 0 -5px 10px -5px rgba(0,0,40,.4),0 0 0 3px rgb(from var(--nv-a) r g b / .16),0 8px 18px -6px var(--nv-a)!important}
+[data-lg=notes] header i::after{content:"";position:absolute;inset:0;margin:auto;width:16px;height:16px;background:#fff;
+  -webkit-mask:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'><path d='M4 20h4L19 9a2.8 2.8 0 0 0-4-4L4 16z'/><path d='m13.5 6.5 4 4'/></svg>") center/contain no-repeat}
+[data-lg=notes] header .lg-nt{background:linear-gradient(100deg,#fff 35%,color-mix(in oklab,var(--nv-a3) 70%,#fff));-webkit-background-clip:text;background-clip:text;color:transparent;padding-bottom:2px}
+[data-lg=notes] textarea{line-height:28px!important;background:repeating-linear-gradient(180deg,transparent 0 27px,rgb(from var(--nv-a) r g b / .13) 27px 28px) 0 9px/100% 28px local!important;caret-color:var(--nv-a3)}
+[data-lg=notes] textarea:focus{box-shadow:inset 3px 0 0 -1px rgb(from var(--nv-a) r g b / .6)}
+[data-lg=notes] footer #count{font:700 11.5px var(--nv-head);padding:4px 10px;border-radius:99px;background:rgba(255,255,255,.06);box-shadow:inset 0 0 0 1px rgba(255,255,255,.08)}
+[data-lg=notes] .sv{padding:4px 10px 4px 8px;border-radius:99px;background:rgb(from var(--nv-a) r g b / .14);box-shadow:inset 0 0 0 1px rgb(from var(--nv-a) r g b / .3)}
+
+/* ---------------------------------------------------------------- Launchpad, 4.0: a hero search and a real empty state */
+[data-lg=launchpad] .top input{font:700 17px var(--nv-head)!important;padding-left:46px!important;
+  background:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%239aa1b8' stroke-width='2.2' stroke-linecap='round'><circle cx='11' cy='11' r='6.5'/><path d='m16 16 4 4'/></svg>") 16px 50%/19px no-repeat,linear-gradient(180deg,rgba(255,255,255,.08),rgba(255,255,255,.03))!important}
+[data-lg=launchpad] .empty{display:flex;flex-direction:column;align-items:center;gap:14px;padding-top:60px!important;font:800 18px var(--nv-head)!important;color:var(--nv-tx)!important}
+[data-lg=launchpad] .empty::before{content:"";width:68px;height:68px;border-radius:22px;
+  background:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><rect x='4' y='4' width='6.5' height='6.5' rx='1.8'/><rect x='13.5' y='4' width='6.5' height='6.5' rx='1.8'/><rect x='4' y='13.5' width='6.5' height='6.5' rx='1.8'/><circle cx='16.8' cy='16.8' r='3.2'/><path d='m19.2 19.2 1.8 1.8'/></svg>") center/34px no-repeat,radial-gradient(circle at 32% 22%,rgba(255,255,255,.5),transparent 46%),var(--nova);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.5),0 0 0 6px rgb(from var(--nv-a) r g b / .14),0 18px 40px -12px var(--nv-a)}
+[data-lg=launchpad] .empty::after{content:"Try another name, or press esc to close";font:600 13px system-ui;color:var(--nv-mut)}
+[data-lg=popover] #upd.lu #updBtn{box-sizing:border-box}
+
+/* ---------------------------------------------------------------- the clipboard picker, 4.0: a real empty state */
+[data-lg=clip] .empty{display:flex;flex-direction:column;align-items:center;gap:12px;padding-top:44px!important;font:800 17px var(--nv-head)!important;color:var(--nv-tx)!important}
+[data-lg=clip] .empty::before{content:"";width:62px;height:62px;border-radius:20px;
+  background:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><rect x='6' y='4' width='12' height='17' rx='2.5'/><path d='M9.5 4V3h5v1'/><path d='M9 10h6M9 14h6M9 17.5h3.5'/></svg>") center/30px no-repeat,radial-gradient(circle at 32% 22%,rgba(255,255,255,.5),transparent 46%),var(--nova);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.5),0 0 0 6px rgb(from var(--nv-a) r g b / .14),0 18px 40px -12px var(--nv-a)}
+[data-lg=clip] .empty::after{content:"Your last copies land here, ready to paste back";font:600 12.5px system-ui;color:var(--nv-mut)}

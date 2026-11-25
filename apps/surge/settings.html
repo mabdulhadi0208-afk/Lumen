@@ -209,7 +209,7 @@
   .card:not(.mh) h3{font-size:13px;color:var(--text);margin-bottom:12px}
 </style>
 <script>window.FLUID={blobs:1}</script><link rel="stylesheet" href="fluid.css"><script defer src="fluid.js"></script><link rel="stylesheet" href="fx.css"><script defer src="fx.js"></script>
-<link rel="stylesheet" href="lumen-glow.css"><script defer src="lumen-glass.js"></script></head>
+<link rel="stylesheet" href="lumen-glow.css"><script defer src="lumen-glass.js"></script><script defer src="lumen-update.js"></script></head>
 <body>
 <div class="win">
   <div class="aura"></div>
@@ -422,7 +422,7 @@ function replay(kind){ if (kind) pkind = kind; if (!mini) return; mini.assign(S.
   api?.action('updater','state').then(u=>{ const v=document.getElementById('aboutVer'); if(v&&u?.current) v.textContent='v'+u.current; });
   api?.on('settings:update', s => { S = s; paint(); }); api?.on('nav', go);
   async function batt(){ const b = await api?.getBattery(); if (!/Mac/.test(navigator.platform)) { const t = b ? 'Your laptop, with extras.' : 'Your PC, with extras.'; if ($('#heroT').textContent !== t) $('#heroT').textContent = t; if (!b) $('#batt').innerHTML = '<b>PC</b> no battery'; } if (b) { $('#batt').innerHTML = `<b>${b.level}%</b> ${b.charged?'full':b.charging?'charging':'on battery'}${b.remaining?' · '+b.remaining:''}`; $('#led').style.background = b.charging ? '' : '#FFB648'; } hook = await api?.hookState() || hook; }
-  batt(); setInterval(batt, 3000);
+  batt(); setInterval(()=>{ if(!document.hidden) batt(); }, 3000);
 })();
 </script>
 </body>

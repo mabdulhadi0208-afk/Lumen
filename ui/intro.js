@@ -25,7 +25,7 @@
       { icon: 'bolt', text: 'Surge and Koi 4.0: a new menu, live update progress and a liquid battery orb' },
       { icon: 'book', text: 'Reader mode with themes, contents, focus mode and read aloud' },
       { icon: 'key', text: 'A strong password offered on every sign-up form' },
-      { icon: 'layers', text: 'Glass tooltips, a bigger command bar, simple gradient tabs and a new app icon' },
+      { icon: 'layers', text: 'A bigger command bar, liquid glass menus and dialogs, and a new app icon' },
       { icon: 'sparkle', text: 'Lighter than ever: nothing animates while Lumen sits still' },
     ],
   }
@@ -1067,27 +1067,6 @@
   const LINES = (n, img) => '<div class="h"></div>' + Array.from({ length: n }, (_, i) => (img && i === 2 ? '<div class="img"></div>' : '') + `<div class="ln" style="width:${[92, 80, 96, 70, 88, 60, 84][i % 7]}%"></div>`).join('')
   const done = a => { try { a.cancel() } catch {} }
   const TOUR = [
-    { title: 'Tabs, right where you expect them.', text: 'Tabs sit on top. <kbd>Cmd T</kbd> opens a new one, and dragged tabs spring into place.', build: () => MW(`<div class="pg">${LINES(6, 1)}</div>`, ['GitHub'], '', 'github.com'), play: async s => {
-      const tb = s.querySelector('.tb')
-      for (const [i, t] of ['Lisbon trip', 'Recipes', 'New Tab'].entries()) { await sleep(300); const el = document.createElement('div'); el.className = 't'; el.innerHTML = `<b style="background:${TABC[(i + 1) % 4]}"></b>${t}`; tb.appendChild(el); anim(el, [{ opacity: 0, transform: 'translateY(-10px) scale(.7)' }, { opacity: 1, transform: 'none' }], { duration: 650 }); if (!skip) SFX.pop(1 + i * .12) }
-      await sleep(340); let ts = tb.querySelectorAll('.t'); ts.forEach(t => t.classList.remove('on')); ts[1].classList.add('on'); anim(ts[1], [{ transform: 'scale(.92)' }, { transform: 'none' }], { duration: 560 }); if (!skip) SFX.key()
-      // drag Lisbon trip past Recipes: it lifts, glides over, and Recipes springs out of the way
-      await sleep(380); if (skip) return
-      const step = ts[2].offsetLeft - ts[1].offsetLeft
-      const a1 = anim(ts[1], [{ transform: 'none' }, { transform: 'translateY(-3px) scale(1.06) rotate(-2deg)', offset: .25 }, { transform: `translate(${step}px,-3px) scale(1.06) rotate(1deg)`, offset: .8 }, { transform: `translate(${step}px,0)` }], { duration: 880, easing: 'cubic-bezier(.4,0,.2,1)' })
-      const a2 = anim(ts[2], [{ transform: 'none' }, { transform: 'none', offset: .45 }, { transform: `translateX(${-step}px)` }], { duration: 880 })
-      if (!skip) SFX.whoosh()
-      await sleep(900); done(a1); done(a2); tb.insertBefore(ts[2], ts[1]); if (!skip) SFX.pop(1.2)
-    } },
-    { title: 'One bar does everything.', text: '<kbd>Cmd K</kbd> searches the web, your tabs and history, and runs any action.', build: () => MW(`<div class="pg">${LINES(6, 1)}</div><div class="cmdp lgl"><div class="in"><span class="sq">${IC('search')}</span><span class="q"></span><span class="caret"></span><kbd>Cmd K</kbd></div><div class="r sel"><i></i>Search for <b class="qq" style="margin-left:4px"></b><em>Search</em></div><div class="r"><i></i>Lisbon trip<em>Switch to tab</em></div><div class="r"><i></i>Flights to Lisbon, last week<em>History</em></div><div class="r"><i></i>Focus mode<em>Shift Cmd F</em></div></div>`), play: async s => {
-      const q = 'flights to lisbon', qe = s.querySelector('.q'), qq = s.querySelector('.qq'), rs = s.querySelectorAll('.cmdp .r')
-      anim(s.querySelector('.cmdp'), [{ opacity: 0, transform: 'translateY(-10px) scale(.96)' }, { opacity: 1, transform: 'none' }], { duration: 650 })
-      for (let i = 1; i <= q.length && !skip; i++) { qe.textContent = qq.textContent = q.slice(0, i); SFX.key(); await sleep(44) }
-      rs.forEach((r, i) => anim(r, [{ opacity: 0, transform: 'translateY(8px)' }, { opacity: 1, transform: 'none' }], { duration: 520, delay: i * 55 }))
-      if (!skip) SFX.shimmer()
-      for (const j of [1, 2, 1]) { await sleep(320); if (skip) return; rs.forEach((r, k) => r.classList.toggle('sel', k === j)); SFX.tick(j) }
-      await sleep(260); anim(s.querySelector('.cmdp'), [{ transform: 'scale(1)' }, { transform: 'scale(.97)' }, { transform: 'scale(1)' }], { duration: 420 }); if (!skip) SFX.key()
-    } },
     { title: 'Ads and trackers, gone.', text: 'Blocked before they load, on every site. Pages get faster, and nobody follows you.', build: () => MW(`<div class="pg">${LINES(6)}<div class="ad" style="left:58%;top:18px;width:150px;height:70px">AD</div><div class="ad" style="left:6%;top:118px;width:200px;height:46px">AD</div><div class="ad" style="left:52%;top:146px;width:120px;height:90px">AD</div><span class="cnt">0 blocked</span></div>`, undefined, `<span class="sh">${IC('shield')}<i>0</i></span>`, 'news.example'), play: async s => {
       const ads = s.querySelectorAll('.ad'), c = s.querySelector('.cnt'), sh = s.querySelector('.sh i'); let n = 0
       for (const a of ads) {
@@ -1103,49 +1082,11 @@
       s.querySelectorAll('.kp span').forEach((k, i) => { anim(k, [{ opacity: 0, transform: 'translateY(8px) scale(.8)' }, { opacity: 1, transform: 'none' }], { duration: 600, delay: i * 100 }); setTimeout(() => !skip && SFX.pop(1.1 + i * .1), i * 100) })
       await sleep(420)
     } },
-    { title: 'Translate the whole page.', text: 'Any language into yours in a moment. Arabic and Hebrew even flip direction.', build: () => MW(`<div class="pg"><div class="tr" dir="rtl" style="text-align:right">مرحبا بكم في لشبونة. المدينة جميلة في الربيع، والقطارات سريعة ومريحة.</div><br>${LINES(4)}<i class="scan"></i></div><div class="pill lgl">${IC('translate')}<span>Translate from Arabic</span></div>`, undefined, '', 'visit.lisboa'), play: async s => {
-      const pill = s.querySelector('.pill'), tr = s.querySelector('.tr')
-      anim(pill, [{ opacity: 0, transform: 'translateY(-8px) scale(.9)' }, { opacity: 1, transform: 'none' }], { duration: 650 }); if (!skip) SFX.pop(1.2)
-      await sleep(600); anim(pill, [{ transform: 'scale(1)' }, { transform: 'scale(.94)' }, { transform: 'scale(1)' }], { duration: 380 }); if (!skip) SFX.key()
-      anim(s.querySelector('.scan'), [{ opacity: 1, transform: 'translateY(-46px)' }, { opacity: 1, transform: 'translateY(220px)', offset: .9 }, { opacity: 0, transform: 'translateY(240px)' }], { duration: 1000, easing: 'cubic-bezier(.4,0,.3,1)' })
-      await sleep(340); if (skip) return
-      tr.dir = 'ltr'; tr.style.textAlign = 'left'; tr.textContent = 'Welcome to Lisbon. The city is beautiful in spring, and the trains are fast and comfortable.'
-      anim(tr, [{ transform: 'translateX(30px)', filter: 'blur(6px)', opacity: .3 }, { transform: 'none', filter: 'blur(0)', opacity: 1 }], { duration: 650 }); if (!skip) SFX.shimmer()
-      await sleep(420); pill.querySelector('span').textContent = 'Translated to English'; anim(pill, [{ transform: 'scale(1.08)' }, { transform: 'none' }], { duration: 460 })
-    } },
     { title: 'Dark mode for every website.', text: 'One switch turns light sites dark, and leaves dark sites alone.', build: () => MW(`<div class="pg">${LINES(6, 1)}</div><div class="reveal">${CHROME(['GitHub', 'Lisbon trip', 'Recipes'], `<span class="sh">${IC('moon')}Dark</span>`, 'github.com')}<div class="pg">${LINES(6, 1)}</div></div>`, undefined, `<span class="sh">${IC('moon')}Dark</span>`, 'github.com'), play: async s => {
       await sleep(560); const sh = s.querySelector('.ub .sh'); anim(sh, [{ transform: 'scale(1)' }, { transform: 'scale(.9)' }, { transform: 'scale(1)' }], { duration: 380 }); if (!skip) SFX.key()
       // the dark theme pours out of the switch in a widening circle
       anim(s.querySelector('.reveal'), [{ clipPath: 'circle(0% at 86% 14%)' }, { clipPath: 'circle(140% at 86% 14%)' }], { duration: 1150, easing: 'cubic-bezier(.5,0,.2,1)' }); if (!skip) SFX.whoosh()
       await sleep(1150)
-    } },
-    { title: 'Two pages, side by side.', text: '<kbd>Shift Cmd \\</kbd> opens split view. Reader mode and picture in picture are a shortcut away.', build: () => MW(`<div class="split"><div class="pp">${LINES(5, 1)}</div><i class="dv"></i><div class="pp">${LINES(5)}</div></div>`), play: async s => {
-      const ps = s.querySelectorAll('.pp'); anim(ps[0], [{ transform: 'translateX(50%)' }, { transform: 'none' }], { duration: 820 }); anim(ps[1], [{ transform: 'translateX(-50%)', opacity: 0 }, { transform: 'none', opacity: 1 }], { duration: 820 }); if (!skip) SFX.whoosh()
-      anim(s.querySelector('.dv'), [{ opacity: 0, transform: 'scaleY(.2)' }, { opacity: 1, transform: 'none' }], { duration: 650, delay: 450 })
-      await sleep(950); if (skip) return
-      anim(ps[0], [{ flexGrow: 1 }, { flexGrow: 1.7, offset: .55 }, { flexGrow: 1.3 }], { duration: 1150, easing: 'cubic-bezier(.4,0,.2,1)' }); if (!skip) SFX.tick(4)
-      await sleep(900)
-    } },
-    { title: 'Surge, built in.', text: 'Your Mac glows when it charges, keys and clicks get sounds and ripples, and much more.', build: () => `<div class="desk"><div class="menubar"><span>${appLogo('surge', 'mb')}Surge</span><span class="pc">41%</span><span>9:41</span></div><div class="edge"></div><div class="chg chrome"><i></i><span class="cp">Charging  41%</span></div><div class="keys">${'LUMEN'.split('').map(k => `<b>${k}</b>`).join('')}</div></div>`, play: async s => {
-      const d = s.querySelector('.desk'); await sleep(260); d.classList.add('lit'); if (!skip) SFX.shimmer()
-      const o = { v: 41 }; const cp = s.querySelector('.cp'), pc = s.querySelector('.pc'); tween(o, 'v', 72, 1600); const iv = setInterval(() => { const n = Math.round(o.v) + '%'; cp.textContent = 'Charging  ' + n; pc.textContent = n; if (o.v >= 72 || skip) clearInterval(iv) }, 60)
-      for (const k of s.querySelectorAll('.keys b')) { await sleep(150); k.classList.add('dn'); if (!skip) SFX.key(); setTimeout(() => k.classList.remove('dn'), 120) }
-      for (const [x, y] of [[30, 45], [70, 38], [52, 70]]) { const r = document.createElement('i'); r.className = 'rip'; r.style.left = x + '%'; r.style.top = y + '%'; d.appendChild(r); anim(r, [{ transform: 'scale(.4)', opacity: 1 }, { transform: 'scale(4)', opacity: 0 }], { duration: 760, easing: 'cubic-bezier(.2,.8,.3,1)' }); if (!skip) SFX.pop(1.1); await sleep(230) }
-    } },
-    { title: 'Koi, one key away.', text: '<kbd>Option Space</kbd> blooms your apps around the cursor. Type a letter to open one.', build: () => `<div class="desk"><div class="menubar"><span>${appLogo('koi', 'mb')}Koi</span><span>9:41</span></div><div class="fan"><i class="hub"></i></div><div class="cur"></div></div>`, play: async s => {
-      const fan = s.querySelector('.fan'), cur = s.querySelector('.cur'), apps = [['#ff5f57', 'M'], ['#febc2e', 'N'], ['#28c840', 'F'], ['var(--a)', 'S'], ['#8a63f2', 'C'], ['#e9609c', 'P'], ['#20c997', 'T']]
-      anim(cur, [{ transform: 'translate(-180px,-60px)' }, { transform: 'none' }], { duration: 650, easing: 'cubic-bezier(.3,1.1,.5,1)' }); await sleep(520)
-      anim(fan.querySelector('.hub'), [{ opacity: 0, transform: 'scale(.3)' }, { opacity: 1, transform: 'none' }], { duration: 850 })
-      const pos = []
-      apps.forEach(([c, l], i) => {
-        const el = document.createElement('i'); el.style.background = `linear-gradient(135deg, ${c}, color-mix(in srgb, ${c} 65%, #000))`; el.textContent = l; fan.appendChild(el)
-        const a = (-160 + i * (140 / (apps.length - 1))) * Math.PI / 180, R = 120; pos.push([Math.cos(a) * R, Math.sin(a) * R])
-        anim(el, [{ opacity: 0, transform: 'translate(0,0) scale(.3) rotate(-30deg)' }, { opacity: 1, transform: `translate(${pos[i][0]}px, ${pos[i][1]}px) scale(1)` }], { duration: 850, delay: 90 + i * 45, easing: 'cubic-bezier(.3,1.4,.5,1)' })
-        setTimeout(() => !skip && SFX.pop(.9 + i * .07), 90 + i * 45)
-      })
-      await sleep(1050); if (skip) return
-      anim(cur, [{ transform: 'none' }, { transform: `translate(${pos[3][0] + 8}px,${pos[3][1] + 8}px)` }], { duration: 560, easing: 'cubic-bezier(.4,0,.2,1)' })
-      await sleep(580); const pick = fan.querySelectorAll(':scope > i:not(.hub)')[3]; anim(pick, [{ scale: 1 }, { scale: 1.3 }, { scale: 1.18 }], { duration: 480, composite: 'add' }); anim(pick, [{ boxShadow: '0 0 0 0 transparent' }, { boxShadow: '0 0 0 4px rgba(255,255,255,.7), 0 0 30px var(--a)' }], { duration: 480 }); if (!skip) SFX.ding()
     } },
     { title: 'Every parcel, until it arrives.', text: 'Track any delivery. Orders you place are saved, one click from the order page.', build: () => MW(`<div class="pg" style="background:#f4f5fa"><div class="plist">${LINES(6)}</div><div class="pcard lgl"><div class="k">${IC('box')}</div><div style="flex:1"><b>New headphones</b><span class="st">Order placed  ·  UPS</span><div class="steps"><s class="on"></s><s></s><s></s><s></s><u></u></div></div></div></div>`, ['Parcels', 'Lisbon trip'], '', 'lumen://parcels'), play: async s => {
       const st = s.querySelector('.st'), steps = s.querySelectorAll('.steps s'), k = s.querySelector('.pcard .k'), u = s.querySelector('.steps u')
@@ -1157,10 +1098,10 @@
   // where each shot sits: the camera orbits a little between them, so every shot arrives from a new angle
   const POSE = i => ({ x: (i % 2 ? -1 : 1) * 46, ry: (i % 2 ? 1 : -1) * 30, rx: [8, 4, 10, 5][i % 4] })
   const REST = 'translate(0,-6vh)'
-  const ART = ['tabs', 'search', 'shield', 'sparkle', 'translate', 'moon', 'split', 'bolt', 'layers', 'box']
-  const WORD = ['Tabs', 'Cmd K', 'Blocked', 'Ask', 'Translate', 'Dark', 'Split', 'Surge', 'Koi', 'Parcels']
+  const ART = ['shield', 'sparkle', 'moon', 'box']
+  const WORD = ['Blocked', 'Ask', 'Dark', 'Parcels']
   // the tour is cut into chapters, each opened by a title card on the beat
-  const CHAPTERS = { 2: ['Protect', 'Private <em>by default.</em>'], 3: ['Understand', 'Every page, <em>explained.</em>'], 5: ['Your way', 'Made <em>yours.</em>'], 7: ['Built in', 'Two apps. <em>Zero installs.</em>'] }
+  const CHAPTERS = { 0: ['Protect', 'Private <em>by default.</em>'], 1: ['Understand', 'Every page, <em>explained.</em>'], 2: ['Your way', 'Made <em>yours.</em>'] }
   async function chapter([kick, line], n, cap) {
     root.classList.add('tight')
     if (cap) anim(cap, [{ opacity: 1 }, { opacity: 0 }], { duration: 200 })

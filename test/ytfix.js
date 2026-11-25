@@ -39,7 +39,7 @@ app.whenReady().then(async () => {
   for (let i = 0; i < 40 && loads === loads0; i++) await wait(1000)
   ok(loads === loads0 + 1, 'a video that never starts is reloaded once (after ' + loads + ' loads)')
   await wait(400)
-  ok(/stuck, so Lumen got fresh ad-block lists/.test(await ex(`document.body.innerText`)), 'with a note saying why')
+  ok(/stuck, so Lumen got fresh ad-block lists/.test(await ex(`document.getElementById('toast').textContent`)), 'with a note saying why')
   // still stuck: offer to pause the blocker there (the error overlay is caught in seconds)
   mode = 'error'; y.view.webContents.reload(); await wait(9000)
   const offer = await ex(`(() => { const b = document.querySelector('.toast-btn'); return b ? b.textContent + ' | ' + b.parentElement.textContent : '' })()`)

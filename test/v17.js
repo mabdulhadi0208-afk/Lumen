@@ -14,7 +14,7 @@ app.whenReady().then(async () => {
   const normal = await ex(`document.querySelector('.tab').getBoundingClientRect().left`)
   w.win.isFullScreen = () => true; w.pushState(); await wait(500)
   const fsLeft = await ex(`document.querySelector('.tab').getBoundingClientRect().left`)
-  ok(normal > 70 && normal < 100, 'windowed: tabs start right after the window buttons (' + normal + ')')
+  ok(normal > 70 && normal < 112, 'windowed: tabs start right after the window buttons (' + normal + ')')   // 4.0: the window buttons sit in a glass capsule
   ok(fsLeft < 20, 'full screen: tabs start at the left edge (' + fsLeft + ')')
   const u = await ex(`JSON.stringify([document.querySelector('.navbtns').getBoundingClientRect().right, document.getElementById('urlbar').getBoundingClientRect().left])`)
   const [nr, ul] = JSON.parse(u); ok(ul >= nr && ul - nr < 20, 'address bar sits beside nav buttons ' + u)

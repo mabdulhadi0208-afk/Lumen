@@ -19,7 +19,7 @@
       { icon: 'clock', text: 'A brand new home: a glowing clock, smart search and 15 widgets you can drag around' },
       { icon: 'gear', text: 'Every Settings and library page rebuilt, plus a real Read later page' },
       { icon: 'play', text: 'A trailer for an intro, and a restart screen that lands you right back in your tabs' },
-      { icon: 'bolt', text: 'Surge and Koi 4.0: a new menu, live update progress and a liquid battery orb' },
+      { icon: 'bolt', text: 'Surge and Koi are now their own apps, so Lumen is lighter and faster' },
       { icon: 'book', text: 'Reader mode with themes, contents, focus mode and read aloud' },
       { icon: 'key', text: 'A strong password offered on every sign-up form' },
       { icon: 'layers', text: 'Glass tooltips, a bigger command bar, simple gradient tabs and a new app icon' },

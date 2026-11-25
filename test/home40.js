@@ -1,6 +1,6 @@
 // Lumen 4.0 home (lumen://newtab): widgets on and off, drag to reorder (and it persists), suggestions,
 // the private look, narrow windows, Motion Off, and idle CPU of the New Tab renderer.
-// Run: LUMEN_APPS_ANYWHERE=1 xvfb-run -a npx electron test/home40.js --no-sandbox   (log: /tmp/lumen-home40.log)
+// Run: xvfb-run -a npx electron test/home40.js --no-sandbox   (log: /tmp/lumen-home40.log)
 const fs = require('fs'); const { app } = require('electron')
 fs.rmSync('/tmp/lumen-home40', { recursive: true, force: true }); app.setPath('userData', '/tmp/lumen-home40')
 const L = require('../src/main.js'); const wait = ms => new Promise(r => setTimeout(r, ms))
@@ -29,7 +29,7 @@ app.whenReady().then(async () => {
   ok(await pg(`!!document.querySelector('#hero #clock') && !!document.querySelector('#greet').textContent.trim()`), 'hero has the clock and a greeting')
   ok(await pg(`!!document.querySelector('#sf #q') && !!document.querySelector('#kcmd') && !!document.querySelector('#kask')`), 'search pill with Cmd K and Ask')
   const first = await ids()
-  ok(/^shortcuts,stats,recent,apps,focus,later,parcels,notes,calendar,clocks,wallpaper$/.test(first), 'default widgets in order: ' + first)
+  ok(/^shortcuts,stats,recent,focus,later,parcels,notes,calendar,clocks,wallpaper$/.test(first), 'default widgets in order: ' + first)
   ok(await pg(`document.querySelectorAll('#tiles .tile[data-url]').length`) === 3, 'three shortcut tiles')
   ok(await pg(`(() => { const all = [...document.querySelectorAll('#widgets [data-w], #hero, #sf')].map(e => e.getBoundingClientRect()); return all.every(r => r.left >= 0 && r.right <= innerWidth + .5) })()`), 'everything sits inside the page at 1280')
   ok(await pg(`(() => { const c = [...document.querySelectorAll('#widgets [data-w]')].map(e => e.getBoundingClientRect()); for (let i = 0; i < c.length; i++) for (let j = i + 1; j < c.length; j++) { const a = c[i], b = c[j]; if (a.left < b.right - 1 && b.left < a.right - 1 && a.top < b.bottom - 1 && b.top < a.bottom - 1) return false } return true })()`), 'no two widgets overlap')
@@ -42,11 +42,12 @@ app.whenReady().then(async () => {
   ok(await pg(`document.getElementById('drawer').classList.contains('open')`), 'Customize opens')
   await pg(`(() => { const s = document.querySelector('[data-wsw="recent"]'); s.checked = false; s.dispatchEvent(new Event('change', { bubbles: true })) })()`); await wait(800)
   ok(!(await ids()).includes('recent') && L.D.settings.get('ntpRecent') === false, 'switching off Jump back in hides it and saves it')
-  await pg(`(() => { const s = document.querySelector('[data-wsw="apps"]'); s.checked = false; s.dispatchEvent(new Event('change', { bubbles: true })) })()`); await wait(800)
-  ok(!(await ids()).includes('apps') && (L.D.settings.get('ntpHide') || []).includes('apps'), 'switching off Surge and Koi hides it and saves it')
+  await pg(`(() => { const s = document.querySelector('[data-wsw="calendar"]'); s.checked = false; s.dispatchEvent(new Event('change', { bubbles: true })) })()`); await wait(800)
+  ok(!(await ids()).includes('calendar') && (L.D.settings.get('ntpHide') || []).includes('calendar'), 'switching off Calendar hides it and saves it')
+  ok(!(await pg(`!!document.querySelector('[data-wsw="apps"]')`)), 'no Surge and Koi widget (they are their own apps in 4.0)')
   await pg(`(() => { const s = document.querySelector('[data-wsw="weather"]'); s.checked = true; s.dispatchEvent(new Event('change', { bubbles: true })) })()`); await wait(800)
   ok((await ids()).includes('weather') && !(L.D.settings.get('ntpHide') || []).includes('weather') && await pg(`!!document.querySelector('#wxcity')`), 'weather switches on and asks for a city (off by default)')
-  for (const id of ['recent', 'apps']) { await pg(`(() => { const s = document.querySelector('[data-wsw="${id}"]'); s.checked = true; s.dispatchEvent(new Event('change', { bubbles: true })) })()`); await wait(600) }
+  for (const id of ['recent', 'calendar']) { await pg(`(() => { const s = document.querySelector('[data-wsw="${id}"]'); s.checked = true; s.dispatchEvent(new Event('change', { bubbles: true })) })()`); await wait(600) }
   await pg(`(() => { const s = document.querySelector('[data-wsw="weather"]'); s.checked = false; s.dispatchEvent(new Event('change', { bubbles: true })) })()`); await wait(600)
   ok((await ids()) === first, 'switched back on, back in place: ' + await ids())
   await pg(`document.getElementById('dclose').click()`); await wait(800)

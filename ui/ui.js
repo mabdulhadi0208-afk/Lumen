@@ -432,15 +432,9 @@ function renameGroup(gid) {
   n.onblur = () => done(true)
 }
 
-// Surge and Koi sit next to Reload with tabs on top; the sidebar is too narrow for that, so there they join Settings
-function seatAppButtons() {
-  if (TOP) { if (!$('.navbtns #btn-surge')) $('.navbtns').append($('#btn-surge'), $('#btn-koi')) }
-  else if (!$('.bottomrow #btn-surge')) $('#btn-split').after($('#btn-surge'), $('#btn-koi'))
-}
 function setTabLayout(top) {
   TOP = top
   document.body.classList.toggle('toplayout', top)
-  seatAppButtons()
   // re-seat every tab and the pill on the new axis without animating across the screen
   const list = S.tabs.filter(t => !t.pinned)
   if (TOP) measureTabW(list.length)
@@ -598,10 +592,7 @@ const COMMANDS = [
   { t: 'Sort Tabs into Groups', s: () => `${K.opt} ${K.cmd} G`, k: ['group', 'sort tabs', 'organize', 'tidy'], i: 'tabs', run: () => api.do('autoGroup') },
   { t: 'Ungroup All Tabs', k: ['ungroup', 'remove groups'], i: 'tabs', run: () => api.do('ungroupAll') },
   { t: 'Reader Mode', s: () => `${K.sh} ${K.cmd} E`, k: ['reader', 'read'], i: 'book', run: () => api.do('reader') },
-  { t: 'Surge', k: ['surge', 'glow', 'keyboard sounds', 'mouse sounds', 'ripple', 'spotlight', 'caffeine', 'dock', 'night tint', 'focus timer'], i: 'bolt', run: () => api.do('appOpen', 'surge', 'settings').then(ok => { if (!ok) api.do('openPage', 'settings/apps') }) },
-  { t: 'Quick Notes', s: () => IS_MAC ? 'Ctrl Opt N' : 'Ctrl Alt N', k: ['notes', 'scratchpad', 'jot'], i: 'book', run: () => api.do('appOpen', 'surge', 'notes').then(ok => { if (!ok) api.do('openPage', 'settings/apps') }) },
-  { t: 'Koi App Switcher', s: () => 'Opt Space', k: ['koi', 'app switcher', 'apps', 'launcher', 'fan'], i: 'sparkle', run: () => api.do('appOpen', 'koi', 'open').then(ok => { if (!ok) api.do('openPage', 'settings/apps') }) },
-  { t: 'Surge and Koi Settings', k: ['surge', 'koi', 'tools', 'super app'], i: 'sparkle', run: () => api.do('openPage', 'settings/apps') },
+  { t: 'Get Surge and Koi', k: ['surge', 'koi', 'notes', 'app switcher', 'download'], i: 'sparkle', run: () => api.do('openPage', 'settings/apps') },
   { t: 'Parcels', s: () => `${K.opt} ${K.cmd} P`, k: ['parcels', 'packages', 'orders', 'delivery', 'shipping', 'tracking'], i: 'box', run: () => api.do('openPage', 'parcels') },
   { t: 'Track a Parcel', k: ['track', 'tracking number', 'parcel', 'package', 'ups', 'fedex', 'dhl', 'aramex', 'smsa'], i: 'box', run: () => api.do('openPage', 'parcels') },
   { t: 'Focus Mode', s: () => `${K.sh} ${K.cmd} F`, k: ['focus', 'zen', 'distraction', 'hide tabs', 'full'], i: 'sidebar', run: () => api.do('focusMode') },
@@ -994,7 +985,6 @@ async function openMainMenu() {
     ${item('print', 'printer', 'Print', `${K.cmd} P`)}
     </div><div class="mm-card" data-c="2"><div class="mm-label">Tabs and tools</div>
     ${item('tabgrid', 'layers', 'Tab overview', `${K.sh} ${K.cmd} O`)}
-    ${item('apps', 'sparkle', 'Surge and Koi', '', (info.apps || []).length ? `<span class="mm-count">${info.apps.length}</span>` : '')}
     ${item('parcels', 'box', 'Parcels', `${K.opt} ${K.cmd} P`, info.parcels ? `<span class="mm-count">${info.parcels}</span>` : '')}
     ${item('ai', 'bolt', 'Lumen AI', `${K.sh} ${K.cmd} A`)}
     ${item('focus', 'sidebar', 'Focus mode', `${K.sh} ${K.cmd} F`)}
@@ -1031,7 +1021,7 @@ async function openMainMenu() {
       find: () => openFind(), translate: () => api.do('translate'), reader: () => api.do('reader'), pip: () => api.do('pip').then(ok => { if (ok === false) toast('No video on this page') }),
       split: () => toggleSplit(), screenshot: () => api.do('screenshot'), print: () => api.do('print'),
       layout: () => api.do('setSetting', 'tabLayout', TOP ? 'side' : 'top'), intro: () => playIntro(),
-      tabgrid: () => setTimeout(openTabGrid, 80), ai: () => openAI(), focus: () => api.do('focusMode'), parcels: () => api.do('openPage', 'parcels'), apps: () => api.do('openPage', 'settings/apps'), autogroup: () => api.do('autoGroup'), ungroup: () => api.do('ungroupAll'),
+      tabgrid: () => setTimeout(openTabGrid, 80), ai: () => openAI(), focus: () => api.do('focusMode'), parcels: () => api.do('openPage', 'parcels'), autogroup: () => api.do('autoGroup'), ungroup: () => api.do('ungroupAll'),
     }[a]
     if (run) run()
   }
@@ -1283,7 +1273,6 @@ function applySettings(s) {
     api.do('trafficLights', !collapsed, wantTop ? { x: 16, y: settings.compact ? 11 : 15 } : { x: 16, y: 18 })
     queueLayout()
   }
-  seatAppButtons()   // a window that starts with tabs in the sidebar never runs setTabLayout, so seat them here too
 }
 
 // watch for extension actions appearing
@@ -1808,22 +1797,6 @@ api.on('state', () => { clearTimeout(bmT); bmT = setTimeout(bmLoad, 250) })
 api.on('settings', () => setTimeout(bmRender, 50))
 window.addEventListener('resize', () => { clearTimeout(bmT); bmT = setTimeout(bmRender, 120) })
 bmLoad()
-
-// ---------------------------------------------------------------- Surge and Koi, next to Reload
-// Their logos are drawn in your accent color. Surge opens its own menu right under the button; Koi fans out your apps.
-$('#btn-surge').innerHTML = appLogo('surge'); $('#btn-koi').innerHTML = appLogo('koi')
-async function renderAppButtons() {
-  let on = []
-  try { on = settings.toolbarApps === false ? [] : (await api.do('appsRunning')) || [] } catch {}
-  for (const id of ['surge', 'koi']) $('#btn-' + id).hidden = !on.includes(id)
-}
-for (const id of ['surge', 'koi']) $('#btn-' + id).onclick = () => {
-  const r = $('#btn-' + id).getBoundingClientRect()
-  api.do('appOpen', id, id === 'surge' ? 'menu' : 'open', { x: r.left, y: r.top, width: r.width, height: r.height })
-}
-renderAppButtons()
-api.on('settings', () => renderAppButtons())
-addEventListener('focus', () => renderAppButtons())
 
 // ---------------------------------------------------------------- tooltips, drawn by Lumen (4.0)
 // Every title= in the chrome becomes a Nova tooltip: a small glass label with the shortcut in keycaps. The system

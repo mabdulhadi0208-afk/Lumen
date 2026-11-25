@@ -1,6 +1,6 @@
 # Lumen
 
-Lumen is an Electron (Chromium) browser for Mac and Windows, with Surge and Koi built in (`apps/surge`, `apps/koi`).
+Lumen is an Electron (Chromium) browser for Mac and Windows: just the browser. Since 4.0, Surge and Koi are separate Mac apps again, from their own repos (`mabdulhadi0208-afk/surge`, `mabdulhadi0208-afk/mabdulhadi0208-afk-koi`); Lumen only links to their downloads (Settings, Get Surge and Koi).
 
 - Repo: `mabdulhadi0208-afk/lumen`, branch `main`
 - Website: https://claude.ai/artifact/7PLHZoZDB7J1WvQDCHh2ZA (artifact slug `33b51480-35c9-428a-ac2c-53ab06bcd50d`)
@@ -34,10 +34,9 @@ Lumen is an Electron (Chromium) browser for Mac and Windows, with Surge and Koi 
 
 - Run a test with `xvfb-run -a npx electron test/NAME.js --no-sandbox`. Each test prints PASS and FAIL lines; newer tests also write them to `/tmp/lumen-NAME.log`.
 - Before every release, run the full suite on a git worktree of the exact release commit, with `node_modules` symlinked in.
-- The suite: `adallow addbtn batch12 dark dark2 polish qol3 sweep trcard trcard2 v17 v20 readlater wave13 wave14 wave15 wave16 gsignin updatecard apps wave19 koikeys ytfix background passkeys2 novamenus axguard inpage apps40 home40`.
+- The suite: `adallow addbtn batch12 dark dark2 polish qol3 sweep trcard trcard2 v17 v20 readlater wave13 wave14 wave15 wave16 gsignin updatecard wave19 ytfix passkeys2 novamenus inpage home40 noapps`.
   - `sweep` should print NO ERRORS.
   - `selftest.js` was already broken before these rules and is unrelated.
-- Surge and Koi only start on macOS and Windows. Set `LUMEN_APPS_ANYWHERE=1` to run them in tests on Linux.
 
 ## Code map
 
@@ -46,8 +45,7 @@ Lumen is an Electron (Chromium) browser for Mac and Windows, with Surge and Koi 
   - `ipcMain.handle('lumen', ...)` serves the internal `lumen://` pages.
   - `PUBLIC_SETTINGS` is the allowlist of settings the pages may change.
 - `src/preload-ui.js`: the allowlist of channels the browser chrome may receive. Add new channels here.
-- `src/apps.js`: the host that runs Surge and Koi inside Lumen.
-- `tools/import-apps.py`: copies Surge and Koi into `apps/` from their own repos, applying Lumen's colors and hotkeys. Re-run it instead of hand-editing `apps/`.
+- `separateAppsCheck()` in `src/main.js`: the one-time "Surge and Koi are now their own apps" card for people upgrading from 3.x (flag `separateAppsShown`). Lumen never starts, hosts or installs Surge or Koi.
 - `src/updater.js` and `ui/update.html`: the updater and its update card.
 - `src/nova.js`, `ui/menu.html`, `ui/dialog.html`: the right-click menus and dialogs Lumen draws itself. Use `Nova.popupMenu(w, template)` instead of `Menu.buildFromTemplate(...).popup()` and `novaDialog(w, opts)` instead of `dialog.showMessageBox`; both fall back to the native ones if the Nova view fails.
 - `ui/`: the browser chrome (`ui.js`, `ui.css`, `intro.js`, `icons.js`).

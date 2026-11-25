@@ -538,14 +538,16 @@ class BrowserWin {
     this.makeView(t)
     // it stays attached (so it is drawn and kept drawn, like any visible page) but under everything and just outside the
     // window, at the page area's exact size: taking it is then only a move, no layout and no first paint
-    this.win.contentView.addChildView(t.view, 0)
-    this.placeSpare()
+    // drawn once at the page area's size and kept off the window: attaching it (even off screen) broke keyboard input in
+    // the visible tab's menus, so it waits detached and is drawn the moment it is taken
+    t.view.setBounds({ x: 0, y: 0, width: Math.max(1, this.rect.width), height: Math.max(1, this.rect.height) })
     const wc = t.view.webContents
     wc.once('render-process-gone', () => { if (this.spare === t) this.dropSpare() })
     wc.once('did-finish-load', () => this.spareWhenDrawn(t))
   }
   placeSpare() {
-    const t = this.spare; if (!t || !t.view) return
+    const t = this.spare; if (!t || !t.view || process.env.LUMEN_SPARE_PEEK !== '1') return
+    try { this.win.contentView.addChildView(t.view, 0) } catch {}
     const r = this.rect, w = Math.max(1, r.width), h = Math.max(1, r.height)
     // On macOS a view outside the window is still a visible page to Chromium, so it keeps its drawn frame; Windows and
     // Linux count it as covered and let it rest, and it is then drawn the moment it is taken. LUMEN_SPARE_PEEK (tests on

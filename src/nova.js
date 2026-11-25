@@ -106,6 +106,7 @@ async function snapshot(host, skip) {
       try {
         if (v.getVisible && !v.getVisible()) return null
         const b = v.getBounds(); if (b.width < 2 || b.height < 2) return null
+        if (b.x + b.width <= 0 || b.y + b.height <= 0) return null   // off screen (the preloaded New Tab waits there): nothing to show
         const img = await Promise.race([v.webContents.capturePage(), new Promise(r => setTimeout(() => r(null), 600))])
         if (!img || img.isEmpty()) return null
         const small = img.resize({ width: Math.max(1, Math.round(b.width / 2)), quality: 'good' })

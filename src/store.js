@@ -27,10 +27,27 @@ class Store {
   save() {
     for (const fn of this.listeners) { try { fn(this.data) } catch {} }
     clearTimeout(this.timer)
-    this.timer = setTimeout(() => this.flush(), 400)
+    this.timer = setTimeout(() => this.flushSoon(), 400)
+  }
+  // the usual save: the file is written off the main thread, so a big history never stalls the browser.
+  // One write at a time; a change made meanwhile is written right after. flush() stays synchronous (quit, tests).
+  flushSoon() {
+    clearTimeout(this.timer); this.timer = null
+    if (this.writing) { this.again = true; return }
+    let json; try { json = JSON.stringify(this.data) } catch (e) { console.error('store write failed', this.file, e.message); return }
+    const gen = this.gen = (this.gen || 0) + 1, tmp = this.file + '.tmp' + gen
+    this.writing = true
+    fs.promises.mkdir(path.dirname(this.file), { recursive: true }).then(() => fs.promises.writeFile(tmp, json)).then(() => {
+      // a synchronous flush() since then already wrote newer data: this older copy is dropped
+      if (this.gen === gen) fs.renameSync(tmp, this.file); else fs.promises.unlink(tmp).catch(() => {})
+    }).catch(e => { console.error('store write failed', this.file, e.message); fs.promises.unlink(tmp).catch(() => {}) }).finally(() => {
+      this.writing = false
+      if (this.again) { this.again = false; this.flushSoon() }
+    })
   }
   flush() {
-    clearTimeout(this.timer)
+    clearTimeout(this.timer); this.timer = null
+    this.gen = (this.gen || 0) + 1; this.again = false
     try {
       fs.mkdirSync(path.dirname(this.file), { recursive: true })
       const tmp = this.file + '.tmp'

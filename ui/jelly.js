@@ -153,9 +153,12 @@
       if (e.ctrlKey || e.defaultPrevented || MODE === 'off') return
       // let nested scrollers and horizontal gestures keep native behaviour
       if (Math.abs(e.deltaX) > Math.abs(e.deltaY)) return
+      // a trackpad (or Magic Mouse) already glides on its own, with momentum: it scrolls natively, on the compositor,
+      // instead of through a spring on the main thread (Chrome reports those with wheelDelta = -3 x delta, in pixels)
+      if (e.deltaMode === 0 && e.wheelDeltaY && Math.abs(e.wheelDeltaY + 3 * e.deltaY) < 1 && !live.has(sp)) return
       let n = e.target
       while (n && n !== el && n !== document.body) {
-        if (n.scrollHeight > n.clientHeight + 1 && /(auto|scroll)/.test(getComputedStyle(n).overflowY) && n !== el) return
+        if (n.scrollHeight > n.clientHeight + 1 && n !== el && /(auto|scroll)/.test(getComputedStyle(n).overflowY)) return
         n = n.parentElement
       }
       const max = el.scrollHeight - el.clientHeight

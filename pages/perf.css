@@ -1,0 +1,53 @@
+/* =====================================================================
+   Lumen speed layer for lumen:// pages (docs/PERF.md). Linked last in pages/app.html.
+   Same look, cheaper ways to draw it. Nothing here adds or removes anything you see.
+   ===================================================================== */
+
+/* 1. Glass that scrolls is drawn flat. A backdrop-filter on something that moves over the page has to blur what is
+   under it again on every frame of a scroll. Under Settings' cards there is only the fixed nebula, which is soft
+   gradients: blurred, it looks the same, so the cards keep their tint, sheen, rim and shadow and simply stop
+   re-blurring. Dialogs and the flash pill (which float over the content) keep their real glass. */
+body:not(.home-page) .main *,
+body:not(.home-page) .main *::before,
+body:not(.home-page) .main *::after,
+body:not(.home-page) .nav { backdrop-filter: none !important; }
+/* the sidebar too: it does not move, but a scroll redraws the whole frame, and its blur was worked out again each time */
+body:not(.home-page) .nav.lg { background-color: color-mix(in srgb, var(--accent) 3.5%, var(--glass)); }
+/* the blur also lifted the colours under the glass (saturate 1.9): a touch of accent in the tint does that now */
+body:not(.home-page) .main .lg { background-color: color-mix(in srgb, var(--accent) 3.5%, var(--glass)); }
+body:not(.home-page) .main .hero.lg { background-color: color-mix(in srgb, var(--ic) 9%, var(--glass)); }
+
+/* Home's widgets too: there are a dozen of them, and while Home scrolled each one blurred the wallpaper again every
+   frame (20 fps here; 60 fps flat). They are drawn as frosted tint instead: the glass mixed with its
+   brighter twin (--glass2) stands in for the blur, so the wallpaper's fine dots and photos stay soft behind them. The hero and
+   the search pill keep their real glass. */
+.hm-card, .hm-card *, .hm-card *::before, .hm-card *::after { backdrop-filter: none !important; }
+.hm-card.lg { background-color: color-mix(in srgb, color-mix(in srgb, var(--accent) 3%, var(--glass)) 45%, var(--glass2)); }
+
+/* 2. No refraction map behind big or ticking glass. The SVG lens (glass.js) is a per-pixel displacement filter that
+   runs on the CPU for every frame the surface is redrawn: the Home hero redraws each second with the clock, the
+   widgets on every frame of a scroll. Over soft wallpapers the bend is invisible; the lit rim (::after) stays.
+   The search pill, dialogs and the cursor drop keep their lens. */
+.hm-hero, .hm-hero *, .hm-card, .hm-card *, .hm-grid *, .cg-body, .main .lg, .main .lg *, .nav { --lens: initial !important; --lens-off: 1; }
+
+/* 3. The star dust in dark mode twinkled forever under the sidebar's glass, which made the glass redraw every frame
+   for as long as the page was open. It now rests at the middle of its twinkle. */
+body::after { animation: none !important; }
+@media (prefers-color-scheme: dark) { body:not(.home-page)::after { opacity: .46; } }
+
+/* 4. Fixed backgrounds get their own layer once, so scrolling only moves the content layer over them */
+body::before, body::after, .ntp-bg { will-change: transform; }
+
+/* 5. A steady text caret. The blinking caret in the Home search pill redrew the pill's glass twice a second, which was
+   almost all of the CPU an idle New Tab used (about a third of a core in the GPU process). The caret is still there,
+   in the accent colour, it just does not blink. */
+input, textarea, [contenteditable] { caret-animation: manual; }
+
+/* 6. While a page scrolls, nothing under the pointer reacts to it. Cards sliding under a still pointer used to start
+   their hover (a box-shadow transition that repaints the whole card) and their glint, one after another, on every
+   frame of the scroll. Hovers come back the moment the scroll settles (glass.js adds .is-scrolling). */
+html.is-scrolling body { pointer-events: none; }
+
+/* 7. Each Settings card (and each Home widget) is its own layer: it is drawn once, with its big soft shadows, and a
+   scroll only moves it. Before, every scroll step re-drew newly exposed strips of the page, shadows and all. */
+body:not(.home-page) .main .card, body:not(.home-page) .main .hero, .hm-card { will-change: transform; }

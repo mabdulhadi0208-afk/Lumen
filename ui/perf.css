@@ -1,0 +1,11 @@
+/* Lumen speed layer for the browser chrome and its Nova views (docs/PERF.md). Linked last.
+   Same look, cheaper ways to draw it. */
+
+/* A steady text caret: a blinking caret inside glass (the address bar, the command bar, Find, dialog fields) makes
+   the glass around it redraw twice a second for as long as it has focus. It still shows; it just does not blink. */
+input, textarea, [contenteditable] { caret-animation: manual; }
+
+/* "Restart to update" pill: its glow (a box-shadow pulse), the flowing gradient (background-position) and the arrow
+   bob repainted the toolbar on every frame for as long as an update waited, which can be days. They play for the
+   first 15 to 25 seconds after it appears, then the pill rests in its lit state. */
+.update, .update::after, .update .up-orb svg { animation-iteration-count: 6; }

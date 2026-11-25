@@ -94,6 +94,7 @@
     const w = e.offsetWidth, h = e.offsetHeight
     if (w < 8 || h < 8 || w * h > 2.2e6 || h > 1800) { release(e); e.style.removeProperty('--lens'); return }
     const cs = getComputedStyle(e)
+    if (cs.getPropertyValue('--lens-off').trim()) { release(e); e.style.removeProperty('--lens'); return }   // pages/perf.css: drawn without a lens
     const r = Math.min(parseFloat(cs.borderTopLeftRadius) || 0, Math.min(w, h) / 2)
     const k = parseFloat(cs.getPropertyValue('--lens-k')) || 1
     const c = lens(w, h, r, k)
@@ -125,8 +126,16 @@
     glints.set(e, g)
     return g
   }
+  // while the page scrolls, the cards slide under a still pointer: the glint (and every hover) stays as it is until
+  // the scroll settles, instead of repainting the cards it passes on every frame (pages/perf.css, docs/PERF.md)
+  let scrollT = 0
+  const html = document.documentElement
+  addEventListener('scroll', () => {
+    if (!scrollT) html.classList.add('is-scrolling')
+    clearTimeout(scrollT); scrollT = setTimeout(() => { scrollT = 0; html.classList.remove('is-scrolling') }, 140)
+  }, { passive: true, capture: true })
   function move(ev) {
-    if (!on || ev.pointerType === 'touch') return
+    if (!on || ev.pointerType === 'touch' || scrollT) return
     const t = ev.target && ev.target.closest ? ev.target.closest('.lg') : null
     if (t !== cur) { if (cur) { const g = glints.get(cur); if (g) g.o.to(0) } cur = t }
     if (!t) return

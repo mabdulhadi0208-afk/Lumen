@@ -72,8 +72,12 @@ function removeReadLater(url) { readLater.replace(readLater.get().filter(x => x.
 // ---------- history ----------
 const historyMap = new Map()
 for (const h of historyStore.get()) historyMap.set(h.url, h)
+// sorted history and Most visited are worked out once per change, not on every New Tab (history can hold 20,000 pages)
+let histSorted = null, topCache = null
+const histChanged = () => { histSorted = null; topCache = null }
 function addHistory(url, title) {
   if (!/^https?:/.test(url)) return
+  histChanged()
   let h = historyMap.get(url)
   if (h) { h.visits++; h.t = Date.now(); if (title) h.title = title }
   else { h = { url, title: title || url, t: Date.now(), visits: 1 }; historyMap.set(url, h) }
@@ -81,46 +85,53 @@ function addHistory(url, title) {
 }
 function updateHistoryTitle(url, title) {
   const h = historyMap.get(url)
-  if (h && title) { h.title = title; flushHistory() }
+  if (h && title && h.title !== title) { h.title = title; topCache = null; flushHistory() }
 }
 let histTimer
+const sortedHistory = () => histSorted || (histSorted = [...historyMap.values()].sort((a, b) => b.t - a.t))
 function flushHistory() {
   clearTimeout(histTimer)
   histTimer = setTimeout(() => {
-    let arr = [...historyMap.values()].sort((a, b) => b.t - a.t)
+    let arr = sortedHistory()
     if (arr.length > 20000) {
       arr = arr.slice(0, 20000)
       historyMap.clear(); for (const h of arr) historyMap.set(h.url, h)
+      histChanged()
     }
-    historyStore.replace(arr)
+    historyStore.replace(arr.slice())
   }, 800)
 }
 function listHistory(q = '', limit = 300) {
-  const arr = [...historyMap.values()].sort((a, b) => b.t - a.t)
+  const arr = sortedHistory()
   if (!q) return arr.slice(0, limit)
   const s = q.toLowerCase()
   return arr.filter(h => h.url.toLowerCase().includes(s) || (h.title || '').toLowerCase().includes(s)).slice(0, limit)
 }
-function deleteHistory(url) { historyMap.delete(url); flushHistory() }
+function deleteHistory(url) { historyMap.delete(url); histChanged(); flushHistory() }
 // forget a whole site: every page on that host and its subdomains
 function deleteHistoryHost(host) {
   host = String(host || '').replace(/^www\./, ''); if (!host) return 0
   let n = 0
   for (const k of [...historyMap.keys()]) { let h = ''; try { h = new URL(k).hostname.replace(/^www\./, '') } catch {} if (h === host || h.endsWith('.' + host)) { historyMap.delete(k); n++ } }
-  flushHistory(); return n
+  histChanged(); flushHistory(); return n
 }
 function clearHistory(sinceMs = 0) {
   if (!sinceMs) historyMap.clear()
   else for (const [k, h] of historyMap) if (h.t >= Date.now() - sinceMs) historyMap.delete(k)
-  flushHistory()
+  histChanged(); flushHistory()
 }
 function topSites(n = 8) {
-  const byHost = new Map()
+  if (topCache && topCache.n >= n && Date.now() - topCache.at < 10 * 60000) return topCache.list.slice(0, n).map(x => ({ ...x }))
+  const list = topSitesNow(Math.max(n, 12)); topCache = { n: Math.max(n, 12), at: Date.now(), list }
+  return list.slice(0, n).map(x => ({ ...x }))
+}
+function topSitesNow(n) {
+  const byHost = new Map(), now = Date.now()
   for (const h of historyMap.values()) {
-    let host; try { host = new URL(h.url).host } catch { continue }
-    const cur = byHost.get(host)
-    const score = h.visits + (Date.now() - h.t < 7 * 864e5 ? 3 : 0)
-    if (!cur) byHost.set(host, { url: new URL(h.url).origin, title: h.title, host, score })
+    let u; try { u = new URL(h.url) } catch { continue }
+    const host = u.host, cur = byHost.get(host)
+    const score = h.visits + (now - h.t < 7 * 864e5 ? 3 : 0)
+    if (!cur) byHost.set(host, { url: u.origin, title: h.title, host, score })
     else cur.score += score
   }
   return [...byHost.values()].sort((a, b) => b.score - a.score).slice(0, n)

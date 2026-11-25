@@ -6,6 +6,9 @@
    "This is Lumen 4.0", a fast tour of live demos inside a Nova browser that looks like the real one, the reveal of
    the new home screen, a closing montage, and a finale where the letterbox opens and asks one question. After an
    update the short cut plays: warp, ignition, What is new, the home screen and "You are on Lumen 4.0".
+   Every title has a giant outline echo of itself that bleeds off the frame, What is new is a one-sheet (the number
+   at monument size beside a bento of glass cards with glowing icon tiles and watermark glyphs) and the finale is the
+   closing card of a trailer. Big but cheap: transform and opacity only, plain blur, nothing loops.
    Everything is lit in your accent color. Synthesized, friendly score; every cut lands on a beat of it. No emoji.
    Skip or Escape jump to the finale at any point; with Motion off or reduced motion there is no film at all.
    Every release rewrites WHATS_NEW below, and after an update Lumen plays the short what's-new cut once.
@@ -39,7 +42,7 @@
   #intro .nebw{position:absolute;inset:-15%;will-change:transform}
   #intro .neb{position:absolute;inset:0;opacity:0;transition:opacity 3s;
     background:radial-gradient(40% 36% at 28% 34%,color-mix(in srgb,var(--a) 28%,transparent),transparent 70%),radial-gradient(38% 34% at 74% 64%,color-mix(in srgb,var(--a2) 26%,transparent),transparent 70%),radial-gradient(26% 26% at 52% 48%,color-mix(in srgb,var(--a3) 16%,transparent),transparent 70%)}
-  #intro.lit .neb{opacity:1;animation:neb 18s ease-in-out infinite alternate}
+  #intro.lit .neb{opacity:1;animation:neb 18s ease-in-out 4 alternate}
   @keyframes neb{to{transform:translate3d(3%,-2%,0) scale(1.08) rotate(2deg)}}
   #intro .flare{position:absolute;left:50%;top:50%;width:160vw;height:3px;margin-left:-80vw;border-radius:50%;opacity:0;pointer-events:none;z-index:3;
     background:linear-gradient(90deg,transparent,color-mix(in srgb,var(--hi) 60%,transparent) 38%,#fff 50%,color-mix(in srgb,var(--hi3) 60%,transparent) 62%,transparent 90%);filter:blur(1px);box-shadow:0 0 40px 6px color-mix(in srgb,var(--a) 40%,transparent)}
@@ -319,7 +322,7 @@
   #intro .meter i{display:block;height:100%;width:0;background:var(--nova);box-shadow:0 0 10px var(--a);border-radius:3px}
   #intro .credit{position:absolute;left:28px;top:calc(var(--bar) + 24px);z-index:9;font:700 10.5px var(--font);letter-spacing:.32em;text-transform:uppercase;color:rgba(220,226,255,.42)}
   #intro .credit b{color:var(--hi);font-weight:800}
-  #intro .credit i{display:inline-block;width:6px;height:6px;margin-right:10px;border-radius:50%;background:#ff4d6d;box-shadow:0 0 8px #ff4d6d;vertical-align:1px;animation:rec 1.4s steps(2) infinite}
+  #intro .credit i{display:inline-block;width:6px;height:6px;margin-right:10px;border-radius:50%;background:#ff4d6d;box-shadow:0 0 8px #ff4d6d;vertical-align:1px;animation:rec 1.4s steps(2) 40}
   @keyframes rec{50%{opacity:.25}}
   #intro.still .glass,#intro.still .lgl,#intro.still .drop{backdrop-filter:blur(24px) saturate(1.8) !important}
   #intro.still .credit i{animation:none}
@@ -341,6 +344,74 @@
   #arrive b{font:800 clamp(40px,7.4vmin,92px)/1 ui-rounded,"SF Pro Rounded","SF Pro Display",-apple-system,system-ui,sans-serif;letter-spacing:-.045em;padding-bottom:.06em;background:linear-gradient(100deg,#fff 20%,var(--hi) 60%,var(--hi3));-webkit-background-clip:text;background-clip:text;color:transparent}
   #arrive small{font-size:14px;color:rgba(220,226,255,.7)}
   #arrive .fl{position:absolute;left:50%;top:50%;width:90vmin;height:90vmin;margin:-45vmin 0 0 -45vmin;border-radius:50%;pointer-events:none;opacity:0;background:radial-gradient(closest-side,#fff,color-mix(in srgb,var(--hi) 60%,transparent) 30%,color-mix(in srgb,var(--a) 25%,transparent) 60%,transparent)}
+  /* ---- the 4.0 flagship cut: monument type. Every title card has a giant outline echo of itself bleeding off the
+     frame, the type is poster size, What is new is a one-sheet (the number at monument size beside a bento of glass
+     cards, each with the Settings hero DNA: a glowing icon tile, a light wash and a giant watermark glyph), and the
+     finale is the closing card of a trailer. Transform and opacity only; nothing loops. */
+  #intro .echo{position:absolute;inset:0;display:grid;place-items:center;pointer-events:none;opacity:0;font:800 46vh/1 ${HEAD};letter-spacing:-.065em;white-space:nowrap;color:transparent;
+    -webkit-text-stroke:2px color-mix(in srgb,var(--hi) 85%,transparent);z-index:-1}
+  #intro .echo.fill{color:color-mix(in srgb,var(--hi) 16%,transparent);-webkit-text-stroke:1.5px color-mix(in srgb,var(--hi) 70%,transparent)}
+  #intro .echo.tw{font-size:34vh;top:-8vh}
+  #intro .echo.mega{font-size:64vh}
+  #intro .trailer .tc{font-size:clamp(78px,14vw,224px);letter-spacing:-.062em}
+  #intro .trailer .tc.sm{font-size:clamp(52px,8vw,128px)}
+  #intro .trailer .tc small{font-size:clamp(12px,1.1vw,15px)}
+  #intro .count{font-size:clamp(190px,33vw,480px)}
+  #intro .logo{font-size:clamp(92px,15vw,228px)}
+  #intro .kicker{font-size:12.5px}
+  #intro .tag{font-size:clamp(17px,1.7vw,24px);color:#d3d8f5}
+  #intro .tourcap h2{font-size:clamp(30px,4.2vw,60px);letter-spacing:-.04em}
+  #intro .tourcap .n{font-size:12px}
+
+  /* what is new: a one-sheet */
+  #intro .nw4{width:min(1200px,92vw);display:grid;grid-template-columns:minmax(0,.8fr) minmax(0,1.2fr);gap:clamp(24px,3.4vw,56px);align-items:center;text-align:left}
+  #intro .nw4 .lh{position:relative}
+  #intro .nw4 .bigv{font:800 clamp(130px,17vw,270px)/.8 ${HEAD};letter-spacing:-.075em;margin:22px 0 10px -.04em;padding:0 .04em .08em 0;white-space:nowrap;opacity:0;
+    background:linear-gradient(180deg,#fff 18%,var(--hi) 58%,var(--hi3));-webkit-background-clip:text;background-clip:text;color:transparent;filter:drop-shadow(0 0 50px color-mix(in srgb,var(--a) 55%,transparent))}
+  #intro .nw4 h1{font-size:clamp(30px,3.4vw,52px);margin:0 0 10px;text-align:left}
+  #intro .nw4 .lede{color:#c2c8ea;font-size:15.5px;line-height:1.5;margin:0;max-width:380px;opacity:0}
+  #intro .nw4 .bento{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  #intro .nw4 .it{flex-direction:row;align-items:center;gap:13px;padding:12px 30px 12px 13px;min-height:62px;border-radius:22px;overflow:hidden;box-sizing:border-box}
+  #intro .nw4 .it::after{content:'';position:absolute;left:-10%;top:-60%;width:70%;height:120%;border-radius:50%;pointer-events:none;background:radial-gradient(closest-side,color-mix(in srgb,var(--a) 28%,transparent),transparent)}
+  #intro .nw4 .it .k{width:40px;height:40px;position:relative;z-index:1;box-shadow:inset 0 1px 0 rgba(255,255,255,.5),inset 0 -6px 12px rgba(0,0,0,.12),0 0 0 3px color-mix(in srgb,var(--a) 18%,transparent),0 10px 26px color-mix(in srgb,var(--a) 60%,transparent)}
+  #intro .nw4 .it span{font-size:13.5px;line-height:1.38;flex:1;min-width:0;position:relative;z-index:1}
+  #intro .nw4 .it .no2{position:absolute;right:13px;top:11px;z-index:1}
+  #intro .nw4 .it .wmk{position:absolute;right:-18px;bottom:-26px;width:92px;height:92px;color:var(--hi);opacity:.13;transform:rotate(-14deg);pointer-events:none}
+  #intro .nw4 .it .wmk svg{width:100%;height:100%;stroke-width:1.1}
+  #intro .nw4 .it.hero{grid-column:span 2;padding:18px 60px 18px 18px;min-height:104px;gap:18px;
+    background:radial-gradient(60% 120% at 0% 0%,color-mix(in srgb,var(--a) 46%,transparent),transparent 70%),radial-gradient(60% 120% at 100% 100%,color-mix(in srgb,var(--a3) 38%,transparent),transparent 70%),linear-gradient(150deg,rgba(255,255,255,.12),rgba(255,255,255,.03)),rgba(10,12,28,.25)}
+  #intro .nw4 .it.hero .k{width:62px;height:62px;border-radius:20px}
+  #intro .nw4 .it.hero .k svg{width:28px;height:28px}
+  #intro .nw4 .it.hero span{font:800 clamp(18px,1.75vw,25px)/1.18 ${HEAD};letter-spacing:-.025em;color:#fff}
+  #intro .nw4 .it.hero .wmk{width:190px;height:190px;right:-34px;bottom:-70px;opacity:.18}
+  #intro .nw4 .it.last{grid-column:span 2}
+  @media (max-width:1000px){#intro .nw4 .it span{font-size:12.5px}#intro .nw4 .it{padding:10px 26px 10px 11px;gap:10px}#intro .nw4 .it .k{width:34px;height:34px}}
+  @media (max-width:760px){#intro .nw4{grid-template-columns:1fr}#intro .nw4 .bigv,#intro .nw4 .lede{display:none}}
+
+  /* the finale: the closing card of a trailer */
+  #intro .fin4 .fk{font:800 12.5px/1 var(--font);letter-spacing:.5em;text-transform:uppercase;color:var(--hi);padding-left:.5em;margin-bottom:6px}
+  #intro .fin4 .logo{font-size:clamp(76px,11vw,168px);letter-spacing:-.055em;line-height:1}
+  #intro .fin4 .ask{width:min(880px,92vw);align-items:center;gap:18px;padding:18px 18px 18px 20px;box-sizing:border-box;overflow:hidden}
+  #intro .fin4 .ask .tx{flex:1;min-width:0;position:relative;z-index:1}
+  #intro .fin4 .ask .k{position:relative;z-index:1;width:58px;height:58px;border-radius:19px}
+  #intro .fin4 .ask .k svg{width:27px;height:27px}
+  #intro .fin4 .ask .btns{margin:0;flex:none;flex-direction:column;gap:8px;position:relative;z-index:1}
+  #intro .fin4 .ask .btns button{height:46px}
+  #intro .fin4 .ask .wmk{position:absolute;right:200px;bottom:-60px;width:180px;height:180px;color:#ffb27a;opacity:.12;transform:rotate(-14deg);pointer-events:none}
+  #intro .fin4 .ask .wmk svg{width:100%;height:100%;stroke-width:1}
+  #intro .fin4 > .btns .go{height:60px;padding:0 44px;font-size:18px}
+  @media (max-width:760px){#intro .fin4 .ask{flex-wrap:wrap}#intro .fin4 .ask .btns{flex-direction:row;width:100%;justify-content:flex-end}}
+
+  /* the first frame after an update: the restart screen's last frame, the number at monument size */
+  #arrive .am{gap:8px;margin-bottom:5vh}
+  #arrive .ao{width:min(118px,15vmin);height:min(118px,15vmin)}
+  #arrive .an{font:800 clamp(110px,34vh,360px)/.84 ui-rounded,"SF Pro Rounded","SF Pro Display",-apple-system,system-ui,sans-serif;letter-spacing:-.07em;white-space:nowrap;padding:0 .04em .06em;
+    background:linear-gradient(180deg,#fff 22%,var(--hi) 62%,var(--hi3));-webkit-background-clip:text;background-clip:text;color:transparent;filter:drop-shadow(0 0 40px color-mix(in srgb,var(--a) 60%,transparent))}
+  #arrive b{font-size:clamp(20px,3.4vmin,34px);letter-spacing:-.03em}
+  #arrive .ar{position:absolute;left:50%;bottom:7vh;width:min(640px,76vw);margin-left:max(-320px,-38vw);height:3px;border-radius:3px;background:var(--nv,linear-gradient(90deg,var(--a),var(--a3)));box-shadow:0 0 14px var(--a)}
+  #arrive .cart{position:absolute;right:-14vmin;bottom:-18vmin;width:78vmin;height:78vmin;pointer-events:none;color:color-mix(in srgb,var(--a) 60%,#fff);opacity:.07;transform:rotate(-14deg)}
+  #arrive .cart svg{width:100%;height:100%;fill:none;stroke:currentColor;stroke-width:.6;stroke-linecap:round;stroke-linejoin:round}
+  #arrive::after{content:'';position:absolute;inset:0;pointer-events:none;background:radial-gradient(120% 90% at 50% 50%,transparent 45%,rgba(0,0,0,.75))}
   `
   // ------------------------------------------------------------ sound: friendly, bright and crisp, all synthesized (no files)
   // A warm major pad, bell chimes, bubbly pops and soft air. Nothing low, buzzy or ominous.
@@ -773,12 +844,18 @@
   const hardCut = el => { el.getAnimations().forEach(x => x.cancel()); el.style.opacity = '0' }
   const pop = (a, shake = 0) => { if (still || skip) return; sky.flash = Math.max(sky.flash, a); sky.shake = Math.max(sky.shake, shake); if (a >= .1) flare(Math.min(1, a * 3)) }
   const IC = n => ICONS[n] || ''
+  // a giant outline echo of a title: it lands with the card and keeps growing past the frame as it fades
+  const echo = (el, text, { from = .82, to = 1.22, a = .5, ms = BEAT * 1.8 } = {}) => {
+    if (!el || still) return
+    el.textContent = text
+    anim(el, [{ opacity: 0, transform: `scale(${from})` }, { opacity: a, transform: 'scale(1)', offset: .22 }, { opacity: 0, transform: `scale(${to})` }], { duration: ms, easing: 'cubic-bezier(.16,1,.3,1)' })
+  }
 
   // the cold open, cut like a trailer: three title cards on the beat, then a count that slams into the version number
   async function coldOpen() {
     const cards = ['<em>Rebuilt.</em>', 'Redesigned.', '<em>Reimagined.</em>']
-    const s = scene(`<div class="title trailer"><div class="pre">A Lumen picture</div>${cards.map(c => `<div class="tc">${c}</div>`).join('')}<div class="count"><span class="cn">1.0</span><i class="cg" aria-hidden="true"></i></div><i class="cring"></i><div class="slate">Lumen ${FILM_V}   The trailer</div></div>`)
-    const pre = s.querySelector('.pre'), tcs = s.querySelectorAll('.tc'), cnt = s.querySelector('.count'), cn = s.querySelector('.cn'), cg = s.querySelector('.cg'), ring = s.querySelector('.cring')
+    const s = scene(`<div class="title trailer"><div class="echo"></div><div class="pre">A Lumen picture</div>${cards.map(c => `<div class="tc">${c}</div>`).join('')}<div class="count"><span class="cn">1.0</span><i class="cg" aria-hidden="true"></i></div><i class="cring"></i><div class="slate">Lumen ${FILM_V}   The trailer</div></div>`)
+    const ech = s.querySelector('.echo'), pre = s.querySelector('.pre'), tcs = s.querySelectorAll('.tc'), cnt = s.querySelector('.count'), cn = s.querySelector('.cn'), cg = s.querySelector('.cg'), ring = s.querySelector('.cring')
     anim(pre, [{ opacity: 0, letterSpacing: '1em' }, { opacity: 1, letterSpacing: '.5em' }], { duration: 1100, easing: 'cubic-bezier(.16,1,.3,1)' })
     anim(s.querySelector('.slate'), [{ opacity: 0 }, { opacity: 1 }], { duration: 900, delay: 200 })
     sky.speed = .2; tween(sky, 'neb', .3, 2400); crane(18, -1, 2600)
@@ -786,7 +863,7 @@
     anim(pre, [{ opacity: 1 }, { opacity: 0 }], { duration: 260 })
     for (let i = 0; i < tcs.length && !skip; i++) {
       if (i) hardCut(tcs[i - 1])
-      slamIn(tcs[i]); SFX.hit(i); pop(.12, 3)
+      slamIn(tcs[i]); echo(ech, tcs[i].textContent); SFX.hit(i); pop(.12, 3)
       await sleep(BEAT)
     }
     hardCut(tcs[tcs.length - 1])
@@ -794,7 +871,7 @@
     const steps = ['1.0', '2.0', '3.0']
     anim(cnt, [{ opacity: 0 }, { opacity: 1 }], { duration: 200 })
     for (let i = 0; i < steps.length && !skip; i++) {
-      cn.textContent = steps[i]
+      cn.textContent = steps[i]; echo(ech, steps[i], { a: .3, ms: BEAT * 1.2 })
       anim(cn, [{ opacity: 0, transform: 'scale(1.3) translateY(12px)', filter: 'blur(10px)' }, { opacity: .45 + i * .15, transform: 'none', filter: 'blur(0)' }], { duration: 320, easing: 'cubic-bezier(.16,1,.3,1)' })
       anim(ring, [{ opacity: .6, transform: 'scale(.4)' }, { opacity: 0, transform: 'scale(1.5)' }], { duration: 620, easing: 'cubic-bezier(.2,.8,.3,1)' })
       SFX.count(i)
@@ -803,6 +880,7 @@
     if (!skip) {
       // the version slams in: flash, shake, shockwave, and a glint runs across it
       cn.textContent = cg.textContent = FILM_V; cnt.classList.add('fin4')
+      ech.classList.add('fill', 'mega'); echo(ech, FILM_V, { from: .6, to: 1.5, a: .6, ms: 1500 })
       anim(cn, [{ opacity: 0, transform: 'scale(2.6)', filter: 'blur(26px)' }, { opacity: 1, transform: 'scale(.97)', filter: 'blur(0)', offset: .5 }, { opacity: 1, transform: 'scale(1)', filter: 'blur(0)' }], { duration: 720, easing: 'cubic-bezier(.16,1,.3,1)' })
       anim(ring, [{ opacity: 1, transform: 'scale(.3)' }, { opacity: 0, transform: 'scale(3.2)' }], { duration: 1100, easing: 'cubic-bezier(.2,.8,.3,1)' })
       boom(); SFX.count(3)
@@ -836,10 +914,11 @@
     stars.forEach(s => { s.x = (Math.random() - .5) * 2; s.y = (Math.random() - .5) * 2; s.z = Math.random() * .9 + .1 })
     sky.speed = .25
     const L = 'Lumen'.split('').map(c => `<span>${c}</span>`).join('')
-    const s = scene(`<div style="text-align:center;position:relative"><div class="kicker chrome">${short ? 'Fresh from an update' : 'This is'}</div><div class="logo">${L}<b class="v4">${FILM_V}</b><i class="glint" aria-hidden="true">Lumen<i class="gv">${FILM_V}</i></i><div class="mirror" aria-hidden="true">${L}<b class="v4">${FILM_V}</b></div><i class="drop"></i></div><div class="rule"></div><div class="tag"></div></div>`)
+    const s = scene(`<div class="echo fill mega ig"></div><div style="text-align:center;position:relative;margin-top:7vh"><div class="kicker chrome">${short ? 'Fresh from an update' : 'This is'}</div><div class="logo">${L}<b class="v4">${FILM_V}</b><i class="glint" aria-hidden="true">Lumen<i class="gv">${FILM_V}</i></i><div class="mirror" aria-hidden="true">${L}<b class="v4">${FILM_V}</b></div><i class="drop"></i></div><div class="rule"></div><div class="tag"></div></div>`)
     const logo = s.querySelector('.logo'), drop = logo.querySelector('.drop'), D = Math.round(logo.offsetHeight * 1.3)
     drop.style.width = drop.style.height = D + 'px'; lensAll(s)
-    tween(sky, 'orbR', 18, 1400); tween(sky, 'oy', -Math.min(H * .26, 220), 1800, k => 1 - Math.pow(1 - k, 4))
+    tween(sky, 'orbR', 24, 1400); tween(sky, 'oy', -Math.min(H * .3, 250), 1800, k => 1 - Math.pow(1 - k, 4))
+    const ig = s.querySelector('.ig'); if (!still) { ig.textContent = FILM_V; anim(ig, [{ opacity: 0, transform: 'scale(1.6)' }, { opacity: .55, transform: 'scale(1.02)', offset: .45 }, { opacity: .4, transform: 'scale(1)' }], { duration: 2600, delay: 900, easing: 'cubic-bezier(.16,1,.3,1)' }) }
     push(.035, short ? 3000 : 4000)   // a slow dolly in on the title
     crane(60, 2.2, short ? 2600 : 3200)   // while the camera cranes down and levels out
     anim(s.querySelector('.kicker'), [{ opacity: 0, letterSpacing: '1.1em' }, { opacity: 1, letterSpacing: '.46em' }], { duration: 1600, delay: 250, easing: 'cubic-bezier(.16,1,.3,1)' })
@@ -972,13 +1051,14 @@
   const POSE = i => ({ x: (i % 2 ? -1 : 1) * 46, ry: (i % 2 ? 1 : -1) * 30, rx: [8, 4, 10, 5][i % 4] })
   const REST = 'translate(0,-6vh)'
   const ART = ['tabs', 'search', 'shield', 'sparkle', 'translate', 'moon', 'split', 'bolt', 'layers', 'box']
+  const WORD = ['Tabs', 'Cmd K', 'Blocked', 'Ask', 'Translate', 'Dark', 'Split', 'Surge', 'Koi', 'Parcels']
   // the tour is cut into chapters, each opened by a title card on the beat
   const CHAPTERS = { 2: ['Protect', 'Private <em>by default.</em>'], 3: ['Understand', 'Every page, <em>explained.</em>'], 5: ['Your way', 'Made <em>yours.</em>'], 7: ['Built in', 'Two apps. <em>Zero installs.</em>'] }
   async function chapter([kick, line], n, cap) {
     root.classList.add('tight')
     if (cap) anim(cap, [{ opacity: 1 }, { opacity: 0 }], { duration: 200 })
-    const s = scene(`<div class="title trailer"><div class="tc sm"><small>${String(n).padStart(2, '0')}  ${kick}</small>${line}</div></div>`), tc = s.querySelector('.tc')
-    slamIn(tc, { from: 1.35 }); SFX.hit(n); pop(.14, 3); leak(.4, n % 2 ? 1 : -1, 1200)
+    const s = scene(`<div class="title trailer"><div class="echo"></div><div class="tc sm"><small>${String(n).padStart(2, '0')}  ${kick}</small>${line}</div></div>`), tc = s.querySelector('.tc')
+    slamIn(tc, { from: 1.35 }); echo(s.querySelector('.echo'), kick, { ms: BEAT * 2.2, a: .45 }); SFX.hit(n); pop(.14, 3); leak(.4, n % 2 ? 1 : -1, 1200)
     await sleep(BEAT * 1.5)
     cutOut(tc, 200); await sleep(200); s.remove()
     root.classList.remove('tight')
@@ -997,10 +1077,11 @@
         await chapter(CHAPTERS[i], Object.keys(CHAPTERS).indexOf(String(i)) + 1, cap)
         focus(2.5, 600)
       }
-      const f = TOUR[i], p = POSE(i), s = scene(`<i class="halo"></i><div class="art ${i % 2 ? 'l' : 'r'}">${ICONS[ART[i]] || ''}</div><div class="rig"><div class="glass glassf">${f.build()}<i class="glare"></i></div></div>`, 'flat')
+      const f = TOUR[i], p = POSE(i), s = scene(`<div class="echo tw">${WORD[i] || ''}</div><i class="halo"></i><div class="art ${i % 2 ? 'l' : 'r'}">${ICONS[ART[i]] || ''}</div><div class="rig"><div class="glass glassf">${f.build()}<i class="glare"></i></div></div>`, 'flat')
       const rig = s.querySelector('.rig'), frame = s.querySelector('.glassf')
       lensAll(s)
       anim(s.querySelector('.halo'), [{ opacity: 0, transform: 'scale(.7)' }, { opacity: .55, transform: 'none' }], { duration: 1200, easing: 'cubic-bezier(.16,1,.3,1)' })
+      anim(s.querySelector('.echo'), [{ opacity: 0, transform: `translateX(${i % 2 ? -8 : 8}vw) scale(1.12)` }, { opacity: .5, transform: 'none' }], { duration: 1600, easing: 'cubic-bezier(.16,1,.3,1)' })
       anim(s.querySelector('.art'), [{ opacity: 0, transform: `rotate(${i % 2 ? 24 : -24}deg) scale(1.25)` }, { opacity: .1, transform: `rotate(${i % 2 ? 12 : -12}deg) scale(1)` }], { duration: 2000, easing: 'cubic-bezier(.16,1,.3,1)' })
       // the outgoing shot swings away out of focus while this one swings in from the other side and racks sharp
       if (prev) {
@@ -1041,8 +1122,8 @@
   async function homeReveal({ short = false } = {}) {
     if (skip) return
     // a title card on the beat, then the hero shot rises into frame and builds itself piece by piece
-    const t = scene(`<div class="title trailer"><div class="tc sm"><small>${short ? 'New in ' + FILM_V : 'Introducing'}</small>The new <em>home screen.</em></div></div>`)
-    slamIn(t.querySelector('.tc'), { from: 1.3 }); SFX.hit(2); pop(.18, 4); leak(.5, 1, 1600)
+    const t = scene(`<div class="title trailer"><div class="echo fill"></div><div class="tc sm"><small>${short ? 'New in ' + FILM_V : 'Introducing'}</small>The new <em>home screen.</em></div></div>`)
+    slamIn(t.querySelector('.tc'), { from: 1.3 }); echo(t.querySelector('.echo'), 'Home', { ms: BEAT * 2.6, a: .5 }); SFX.hit(2); pop(.18, 4); leak(.5, 1, 1600)
     await sleep(BEAT * 2)
     cutOut(t.querySelector('.tc'), 220); await sleep(220); t.remove()
     if (skip) return
@@ -1085,10 +1166,10 @@
   async function montage() {
     if (skip) return
     const ws = ['Lighter.', 'Faster.', '<em>Yours.</em>']
-    const s = scene(`<div class="title trailer">${ws.map(w => `<div class="tc">${w}</div>`).join('')}</div>`), tcs = s.querySelectorAll('.tc')
+    const s = scene(`<div class="title trailer"><div class="echo fill"></div>${ws.map(w => `<div class="tc">${w}</div>`).join('')}</div>`), tcs = s.querySelectorAll('.tc'), ech = s.querySelector('.echo')
     for (let i = 0; i < tcs.length && !skip; i++) {
       if (i) hardCut(tcs[i - 1])
-      slamIn(tcs[i], { from: 1.4 }); SFX.hit(i + 1); pop(.12 + i * .06, 3 + i * 2)
+      slamIn(tcs[i], { from: 1.4 }); echo(ech, tcs[i].textContent, { a: .4 + i * .1 }); SFX.hit(i + 1); pop(.12 + i * .06, 3 + i * 2)
       await sleep(i === tcs.length - 1 ? BEAT * 1.5 : BEAT)
     }
     await leave(s, 360)
@@ -1096,13 +1177,18 @@
   async function whatsNew(version) {
     const items = WHATS_NEW.items
     tween(sky, 'bokeh', .6, 1500); focus(2, 1100); leak(.6, -1, 1800)
-    const s = scene(`<div class="new"><span class="eyebrow chrome">New in Lumen ${version || WHATS_NEW.version}</span><h1>The biggest update yet.</h1><div class="grid" style="--n:${Math.min(items.length, 4)}">${items.map((it, i) => `<div class="it glass sweep" style="--sd:${1.3 + i * .08}s"><div class="hd"><div class="k">${ICONS[it.icon] || ''}</div><span class="no2">${String(i + 1).padStart(2, '0')}</span></div><span>${it.text}</span></div>`).join('')}</div></div>`, 'flat')
+    const V = esc(version || WHATS_NEW.version)
+    const s = scene(`<div class="new nw4"><div class="lh"><span class="eyebrow chrome">New in Lumen ${V}</span><div class="bigv">${V}</div><h1>The biggest update yet.</h1><p class="lede">${items.length} things to try first, all of them already waiting in your browser.</p></div>
+      <div class="bento">${items.map((it, i) => `<div class="it glass sweep${i === 0 ? ' hero' : ''}${i === items.length - 1 && items.length % 2 === 0 ? ' last' : ''}" style="--sd:${1.3 + i * .08}s"><div class="k">${ICONS[it.icon] || ''}</div><span>${esc(it.text)}</span><b class="no2">${String(i + 1).padStart(2, '0')}</b><i class="wmk">${ICONS[it.icon] || ''}</i></div>`).join('')}</div></div>`, 'flat')
     lensAll(s)
     anim(s.querySelector('.eyebrow'), [{ opacity: 0, transform: 'translateY(-10px)', letterSpacing: '.6em' }, { opacity: 1, transform: 'none', letterSpacing: '.24em' }], { duration: 1100 })
-    slamIn(s.querySelector('h1'), { from: 1.25, ms: 900, k: 12 }); setTimeout(() => { if (!skip) { SFX.hit(1); pop(.1, 2) } }, 60)
+    anim(s.querySelector('.bigv'), [{ opacity: 0, transform: 'translateX(-40px) scale(1.5)' }, { opacity: 1, transform: 'scale(.98)', offset: .5 }, { opacity: 1, transform: 'none' }], { duration: 1100, delay: 120, easing: 'cubic-bezier(.16,1,.3,1)' })
+    setTimeout(() => { if (!skip) { SFX.count(3); pop(.16, 4) } }, 260)
+    slamIn(s.querySelector('h1'), { from: 1.2, ms: 900, k: 10 }); setTimeout(() => { if (!skip) { SFX.hit(1); pop(.1, 2) } }, 60)
+    anim(s.querySelector('.lede'), [{ opacity: 0, transform: 'translateY(12px)' }, { opacity: 1, transform: 'none' }], { duration: 900, delay: 700 })
     s.querySelectorAll('.it').forEach((el, i) => {
-      const fromX = (i % 4 - 1.5) * 50
-      anim(el, [{ opacity: 0, transform: `translate(${fromX}px,40px) scale(.9)`, filter: 'blur(10px)' }, { opacity: 1, transform: 'none', filter: 'none' }], { duration: 1000, delay: 480 + i * 75 })
+      const fromX = 60 + (i % 2) * 30
+      anim(el, [{ opacity: 0, transform: `translate(${fromX}px,30px) scale(.9)`, filter: 'blur(10px)' }, { opacity: 1, transform: 'none', filter: 'none' }], { duration: 1000, delay: 480 + i * 75 })
       setTimeout(() => !skip && SFX.pop(1 + i * .06), 480 + i * 75)
     })
     const hold = 1300 + items.length * 75 + 3300
@@ -1131,9 +1217,11 @@
     root.classList.add('wide'); focus(0, 1200); push(0, 600); crane(50, -1, 2000)
     sky.orbR = 0; sky.oy = -Math.min(H * .3, 250); tween(sky, 'orb', .8, 1200); tween(sky, 'orbR', 14, 1200); tween(sky, 'ring', 1, 1600); tween(sky, 'rays', .7, 2000); tween(sky, 'bokeh', .5, 2000); tween(sky, 'ghosts', .7, 2000); tween(sky, 'neb', .9, 2000)
     flare(.6); leak(.5, 1, 2200)
-    const s = scene(`<div class="fin" style="margin-top:4vh"><div class="logo">${short ? `You are on Lumen ${FILM_V}.` : `Welcome to Lumen ${FILM_V}.`}<i class="drop"></i></div>
-      ${!ask ? '' : `<div class="ask glass sweep" style="--sd:1.6s"><div class="k">${ICONS.box || ''}</div><div><b>Keep track of your orders?</b><span>When you place an order on any shop, Lumen saves it to Parcels. One click takes you straight back to the order, and it stays there until it is delivered. Change it any time in Settings.</span></div></div>`}
-      <div class="btns">${!ask ? '<button class="go">Continue</button>' : '<button class="no chrome">Not now</button><button class="go">Yes, save my orders</button>'}</div></div>`, 'flat')
+    const BTN = !ask ? '<button class="go">Continue</button>' : '<button class="go">Yes, save my orders</button><button class="no chrome">Not now</button>'
+    const s = scene(`<div class="echo fill mega fe"></div><div class="fin fin4" style="margin-top:7vh"><div class="fk">${short ? 'You are on' : 'Welcome to'}</div><div class="logo">Lumen ${FILM_V}<i class="drop"></i></div>
+      ${!ask ? `<div class="btns">${BTN}</div>` : `<div class="ask glass sweep" style="--sd:1.6s"><i class="wmk">${ICONS.box || ''}</i><div class="k">${ICONS.box || ''}</div><div class="tx"><b>Keep track of your orders?</b><span>When you place an order on any shop, Lumen saves it to Parcels. One click takes you straight back to the order, and it stays there until it is delivered. Change it any time in Settings.</span></div><div class="btns">${BTN}</div></div>`}</div>`, 'flat')
+    const fe = s.querySelector('.fe'); if (!still) { fe.textContent = FILM_V; anim(fe, [{ opacity: 0, transform: 'scale(1.4)' }, { opacity: .38, transform: 'none' }], { duration: 2200, easing: 'cubic-bezier(.16,1,.3,1)' }) }
+    anim(s.querySelector('.fk'), [{ opacity: 0, letterSpacing: '1.1em' }, { opacity: 1, letterSpacing: '.5em' }], { duration: 1400, easing: 'cubic-bezier(.16,1,.3,1)' })
     s.classList.add('live')
     const logo = s.querySelector('.logo'), drop = logo.querySelector('.drop'), D = Math.round(logo.offsetHeight * 1.25)
     drop.style.width = drop.style.height = D + 'px'
@@ -1172,7 +1260,7 @@
     const calm = matchMedia('(prefers-reduced-motion: reduce)').matches
     const icon = /^[a-z0-9-]+$/i.test(q.get('aicon') || '') ? q.get('aicon') : 'default', acc = /^#[0-9a-f]{6}$/i.test(q.get('aacc') || '') ? q.get('aacc') : null
     const el = arriveEl = document.createElement('div'); el.id = 'arrive'; if (acc) el.style.setProperty('--a', acc)
-    el.innerHTML = `<i class="fl"></i><div class="am"><div class="ao"><img alt=""></div><span class="ak">Updated</span><b>Lumen ${esc(ver)}</b><small>Welcome back. Your tabs are right here.</small></div>`
+    el.innerHTML = `<div class="cart" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9.5"/><path d="M12 7v9m-4-4 4 4 4-4"/><path d="M4.5 12a7.5 7.5 0 0 1 4-6.6" opacity=".5"/></svg></div><i class="fl"></i><div class="am"><div class="ao"><img alt=""></div><span class="ak">Updated</span><div class="an">${esc(ver)}</div><b>Lumen ${esc(ver)}</b><small>Welcome back. Your tabs are right here.</small></div><i class="ar"></i>`
     const img = el.querySelector('img'); img.onerror = () => { if (!/default\.png$/.test(img.src)) img.src = '../build/icons/default.png' }; img.src = `../build/icons/${icon}.png`
     document.body.appendChild(el)
     if (!calm) {
@@ -1211,7 +1299,8 @@
     cv = root.querySelector('canvas'); cx = cv.getContext('2d', { alpha: false })
     size(); addEventListener('resize', size)
     root.querySelector('.grain').style.background = `url(${grainURL()})`
-    grainAnim = still ? null : root.querySelector('.grain').animate([{ transform: 'translate(0,0)' }, { transform: 'translate(-3%,2%)' }, { transform: 'translate(2%,-3%)' }, { transform: 'translate(0,0)' }], { duration: 600, iterations: Infinity, easing: 'steps(4)' })
+    // the grain holds still: a full-screen blended layer that moved every 150ms cost a recomposite each step
+    grainAnim = null
     // the iris opens on the first frame
     if (!still) root.querySelector('.cam').animate([{ clipPath: 'circle(0% at 50% 50%)' }, { clipPath: 'circle(6% at 50% 50%)', offset: .35 }, { clipPath: 'circle(80% at 50% 50%)' }], { duration: 1700, easing: 'cubic-bezier(.6,0,.2,1)' })
     stars = Array.from({ length: Math.round(Math.min(900, W * H / 1600)) }, () => newStar())

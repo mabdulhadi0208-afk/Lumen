@@ -16,16 +16,17 @@
   const WHATS_NEW = {
     version: '4.0',
     items: [
-      { icon: 'clock', text: 'A rebuilt home screen: a new clock, search, shortcuts and widgets' },
-      { icon: 'gear', text: 'Every Settings and library page redesigned, with a hero on every section' },
-      { icon: 'play', text: 'A trailer for an intro: the most cinematic film Lumen has ever had' },
-      { icon: 'download', text: 'A new update card, and a restart that goes straight back to your tabs' },
-      { icon: 'bolt', text: 'Surge 4.0 and Koi 4.0, rebuilt to match' },
-      { icon: 'sparkle', text: 'Smoother and lighter: less work for your Mac when Lumen sits still' },
-      { icon: 'layers', text: 'Lumen draws its own menus for tabs and pages' },
-      { icon: 'crash', text: 'A tab that crashes gets a friendly screen to bring it right back' },
+      { icon: 'clock', text: 'A brand new home: a glowing clock, smart search and 15 widgets you can drag around' },
+      { icon: 'gear', text: 'Every Settings and library page rebuilt, plus a real Read later page' },
+      { icon: 'play', text: 'A trailer for an intro, and a restart screen that lands you right back in your tabs' },
+      { icon: 'bolt', text: 'Surge and Koi 4.0: a new menu, live update progress and a liquid battery orb' },
+      { icon: 'book', text: 'Reader mode with themes, contents, focus mode and read aloud' },
+      { icon: 'key', text: 'A strong password offered on every sign-up form' },
+      { icon: 'layers', text: 'Glass tooltips, a bigger command bar, simple gradient tabs and a new app icon' },
+      { icon: 'sparkle', text: 'Lighter than ever: nothing animates while Lumen sits still' },
     ],
   }
+
   const FILM_V = WHATS_NEW.version
   const HEAD = 'ui-rounded,"SF Pro Rounded","SF Pro Display",-apple-system,system-ui,sans-serif'
   const css = `

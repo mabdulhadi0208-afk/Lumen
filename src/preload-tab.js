@@ -70,9 +70,10 @@ if (location.protocol === 'lumen:') {
 
   // ------------------------------------------------------------ Lumen 4.0 in-page kit
   // Everything Lumen draws inside a web page lives in a closed shadow root (the page cannot see or restyle it), is
-  // made only when it is first needed, and is removed when it closes. Liquid glass: a lens that bends the page at
-  // the rim (an SVG displacement filter, with a faint chromatic fringe), a refractive gradient rim, a specular top
-  // edge, an inner caustic glow and an accent halo. Springs are CSS linear() curves of a toned down jelly spring.
+  // made only when it is first needed, and is removed when it closes. Liquid glass: deep blur, a refractive gradient
+  // rim with a faint chromatic fringe, a specular top edge, an inner caustic glow, stacked plates for depth and an
+  // accent halo. Popovers carry the Settings hero DNA: a glossy glowing icon tile with halo rings, a huge title, a
+  // light pool and a giant faded glyph bleeding off the edge. Springs are CSS linear() curves of a toned down jelly spring.
   // Nothing loops: entrances play once, and Motion Off or reduced motion makes everything still and instant.
   const SPRING = 'linear(0,.161,.458,.726,.907,1.005,1.042,1.045,1.033,1.02,1.009,1.002,.999,.998,.998,.999,.999,1)'
   const JELLY = 'linear(0,.091,.297,.538,.76,.933,1.047,1.108,1.126,1.116,1.091,1.06,1.032,1.01,.995,.987,.984,.985,.988,.992,.996,.999,1.001,1.002,1.001,1)'
@@ -100,7 +101,7 @@ if (location.protocol === 'lumen:') {
       background:radial-gradient(180px circle at var(--gx,20%) var(--gy,-30%),rgb(255 255 255/var(--glint)),transparent 70%),
         radial-gradient(120% 90% at 0% 0%,color-mix(in srgb,var(--accent) 20%,transparent),transparent 62%),
         radial-gradient(90% 90% at 100% 100%,color-mix(in srgb,var(--accent3) 17%,transparent),transparent 62%),var(--glass);
-      -webkit-backdrop-filter:var(--lens,) blur(22px) saturate(2);backdrop-filter:var(--lens,) blur(22px) saturate(2);box-shadow:var(--spec),var(--caustic),var(--shadow)}
+      -webkit-backdrop-filter:blur(24px) saturate(2);backdrop-filter:blur(24px) saturate(2);box-shadow:var(--spec),var(--caustic),var(--shadow)}
     .glass::before{content:'';position:absolute;inset:0;border-radius:inherit;padding:1.5px;pointer-events:none;background:var(--edge);-webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask-composite:exclude;z-index:3}
     .glass::after{content:'';position:absolute;inset:0;border-radius:inherit;pointer-events:none;z-index:2;
       box-shadow:inset 1.5px 0 0 color-mix(in srgb,#ff4d8d 30%,transparent),inset -1.5px 0 0 color-mix(in srgb,#2fd3ff 30%,transparent);
@@ -114,46 +115,6 @@ if (location.protocol === 'lumen:') {
     @media (prefers-color-scheme:dark){.sweep::before{opacity:.35}}
     ${STILL ? '*,*::before,*::after{animation:none!important;transition:none!important}.sweep{display:none}' : ''}`)
 
-  // the lens: a displacement map that is still in the middle and bends hard at the rim, one filter per size
-  const NS = 'http://www.w3.org/2000/svg'
-  const sdf = (px, py, w, h, r) => { const qx = Math.abs(px - w / 2) - (w / 2 - r), qy = Math.abs(py - h / 2) - (h / 2 - r); return Math.hypot(Math.max(qx, 0), Math.max(qy, 0)) + Math.min(Math.max(qx, qy), 0) - r }
-  const lensMaps = new Map()
-  function lensMap(w, h, r, bezel) {
-    const key = `${w}x${h}r${r}`
-    if (lensMaps.has(key)) return lensMaps.get(key)
-    const s = Math.min(1, 160 / Math.max(w, h)), cw = Math.max(2, Math.ceil(w * s)), ch = Math.max(2, Math.ceil(h * s))
-    const c = document.createElement('canvas'); c.width = cw; c.height = ch
-    const x = c.getContext('2d'), img = x.createImageData(cw, ch), d = img.data
-    for (let j = 0; j < ch; j++) for (let i = 0; i < cw; i++) {
-      const px = (i + 0.5) / s, py = (j + 0.5) / s, dist = -sdf(px, py, w, h, r)
-      let dx = 0, dy = 0
-      if (dist > 0 && dist < bezel) {
-        const t = 1 - dist / bezel, m = t * t * (1.4 - 0.4 * t)
-        const nx = sdf(px + 1, py, w, h, r) - sdf(px - 1, py, w, h, r), ny = sdf(px, py + 1, w, h, r) - sdf(px, py - 1, w, h, r), l = Math.hypot(nx, ny) || 1
-        dx = -nx / l * m; dy = -ny / l * m
-      }
-      const o = (j * cw + i) * 4; d[o] = 128 + dx * 127; d[o + 1] = 128 + dy * 127; d[o + 2] = 128; d[o + 3] = 255
-    }
-    x.putImageData(img, 0, 0)
-    const url = c.toDataURL(); if (lensMaps.size > 24) lensMaps.clear(); lensMaps.set(key, url)
-    return url
-  }
-  let lensSeq = 0
-  function addLens(sh, el, k = 1) {
-    if (STILL || !el.isConnected) return
-    const w = Math.round(el.offsetWidth / 2) * 2, h = Math.round(el.offsetHeight / 2) * 2
-    if (w < 16 || h < 16 || w * h > 600000) return
-    const r = Math.min(parseFloat(getComputedStyle(el).borderTopLeftRadius) || 0, w / 2, h / 2)
-    const bezel = Math.max(6, Math.min(r * 1.2 + 6, Math.min(w, h) / 2, 30)), scale = Math.round(Math.min(bezel * 1.1, 34) * k)
-    const id = 'lumen-lens-' + (++lensSeq)
-    const ch = [['r', 1, '1 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 1 0'], ['g', 1.07, '0 0 0 0 0  0 1 0 0 0  0 0 0 0 0  0 0 0 1 0'], ['b', 1.15, '0 0 0 0 0  0 0 0 0 0  0 0 1 0 0  0 0 0 1 0']]
-    const svg = document.createElementNS(NS, 'svg'); svg.setAttribute('width', '0'); svg.setAttribute('height', '0'); svg.setAttribute('aria-hidden', 'true'); svg.style.cssText = 'position:absolute;width:0;height:0'
-    svg.innerHTML = `<filter id="${id}" x="0" y="0" width="${w}" height="${h}" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB"><feImage href="${lensMap(w, h, Math.round(r), bezel)}" x="0" y="0" width="${w}" height="${h}" preserveAspectRatio="none" result="map"/>` +
-      ch.map(([n, m, v]) => `<feDisplacementMap in="SourceGraphic" in2="map" scale="${Math.round(scale * m)}" xChannelSelector="R" yChannelSelector="G" result="d${n}"/><feColorMatrix in="d${n}" type="matrix" values="${v}" result="${n}"/>`).join('') +
-      '<feBlend in="r" in2="g" mode="screen" result="rg"/><feBlend in="rg" in2="b" mode="screen"/></filter>'
-    sh.appendChild(svg)
-    el.style.setProperty('--lens', `url(#${id})`)
-  }
   // the specular glint follows the pointer while it is over the glass (nothing moves when it is still)
   function glint(el) {
     if (STILL) return
@@ -166,89 +127,144 @@ if (location.protocol === 'lumen:') {
     const sh = host.attachShadow({ mode: 'closed' })
     return { host, sh }
   }
-  // a liquid glass account menu under a sign-in field, shared by Lumen Passwords and Lumen Passkeys
-  function accountMenu(anchor, { kind, title, sub, rows, hint, onPick }) {
+  // a liquid glass account menu under a sign-in field, shared by Lumen Passwords, Lumen Passkeys and the strong
+  // password offer. A hero band on top (glossy glowing tile with halo rings, a huge title, a light pool and a giant
+  // faded glyph bleeding off the edge), two glass plates stacked behind it for depth, a glow ring around the field,
+  // and a highlight that slides between the rows on a jelly spring.
+  function accountMenu(anchor, { kind, title, sub, rows, badge, onPick }) {
     const { host, sh } = surface()
     const r = anchor.getBoundingClientRect()
-    const W = Math.max(300, Math.min(380, Math.round(r.width)))
-    const H = 92 + Math.min(rows.length, 5) * 58 + 44
-    const below = r.bottom + 10 + H < innerHeight || r.top < H
+    const W = Math.max(370, Math.min(420, Math.round(r.width) + 30))
+    const gen = kind === 'generate'
+    const H = 100 + (gen ? 112 : Math.min(rows.length, 5) * 64) + 60
+    const below = r.bottom + 12 + H < innerHeight || r.top < H
     const left = Math.round(Math.max(8, Math.min(r.left, innerWidth - W - 8)))
-    const pos = below ? `top:${Math.round(r.bottom + 10)}px` : `bottom:${Math.round(innerHeight - r.top + 10)}px`
-    const icon = kind === 'generate' ? '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M8 1.8 13.2 4v4c0 3.1-2.2 5.4-5.2 6.2C5 13.4 2.8 11.1 2.8 8V4z"/><path d="m5.6 8.1 1.7 1.7 3.2-3.4"/></svg>'
+    const pos = below ? `top:${Math.round(r.bottom + 12)}px` : `bottom:${Math.round(innerHeight - r.top + 12)}px`
+    const fr = parseFloat(getComputedStyle(anchor).borderTopLeftRadius) || 6
+    const icon = gen ? '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M8 1.8 13.2 4v4c0 3.1-2.2 5.4-5.2 6.2C5 13.4 2.8 11.1 2.8 8V4z"/><path d="m5.6 8.1 1.7 1.7 3.2-3.4"/></svg>'
       : kind === 'passkey'
       ? '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="5" r="2.6"/><path d="M1.8 13.5c.4-2.6 2.2-4 4.2-4 1 0 1.8.3 2.5.8"/><circle cx="12" cy="9.5" r="1.8"/><path d="M12 11.3v3M12 13h1.4"/></svg>'
       : '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="4.8" cy="8" r="2.9"/><path d="M7.7 8h6.6M12.2 8v2.6M14.3 8v1.8"/></svg>'
+    const bare = icon.replace(/^<svg[^>]*>|<\/svg>$/g, '')
+    const goWord = kind === 'passkey' ? 'Sign in' : gen ? 'Use' : 'Fill'
+    const enter = '<svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10 2.5v3.5a1.5 1.5 0 0 1-1.5 1.5H2.5M5 5 2.5 7.5 5 10"/></svg>'
+    const dy = below ? 1 : -1
     sh.innerHTML = `<style>${novaCSS()}
-      .m{position:fixed;left:${left}px;${pos};width:${W}px;border-radius:24px;padding:10px;overflow:hidden;transform-origin:${below ? 'top' : 'bottom'} ${r.left - left < W / 2 ? 'left' : 'right'};
-        opacity:0;transform:translateY(${below ? -10 : 10}px) scale(.9);transition:opacity .16s,transform .6s var(--spring)}
-      .m.on{opacity:1;transform:none}
-      .m.off{opacity:0;transform:translateY(${below ? -6 : 6}px) scale(.96);transition:opacity .14s,transform .2s ease-in}
-      .blob{position:absolute;z-index:-1;border-radius:50%;filter:blur(28px);pointer-events:none}
-      .b1{width:190px;height:150px;left:-60px;top:-70px;background:color-mix(in srgb,var(--accent) 42%,transparent)}
-      .b2{width:170px;height:130px;right:-70px;bottom:-60px;background:color-mix(in srgb,var(--accent3) 32%,transparent)}
-      .ghost{position:absolute;right:-18px;top:-22px;width:120px;height:120px;color:var(--accent);opacity:.09;pointer-events:none;z-index:0}
-      .h{position:relative;z-index:4;display:flex;align-items:center;gap:12px;padding:6px 8px 12px}
-      .h .tile{width:40px;height:40px;border-radius:13px}.h .tile svg{width:20px;height:20px}
-      .t{font:800 17px/1.1 var(--display);letter-spacing:-.03em}
-      .s{font-size:12px;color:var(--fg3);margin-top:3px;font-weight:550;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:${W - 90}px}
-      .l{position:relative;z-index:4;display:flex;flex-direction:column;gap:3px;max-height:${5 * 58}px;overflow:auto;scrollbar-width:none}
-      .i{position:relative;display:flex;align-items:center;gap:12px;padding:9px 10px;border-radius:15px;cursor:default;
-        transition:background .18s,box-shadow .25s,transform .5s var(--jelly);animation:rin .55s var(--spring) both;animation-delay:calc(60ms + var(--n) * 45ms)}
-      @keyframes rin{from{opacity:0;transform:translateY(8px) scale(.97)}}
-      .i:hover{background:var(--chip)}
-      .i.cur{background:linear-gradient(90deg,color-mix(in srgb,var(--accent) 22%,transparent),color-mix(in srgb,var(--accent3) 14%,transparent));box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--accent) 34%,transparent),var(--halo);transform:translateX(3px)}
+      .fr{position:fixed;left:${Math.round(r.left - 4)}px;top:${Math.round(r.top - 4)}px;width:${Math.round(r.width + 8)}px;height:${Math.round(r.height + 8)}px;border-radius:${Math.round(fr + 4)}px;pointer-events:none;
+        box-shadow:0 0 0 2px color-mix(in srgb,var(--accent) 70%,transparent),0 0 0 6px color-mix(in srgb,var(--accent) 16%,transparent),0 0 26px color-mix(in srgb,var(--accent) 40%,transparent);opacity:0;transform:scale(1.06);transition:opacity .2s,transform .6s var(--jelly)}
+      .mw{position:fixed;left:${left}px;${pos};width:${W}px;transform-origin:${below ? 'top' : 'bottom'} ${r.left - left < W / 2 ? 'left' : 'right'};
+        opacity:0;transform:translateY(${-14 * dy}px) scale(.86);transition:opacity .18s,transform .75s var(--jelly)}
+      .on .mw{opacity:1;transform:none}.on .fr{opacity:1;transform:none}
+      .off .mw{opacity:0;transform:translateY(${-6 * dy}px) scale(.95);transition:opacity .14s,transform .2s ease-in}.off .fr{opacity:0;transition:opacity .14s}
+      .deck{position:absolute;inset:0;border-radius:28px;z-index:-1;background:var(--glass);box-shadow:var(--spec),0 10px 30px color-mix(in srgb,var(--accent) 18%,rgba(14,18,40,.1))}
+      .deck::before{content:'';position:absolute;inset:0;border-radius:inherit;padding:1px;background:var(--edge);-webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask-composite:exclude;opacity:.7}
+      .d1{transform:translateY(${11 * dy}px) scale(.94);opacity:.75}.d2{transform:translateY(${21 * dy}px) scale(.87);opacity:.45}
+      .m{border-radius:28px;overflow:hidden}
+      .hb{position:relative;isolation:isolate;overflow:hidden;display:flex;align-items:center;gap:18px;padding:22px 20px 20px 22px;z-index:4;
+        background:radial-gradient(120% 150% at 0% 0%,color-mix(in srgb,var(--accent) 30%,transparent),transparent 58%),radial-gradient(90% 140% at 100% 100%,color-mix(in srgb,var(--accent3) 22%,transparent),transparent 62%)}
+      .hb::after{content:'';position:absolute;left:18px;right:18px;bottom:0;height:1px;background:linear-gradient(90deg,transparent,color-mix(in srgb,var(--accent) 45%,var(--line)),transparent)}
+      .blob{position:absolute;z-index:-1;border-radius:50%;pointer-events:none}
+      .b1{width:220px;height:170px;left:-70px;top:-100px;background:radial-gradient(closest-side,color-mix(in srgb,var(--accent) 55%,transparent),transparent)}
+      .b2{width:200px;height:150px;right:-60px;bottom:-110px;background:radial-gradient(closest-side,color-mix(in srgb,var(--accent3) 44%,transparent),transparent)}
+      .pool{position:absolute;z-index:-1;left:28%;top:-70px;width:56%;height:120px;border-radius:50%;background:radial-gradient(closest-side,rgb(255 255 255/calc(var(--glint) * 1.2)),transparent);pointer-events:none}
+      .hart{position:absolute;z-index:-1;right:-46px;top:-44px;width:190px;height:190px;color:var(--accent);opacity:.15;transform:rotate(-12deg);pointer-events:none;animation:artin 1.3s .1s var(--spring) both}
+      @keyframes artin{from{opacity:0;transform:rotate(-30deg) scale(.7) translateY(20px)}}
+      .hic{position:relative;width:58px;height:58px;flex:none;display:grid;place-items:center;border-radius:19px;color:#fff;
+        background:linear-gradient(180deg,rgba(255,255,255,.36),transparent 52%),linear-gradient(145deg,color-mix(in srgb,var(--accent) 70%,white),var(--accent) 50%,var(--accent3));
+        box-shadow:0 14px 30px color-mix(in srgb,var(--accent) 52%,transparent),0 0 0 7px color-mix(in srgb,var(--accent) 15%,transparent),inset 0 1px 0 rgba(255,255,255,.6),inset 0 -3px 8px rgba(0,0,0,.16);animation:icin .9s .08s var(--jelly) both}
+      .hic::after{content:'';position:absolute;inset:-14px;border-radius:29px;border:1px solid color-mix(in srgb,var(--accent) 30%,transparent);pointer-events:none;animation:ringin 1s .2s ease both}
+      .hic svg{width:28px;height:28px;filter:drop-shadow(0 2px 2px rgba(0,0,0,.2))}
+      @keyframes icin{from{opacity:0;transform:scale(.5) rotate(-16deg)}}@keyframes ringin{from{opacity:0;transform:scale(.7)}}
+      .htx{flex:1;min-width:0;margin-left:4px}
+      .t{font:800 22px/1.05 var(--display);letter-spacing:-.04em;padding-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+      .s{font-size:12.5px;color:var(--fg2);margin-top:5px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+      .bd{flex:none;display:flex;flex-direction:column;align-items:center;justify-content:center;min-width:52px;height:52px;padding:0 8px;border-radius:17px;background:color-mix(in srgb,var(--accent) 12%,transparent);box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--accent) 24%,transparent),var(--spec)}
+      .bd b{font:800 22px/1 var(--display);letter-spacing:-.04em;color:var(--fg)}
+      .bd small{font:800 8.5px/1 var(--sans);letter-spacing:.1em;text-transform:uppercase;color:var(--fg3);margin-top:4px}
+      .l{position:relative;z-index:4;display:flex;flex-direction:column;gap:4px;padding:10px;max-height:${5 * 64 + 16}px;overflow:auto;scrollbar-width:none}
+      .hl{position:absolute;left:10px;right:10px;top:0;border-radius:18px;pointer-events:none;opacity:0;
+        background:linear-gradient(90deg,color-mix(in srgb,var(--accent) 24%,transparent),color-mix(in srgb,var(--accent3) 14%,transparent));
+        box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--accent) 36%,transparent),var(--halo);transition:transform .55s var(--jelly),opacity .15s}
+      .hl.on{opacity:1}
+      .i{position:relative;display:flex;align-items:center;gap:14px;min-height:60px;padding:8px 10px;border-radius:18px;cursor:default;
+        transition:transform .5s var(--jelly);animation:rin .6s var(--jelly) both;animation-delay:calc(120ms + var(--n) * 55ms)}
+      @keyframes rin{from{opacity:0;transform:translateY(${12 * dy}px) scale(.94)}}
+      .i:not(.cur):hover{background:var(--chip)}
+      .i.cur{transform:translateX(3px)}
       .i:active{transform:scale(.96)}
-      .av{width:38px;height:38px;flex:none;border-radius:50%;display:grid;place-items:center;color:#fff;font:800 16px var(--display);letter-spacing:-.02em;
-        background:var(--nova);filter:hue-rotate(calc(var(--n) * 38deg));box-shadow:inset 0 1px 0 rgba(255,255,255,.5),0 5px 14px color-mix(in srgb,var(--accent) 38%,transparent)}
-      .tx{display:flex;flex-direction:column;gap:3px;min-width:0;flex:1}
-      .u{font:700 14.5px/1.2 var(--sans);letter-spacing:-.01em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-      .d{color:var(--fg3);font-size:12px;line-height:1.1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+      .av{position:relative;width:44px;height:44px;flex:none;border-radius:15px;display:grid;place-items:center;color:#fff;font:800 19px var(--display);letter-spacing:-.02em;overflow:hidden;
+        background:linear-gradient(180deg,rgba(255,255,255,.34),transparent 55%),var(--nova);filter:hue-rotate(calc(var(--n) * 42deg));box-shadow:inset 0 1px 0 rgba(255,255,255,.55),inset 0 -3px 6px rgba(0,0,0,.14),0 8px 18px color-mix(in srgb,var(--accent) 40%,transparent)}
+      .av svg{width:20px;height:20px}
+      .tx{display:flex;flex-direction:column;gap:4px;min-width:0;flex:1}
+      .u{font:750 15px/1.2 var(--sans);letter-spacing:-.012em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+      .d{color:var(--fg3);font-size:12px;line-height:1.1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:550}
       .d.dots{letter-spacing:3px;font-size:10px}
-      .d.mono{font:600 12.5px/1.2 ui-monospace,"SF Mono",Menlo,Consolas,monospace;letter-spacing:.02em;color:var(--fg2)}
-      .av svg{width:18px;height:18px}
-      .strength{display:flex;gap:3px;margin-top:5px}.strength i{width:22px;height:4px;border-radius:4px;background:var(--nova);box-shadow:0 0 6px color-mix(in srgb,var(--accent) 50%,transparent)}
-      .go{flex:none;display:flex;align-items:center;gap:6px;height:26px;padding:0 10px;border-radius:999px;color:#fff;font:750 11.5px var(--sans);background:var(--nova);
-        box-shadow:inset 0 1px 0 rgba(255,255,255,.45),0 4px 12px color-mix(in srgb,var(--accent) 40%,transparent);opacity:0;transform:scale(.7);transition:opacity .15s,transform .45s var(--jelly)}
-      .go svg{width:11px;height:11px}
+      .pw{font:650 15.5px/1.25 ui-monospace,"SF Mono",Menlo,Consolas,monospace;letter-spacing:.02em;color:var(--fg);white-space:nowrap;padding:7px 10px;margin:3px 0 2px;border-radius:11px;background:var(--chip);box-shadow:inset 0 0 0 1px var(--line);overflow:hidden;text-overflow:ellipsis}
+      .pw .n{color:var(--accent);font-weight:800}.pw .up{color:color-mix(in srgb,var(--accent3) 70%,var(--fg))}.pw .h{color:var(--fg3)}
+      .meter{display:flex;align-items:center;gap:4px;font:700 11px var(--sans);color:var(--fg2)}
+      .meter i{width:26px;height:5px;border-radius:5px;background:var(--nova);box-shadow:0 0 8px color-mix(in srgb,var(--accent) 55%,transparent);transform-origin:0 50%;animation:bar .6s var(--jelly) both;animation-delay:calc(280ms + var(--k) * 90ms)}
+      @keyframes bar{from{transform:scaleX(0);opacity:0}}
+      .meter{white-space:nowrap}.meter span{margin-left:8px}.meter em{font-style:normal;color:var(--fg3);margin-left:auto;padding-left:8px}
+      .i.gen .av{display:none}.i.gen{padding:10px 12px}
+      .go{flex:none;display:flex;align-items:center;gap:6px;height:30px;padding:0 13px;border-radius:999px;color:#fff;font:750 12px var(--sans);background:var(--nova);
+        box-shadow:inset 0 1px 0 rgba(255,255,255,.45),0 6px 16px color-mix(in srgb,var(--accent) 45%,transparent);opacity:0;transform:scale(.6) translateX(-6px);transition:opacity .15s,transform .5s var(--jelly)}
+      .go svg{width:12px;height:12px}
       .i.cur .go{opacity:1;transform:none}
-      .f{position:relative;z-index:4;display:flex;gap:6px;align-items:center;padding:10px 8px 2px;margin-top:6px;border-top:1px solid var(--line);color:var(--fg3);font-size:11.5px;font-weight:550;white-space:nowrap}
-      .f .sp{flex:1}.f .lk{display:flex;align-items:center;gap:5px;color:var(--fg3)}.f .lk svg{width:11px;height:11px}
-    </style><div class="nv"><div class="m glass" role="listbox" aria-label="${title}"><span class="blob b1"></span><span class="blob b2"></span><span class="sweep"></span>
-      <svg class="ghost" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round">${icon.replace(/^<svg[^>]*>|<\/svg>$/g, '')}</svg>
-      <div class="h"><span class="tile">${icon}</span><span><div class="t gt"></div><div class="s"></div></span></div>
-      <div class="l">${rows.map((_, i) => `<div class="i" role="option" aria-selected="false" style="--n:${i}"><span class="av"></span><span class="tx"><span class="u"></span><span class="d"></span></span><span class="go">${kind === 'passkey' ? 'Sign in' : kind === 'generate' ? 'Use' : 'Fill'}<svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10 2.5v3.5a1.5 1.5 0 0 1-1.5 1.5H2.5M5 5 2.5 7.5 5 10"/></svg></span></div>`).join('')}</div>
-      <div class="f"><kbd>&#8593;</kbd><kbd>&#8595;</kbd><span>choose</span><kbd>Return</kbd><span>${kind === 'passkey' ? 'sign in' : 'fill'}</span><span class="sp"></span><span class="lk"><svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><rect x="2.5" y="5.5" width="7" height="5" rx="1.4"/><path d="M4 5.5V4a2 2 0 0 1 4 0v1.5"/></svg>On this device</span></div></div></div>`
+      .f{position:relative;z-index:4;display:flex;gap:6px;align-items:center;padding:11px 18px 13px;border-top:1px solid var(--line);background:color-mix(in srgb,var(--accent) 4%,transparent);color:var(--fg3);font-size:11.5px;font-weight:600;white-space:nowrap}
+      .f .sp{flex:1}.f .lk{display:flex;align-items:center;gap:6px;color:var(--fg2)}.f .lk b{width:18px;height:18px;border-radius:6px;display:grid;place-items:center;color:#fff;background:var(--nova)}.f .lk svg{width:10px;height:10px}
+    </style><div class="nv"><div class="fr"></div><div class="mw"><span class="deck d2"></span><span class="deck d1"></span>
+      <div class="m glass" role="listbox" aria-label="${title}">
+      <div class="hb"><span class="blob b1"></span><span class="blob b2"></span><span class="pool"></span><span class="sweep"></span>
+        <svg class="hart" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width=".7" stroke-linecap="round" stroke-linejoin="round">${bare}</svg>
+        <span class="hic">${icon}</span><span class="htx"><div class="t gt"></div><div class="s"></div></span>${badge ? '<span class="bd"><b></b><small></small></span>' : ''}</div>
+      <div class="l"><span class="hl"></span>${rows.map((_, i) => `<div class="i" role="option" aria-selected="false" style="--n:${i}"><span class="av"></span><span class="tx"><span class="u"></span><span class="d"></span></span><span class="go">${goWord}${enter}</span></div>`).join('')}</div>
+      <div class="f"><kbd>&#8593;</kbd><kbd>&#8595;</kbd><span>choose</span><kbd>Return</kbd><span>${kind === 'passkey' ? 'sign in' : gen ? 'use' : 'fill'}</span><span class="sp"></span><span class="lk"><b><svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><rect x="2.5" y="5.5" width="7" height="5" rx="1.4"/><path d="M4 5.5V4a2 2 0 0 1 4 0v1.5"/></svg></b>On this device</span></div></div></div></div>`
     sh.querySelector('.t').textContent = title
     sh.querySelector('.s').textContent = sub
+    if (badge) { sh.querySelector('.bd b').textContent = badge.n; sh.querySelector('.bd small').textContent = badge.label }
     const items = [...sh.querySelectorAll('.i')]
     items.forEach((el, i) => {
-      const name = String(rows[i].name || '').trim() || 'No username'
+      const row = rows[i], name = String(row.name || '').trim() || 'No username'
       el.querySelector('.u').textContent = name
-      if (rows[i].icon) el.querySelector('.av').innerHTML = rows[i].icon
+      if (row.icon) el.querySelector('.av').innerHTML = row.icon
       else el.querySelector('.av').textContent = (name[0] || '?').toUpperCase()
-      if (rows[i].mono) el.querySelector('.d').classList.add('mono')
       const d = el.querySelector('.d')
-      if (rows[i].detail) d.textContent = rows[i].detail
+      if (row.pw) {
+        // the suggested password, digits and capitals picked out, and how strong it is
+        const pw = document.createElement('span'); pw.className = 'pw'
+        for (const ch of row.pw) { const s = document.createElement('span'); s.className = /\d/.test(ch) ? 'n' : /[A-Z]/.test(ch) ? 'up' : ch === '-' ? 'h' : ''; s.textContent = ch; pw.appendChild(s) }
+        d.replaceWith(pw); el.classList.add('gen')
+        const m = document.createElement('span'); m.className = 'meter'
+        m.innerHTML = '<i style="--k:0"></i><i style="--k:1"></i><i style="--k:2"></i><i style="--k:3"></i><span></span><em></em>'
+        m.querySelector('span').textContent = 'Very strong'; m.querySelector('em').textContent = row.bits || ''
+        pw.after(m)
+      } else if (row.detail) d.textContent = row.detail
       else { d.classList.add('dots'); d.textContent = '•••••••••' }
       el.addEventListener('mousedown', e => { e.preventDefault(); e.stopPropagation(); onPick(i) })
     })
-    const card = sh.querySelector('.m')
+    const nv = sh.querySelector('.nv'), card = sh.querySelector('.m'), hl = sh.querySelector('.hl')
     let cur = -1
     const setCur = i => {
       cur = i
       items.forEach((el, j) => { el.classList.toggle('cur', j === i); el.setAttribute('aria-selected', String(j === i)) })
-      if (items[i]) items[i].scrollIntoView({ block: 'nearest' })
+      const it = items[i]
+      if (!it) return
+      // the first time it appears in place; after that it slides from row to row on the jelly spring
+      const first = !hl.classList.contains('on')
+      if (first) hl.style.transition = 'none'
+      hl.style.height = it.offsetHeight + 'px'; hl.style.transform = `translateY(${it.offsetTop}px)`
+      if (first) { void hl.offsetWidth; hl.style.transition = ''; hl.classList.add('on') }
+      it.scrollIntoView({ block: 'nearest' })
     }
     items.forEach((el, i) => el.addEventListener('mouseenter', () => setCur(i)))
     // the page only ever sees an empty div; nothing it can read is in it
     document.documentElement.appendChild(host)
     glint(card)
-    requestAnimationFrame(() => { addLens(sh, card, 0.9); requestAnimationFrame(() => card.classList.add('on')) })
+    requestAnimationFrame(() => requestAnimationFrame(() => nv.classList.add('on')))
     const close = now => {
       if (!host.isConnected) return
       if (STILL || now) { host.remove(); return }
-      card.classList.remove('on'); card.classList.add('off'); setTimeout(() => host.remove(), 200)
+      nv.classList.remove('on'); nv.classList.add('off'); setTimeout(() => host.remove(), 200)
     }
     const move = d => setCur(((cur < 0 && d < 0 ? 0 : cur) + d + items.length) % items.length)
     return { host, close, move, get cur() { return cur } }
@@ -302,7 +318,6 @@ if (location.protocol === 'lumen:') {
       if (ui.c.classList.contains('go') !== go) { ui.c.classList.toggle('go', go); ui.tx.textContent = back ? 'Back' : 'Forward' }
       ui.c.style.transform = `scale(${0.6 + k * 0.4}) rotate(${back ? 0 : 180}deg)`; ui.c.style.opacity = String(Math.min(1, k * 1.8))
       ui.ring.style.strokeDashoffset = String(226 * (1 - k))
-      if (!ui.lens && k > 0.5) { ui.lens = true; addLens(ui.sh, ui.c, 0.8) }
     }
     const reset = () => { acc = 0; if (ui) { ui.host.remove(); ui = null } }
     addEventListener('wheel', e => {
@@ -355,7 +370,6 @@ if (location.protocol === 'lumen:') {
       sh.querySelector('.m i').style.width = Math.round((v.playbackRate - 0.25) / 3.75 * 100) + '%'
       sh.querySelector('.tile svg').style.transform = `rotate(${Math.max(-60, Math.min(80, (v.playbackRate - 1) * 30))}deg)`
       pill.classList.remove('pop'); void pill.offsetWidth; pill.classList.add('on', 'pop')
-      if (!badge.lens) { badge.lens = true; requestAnimationFrame(() => addLens(sh, pill, 0.8)) }
       clearTimeout(badge.t); badge.t = setTimeout(() => { pill.classList.remove('on'); badge.t2 = setTimeout(() => { if (badge && !pill.classList.contains('on')) { badge.host.remove(); badge = null } }, 400) }, 1200)
       clearTimeout(badge.t2)
     }, true)
@@ -578,7 +592,8 @@ if (location.protocol === 'lumen:') {
     const pick = () => { pwFields(anchor.form || document).forEach(p => { if (!p.value || p === anchor) setValue(p, pass) }); closeMenu(true) }
     const m = accountMenu(anchor, {
       kind: 'generate', title: 'Strong password', sub: 'Made on this device' + (site ? ' for ' + site : ''),
-      rows: [{ name: 'Use a strong password', detail: pass, mono: true, icon: '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M8 1.8 13.2 4v4c0 3.1-2.2 5.4-5.2 6.2C5 13.4 2.8 11.1 2.8 8V4z"/><path d="m5.6 8.1 1.7 1.7 3.2-3.4"/></svg>' }],
+      badge: { n: '105', label: 'bits' },
+      rows: [{ name: 'Use a strong password', pw: pass, bits: pass.length + ' characters', icon: '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M8 1.8 13.2 4v4c0 3.1-2.2 5.4-5.2 6.2C5 13.4 2.8 11.1 2.8 8V4z"/><path d="m5.6 8.1 1.7 1.7 3.2-3.4"/></svg>' }],
       onPick: pick,
     })
     menuKeysFor(anchor, m, pick)

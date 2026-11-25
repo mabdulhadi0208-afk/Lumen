@@ -1351,7 +1351,7 @@ function readerMode(wc) {
   // runs in the tab's preload world (999), so it can save the reader's choices and the page cannot see them
   wc.executeJavaScriptInIsolatedWorld(999, [{ code: code.replace('__LUMEN_READER_PREFS__', JSON.stringify(readerPrefs())).replace('__LUMEN_READER_POS__', String(readerPos(wc.getURL()) || 0)) }]).catch(() => {})
 }
-const READER_CHOICES = { theme: ['auto', 'light', 'sepia', 'dark'], font: ['serif', 'sans', 'rounded'], align: ['left', 'justify'], lh: ['compact', 'normal', 'airy'], width: ['narrow', 'medium', 'wide'] }
+const READER_CHOICES = { theme: ['auto', 'light', 'sepia', 'sage', 'dusk', 'dark'], font: ['serif', 'sans', 'rounded'], align: ['left', 'justify'], lh: ['compact', 'normal', 'airy'], width: ['narrow', 'medium', 'wide'] }
 function readerPrefs(p = D.settings.get('readerPrefs')) {
   const o = {}
   if (p && typeof p === 'object') {

@@ -129,7 +129,7 @@ function bubbleUI(C) {
   const sh = host.attachShadow({ mode: 'closed' })
   const SPRING = 'linear(0,.161,.458,.726,.907,1.005,1.042,1.045,1.033,1.02,1.009,1.002,.999,.998,.998,.999,.999,1)'
   const JELLY = 'linear(0,.091,.297,.538,.76,.933,1.047,1.108,1.126,1.116,1.091,1.06,1.032,1.01,.995,.987,.984,.985,.988,.992,.996,.999,1.001,1.002,1.001,1)'
-  const dark = C.dark === true || (C.dark === null && matchMedia('(prefers-color-scheme: dark)').matches)
+  const dark = true // obsidian glass in every theme: a deep tinted body under the aurora, never washed-out white
   const ic = {
     tr: '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3.5h7M5.5 2v1.5M3.5 3.5c.6 2.4 2.2 4.2 4.5 5.2M7.5 3.5C7 5.8 5.4 7.8 2.5 9"/><path d="M8.5 14l3-7.5 3 7.5M9.6 11.5h3.8"/></svg>',
     x: '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="m4 4 8 8m0-8-8 8"/></svg>',
@@ -148,7 +148,7 @@ function bubbleUI(C) {
     '--spec:inset 0 1px 0 rgba(255,255,255,.95),inset 0 -1px 0 rgba(255,255,255,.35);' +
     '--sans:-apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI Variable Text","Segoe UI",system-ui,sans-serif;--display:ui-rounded,"SF Pro Rounded","Segoe UI Variable Display","Segoe UI",system-ui,sans-serif;' +
     'font:14px/1.5 var(--sans);-webkit-font-smoothing:antialiased;color:var(--fg);text-align:left;direction:ltr}' +
-    '.nv.dark{--fg:#f1f3fb;--fg2:rgba(241,243,251,.74);--fg3:rgba(241,243,251,.5);--line:rgba(255,255,255,.11);--chip:rgba(255,255,255,.08);--glint:.16;' +
+    '.nv.dark{color-scheme:dark;--fg:#f5f6fc;--fg2:rgba(241,243,251,.74);--fg3:rgba(241,243,251,.5);--line:rgba(255,255,255,.11);--chip:rgba(255,255,255,.08);--glint:.16;' +
     '--glass:linear-gradient(180deg,color-mix(in srgb,var(--accent) 11%,rgba(30,34,52,.92)),color-mix(in srgb,var(--accent) 6%,rgba(14,17,28,.92)));' +
     '--edge:linear-gradient(120deg,color-mix(in srgb,#fff 40%,var(--accent)),color-mix(in srgb,var(--accent) 85%,transparent) 20%,transparent 45%,transparent 65%,color-mix(in srgb,var(--accent3) 85%,transparent) 90%);' +
     '--shadow:0 1px 2px rgba(0,0,0,.5),0 12px 28px rgba(0,0,0,.4),0 34px 80px color-mix(in srgb,var(--accent) 34%,rgba(0,0,0,.5));--spec:inset 0 1px 0 rgba(255,255,255,.2),inset 0 -1px 0 rgba(255,255,255,.04)}' +
@@ -198,6 +198,18 @@ function bubbleUI(C) {
     '.btn{display:inline-flex;align-items:center;gap:7px;height:38px;padding:0 17px;border-radius:999px;font:750 13.5px var(--sans);transition:transform .5s var(--jelly)}.btn svg{width:15px;height:15px}.btn:hover{transform:translateY(-2px)}.btn:active{transform:scale(.95)}.btn:disabled{opacity:.45}' +
     '.sec{background:var(--chip);box-shadow:inset 0 0 0 1px var(--line)}.sec.on{color:var(--accent);box-shadow:inset 0 0 0 1.5px color-mix(in srgb,var(--accent) 50%,transparent)}' +
     '.pri{color:#fff;background:var(--nova);box-shadow:inset 0 1px 0 rgba(255,255,255,.45),0 8px 20px color-mix(in srgb,var(--accent) 45%,transparent)}' +
+    // a rich dark aurora header in every theme: deep ink, vivid colour fields, a dot texture, orbit rings, white type
+    '.hb{color:#fff;background:radial-gradient(85% 150% at 0% 0%,color-mix(in oklab,var(--accent) 95%,transparent),transparent 65%),radial-gradient(70% 140% at 100% 0%,oklch(.62 .27 0 / .95),transparent 65%),radial-gradient(80% 150% at 70% 140%,color-mix(in oklab,var(--accent3) 95%,transparent),transparent 65%),radial-gradient(55% 120% at 30% 140%,oklch(.76 .17 205 / .85),transparent 65%),color-mix(in oklab,var(--accent) 30%,#07081a);box-shadow:inset 0 1px 0 rgba(255,255,255,.32),inset 0 -1px 0 rgba(0,0,0,.45)}' +
+    '.hb::before{content:"";position:absolute;inset:0;z-index:-1;pointer-events:none;background:radial-gradient(rgba(255,255,255,.28) 1px,transparent 1.5px) 0 0/12px 12px;-webkit-mask:linear-gradient(100deg,transparent 35%,#000 80%);mask:linear-gradient(100deg,transparent 35%,#000 80%);opacity:.55}' +
+    '.hb::after{left:auto;right:-70px;top:-90px;bottom:auto;width:260px;height:260px;border-radius:50%;background:repeating-radial-gradient(circle,transparent 0 21px,rgba(255,255,255,.13) 21px 22px);z-index:-1}' +
+    '.orb{display:none}.pool{background:radial-gradient(closest-side,rgba(255,255,255,.22),transparent)}.art{color:#fff;opacity:.16}' +
+    '.k{box-shadow:0 14px 30px rgba(0,0,0,.4),0 0 0 7px rgba(255,255,255,.1),inset 0 1px 0 rgba(255,255,255,.65),inset 0 -3px 8px rgba(0,0,0,.2)}.k::after{border-color:rgba(255,255,255,.22)}' +
+    '.t1{background:linear-gradient(120deg,#fff 45%,color-mix(in srgb,var(--accent3) 35%,#fff));-webkit-background-clip:text;background-clip:text;color:transparent}' +
+    '.chip{color:#fff;background:rgba(255,255,255,.12);box-shadow:inset 0 1px 0 rgba(255,255,255,.3),inset 0 0 0 .5px rgba(255,255,255,.2)}.chip.to{background:#fff;color:#0b0c16;box-shadow:0 4px 14px rgba(0,0,0,.3)}.route svg{color:#fff}' +
+    '.x{background:rgba(255,255,255,.14);box-shadow:inset 0 1px 0 rgba(255,255,255,.3);color:#fff}' +
+    '.b{box-shadow:var(--spec),0 0 0 .5px rgba(0,0,0,.35),0 2px 6px rgba(14,18,40,.12),0 24px 56px color-mix(in srgb,var(--accent) 40%,rgba(14,18,40,.2)),0 14px 50px -10px oklch(.6 .27 0 / .42)}' +
+    '.deck{background:linear-gradient(180deg,color-mix(in srgb,var(--accent) 60%,#0b0c16),color-mix(in srgb,oklch(.6 .27 0) 40%,#0b0c16));box-shadow:inset 0 1px 0 rgba(255,255,255,.3),0 12px 30px color-mix(in srgb,var(--accent) 35%,transparent)}.d1{opacity:.9}.d2{opacity:.6}' +
+        '.o{background:color-mix(in srgb,var(--accent) 8%,var(--chip))}' +
     (C.still ? '*,*::before,*::after{animation:none!important;transition:none!important}.sw{display:none}' : '') + '</style>' +
     '<div class="nv' + (dark ? ' dark' : '') + '"><div class="mw"><span class="deck d2"></span><span class="deck d1"></span><div class="b" role="dialog" aria-label="Lumen Translate">' +
     '<div class="hb"><span class="orb o1"></span><span class="orb o2"></span><span class="pool"></span><span class="sw"></span>' +

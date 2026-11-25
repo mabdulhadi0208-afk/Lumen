@@ -212,6 +212,30 @@ if (location.protocol === 'lumen:') {
       .i.cur .go{opacity:1;transform:none}
       .f{position:relative;z-index:4;display:flex;gap:6px;align-items:center;padding:11px 18px 13px;border-top:1px solid var(--line);background:color-mix(in srgb,var(--accent) 4%,transparent);color:var(--fg3);font-size:11.5px;font-weight:600;white-space:nowrap}
       .f .sp{flex:1}.f .lk{display:flex;align-items:center;gap:6px;color:var(--fg2)}.f .lk b{width:18px;height:18px;border-radius:6px;display:grid;place-items:center;color:#fff;background:var(--nova)}.f .lk svg{width:10px;height:10px}
+      /* the header is a rich, dark aurora in every theme: deep ink, vivid colour fields (accent, deep pink, cyan),
+         a dot texture and orbit rings, white type; the selection is a solid glossy colour bar, like macOS but more */
+      .hb{color:#fff;background:radial-gradient(85% 150% at 0% 0%,color-mix(in oklab,var(--accent) 95%,transparent),transparent 65%),radial-gradient(70% 140% at 100% 0%,oklch(.62 .27 0 / .95),transparent 65%),radial-gradient(80% 150% at 70% 140%,color-mix(in oklab,var(--accent3) 95%,transparent),transparent 65%),radial-gradient(55% 120% at 30% 140%,oklch(.76 .17 205 / .85),transparent 65%),color-mix(in oklab,var(--accent) 30%,#07081a);
+        box-shadow:inset 0 1px 0 rgba(255,255,255,.32),inset 0 -1px 0 rgba(0,0,0,.45)}
+      .hb::before{content:'';position:absolute;inset:0;z-index:-1;pointer-events:none;background:radial-gradient(rgba(255,255,255,.28) 1px,transparent 1.5px) 0 0/12px 12px;-webkit-mask:linear-gradient(100deg,transparent 35%,#000 80%);mask:linear-gradient(100deg,transparent 35%,#000 80%);opacity:.55}
+      .hb::after{left:auto;right:-70px;top:-90px;bottom:auto;width:250px;height:250px;border-radius:50%;background:repeating-radial-gradient(circle,transparent 0 21px,rgba(255,255,255,.13) 21px 22px);z-index:-1}
+      .blob{display:none}.pool{background:radial-gradient(closest-side,rgba(255,255,255,.22),transparent)}
+      .hart{color:#fff;opacity:.16}
+      .hic{box-shadow:0 14px 30px rgba(0,0,0,.4),0 0 0 7px rgba(255,255,255,.1),inset 0 1px 0 rgba(255,255,255,.65),inset 0 -3px 8px rgba(0,0,0,.2)}.hic::after{border-color:rgba(255,255,255,.22)}
+      .hb .gt{background:linear-gradient(120deg,#fff 45%,color-mix(in srgb,var(--accent3) 35%,#fff));-webkit-background-clip:text;background-clip:text;color:transparent}
+      .hb .s{color:rgba(255,255,255,.74)}
+      .bd{background:rgba(255,255,255,.12);box-shadow:inset 0 1px 0 rgba(255,255,255,.32),inset 0 0 0 .5px rgba(255,255,255,.2),0 6px 16px rgba(0,0,0,.25)}.bd b{color:#fff}.bd small{color:rgba(255,255,255,.62)}
+      .m{box-shadow:var(--spec),var(--caustic),0 0 0 .5px rgba(0,0,0,.35),0 2px 6px rgba(14,18,40,.12),0 22px 50px color-mix(in srgb,var(--accent) 38%,rgba(14,18,40,.2)),0 14px 50px -10px oklch(.6 .27 0 / .4)}
+      .deck{background:linear-gradient(180deg,color-mix(in srgb,var(--accent) 60%,#0b0c16),color-mix(in srgb,oklch(.6 .27 0) 40%,#0b0c16));box-shadow:inset 0 1px 0 rgba(255,255,255,.3),0 12px 30px color-mix(in srgb,var(--accent) 35%,transparent)}
+      .d1{opacity:.9}.d2{opacity:.6}
+      .hl{background:linear-gradient(180deg,rgba(255,255,255,.28),transparent 55%),var(--nova);box-shadow:inset 0 1px 0 rgba(255,255,255,.45),inset 0 -2px 6px rgba(0,0,0,.15),0 8px 22px color-mix(in srgb,var(--accent) 50%,transparent)}
+      .i.cur .u{color:#fff}.i.cur .d{color:rgba(255,255,255,.82)}
+      .i.cur .av{box-shadow:0 0 0 2px rgba(255,255,255,.65),0 6px 14px rgba(0,0,0,.25)}
+      .i.cur .go{background:rgba(255,255,255,.24);box-shadow:inset 0 1px 0 rgba(255,255,255,.45),inset 0 0 0 .5px rgba(255,255,255,.4)}
+      .i.cur .pw{background:rgba(0,0,0,.2);box-shadow:inset 0 1px 2px rgba(0,0,0,.25);color:#fff}.i.cur .pw .n{color:#ffe27a}.i.cur .pw .up{color:#bdf4ff}.i.cur .pw .h{color:rgba(255,255,255,.5)}
+      .i.cur .meter{color:#fff}.i.cur .meter i{background:#fff;box-shadow:0 0 8px rgba(255,255,255,.6)}.i.cur .meter em{color:rgba(255,255,255,.7)}
+      .f{background:rgba(0,0,0,.18)}
+      /* obsidian glass in every theme: a deep tinted body under the aurora, never washed-out white */
+      .nv{--fg:#f5f6fc;--fg2:rgba(245,246,252,.74);--fg3:rgba(245,246,252,.52);--line:rgba(255,255,255,.12);--chip:rgba(255,255,255,.08);--glint:.18;--glass:linear-gradient(180deg,color-mix(in srgb,var(--accent) 16%,rgba(26,28,44,.93)),color-mix(in srgb,oklch(.6 .27 0) 9%,rgba(12,13,22,.95)));--edge:linear-gradient(140deg,rgba(255,255,255,.8),color-mix(in srgb,var(--accent) 80%,transparent) 22%,rgba(255,255,255,.05) 48%,rgba(255,255,255,.02) 66%,color-mix(in srgb,var(--accent3) 85%,transparent) 92%);--spec:inset 0 1px 0 rgba(255,255,255,.26),inset 0 -1px 0 rgba(0,0,0,.35);--caustic:inset 0 -22px 36px -28px color-mix(in srgb,var(--accent3) 75%,transparent);color:var(--fg);color-scheme:dark}
     </style><div class="nv"><div class="fr"></div><div class="mw"><span class="deck d2"></span><span class="deck d1"></span>
       <div class="m glass" role="listbox" aria-label="${title}">
       <div class="hb"><span class="blob b1"></span><span class="blob b2"></span><span class="pool"></span><span class="sweep"></span>
@@ -253,7 +277,7 @@ if (location.protocol === 'lumen:') {
       const first = !hl.classList.contains('on')
       if (first) hl.style.transition = 'none'
       hl.style.height = it.offsetHeight + 'px'; hl.style.transform = `translateY(${it.offsetTop}px)`
-      if (first) { void hl.offsetWidth; hl.style.transition = ''; hl.classList.add('on') }
+      if (first) { hl.classList.add('on'); void hl.offsetWidth; hl.style.transition = '' }
       it.scrollIntoView({ block: 'nearest' })
     }
     items.forEach((el, i) => el.addEventListener('mouseenter', () => setCur(i)))

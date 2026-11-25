@@ -34,6 +34,9 @@ app.whenReady().then(async () => {
   ok(await pg(`(() => { const all = [...document.querySelectorAll('#widgets [data-w], #hero, #sf')].map(e => e.getBoundingClientRect()); return all.every(r => r.left >= 0 && r.right <= innerWidth + .5) })()`), 'everything sits inside the page at 1280')
   ok(await pg(`(() => { const c = [...document.querySelectorAll('#widgets [data-w]')].map(e => e.getBoundingClientRect()); for (let i = 0; i < c.length; i++) for (let j = i + 1; j < c.length; j++) { const a = c[i], b = c[j]; if (a.left < b.right - 1 && b.left < a.right - 1 && a.top < b.bottom - 1 && b.top < a.bottom - 1) return false } return true })()`), 'no two widgets overlap')
   ok(await pg(`(() => { const g = document.querySelector('#widgets'), cols = +getComputedStyle(g).getPropertyValue('--cols'); const rows = {}; for (const e of g.querySelectorAll('[data-w]')) { const top = Math.round(e.offsetTop); rows[top] = (rows[top] || 0) + +e.style.gridColumn.replace('span ', '') } return Object.values(rows).every(n => n === cols) })()`), 'every row of widgets is full')
+  ok(L.D.settings.get('ntpWallpaper') === 'theme' && await pg(`document.getElementById('ntp').classList.contains('wp-theme') && document.querySelector('.wpq [data-wp="theme"]').classList.contains('on')`), 'Match theme is the default background')
+  ok(await pg(`!!document.querySelector('#hero .hm-tile #clock') && !!document.querySelector('#hero #hsub').textContent.trim() && document.querySelectorAll('#pulse .hm-stat').length >= 3`), 'hero: the clock in its glowing tile, a title with a line under it, and the pulse tiles')
+  ok(await pg(`[...document.querySelectorAll('.hm-card, .hm-stat, .hm-hero, .hm-search')].every(e => getComputedStyle(e).backdropFilter === 'none')`), 'cards, pulse, hero and search use painted liquid glass, no live blur')
   const home = await pg(`lumen.invoke('home')`)
   ok(home && typeof home.today === 'number' && home.week.length === 7 && home.private === false, 'home data: blocked today and the week')
 
@@ -52,20 +55,22 @@ app.whenReady().then(async () => {
   await pg(`document.getElementById('dclose').click()`); await wait(800)
 
   // ---- drag a widget by its header onto another one, with real pointer events
-  const wc = t.view.webContents
+  let wc = t.view.webContents
   const rect = sel => pg(`JSON.stringify((() => { const r = document.querySelector(${JSON.stringify(sel)}).getBoundingClientRect(); return { x: r.left, y: r.top, w: r.width, h: r.height } })())`).then(JSON.parse)
-  const drag = async (from, to, steps = 14) => {
+  // each step waits for the page to take the event in (a round trip), so a busy machine cannot coalesce the drag away
+  const drag = async (from, to, steps = 14, during) => {
     wc.sendInputEvent({ type: 'mouseMove', x: Math.round(from.x), y: Math.round(from.y) }); await wait(60)
     wc.sendInputEvent({ type: 'mouseDown', x: Math.round(from.x), y: Math.round(from.y), button: 'left', clickCount: 1 }); await wait(60)
-    for (let i = 1; i <= steps; i++) { wc.sendInputEvent({ type: 'mouseMove', x: Math.round(from.x + (to.x - from.x) * i / steps), y: Math.round(from.y + (to.y - from.y) * i / steps), button: 'left', modifiers: ['leftButtonDown'] }); await wait(35) }
-    await wait(250)
+    for (let i = 1; i <= steps; i++) { wc.sendInputEvent({ type: 'mouseMove', x: Math.round(from.x + (to.x - from.x) * i / steps), y: Math.round(from.y + (to.y - from.y) * i / steps), button: 'left', modifiers: ['leftButtonDown'] }); await pg('0'); await wait(20); if (during && i === steps - 3) await during() }
+    await wait(250); await pg('0')
     wc.sendInputEvent({ type: 'mouseUp', x: Math.round(to.x), y: Math.round(to.y), button: 'left', clickCount: 1 }); await wait(900)
   }
-  await pg(`scrollTo(0, 0)`); await wait(300)
+  const landed = async () => { for (let i = 0; i < 40 && await pg(`[...document.querySelectorAll('#widgets [data-w], #tiles .tile')].some(e => e.style.translate || e.style.opacity)`); i++) await wait(250) }   // the entrance springs have settled
+  await landed()
+  await pg(`document.getElementById('widgets').scrollIntoView({ block: 'start' })`); await wait(300)
   const sh = await rect('[data-w="stats"] .hm-h b'), dst = await rect('[data-w="shortcuts"]')
   let anim = null
-  setTimeout(async () => { anim = await pg(`JSON.stringify({ drag: !!document.querySelector('.hm-card.dragging'), tr: (document.querySelector('[data-w="stats"]') || {}).style.translate || '' })`).catch(() => null) }, 600)
-  await drag({ x: sh.x + 10, y: sh.y + 8 }, { x: dst.x + 60, y: dst.y + 60 })
+  await drag({ x: sh.x + 10, y: sh.y + 8 }, { x: dst.x + 60, y: dst.y + 60 }, 14, async () => { anim = await pg(`JSON.stringify({ drag: !!document.querySelector('.hm-card.dragging'), tr: (document.querySelector('[data-w="stats"]') || {}).style.translate || '' })`).catch(() => null) })
   await wait(1500)
   ok(anim && JSON.parse(anim).drag && JSON.parse(anim).tr, 'the card lifts and follows the pointer while dragging ' + anim)
   const after = await ids()
@@ -81,11 +86,11 @@ app.whenReady().then(async () => {
   // persists across a reload and a fresh tab
   t.view.webContents.reload(); await wait(4500)
   ok((await ids()) === kb, 'order survives a reload: ' + await ids())
-  t = await open()
+  t = await open(); wc = t.view.webContents
   ok((await ids()) === kb, 'and shows on a new tab')
 
   // ---- drag a shortcut tile to reorder the shortcuts
-  await pg(`scrollTo(0, 0)`); await wait(300)
+  await landed(); await pg(`document.getElementById('widgets').scrollIntoView({ block: 'start' })`); await wait(300)
   const ta = await rect('#tiles .tile[data-i="0"] .ti'), tc = await rect('#tiles .tile[data-i="2"] .ti')
   await drag({ x: ta.x + ta.w / 2, y: ta.y + ta.h / 2 }, { x: tc.x + tc.w / 2, y: tc.y + tc.h / 2 })
   const sc = (L.D.settings.get('ntpShortcuts') || []).map(s => s.title).join('')
@@ -112,6 +117,27 @@ app.whenReady().then(async () => {
   const bgB = await pg(`getComputedStyle(document.querySelector('.ntp-bg')).backgroundImage`)
   ok(bgA !== bgB, 'the wallpaper changes with the accent')
   await ex(`api.do('setSetting','accent','#5b8cff')`); await pg(`document.querySelector('.wpq [data-wp="aurora"]').click()`); await wait(900)
+
+  // ---- Match theme follows the browser theme, live, Dark Glass included; Customize has a tile per theme
+  await ex(`api.do('setSetting','browserTheme','glassdark')`); await wait(700)
+  await pg(`document.querySelector('.wpq [data-wp="theme"]').click()`); await wait(1200)
+  const look = () => pg(`JSON.stringify((() => { const n = document.getElementById('ntp'), b = [...document.querySelectorAll('.ntp-bg')].pop(); return { theme: n.classList.contains('wp-theme'), dark: n.classList.contains('on-dark'), light: n.classList.contains('on-light'), glass: b.classList.contains('wp-glass'), bg: b.style.getPropertyValue('--thbg') } })())`).then(JSON.parse)
+  let lk = await look()
+  ok(L.D.settings.get('ntpWallpaper') === 'theme' && lk.theme && lk.dark && lk.glass && /#12141f/i.test(lk.bg), 'Match theme paints the Dark Glass background with dark glass text ' + JSON.stringify(lk))
+  ok(await pg(`(() => { const c = getComputedStyle(document.querySelector('.hm-greet')).color; const [r, g, b] = c.match(/\\d+/g).map(Number); return r + g + b > 600 })()`), 'the title is light on Dark Glass')
+  await ex(`api.do('setSetting','browserTheme','rose')`); await wait(1500)
+  lk = await look()
+  ok(lk.theme && !lk.dark && lk.light && /#ffe3ec/i.test(lk.bg), 'and it follows the theme live: Rose is light ' + JSON.stringify(lk))
+  await pg(`document.getElementById('cust').click()`); await wait(900)
+  const nThemes = await pg(`Object.keys(LUMEN_THEMES).length`)
+  const thTiles = (await pg(`[...document.querySelectorAll('#drawer .wpth [data-wp]')].map(b => b.dataset.wp).join(',')`)).split(',')
+  ok(thTiles[0] === 'theme' && thTiles.includes('th:glassdark') && thTiles.length === nThemes + 1 && await pg(`document.querySelectorAll('#drawer .wpth .lqsw').length`) === nThemes + 1, 'Customize starts with Match theme, then a liquid glass tile per theme: ' + thTiles.join(','))
+  ok(await pg(`!!(document.querySelector('#drawer .wpth').compareDocumentPosition(document.querySelector('#drawer .wps:not(.wpth)')) & 4)`), 'the theme row comes before the wallpapers and photos')
+  await pg(`document.querySelector('#drawer [data-wp="th:glassdark"]').click()`); await wait(1200)
+  lk = await look()
+  ok(L.D.settings.get('ntpWallpaper') === 'th:glassdark' && lk.dark && /#12141f/i.test(lk.bg), 'a theme tile pins that theme background, whatever the theme is ' + JSON.stringify(lk))
+  await pg(`document.getElementById('dclose').click()`); await wait(800)
+  await ex(`api.do('setSetting','browserTheme','default')`); await pg(`document.querySelector('.wpq [data-wp="aurora"]').click()`); await wait(900)
 
   // ---- focus, note, calendar, engine, sizes
   await pg(`scrollTo(0, 0); document.getElementById('fcgo').click()`); await wait(2300)
@@ -165,7 +191,7 @@ app.whenReady().then(async () => {
 
   // ---- Motion Off: still and instant
   await ex(`api.do('setSetting','motion','off')`); await wait(600)
-  t = await open()
+  t = await open(); wc = t.view.webContents
   ok(await pg(`document.getAnimations().filter(a => a.playState === 'running').length`) === 0, 'Motion Off: nothing animates on open')
   await ex(`api.do('setSetting','motion','lively')`); await wait(400)
 

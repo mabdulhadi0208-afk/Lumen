@@ -40,7 +40,7 @@ function applyLook(s) {
   const was = window.Glass && Glass.on
   if (window.Glass) { Glass.setMode(Jelly.getMode()); if (was !== Glass.on && typeof buildClock === 'function' && document.getElementById('clock')) buildClock() }
 }
-Jelly.init({ buttons: '.btn, .ib, .seg button, .swatches button, .vc, .fchip, .npd-nav, .nav a, .ntp .foot a, .customize, .cswatch, .gtoggle, .sb-eng', cards: '.tile, .err .ico, .key, .wpb, .thb, .icb, .rc, .pcard, .clkb, .hero-ic, .an-dial', press: '.list .row, a.row.hit' })
+Jelly.init({ buttons: '.btn, .ib, .seg button, .swatches button, .vc, .fchip, .npd-nav, .nav a, .ntp .foot a, .hm-cust, .hm-foot a, .hm-ask, .hm-k, .hm-eng, .hm-more, .wpqb, .wpb, .customize, .cswatch, .gtoggle, .sb-eng', cards: '.tile, .hm-stat, .hm-tile, .err .ico, .key, .wpb, .thb, .icb, .rc, .pcard, .clkb, .hero-ic, .an-dial', press: '.list .row, a.row.hit' })
 Jelly.smoothScroll(window)
 
 // ======================================================================= new tab

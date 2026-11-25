@@ -106,7 +106,7 @@
   function scan() {
     queued = false
     document.querySelectorAll(SEL).forEach(e => {
-      if (seen.has(e)) return
+      if (seen.has(e) || e.closest('[data-nolens]')) return   // a page can opt out (the home page fakes its glass)
       seen.add(e); e.classList.add('lg')
       if (ro) ro.observe(e); else fit(e)
     })

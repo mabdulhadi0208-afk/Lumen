@@ -303,6 +303,49 @@
   .error.has-big .art{display:none}
   .curtain.out .rail,.curtain.out .ccred,.curtain.out .neb2{transition:opacity .35s;opacity:0}
 
+  /* ---- deep color and detail: the accent and its pink pushed deep and saturated, a cyan counterpoint (--a5) and a
+     warm gold (--a4); the number lands with one jelly squash; crop marks, a slate and swatches fill the frame */
+  :root{--a4:oklch(from var(--accent) .8 .17 calc(h + 175));--a5:oklch(from var(--accent) .76 .17 calc(h - 62))}
+  .poster{background:radial-gradient(70% 40% at 100% 0%,color-mix(in srgb,var(--a5) 85%,transparent),transparent 70%),radial-gradient(90% 46% at 10% 0%,rgba(255,255,255,.34),transparent 60%),radial-gradient(110% 60% at 100% 104%,color-mix(in srgb,var(--a3) 90%,transparent),transparent 70%),radial-gradient(90% 40% at 0% 100%,rgba(20,0,40,.45),transparent 70%),linear-gradient(165deg,var(--accent) 0%,color-mix(in oklab,var(--accent) 70%,var(--a2)) 38%,var(--a2) 70%,var(--a3))}
+  .bignum{animation:numjelly 1.25s .2s cubic-bezier(.2,.9,.3,1) both}
+  @keyframes numjelly{0%{transform:translateY(30px) scale(1.3);opacity:0}45%{transform:scale(1.08,.9);opacity:1}65%{transform:scale(.96,1.05)}82%{transform:scale(1.015,.99)}100%{transform:none;opacity:1}}
+  .poster .ic{animation:icjelly 1s .1s cubic-bezier(.2,.9,.3,1) both}
+  @keyframes icjelly{0%{transform:scale(.4) rotate(-20deg);opacity:0}50%{transform:scale(1.12,.9);opacity:1}70%{transform:scale(.95,1.06)}100%{transform:none}}
+  .pvt{position:absolute;right:10px;top:16px;z-index:1;writing-mode:vertical-rl;font:800 8.5px/1 ui-monospace,"SF Mono",Menlo,monospace;letter-spacing:.34em;text-transform:uppercase;color:rgba(255,255,255,.6)}
+  .psw{display:flex;gap:3px;margin:8px 0 0 3px}
+  .psw i{width:14px;height:5px;border-radius:2px;box-shadow:0 0 0 .5px rgba(255,255,255,.5)}
+  .psw i:nth-child(1){background:var(--a5)}.psw i:nth-child(2){background:#fff}.psw i:nth-child(3){background:var(--a2)}.psw i:nth-child(4){background:var(--a3)}.psw i:nth-child(5){background:var(--a4)}
+  .card:not(.has-notes) .psw{display:none}
+  @media (prefers-color-scheme:dark){.bg .au{opacity:.75}}
+  .bg .au i:nth-child(2){background:color-mix(in srgb,var(--a5) 60%,transparent)}
+  .t b{background:linear-gradient(100deg,var(--fg) 25%,var(--ink) 62%,color-mix(in oklab,var(--a3) 80%,var(--fg)));-webkit-background-clip:text;background-clip:text}
+  /* the restart screen, deeper */
+  .curtain{background:#05060d}
+  .curtain .neb2 i:nth-child(1){background:radial-gradient(closest-side,color-mix(in srgb,var(--accent) 70%,transparent),transparent)}
+  .curtain .neb2 i:nth-child(2){background:radial-gradient(closest-side,color-mix(in srgb,var(--a3) 62%,transparent),transparent)}
+  .curtain .neb2 i:nth-child(3){left:58%;top:4%;background:radial-gradient(closest-side,color-mix(in srgb,var(--a5) 45%,transparent),transparent)}
+  .cbig{background:linear-gradient(100deg,color-mix(in oklab,var(--a5) 50%,#fff) 0%,#fff 30%,var(--hi) 55%,var(--hi3) 78%,color-mix(in oklab,var(--a4) 55%,#fff) 100%);-webkit-background-clip:text;background-clip:text;
+    animation:cbigjelly 1.3s .15s cubic-bezier(.2,.9,.3,1) both}
+  @keyframes cbigjelly{0%{transform:scale(1.6);opacity:0}45%{transform:scale(1.06,.92);opacity:1}66%{transform:scale(.97,1.04)}84%{transform:scale(1.01,.995)}100%{transform:none;opacity:1}}
+  .chud{position:absolute;inset:26px 30px;z-index:2;pointer-events:none;font:700 9.5px/1 ui-monospace,"SF Mono",Menlo,monospace;letter-spacing:.24em;text-transform:uppercase;color:rgba(220,226,255,.42)}
+  .chud .cmk{position:absolute;width:24px;height:24px;border:0 solid color-mix(in srgb,var(--hi) 60%,transparent)}
+  .chud .tl{left:0;top:0;border-width:1.5px 0 0 1.5px}.chud .tr{right:0;top:0;border-width:1.5px 1.5px 0 0}.chud .bl{left:0;bottom:0;border-width:0 0 1.5px 1.5px}.chud .br{right:0;bottom:0;border-width:0 1.5px 1.5px 0}
+  .chud .sw{position:absolute;right:36px;top:4px;display:flex;gap:4px}
+  .chud .sw i{width:16px;height:7px;border-radius:2px}
+  .chud .sw i:nth-child(1){background:var(--a5)}.chud .sw i:nth-child(2){background:var(--accent)}.chud .sw i:nth-child(3){background:var(--a2)}.chud .sw i:nth-child(4){background:var(--a3)}.chud .sw i:nth-child(5){background:var(--a4)}
+  .chud .sl{position:absolute;right:36px;bottom:4px}.chud .sl em{font-style:normal;color:color-mix(in oklab,var(--a5) 60%,#fff)}
+  .ccred{left:66px;top:30px}
+  @media (max-height:420px){.chud{display:none}}
+  .curtain.out .chud{transition:opacity .3s;opacity:0}
+
+  /* perf: the glass only blurs things that hold still. The light behind the card is placed, not animated in, and
+     the icon tile and the restart orb are drawn glass (no backdrop blur over moving layers). */
+  .bg .au i{animation:none}
+  .poster .ic{backdrop-filter:none;background:linear-gradient(180deg,rgba(255,255,255,.42),rgba(255,255,255,.12) 50%,rgba(255,255,255,.2))}
+  .corb{backdrop-filter:none}
+  .bignum{text-shadow:0 1px 0 rgba(255,255,255,.45),0 8px 18px color-mix(in srgb,var(--accent) 55%,#000)}
+  .poster .pv::before{content:'';position:absolute;left:-30px;right:-40px;bottom:-10px;height:110px;border-radius:50%;background:radial-gradient(closest-side,rgba(255,255,255,.4),transparent);pointer-events:none}
+
   @media (prefers-reduced-motion:reduce){*,*::before,*::after{animation:none !important;transition:none !important}}
 </style></head><body>
 <svg class="defs" aria-hidden="true"><defs id="defs"><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" style="stop-color:var(--accent)"/><stop offset=".55" style="stop-color:var(--a2)"/><stop offset="1" style="stop-color:var(--a3)"/></linearGradient></defs></svg>
@@ -311,11 +354,11 @@
   <div class="bezel"></div><div class="sheen"></div><div class="fx" id="fx"></div><i class="edge" id="edge"></i>
   <i class="pool"></i><div class="wm" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9.5"/><path d="M12 7v9m-4-4 4 4 4-4"/><path d="M4.5 12a7.5 7.5 0 0 1 4-6.6" opacity=".5"/></svg></div>
   <div class="poster">
-    <div class="plb"></div><svg class="porb" viewBox="0 0 200 200" aria-hidden="true"><circle cx="100" cy="100" r="96"/><circle cx="100" cy="100" r="74"/><circle cx="100" cy="100" r="52"/><circle cx="100" cy="100" r="30"/></svg><i class="pglow"></i>
+    <div class="plb"></div><svg class="porb" viewBox="0 0 200 200" aria-hidden="true"><circle cx="100" cy="100" r="96"/><circle cx="100" cy="100" r="74"/><circle cx="100" cy="100" r="52"/><circle cx="100" cy="100" r="30"/></svg><i class="pglow"></i><span class="pvt">Software update</span>
     <div class="pin">
       <div class="ic"><img id="icon" src="../pages/icon-default.png" alt=""><svg class="ring" viewBox="0 0 64 64"><rect class="bgc" x="2" y="2" width="60" height="60" rx="21"/><rect class="fg" id="arc" x="2" y="2" width="60" height="60" rx="21" pathLength="226"/></svg><span class="badge"><svg viewBox="0 0 16 16"><path d="m3.5 8.5 3 3 6-7"/></svg></span></div>
       <div class="art" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9.5"/><path d="M12 7v9m-4-4 4 4 4-4"/><path d="M4.5 12a7.5 7.5 0 0 1 4-6.6" opacity=".5"/></svg></div>
-      <div class="pv"><small>Lumen</small><div class="bignum" id="bignum"></div></div>
+      <div class="pv"><small>Lumen</small><div class="bignum" id="bignum"></div><div class="psw"><i></i><i></i><i></i><i></i><i></i></div></div>
       <div class="pf"><button class="lnk" id="skip">Skip this version</button><span class="chip ok" title="The download matched the fingerprint GitHub published for it"><svg viewBox="0 0 12 12"><path d="m2.5 6.3 2.3 2.2 4.7-5"/></svg>Verified</span></div>
     </div>
   </div>
@@ -335,6 +378,7 @@
   </div>
 </div>
 <div class="curtain" id="curtain" aria-live="polite"><div class="neb2"><i></i><i></i><i></i></div><div class="rays"></div><div class="streak"></div><div class="rings"><i></i><i></i><i></i></div><i class="cpool"></i><div class="cart" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9.5"/><path d="M12 7v9m-4-4 4 4 4-4"/><path d="M4.5 12a7.5 7.5 0 0 1 4-6.6" opacity=".5"/></svg></div>
+  <div class="chud" aria-hidden="true"><i class="cmk tl"></i><i class="cmk tr"></i><i class="cmk bl"></i><i class="cmk br"></i><span class="sw"><i></i><i></i><i></i><i></i><i></i></span><span class="sl">Lumen <em id="csl"></em>  Restart</span></div>
   <div class="ccred"><i></i>Lumen software update</div>
   <div class="cm"><div class="corb"><svg viewBox="0 0 100 100"><circle class="bgc" cx="50" cy="50" r="48" pathLength="100"/><circle class="fg" id="carc" cx="50" cy="50" r="48" pathLength="100"/></svg><img id="dicon" src="../pages/icon-default.png" alt=""></div>
     <div class="ctx"><span class="ck" id="ck">Installing the update</span><div class="cbig" id="cbig"></div><b id="ctitle">Restarting Lumen</b><small>Your tabs come right back</small>
@@ -411,7 +455,7 @@ function paint(u) {
   roll($('#to'), toV); roll($('#dto'), v(u.latest || u.current))
   const big = v(u.status === 'uptodate' ? u.current : u.latest || u.current).split('.').slice(0, 2).join('.')
   $('#bignum').textContent = big; $('#bignum').className = 'bignum' + (big.length >= 5 ? ' l5' : big.length === 4 ? ' l4' : ''); card.classList.toggle('has-big', !!big)
-  $('#cbig').textContent = v(u.latest || u.current).replace(/\.0$/, '')
+  $('#cbig').textContent = $('#csl').textContent = v(u.latest || u.current).replace(/\.0$/, '')
   $('#ctitle').textContent = 'Lumen ' + v(u.latest || u.current).replace(/\.0$/, '')
   if (entering || (u.status === 'installing' && u.exitAt && u.exitAt !== lastExit)) { lastExit = u.exitAt; curtainTimeline(u) }
   const T = {

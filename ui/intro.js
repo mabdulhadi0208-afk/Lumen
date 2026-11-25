@@ -319,7 +319,7 @@
   #intro .chrome{background:radial-gradient(70% 90% at var(--gx) var(--gy),rgba(255,255,255,.14),transparent 70%),linear-gradient(160deg,rgba(255,255,255,.12),rgba(255,255,255,.03));backdrop-filter:blur(16px) saturate(1.7);
     box-shadow:inset 0 1px 0 rgba(255,255,255,.24),inset 2px 0 0 rgba(255,90,150,.12),inset -2px 0 0 rgba(90,200,255,.12),0 0 0 1px rgba(255,255,255,.08),0 8px 24px rgba(0,0,0,.3)}
   #intro .meter{position:absolute;left:50%;bottom:calc(var(--bar) + 10px);width:220px;margin-left:-110px;height:3px;border-radius:3px;background:rgba(255,255,255,.1);z-index:9;overflow:hidden;box-shadow:inset 0 0 0 .5px rgba(255,255,255,.08)}
-  #intro .meter i{display:block;height:100%;width:0;background:var(--nova);box-shadow:0 0 10px var(--a);border-radius:3px}
+  #intro .meter i{display:block;height:100%;width:100%;transform:scaleX(0);transform-origin:0 50%;background:var(--nova);box-shadow:0 0 10px var(--a);border-radius:3px}
   #intro .credit{position:absolute;left:28px;top:calc(var(--bar) + 24px);z-index:9;font:700 10.5px var(--font);letter-spacing:.32em;text-transform:uppercase;color:rgba(220,226,255,.42)}
   #intro .credit b{color:var(--hi);font-weight:800}
   #intro .credit i{display:inline-block;width:6px;height:6px;margin-right:10px;border-radius:50%;background:#ff4d6d;box-shadow:0 0 8px #ff4d6d;vertical-align:1px;animation:rec 1.4s steps(2) 40}
@@ -378,6 +378,7 @@
   #intro .nw4 .it .no2{position:absolute;right:13px;top:11px;z-index:1}
   #intro .nw4 .it .wmk{position:absolute;right:-18px;bottom:-26px;width:92px;height:92px;color:var(--hi);opacity:.13;transform:rotate(-14deg);pointer-events:none}
   #intro .nw4 .it .wmk svg{width:100%;height:100%;stroke-width:1.1}
+  #intro .nw4 .it:not(.hero){background:radial-gradient(60% 90% at var(--gx) var(--gy),rgba(255,255,255,.12),transparent 62%),linear-gradient(150deg,rgba(255,255,255,.08),rgba(255,255,255,.02)),rgba(6,6,22,.55)}
   #intro .nw4 .it.hero{grid-column:span 2;padding:18px 60px 18px 18px;min-height:104px;gap:18px;
     background:radial-gradient(60% 120% at 0% 0%,color-mix(in srgb,var(--a) 46%,transparent),transparent 70%),radial-gradient(60% 120% at 100% 100%,color-mix(in srgb,var(--a3) 38%,transparent),transparent 70%),linear-gradient(150deg,rgba(255,255,255,.12),rgba(255,255,255,.03)),rgba(10,12,28,.25)}
   #intro .nw4 .it.hero .k{width:62px;height:62px;border-radius:20px}
@@ -389,7 +390,10 @@
   @media (max-width:760px){#intro .nw4{grid-template-columns:1fr}#intro .nw4 .bigv,#intro .nw4 .lede{display:none}}
 
   /* the finale: the closing card of a trailer */
-  #intro .fin4 .fk{font:800 12.5px/1 var(--font);letter-spacing:.5em;text-transform:uppercase;color:var(--hi);padding-left:.5em;margin-bottom:6px}
+  #intro .fin4 .fk{position:relative;z-index:1;font:800 13px/1 var(--font);letter-spacing:.5em;text-transform:uppercase;color:#fff;padding:10px 16px 10px calc(16px + .5em);border-radius:999px;margin-bottom:14px;
+    background:linear-gradient(100deg,color-mix(in srgb,var(--a5) 55%,transparent),color-mix(in srgb,var(--a) 60%,transparent),color-mix(in srgb,var(--a3) 55%,transparent));box-shadow:inset 0 1px 0 rgba(255,255,255,.4),0 8px 30px color-mix(in srgb,var(--a) 50%,transparent)}
+  #intro .fin4 .ask{background:radial-gradient(60% 120% at 0% 0%,color-mix(in srgb,#ff8a3d 26%,transparent),transparent 70%),linear-gradient(150deg,rgba(255,255,255,.1),rgba(255,255,255,.02)),rgba(6,6,20,.62)}
+  #intro .fin4 .ask span{color:#dfe3fb}
   #intro .fin4 .logo{font-size:clamp(76px,11vw,168px);letter-spacing:-.055em;line-height:1}
   #intro .fin4 .ask{width:min(880px,92vw);align-items:center;gap:18px;padding:18px 18px 18px 20px;box-sizing:border-box;overflow:hidden}
   #intro .fin4 .ask .tx{flex:1;min-width:0;position:relative;z-index:1}
@@ -412,6 +416,80 @@
   #arrive .cart{position:absolute;right:-14vmin;bottom:-18vmin;width:78vmin;height:78vmin;pointer-events:none;color:color-mix(in srgb,var(--a) 60%,#fff);opacity:.07;transform:rotate(-14deg)}
   #arrive .cart svg{width:100%;height:100%;fill:none;stroke:currentColor;stroke-width:.6;stroke-linecap:round;stroke-linejoin:round}
   #arrive::after{content:'';position:absolute;inset:0;pointer-events:none;background:radial-gradient(120% 90% at 50% 50%,transparent 45%,rgba(0,0,0,.75))}
+
+  /* the tour on a wide window: the shot sits right of centre beside a poster-size caption */
+  #intro .tourcap .bn{display:none}
+  @media (min-width:1100px){
+    #intro .scene.tshot .rig{margin-left:30vw}
+    #intro .scene.tshot .halo{margin-left:calc(max(-450px,-45vw) + 15vw)}
+    #intro .scene.tshot .echo.tw{place-items:end start;padding-left:3vw;top:auto;bottom:-10vh;height:60vh}
+    #intro .tourcap{left:5vw;right:auto;width:min(420px,31vw);top:50%;bottom:auto;transform:translateY(-50%);text-align:left}
+    #intro .tourcap h2{font-size:clamp(40px,4.1vw,64px);line-height:1.02;margin-bottom:14px}
+    #intro .tourcap p{font-size:16px;margin:0}
+    #intro .tourcap .n{font-size:12px}
+    #intro .tourcap .dots{margin-left:10px}
+    #intro .tourcap .bn{display:block;font:800 clamp(64px,6.4vw,104px)/.9 ${HEAD};letter-spacing:-.05em;color:transparent;-webkit-text-stroke:1.5px color-mix(in srgb,var(--hi) 85%,transparent);margin:0 0 10px -.04em}
+  }
+
+  /* ---- deep color: the accent and its pink stay the signature, pushed deep and saturated, with a cyan counterpoint
+     (--a5) and a warm gold (--a4) so the frame is never one pale wash */
+  #intro,#arrive{--a4:oklch(from var(--a) .8 .17 calc(h + 175));--a5:oklch(from var(--a) .78 .16 calc(h - 62));--hi4:color-mix(in oklab,var(--a4) 55%,#fff);--hi5:color-mix(in oklab,var(--a5) 50%,#fff);
+    --deep:linear-gradient(100deg,var(--hi5) 0%,#fff 30%,var(--hi) 52%,var(--hi3) 78%,var(--hi4) 100%)}
+  #intro{background:#030309}
+  #intro .neb{background:radial-gradient(40% 36% at 26% 32%,color-mix(in srgb,var(--a) 48%,transparent),transparent 70%),radial-gradient(38% 34% at 76% 66%,color-mix(in srgb,var(--a3) 46%,transparent),transparent 70%),radial-gradient(30% 30% at 82% 18%,color-mix(in srgb,var(--a5) 30%,transparent),transparent 70%),radial-gradient(26% 26% at 14% 82%,color-mix(in srgb,var(--a4) 22%,transparent),transparent 70%)}
+  #intro .trailer .tc em,#intro .count.fin4 .cn,#intro .logo span,#intro .logo .v4,#intro .nw4 .bigv,#intro .fin4 .logo,#intro .new h1{background:var(--deep);-webkit-background-clip:text;background-clip:text;color:transparent}
+  #intro .trailer .tc{text-shadow:0 0 60px color-mix(in srgb,var(--a) 70%,transparent),0 0 120px color-mix(in srgb,var(--a3) 40%,transparent)}
+  #intro .vig{background:radial-gradient(125% 95% at 50% 50%,transparent 46%,rgba(0,0,0,.88))}
+  /* a cinematographer's HUD: crop marks, a running timecode, the reel slate and a tick ruler along the letterbox */
+  #intro .hud{position:absolute;inset:calc(var(--bar) + 62px) 22px calc(var(--bar) + 14px);z-index:7;pointer-events:none;font:700 9.5px/1 ui-monospace,"SF Mono",Menlo,monospace;letter-spacing:.24em;color:rgba(220,226,255,.42);text-transform:uppercase;opacity:0;transition:opacity 1.2s .6s}
+  #intro.on .hud{opacity:1}#intro.on.wide .hud{opacity:0;transition-delay:0s}
+  #intro .hud .cm{position:absolute;width:22px;height:22px;border:0 solid color-mix(in srgb,var(--hi) 60%,transparent)}
+  #intro .hud .tl{left:0;top:0;border-width:1.5px 0 0 1.5px}#intro .hud .tr{right:0;top:0;border-width:1.5px 1.5px 0 0}#intro .hud .bl{left:0;bottom:0;border-width:0 0 1.5px 1.5px}#intro .hud .br{right:0;bottom:0;border-width:0 1.5px 1.5px 0}
+  #intro .hud .tcd{position:absolute;left:34px;bottom:4px;font-variant-numeric:tabular-nums;color:rgba(230,234,255,.6)}
+  #intro .hud .tcd b{color:#ff4d6d;font-weight:800;margin-right:10px}
+  #intro .hud .rl{position:absolute;right:34px;bottom:4px}
+  #intro .hud .rl em{font-style:normal;color:var(--hi5)}
+  #intro .hud .tk{position:absolute;left:30%;right:30%;top:2px;height:7px;opacity:.5;background:repeating-linear-gradient(90deg,rgba(230,234,255,.6) 0 1px,transparent 1px 12px),linear-gradient(90deg,transparent,rgba(0,0,0,0));-webkit-mask:linear-gradient(90deg,transparent,#000 20%,#000 80%,transparent)}
+  #intro .hud .sw{position:absolute;right:34px;top:2px;display:flex;gap:4px}
+  #intro .hud .sw i{width:16px;height:7px;border-radius:2px}
+  #intro .hud .sw i:nth-child(1){background:var(--a5)}#intro .hud .sw i:nth-child(2){background:var(--a)}#intro .hud .sw i:nth-child(3){background:var(--a2)}#intro .hud .sw i:nth-child(4){background:var(--a3)}#intro .hud .sw i:nth-child(5){background:var(--a4)}
+  #arrive .an{background:var(--deep);-webkit-background-clip:text;background-clip:text}
+  #arrive{background:radial-gradient(40% 50% at 30% 30%,color-mix(in srgb,var(--a) 55%,transparent),transparent 70%),radial-gradient(40% 50% at 72% 70%,color-mix(in srgb,var(--a3) 48%,transparent),transparent 70%),radial-gradient(30% 34% at 78% 14%,color-mix(in srgb,var(--a5) 34%,transparent),transparent 70%),radial-gradient(1px 1px at 12% 22%,#fff,transparent),radial-gradient(1px 1px at 33% 68%,#fff,transparent),radial-gradient(1.4px 1.4px at 58% 18%,#fff,transparent),radial-gradient(1px 1px at 76% 54%,#fff,transparent),#05060d}
+  /* color slabs: three saturated bands cut across the frame on the biggest beats (transform only) */
+  #intro .slabs{position:absolute;inset:0;z-index:6;pointer-events:none;overflow:hidden}
+  #intro .slabs i{position:absolute;top:-20%;bottom:-20%;width:34%;left:0;transform:translateX(-160%) skewX(-16deg);opacity:.9}
+  #intro .slabs i:nth-child(1){background:linear-gradient(90deg,transparent,color-mix(in srgb,var(--a5) 85%,transparent) 30%,color-mix(in srgb,var(--a5) 85%,transparent) 70%,transparent)}
+  #intro .slabs i:nth-child(2){background:linear-gradient(90deg,transparent,color-mix(in srgb,var(--a) 90%,transparent) 30%,color-mix(in srgb,var(--a2) 90%,transparent) 70%,transparent)}
+  #intro .slabs i:nth-child(3){background:linear-gradient(90deg,transparent,color-mix(in srgb,var(--a3) 90%,transparent) 30%,color-mix(in srgb,var(--a4) 85%,transparent) 70%,transparent)}
+
+  /* ---- liquid glass, drawn: no backdrop blur over the moving film (that was the lag). Thick slabs are built from a
+     tinted body, a bright specular rim, a top bevel, a chromatic edge (pink left, cyan right), an inner caustic, a
+     refraction sheen that sweeps once (a transform on a pseudo-element) and three colored shadows. */
+  #intro:not(.still) .glass,#intro:not(.still) .glassf,#intro:not(.still) .lgl,#intro:not(.still) .chrome,#intro:not(.still) .drop,#intro .desk .menubar,#intro .desk .chg{backdrop-filter:none}
+  #intro .glass{background:radial-gradient(55% 45% at var(--gx) var(--gy),rgba(255,255,255,.2),transparent 62%),linear-gradient(180deg,rgba(255,255,255,.2),rgba(255,255,255,.05) 34%,transparent 60%),
+      radial-gradient(90% 70% at 50% 120%,color-mix(in srgb,var(--a) 42%,transparent),transparent 70%),radial-gradient(60% 60% at 0% 0%,color-mix(in srgb,var(--a5) 18%,transparent),transparent 70%),radial-gradient(60% 60% at 100% 100%,color-mix(in srgb,var(--a3) 24%,transparent),transparent 70%),rgba(12,12,34,.62);
+    box-shadow:inset 0 1.5px 0 rgba(255,255,255,.7),inset 0 -1.5px 0 rgba(255,255,255,.16),inset 3px 0 0 color-mix(in srgb,var(--a3) 40%,transparent),inset -3px 0 0 color-mix(in srgb,var(--a5) 40%,transparent),inset 0 0 40px color-mix(in srgb,var(--a) 22%,transparent),
+      0 30px 70px -20px color-mix(in srgb,var(--a) 70%,transparent),0 50px 110px -34px color-mix(in srgb,var(--a3) 55%,transparent),0 20px 60px -30px color-mix(in srgb,var(--a5) 50%,transparent),0 60px 120px rgba(0,0,0,.55)}
+  #intro .glass::before{padding:1.5px;background:linear-gradient(135deg,#fff,color-mix(in srgb,var(--a5) 70%,#fff) 14%,rgba(255,255,255,.08) 34%,transparent 48%,transparent 58%,color-mix(in srgb,var(--a3) 60%,transparent) 80%,var(--a4))}
+  #intro .glassf{background:linear-gradient(180deg,rgba(255,255,255,.28),rgba(255,255,255,.06) 20%,rgba(255,255,255,.02) 80%,rgba(255,255,255,.12)),radial-gradient(120% 80% at 50% 120%,color-mix(in srgb,var(--a) 46%,transparent),transparent 70%),rgba(12,12,34,.5)}
+  #intro .chrome{background:linear-gradient(180deg,rgba(255,255,255,.2),rgba(255,255,255,.05) 50%,rgba(255,255,255,.08)),rgba(16,16,40,.66);
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.55),inset 2px 0 0 color-mix(in srgb,var(--a3) 34%,transparent),inset -2px 0 0 color-mix(in srgb,var(--a5) 34%,transparent),0 0 0 1px rgba(255,255,255,.1),0 10px 28px -6px color-mix(in srgb,var(--a) 55%,transparent)}
+  #intro .mw .lgl{background:linear-gradient(180deg,rgba(255,255,255,.98),rgba(250,250,255,.92));}
+  #intro .desk .menubar{background:rgba(255,255,255,.1)}
+  #intro .desk .chg{background:linear-gradient(160deg,rgba(255,255,255,.2),rgba(255,255,255,.06)),rgba(14,16,30,.7)}
+  /* the refraction sheen: a band of light crosses each slab once when it lands */
+  #intro .glass.sweep::after{background:linear-gradient(105deg,transparent 30%,rgba(255,255,255,.08) 40%,rgba(255,255,255,.42) 50%,color-mix(in srgb,var(--a5) 30%,transparent) 54%,transparent 66%)}
+  /* the number in glass letterforms: a deep gradient fill, a bright rim and colored depth */
+  #intro .count .cn,#intro .logo .v4,#intro .nw4 .bigv{-webkit-text-stroke:1.5px rgba(255,255,255,.55)}
+  #intro .nw4 .bigv{filter:drop-shadow(0 2px 0 rgba(255,255,255,.3)) drop-shadow(0 16px 36px color-mix(in srgb,var(--a) 70%,transparent)) drop-shadow(0 26px 60px color-mix(in srgb,var(--a5) 40%,transparent))}
+  #intro .nw4 .lh .eyebrow{background:linear-gradient(100deg,color-mix(in srgb,var(--a5) 60%,transparent),color-mix(in srgb,var(--a) 70%,transparent),color-mix(in srgb,var(--a3) 60%,transparent))}
+  /* glass tiles: a deeper slab, a top bevel and a lit icon tile */
+  #intro .nw4 .it:not(.hero){background:linear-gradient(180deg,rgba(255,255,255,.16),rgba(255,255,255,.03) 40%,transparent 70%),radial-gradient(80% 90% at 100% 100%,color-mix(in srgb,var(--a3) 26%,transparent),transparent 70%),rgba(10,10,30,.66)}
+  #intro .nw4 .it .k,#intro .fin4 .ask .k{box-shadow:inset 0 1.5px 0 rgba(255,255,255,.75),inset 0 -8px 14px rgba(0,0,0,.18),inset 0 8px 12px -6px rgba(255,255,255,.35),0 0 0 3px color-mix(in srgb,var(--a) 22%,transparent),0 12px 28px color-mix(in srgb,var(--a) 65%,transparent)}
+  #intro .fin4 .ask{background:linear-gradient(180deg,rgba(255,255,255,.16),rgba(255,255,255,.03) 40%,transparent 70%),radial-gradient(60% 120% at 0% 0%,color-mix(in srgb,#ff8a3d 26%,transparent),transparent 70%),rgba(8,8,26,.72)}
+
+  #intro .nebc{position:absolute;inset:0;opacity:0;pointer-events:none;display:grid;place-items:center;overflow:hidden}
+  #intro .nebc .nebi{width:150vmax;height:150vmax;flex:none;opacity:1}
   `
   // ------------------------------------------------------------ sound: friendly, bright and crisp, all synthesized (no files)
   // A warm major pad, bell chimes, bubbly pops and soft air. Nothing low, buzzy or ominous.
@@ -540,15 +618,17 @@
   // Big pieces (title cards, frames, whole scenes) move with transform and opacity only: an animated blur or
   // drop-shadow filter on something that large is repainted every frame and drops frames on a MacBook Air.
   const BIG = 90000
-  const noFilter = kf => kf.map(f => { if (!('filter' in f)) return f; const g = { ...f }; delete g.filter; return g })
-  const anim = (el, kf, o) => el.animate(el.offsetWidth * el.offsetHeight > BIG ? noFilter(kf) : kf, { fill: 'forwards', easing: 'cubic-bezier(.3,1.22,.5,1)', ...o, ...(still ? { duration: 1, delay: 0 } : {}) })
+  // 4.0: every motion in the film is transform and opacity only, so it all runs on the compositor. Filter and
+  // letter-spacing keyframes (which repaint or re-lay-out text every frame) are dropped here, whatever asked for them.
+  const noFilter = kf => kf.map(f => { if (!('filter' in f) && !('letterSpacing' in f)) return f; const g = { ...f }; delete g.filter; delete g.letterSpacing; return g })
+  const anim = (el, kf, o) => el.animate(noFilter(kf), { fill: 'forwards', easing: 'cubic-bezier(.3,1.22,.5,1)', ...o, ...(still ? { duration: 1, delay: 0 } : {}) })
   const tween = (obj, key, to, ms, ease = k => 1 - Math.pow(1 - k, 3)) => new Promise(r => { const from = obj[key], s = performance.now(); const f = () => { const k = still ? 1 : Math.min(1, (performance.now() - s) / ms); obj[key] = from + (to - from) * ease(k); if (k < 1 && !skip) requestAnimationFrame(f); else { obj[key] = to; r() } }; f() })
   const inout = k => k < .5 ? 2 * k * k : 1 - Math.pow(-2 * k + 2, 2) / 2
   const words = (el, text, delay = 0, step = 60, blur = true) => {
     el.innerHTML = ''
     text.split(' ').forEach((w, i) => {
       const s = document.createElement('span'); s.className = 'w'; s.textContent = w; el.appendChild(s); el.appendChild(document.createTextNode(' '))
-      anim(s, [{ opacity: 0, transform: 'translateY(16px)', filter: blur ? 'blur(8px)' : 'none' }, { opacity: 1, transform: 'none', filter: 'blur(0)' }], { duration: 1000, delay: delay + i * step })
+      anim(s, [{ opacity: 0, transform: 'translateY(16px) scale(.94)' }, { opacity: 1, transform: 'none' }], { duration: 1000, delay: delay + i * step })
     })
   }
   // the user's accent, as a hue for the light drawn on the canvas
@@ -591,7 +671,7 @@
   const LENS_IN_FILM = false
   function lens(el, o = {}) {
     if (still || !el || !defs || el.dataset.lens) return
-    if (!LENS_IN_FILM) { el.dataset.lens = 'blur'; el.style.backdropFilter = `blur(${Math.min(o.blur ?? 10, 12)}px) saturate(${o.sat ?? 1.8})${o.bright ? ` brightness(${o.bright})` : ''}`; return }
+    if (!LENS_IN_FILM) { el.dataset.lens = 'faux'; return }   // 4.0: no live blur over moving content; the glass is drawn (see .glass)
     const w = Math.round(el.offsetWidth), h = Math.round(el.offsetHeight); if (w < 4 || h < 4) return
     const r = Math.min(parseFloat(getComputedStyle(el).borderTopLeftRadius) || 0, w / 2, h / 2)
     const S = o.scale ?? Math.min(44, Math.max(14, Math.min(w, h) * .16)), edge = o.edge ?? Math.min(56, Math.max(10, Math.min(w, h) * .32))
@@ -622,25 +702,27 @@
   loadLogo()
   const sky = { oy: 0, speed: .4, warp: 0, gather: 0, orb: 0, orbR: 0, ring: 0, shock: [], flash: 0, shake: 0, rays: 0, bokeh: 0, neb: 0, dof: 0, ghosts: 0, caus: 0 }
   const camera = { x: 0, y: 0, px: 0, py: 0, push: 0, roll: 0, lift: 0 }
-  let bokeh = [], stars = [], caus = [], nebula = null, dofShown = -1, lastNow = 0
+  let bokeh = [], stars = [], caus = [], nebula = null, dofShown = -1, lastNow = 0, bokehSprites = {}, raySprite = null, nebEl = null, nebOp = -1
   function size() {
     const scale = Math.min(1, devicePixelRatio || 1) * (innerWidth * innerHeight > 1200000 ? .6 : .75)   // the sky is soft light: below screen resolution it looks the same and costs a fraction
     const r = cv.getBoundingClientRect(); W = Math.round(r.width) || innerWidth + 80; H = Math.round(r.height) || innerHeight + 80
     cv.width = Math.round(W * scale); cv.height = Math.round(H * scale)
     cx.setTransform(scale, 0, 0, scale, 0, 0)
   }
-  const newStar = (far = true) => ({ x: (Math.random() - .5) * 2, y: (Math.random() - .5) * 2, z: far ? Math.random() * .9 + .1 : 1, pz: 0, c: Math.random() < .3 ? 1 : 0 })
+  const starBuckets = Array.from({ length: 12 }, () => [])
+  const newStar = (far = true) => ({ x: (Math.random() - .5) * 2, y: (Math.random() - .5) * 2, z: far ? Math.random() * .9 + .1 : 1, pz: 0, c: Math.random() < .3 ? (Math.random() < .4 ? 2 : 1) : 0 })
   // a nebula painted once: soft clouds along a few curling arms, in the accent and its two neighbours on the color wheel
   function paintNebula() {
     const c = document.createElement('canvas'); c.width = c.height = 640
     const g = c.getContext('2d'); g.globalCompositeOperation = 'lighter'
-    for (const [h, a0] of [[HUE, 0], [HUE + 40, 2.1], [HUE + 95, 4.2]]) {
+    for (const [h, a0] of [[HUE, 0], [HUE + 40, 1.3], [HUE + 95, 2.6], [HUE - 62, 3.9], [HUE + 175, 5.2]]) {
       for (let i = 0; i < 170; i++) {
         const k = i / 170, ang = a0 + k * 3.4, rad = 40 + k * 240 + Math.sin(k * 9) * 30
         const x = 320 + Math.cos(ang) * rad + (Math.random() - .5) * 70, y = 320 + Math.sin(ang) * rad * .62 + (Math.random() - .5) * 60
         const r = 18 + Math.random() * 70 * (1 - k * .5), gr = g.createRadialGradient(x, y, 0, x, y, r)
-        const al = (.03 + Math.random() * .05) * (1 - k * .6)
-        gr.addColorStop(0, `hsla(${h + (Math.random() - .5) * 24},85%,${62 + Math.random() * 16}%,${al})`); gr.addColorStop(1, `hsla(${h},85%,60%,0)`)
+        // deep, saturated light: low lightness so five arms added together stay rich instead of washing out to white
+        const al = (.028 + Math.random() * .042) * (1 - k * .6) * (h === HUE + 175 ? .55 : 1)
+        gr.addColorStop(0, `hsla(${h + (Math.random() - .5) * 24},100%,${44 + Math.random() * 12}%,${al})`); gr.addColorStop(1, `hsla(${h},100%,40%,0)`)
         g.fillStyle = gr; g.beginPath(); g.arc(x, y, r, 0, 6.283); g.fill()
       }
     }
@@ -663,21 +745,17 @@
     // the camera floats: a slow handheld drift plus a little parallax from the pointer
     if (!still) { camera.x += ((camera.px * 26 + Math.sin(t * .13) * 14 + Math.sin(t * .31) * 4) - camera.x) * .035; camera.y += ((camera.py * 16 + Math.cos(t * .11) * 9) - camera.y) * .035 }
     const cxm = W / 2 - camera.x * .35, cym = H / 2 - camera.y * .35, F = Math.max(W, H) * .55, oyc = H / 2 + sky.oy - camera.y * .5, oxc = W / 2 - camera.x * .5
-    cx.globalCompositeOperation = 'source-over'
-    cx.fillStyle = sky.warp > .05 ? `rgba(4,5,11,${.55 - sky.warp * .35})` : '#04050b'
-    cx.fillRect(0, 0, W, H)
+    // the canvas is clear glass over the nebula layer; in the warp it keeps a fading trail of the last frames
+    if (sky.warp > .05) { cx.globalCompositeOperation = 'destination-out'; cx.fillStyle = `rgba(0,0,0,${.55 - sky.warp * .35})`; cx.fillRect(0, 0, W, H) }
+    else cx.clearRect(0, 0, W, H)
     cx.globalCompositeOperation = 'lighter'
-    if (sky.neb > .01 && nebula) {
-      const S = Math.max(W, H) * 1.5
-      cx.save(); cx.globalAlpha = sky.neb * (1 - sky.warp * .7); cx.translate(W / 2 - camera.x * .15, H / 2 - camera.y * .15); cx.rotate(t * .012 - .3); cx.scale(1 + Math.sin(t * .05) * .04, 1)
-      cx.drawImage(nebula, -S / 2, -S / 2, S, S); cx.restore()
-    }
+    { const o = Math.round(sky.neb * (1 - sky.warp * .7) * 50) / 50; if (nebEl && o !== nebOp) { nebOp = o; nebEl.style.opacity = o } }
     // the warp tunnel: rings of accent light rushing past the lens, split into three colors at the rim
     if (sky.warp > .12) {
       const M = Math.max(W, H)
       for (let i = 0; i < 9; i++) {
         const f = (t * 1.5 + i / 9) % 1, r = f * f * M * .95
-        ;[[-3, 330], [0, HUE], [3, HUE + 95]].forEach(([o, h]) => {
+        ;[[-3, HUE - 62], [0, HUE], [3, HUE + 95]].forEach(([o, h]) => {
           cx.strokeStyle = `hsla(${h},100%,74%,${sky.warp * .16 * (1 - f) * (o ? .6 : 1)})`; cx.lineWidth = 1 + f * 5
           cx.beginPath(); cx.ellipse(cxm + o * f * 4, cym, r, r * .64, 0, 0, 6.283); cx.stroke()
         })
@@ -685,6 +763,8 @@
     }
     const v = still ? 0 : (.0025 + sky.speed * .004 + sky.warp * .045) * Math.min(fk, 3)
     cx.lineCap = 'round'
+    const SB = starBuckets
+    for (const p of SB) p.length = 0
     for (const s of stars) {
       s.pz = s.z; s.z -= v
       if (sky.gather > 0) { s.x *= 1 - sky.gather * .06; s.y *= 1 - sky.gather * .06 }
@@ -692,21 +772,28 @@
       const x = cxm + s.x / s.z * F, y = cym + s.y / s.z * F
       if (x < -50 || x > W + 50 || y < -50 || y > H + 50) { Object.assign(s, newStar(false)); s.pz = s.z; continue }
       const px = cxm + s.x / s.pz * F, py = cym + s.y / s.pz * F
-      const b = Math.min(1, (1 - s.z) * 1.4)
-      cx.strokeStyle = s.c ? `hsla(${HUE + 60},90%,84%,${b})` : `hsla(${HUE},60%,92%,${b})`
-      cx.lineWidth = Math.max(.6, (1 - s.z) * 2.6)
-      cx.beginPath(); cx.moveTo(px, py); cx.lineTo(x + (x === px ? .4 : 0), y); cx.stroke()
+      const lv = Math.min(3, Math.floor(Math.min(1, (1 - s.z) * 1.4) * 4))
+      SB[s.c * 4 + lv].push(px, py, x + (x === px ? .4 : 0), y)
+    }
+    for (let k = 0; k < 12; k++) {
+      const a = SB[k]; if (!a.length) continue
+      const c = Math.floor(k / 4), lv = k % 4
+      cx.strokeStyle = c ? `hsla(${c === 2 ? HUE - 62 : HUE + 80},96%,76%,${(lv + 1) / 4})` : `hsla(${HUE},60%,92%,${(lv + 1) / 4})`
+      cx.lineWidth = .6 + lv * .6
+      cx.beginPath(); for (let i = 0; i < a.length; i += 4) { cx.moveTo(a[i], a[i + 1]); cx.lineTo(a[i + 2], a[i + 3]) } cx.stroke()
     }
     if (sky.rays > .01 && sky.orb > .01) {
       const L = Math.max(W, H) * 1.1
-      cx.save(); cx.translate(oxc, oyc)
-      for (let i = 0; i < 18; i++) {
-        const a = i / 18 * 6.283 + t * .05 + Math.sin(t * .3 + i) * .04, w = .04 + (i % 3) * .025
-        const g = cx.createLinearGradient(0, 0, Math.cos(a) * L, Math.sin(a) * L)
-        g.addColorStop(0, `hsla(${HUE + (i % 4) * 22},100%,80%,${.13 * sky.rays * sky.orb})`); g.addColorStop(1, `hsla(${HUE},100%,70%,0)`)
-        cx.fillStyle = g; cx.beginPath(); cx.moveTo(0, 0); cx.arc(0, 0, L, a - w, a + w); cx.closePath(); cx.fill()
+      if (!raySprite) {
+        const R = 512, c = document.createElement('canvas'); c.width = c.height = R * 2; const g2 = c.getContext('2d'); g2.translate(R, R); g2.globalCompositeOperation = 'lighter'
+        for (let i = 0; i < 18; i++) {
+          const a = i / 18 * 6.283, w = .04 + (i % 3) * .025, g = g2.createLinearGradient(0, 0, Math.cos(a) * R, Math.sin(a) * R)
+          g.addColorStop(0, `hsla(${HUE + [0, 40, -62, 95][i % 4]},100%,72%,.15)`); g.addColorStop(1, `hsla(${HUE},100%,70%,0)`)
+          g2.fillStyle = g; g2.beginPath(); g2.moveTo(0, 0); g2.arc(0, 0, R, a - w, a + w); g2.closePath(); g2.fill()
+        }
+        raySprite = c
       }
-      cx.restore()
+      cx.save(); cx.translate(oxc, oyc); cx.rotate(t * .05); cx.globalAlpha = Math.min(1, sky.rays * sky.orb); cx.drawImage(raySprite, -L, -L, L * 2, L * 2); cx.restore()
     }
     if (sky.orb > .01) {
       const R = sky.orbR * 5
@@ -744,12 +831,19 @@
         cx.save(); cx.globalCompositeOperation = 'source-over'; cx.globalAlpha = sky.orb
         cx.shadowColor = `hsla(${HUE},100%,60%,.7)`; cx.shadowBlur = IS * .35; cx.shadowOffsetY = IS * .06
         cx.drawImage(LOGO, oxc - IS / 2, oyc - IS / 2, IS, IS); cx.restore()
+        // the glass tile around the icon: a rim that is bright at the top, a soft bevel and a sheen across the top half
+        const gs = IS * 1.08, gx0 = oxc - gs / 2, gy0 = oyc - gs / 2, gr = gs * .24
+        cx.save(); cx.globalCompositeOperation = 'source-over'; cx.globalAlpha = sky.orb
+        const rim = cx.createLinearGradient(0, gy0, 0, gy0 + gs); rim.addColorStop(0, 'rgba(255,255,255,.95)'); rim.addColorStop(.45, 'rgba(255,255,255,.18)'); rim.addColorStop(1, `hsla(${HUE - 62},100%,75%,.7)`)
+        cx.strokeStyle = rim; cx.lineWidth = Math.max(1.5, IS * .025); cx.beginPath(); cx.roundRect(gx0, gy0, gs, gs, gr); cx.stroke()
+        const sh = cx.createLinearGradient(0, gy0, 0, gy0 + gs * .5); sh.addColorStop(0, 'rgba(255,255,255,.34)'); sh.addColorStop(1, 'rgba(255,255,255,0)')
+        cx.fillStyle = sh; cx.beginPath(); cx.roundRect(gx0 + 2, gy0 + 2, gs - 4, gs * .5, [gr, gr, gr * .3, gr * .3]); cx.fill(); cx.restore()
       }
     }
     // caustics: the glass frame focuses light into a shimmering pool on the floor below it, and sparks drift up out of it
     if (sky.caus > .01 && sprite) {
       const fw = Math.min(720, innerWidth * .72) + 28, fh = Math.min(396, innerHeight * .44) + 28
-      const px0 = W / 2 - camera.x * .55, py0 = 40 + innerHeight * .44 + fh / 2 + 34 - camera.y * .55
+      const px0 = W / 2 + (innerWidth >= 1100 ? innerWidth * .15 : 0) - camera.x * .55, py0 = 40 + innerHeight * .44 + fh / 2 + 34 - camera.y * .55
       for (const p of caus) {
         let x, y, a, s
         if (p.up) { const f = (t * p.v + p.p) % 1; x = px0 + p.u * fw * .46 + Math.sin(t * 2 + p.p * 9) * 6; y = py0 - f * fh * .5; a = (1 - f) * .5; s = 3 + p.s * 4 }
@@ -772,9 +866,13 @@
     if (sky.bokeh > .01) {
       for (const b of bokeh) {
         const x = (b.x + Math.sin(t * b.sx + b.p) * .04) * W - camera.x * 1.4, y = (b.y + Math.cos(t * b.sy + b.p) * .03) * H - (t * b.v % 1.4) * H * .08 - camera.y * 1.4
-        const g = cx.createRadialGradient(x, y, 0, x, y, b.r)
-        g.addColorStop(0, `hsla(${HUE + b.h},90%,78%,${.15 * b.a * sky.bokeh})`); g.addColorStop(.72, `hsla(${HUE + b.h},90%,72%,${.1 * b.a * sky.bokeh})`); g.addColorStop(.86, `hsla(${HUE + b.h},95%,84%,${.2 * b.a * sky.bokeh})`); g.addColorStop(1, `hsla(${HUE + b.h},90%,70%,0)`)
-        cx.fillStyle = g; cx.beginPath(); cx.arc(x, y, b.r, 0, 6.283); cx.fill()
+        let sp = bokehSprites[b.h]
+        if (!sp) {
+          sp = bokehSprites[b.h] = document.createElement('canvas'); sp.width = sp.height = 160; const g2 = sp.getContext('2d'), g = g2.createRadialGradient(80, 80, 0, 80, 80, 80)
+          g.addColorStop(0, `hsla(${HUE + b.h},90%,78%,.15)`); g.addColorStop(.72, `hsla(${HUE + b.h},90%,72%,.1)`); g.addColorStop(.86, `hsla(${HUE + b.h},95%,84%,.2)`); g.addColorStop(1, `hsla(${HUE + b.h},90%,70%,0)`)
+          g2.fillStyle = g; g2.fillRect(0, 0, 160, 160)
+        }
+        cx.globalAlpha = b.a * sky.bokeh; cx.drawImage(sp, x - b.r, y - b.r, b.r * 2, b.r * 2); cx.globalAlpha = 1
       }
     }
     if (sky.flash > .01) { cx.globalCompositeOperation = 'source-over'; cx.fillStyle = `rgba(240,243,255,${sky.flash})`; cx.fillRect(0, 0, W, H); sky.flash *= Math.pow(.9, fk) }
@@ -782,7 +880,8 @@
     const d = Math.round(sky.dof * 4) / 4
     if (d !== dofShown) { dofShown = d }   // no live blur filter on the full-screen canvas: it costs every frame
     // the glint on every piece of glass follows the pointer, and drifts on its own when the pointer is still
-    if (!still && (frameN++ & 1) === 0) { root.style.setProperty('--gx', (50 + camera.px * 80 + Math.sin(t * .37) * 26).toFixed(1) + '%'); root.style.setProperty('--gy', (26 + camera.py * 50 + Math.cos(t * .29) * 14).toFixed(1) + '%') }
+    frameN++
+    if (false) { root.style.setProperty('--gx', (50 + camera.px * 80 + Math.sin(t * .37) * 26).toFixed(1) + '%'); root.style.setProperty('--gy', (26 + camera.py * 50 + Math.cos(t * .29) * 14).toFixed(1) + '%') }
     // the rig: stage and nebula drift at their own depth, plus a push-in, a crane, a roll and any camera shake
     const camEl = root.querySelector('.cam'), stage = root.querySelector('.stage'), nebw = root.querySelector('.nebw')
     let sx = 0, sy = 0
@@ -794,7 +893,8 @@
     const z = (camera.push ? `scale(${(1 + camera.push * 2.2).toFixed(4)})` : '') + (roll ? ` rotate(${(camera.roll * 1.4).toFixed(3)}deg) translateY(${(camera.lift * .6).toFixed(1)}px)` : camera.lift ? ` translateY(${(camera.lift * .6).toFixed(1)}px)` : '')
     if (cv.style.transform !== z) cv.style.transform = z
     nebw.style.transform = `translate3d(${(-camera.x * .2).toFixed(1)}px,${(-camera.y * .2 + camera.lift * .3).toFixed(1)}px,0) scale(${(1 + camera.push * 1.5).toFixed(4)})`
-    const m = root.querySelector('.meter i'); if (m) m.style.width = Math.min(100, (now - t0) / total * 100) + '%'
+    const m = root.querySelector('.meter i'); if (m) m.style.transform = `scaleX(${Math.min(1, (now - t0) / total).toFixed(3)})`
+    if (frameN % 6 === 0) { const tc = root.querySelector('.hud .tcd span'), e = Math.max(0, now - t0) / 1000; if (tc) tc.textContent = [0, Math.floor(e / 60), Math.floor(e % 60), Math.floor(e * 24 % 24)].map(n => String(n).padStart(2, '0')).join(':') }
     if (!held) raf = requestAnimationFrame(draw)   // a held frame stays on screen without redrawing
   }
   function grainURL() {
@@ -816,6 +916,11 @@
   const push = (to, ms) => tween(camera, 'push', to, ms, inout)
   // a crane and roll: the camera settles from below with a slight Dutch angle
   const crane = (lift, roll, ms) => { camera.lift = still ? 0 : lift; camera.roll = still ? 0 : roll; tween(camera, 'lift', 0, ms, inout); return tween(camera, 'roll', 0, ms * 1.1, inout) }
+  // three saturated bands of color cut across the frame, one after another
+  function slabs(ms = 620) {
+    if (still || skip || !root) return
+    root.querySelectorAll('.slabs i').forEach((el, i) => el.animate([{ transform: 'translateX(-160%) skewX(-16deg)' }, { transform: 'translateX(420%) skewX(-16deg)' }], { duration: ms, delay: i * 70, easing: 'cubic-bezier(.6,0,.3,1)' }))
+  }
   function boom() { if (!still) { sky.flash = .35; sky.shake = 6; sky.shock.push({ r: 10, a: .9 }); setTimeout(() => sky.shock.push({ r: 10, a: .5 }), 140) } flare(1); leak(.8, 1, 2200); if (!skip) SFX.impact() }
   function scene(html, cls = '') { const s = document.createElement('div'); s.className = 'scene ' + cls; s.innerHTML = html; root.querySelector('.stage').appendChild(s); return s }
   async function leave(s, ms = 700) {
@@ -837,8 +942,10 @@
   // a title card slams in: from big, soft and split into colours, to sharp and still
   const slamIn = (el, { from = 1.5, ms = 560, k = 16 } = {}) => anim(el, [
     { opacity: 0, transform: `scale(${from})`, filter: `blur(16px) ${SPLIT(k)}` },
-    { opacity: 1, transform: 'scale(.985)', filter: `blur(0) ${SPLIT(2, .4)}`, offset: .55 },
-    { opacity: 1, transform: 'scale(1)', filter: `blur(0) ${SPLIT(0, 0)}` }], { duration: ms, easing: 'cubic-bezier(.16,1,.3,1)' })
+    { opacity: 1, transform: 'scale(1.045,.94)', filter: `blur(0) ${SPLIT(2, .4)}`, offset: .42 },
+    { opacity: 1, transform: 'scale(.985,1.025)', offset: .66 },
+    { opacity: 1, transform: 'scale(1.005,.995)', offset: .84 },
+    { opacity: 1, transform: 'scale(1)', filter: `blur(0) ${SPLIT(0, 0)}` }], { duration: ms * 1.25, easing: 'cubic-bezier(.2,.9,.3,1)' })
   const cutOut = (el, ms = 170) => anim(el, [{ opacity: 1, transform: 'scale(1)', filter: 'blur(0)' }, { opacity: 0, transform: 'scale(.92)', filter: 'blur(8px)' }], { duration: ms, easing: 'cubic-bezier(.5,0,.8,.4)' })
   // a hard cut between two title cards: the old one is simply gone on the beat, the way a trailer cuts
   const hardCut = el => { el.getAnimations().forEach(x => x.cancel()); el.style.opacity = '0' }
@@ -883,7 +990,7 @@
       ech.classList.add('fill', 'mega'); echo(ech, FILM_V, { from: .6, to: 1.5, a: .6, ms: 1500 })
       anim(cn, [{ opacity: 0, transform: 'scale(2.6)', filter: 'blur(26px)' }, { opacity: 1, transform: 'scale(.97)', filter: 'blur(0)', offset: .5 }, { opacity: 1, transform: 'scale(1)', filter: 'blur(0)' }], { duration: 720, easing: 'cubic-bezier(.16,1,.3,1)' })
       anim(ring, [{ opacity: 1, transform: 'scale(.3)' }, { opacity: 0, transform: 'scale(3.2)' }], { duration: 1100, easing: 'cubic-bezier(.2,.8,.3,1)' })
-      boom(); SFX.count(3)
+      boom(); slabs(); SFX.count(3)
       setTimeout(() => { if (!skip && !still) cg.animate([{ opacity: 1, backgroundPosition: '120% 0' }, { opacity: 1, backgroundPosition: '-20% 0', offset: .9 }, { opacity: 0, backgroundPosition: '-20% 0' }], { duration: 900, easing: 'cubic-bezier(.4,0,.2,1)', fill: 'forwards' }) }, 300)
       push(.02, 900)
       await sleep(980)
@@ -931,7 +1038,7 @@
     // the number lands on the next beat, hard
     const v4 = logo.querySelector(':scope > .v4')
     anim(v4, [{ opacity: 0, transform: 'scale(2.8) translateY(-6%)', filter: `blur(22px) ${SPLIT(20)}` }, { opacity: 1, transform: 'scale(.96)', filter: `blur(0) ${SPLIT(3, .5)}`, offset: .5 }, { opacity: 1, transform: 'none', filter: `blur(0) ${SPLIT(0, 0)}` }], { duration: 760, delay: 1000, easing: 'cubic-bezier(.16,1,.3,1)' })
-    setTimeout(() => { if (skip || still) return; SFX.hit(3); pop(.3, 7); sky.shock.push({ r: 10, a: .8 }); flare(.8) }, 1050)
+    setTimeout(() => { if (skip || still) return; SFX.hit(3); pop(.3, 7); sky.shock.push({ r: 10, a: .8 }); flare(.8); slabs(700) }, 1050)
     anim(logo.querySelector('.mirror .v4'), [{ opacity: 0 }, { opacity: 1 }], { duration: 600, delay: 1300 })
     anim(s.querySelector('.rule'), [{ transform: 'scaleX(0)' }, { transform: 'scaleX(1)' }], { duration: 1500, delay: 1200, easing: 'cubic-bezier(.16,1,.3,1)' })
     // a glass lens sweeps across the finished title, bending each letter as it passes, then the glint follows
@@ -1058,7 +1165,7 @@
     root.classList.add('tight')
     if (cap) anim(cap, [{ opacity: 1 }, { opacity: 0 }], { duration: 200 })
     const s = scene(`<div class="title trailer"><div class="echo"></div><div class="tc sm"><small>${String(n).padStart(2, '0')}  ${kick}</small>${line}</div></div>`), tc = s.querySelector('.tc')
-    slamIn(tc, { from: 1.35 }); echo(s.querySelector('.echo'), kick, { ms: BEAT * 2.2, a: .45 }); SFX.hit(n); pop(.14, 3); leak(.4, n % 2 ? 1 : -1, 1200)
+    slamIn(tc, { from: 1.35 }); slabs(560); echo(s.querySelector('.echo'), kick, { ms: BEAT * 2.2, a: .45 }); SFX.hit(n); pop(.14, 3); leak(.4, n % 2 ? 1 : -1, 1200)
     await sleep(BEAT * 1.5)
     cutOut(tc, 200); await sleep(200); s.remove()
     root.classList.remove('tight')
@@ -1067,7 +1174,7 @@
   async function tour() {
     tween(sky, 'bokeh', .45, 1600); tween(sky, 'neb', .7, 1600); focus(2.5, 1200); tween(sky, 'caus', 1, 2000)
     const cap = document.createElement('div'); cap.className = 'tourcap'
-    cap.innerHTML = `<span class="n"><span class="num"></span><span class="dots">${TOUR.map(() => '<i></i>').join('')}</span></span><h2></h2><p></p>`; root.appendChild(cap)
+    cap.innerHTML = `<b class="bn"></b><span class="n"><span class="num"></span><span class="dots">${TOUR.map(() => '<i></i>').join('')}</span></span><h2></h2><p></p>`; root.appendChild(cap)
     const dots = cap.querySelectorAll('.dots i')
     let prev = null
     for (let i = 0; i < TOUR.length && !skip; i++) {
@@ -1077,7 +1184,7 @@
         await chapter(CHAPTERS[i], Object.keys(CHAPTERS).indexOf(String(i)) + 1, cap)
         focus(2.5, 600)
       }
-      const f = TOUR[i], p = POSE(i), s = scene(`<div class="echo tw">${WORD[i] || ''}</div><i class="halo"></i><div class="art ${i % 2 ? 'l' : 'r'}">${ICONS[ART[i]] || ''}</div><div class="rig"><div class="glass glassf">${f.build()}<i class="glare"></i></div></div>`, 'flat')
+      const f = TOUR[i], p = POSE(i), s = scene(`<div class="echo tw">${WORD[i] || ''}</div><i class="halo"></i><div class="art ${i % 2 ? 'l' : 'r'}">${ICONS[ART[i]] || ''}</div><div class="rig"><div class="glass glassf">${f.build()}<i class="glare"></i></div></div>`, 'flat tshot')
       const rig = s.querySelector('.rig'), frame = s.querySelector('.glassf')
       lensAll(s)
       anim(s.querySelector('.halo'), [{ opacity: 0, transform: 'scale(.7)' }, { opacity: .55, transform: 'none' }], { duration: 1200, easing: 'cubic-bezier(.16,1,.3,1)' })
@@ -1098,7 +1205,7 @@
         { opacity: 1, filter: 'blur(0)', transform: `translate3d(0,-6vh,0) rotateY(0deg) rotateX(0deg)` }], { duration: prev ? 1000 : 1100, delay: prev ? 100 : 0, easing: 'cubic-bezier(.2,1.02,.3,1)' })
       // once it lands the frame is flat glass again, so the lens can bend the sky behind it, and a light passes over it
       enter.finished.then(() => { if (!rig.isConnected) return; rig.style.transform = REST; done(enter); frame.classList.add('pass') }).catch(() => {})
-      cap.querySelector('.num').textContent = String(i + 1).padStart(2, '0') + '  /  ' + String(TOUR.length).padStart(2, '0')
+      cap.querySelector('.num').textContent = String(i + 1).padStart(2, '0') + '  /  ' + String(TOUR.length).padStart(2, '0'); cap.querySelector('.bn').textContent = String(i + 1).padStart(2, '0'); anim(cap.querySelector('.bn'), [{ opacity: 0, transform: 'translateX(-30px) scale(1.2)' }, { opacity: 1, transform: 'scale(.96,1.04)', offset: .6 }, { opacity: 1, transform: 'none' }], { duration: 800, easing: 'cubic-bezier(.2,.9,.3,1)' })
       dots.forEach((d, j) => { d.className = j === i ? 'on' : j < i ? 'past' : '' })
       words(cap.querySelector('h2'), f.title, 100, 40)
       cap.querySelector('p').innerHTML = f.text; anim(cap.querySelector('p'), [{ opacity: 0, transform: 'translateY(10px)', filter: 'blur(6px)' }, { opacity: 1, transform: 'none', filter: 'blur(0)' }], { duration: 800, delay: 280 })
@@ -1123,7 +1230,7 @@
     if (skip) return
     // a title card on the beat, then the hero shot rises into frame and builds itself piece by piece
     const t = scene(`<div class="title trailer"><div class="echo fill"></div><div class="tc sm"><small>${short ? 'New in ' + FILM_V : 'Introducing'}</small>The new <em>home screen.</em></div></div>`)
-    slamIn(t.querySelector('.tc'), { from: 1.3 }); echo(t.querySelector('.echo'), 'Home', { ms: BEAT * 2.6, a: .5 }); SFX.hit(2); pop(.18, 4); leak(.5, 1, 1600)
+    slamIn(t.querySelector('.tc'), { from: 1.3 }); slabs(); echo(t.querySelector('.echo'), 'Home', { ms: BEAT * 2.6, a: .5 }); SFX.hit(2); pop(.18, 4); leak(.5, 1, 1600)
     await sleep(BEAT * 2)
     cutOut(t.querySelector('.tc'), 220); await sleep(220); t.remove()
     if (skip) return
@@ -1169,7 +1276,7 @@
     const s = scene(`<div class="title trailer"><div class="echo fill"></div>${ws.map(w => `<div class="tc">${w}</div>`).join('')}</div>`), tcs = s.querySelectorAll('.tc'), ech = s.querySelector('.echo')
     for (let i = 0; i < tcs.length && !skip; i++) {
       if (i) hardCut(tcs[i - 1])
-      slamIn(tcs[i], { from: 1.4 }); echo(ech, tcs[i].textContent, { a: .4 + i * .1 }); SFX.hit(i + 1); pop(.12 + i * .06, 3 + i * 2)
+      slamIn(tcs[i], { from: 1.4 }); echo(ech, tcs[i].textContent, { a: .4 + i * .1 }); if (i === tcs.length - 1) slabs(); SFX.hit(i + 1); pop(.12 + i * .06, 3 + i * 2)
       await sleep(i === tcs.length - 1 ? BEAT * 1.5 : BEAT)
     }
     await leave(s, 360)
@@ -1188,7 +1295,7 @@
     anim(s.querySelector('.lede'), [{ opacity: 0, transform: 'translateY(12px)' }, { opacity: 1, transform: 'none' }], { duration: 900, delay: 700 })
     s.querySelectorAll('.it').forEach((el, i) => {
       const fromX = 60 + (i % 2) * 30
-      anim(el, [{ opacity: 0, transform: `translate(${fromX}px,30px) scale(.9)`, filter: 'blur(10px)' }, { opacity: 1, transform: 'none', filter: 'none' }], { duration: 1000, delay: 480 + i * 75 })
+      anim(el, [{ opacity: 0, transform: `translate(${fromX}px,30px) scale(.86)` }, { opacity: 1, transform: 'translate(-4px,-3px) scale(1.035,.965)', offset: .5 }, { transform: 'scale(.985,1.02)', offset: .72 }, { transform: 'scale(1.004,.997)', offset: .88 }, { opacity: 1, transform: 'none' }], { duration: 1150, delay: 480 + i * 75, easing: 'cubic-bezier(.2,.9,.3,1)' })
       setTimeout(() => !skip && SFX.pop(1 + i * .06), 480 + i * 75)
     })
     const hold = 1300 + items.length * 75 + 3300
@@ -1234,7 +1341,7 @@
     anim(s.querySelector('.btns'), [{ opacity: 0, transform: 'translateY(16px)' }, { opacity: 1, transform: 'none' }], { duration: 900, delay: short ? 500 : 800 })
     holdT = setTimeout(hold, still ? 300 : 4500)
     return new Promise(r => {
-      const fin = v => { removeEventListener('keydown', k); clearTimeout(holdT); wake(); clearTimeout(holdT); r(v) }
+      const fin = v => { removeEventListener('keydown', k); clearTimeout(holdT); r(v) }   // the held frame fades out as it is: no need to wake the sky just to leave
       s.querySelector('.go').onclick = () => fin(true)
       const no = s.querySelector('.no'); if (no) no.onclick = () => fin(false)
       root.querySelector('.skip').onclick = () => fin(undefined)
@@ -1290,13 +1397,14 @@
     ensureCSS()
     const acc = accent(); HUE = acc.h
     root = document.createElement('div'); root.id = 'intro'; root.style.setProperty('--a', acc.hex); if (still) root.classList.add('still')
-    root.innerHTML = `<svg class="defs" aria-hidden="true"><defs></defs></svg><div class="cam"><div class="nebw"><div class="neb"></div></div><canvas></canvas><div class="flare"></div><div class="stage"></div></div><div class="leak"></div><div class="ca"></div><div class="grain"></div><div class="vig"></div><div class="bar t"></div><div class="bar b"></div>
+    root.innerHTML = `<svg class="defs" aria-hidden="true"><defs></defs></svg><div class="cam"><div class="nebw"><div class="neb"></div><div class="nebc"></div></div><canvas></canvas><div class="flare"></div><div class="stage"></div></div><div class="leak"></div><div class="ca"></div><div class="grain"></div><div class="vig"></div><div class="slabs"><i></i><i></i><i></i></div><div class="bar t"></div><div class="bar b"></div>
+      <div class="hud" aria-hidden="true"><i class="cm tl"></i><i class="cm tr"></i><i class="cm bl"></i><i class="cm br"></i><i class="tk"></i><span class="sw"><i></i><i></i><i></i><i></i><i></i></span><span class="tcd"><b>REC</b><span>00:00:00:00</span></span><span class="rl">Lumen <em>${esc(FILM_V)}</em>  Reel 01  2.39 : 1</span></div>
       <div class="credit"><i></i>${wn ? 'Lumen <b>' + esc(String(wn).replace(/\.0$/, '')) + '</b>' : 'A Lumen picture'}</div><button class="skip chrome">Skip intro<kbd>esc</kbd></button><button class="skip mute chrome">Sound on</button><div class="meter"><i></i></div>`
     document.body.appendChild(root)
     // the restart's last frame hands over to the film
     if (arriveEl) setTimeout(() => leaveArrive(true), still ? 0 : 700)
     defs = root.querySelector('svg.defs defs'); lensCache = {}; lensN = 0
-    cv = root.querySelector('canvas'); cx = cv.getContext('2d', { alpha: false })
+    cv = root.querySelector('canvas'); cx = cv.getContext('2d')
     size(); addEventListener('resize', size)
     root.querySelector('.grain').style.background = `url(${grainURL()})`
     // the grain holds still: a full-screen blended layer that moved every 150ms cost a recomposite each step
@@ -1304,11 +1412,17 @@
     // the iris opens on the first frame
     if (!still) root.querySelector('.cam').animate([{ clipPath: 'circle(0% at 50% 50%)' }, { clipPath: 'circle(6% at 50% 50%)', offset: .35 }, { clipPath: 'circle(80% at 50% 50%)' }], { duration: 1700, easing: 'cubic-bezier(.6,0,.2,1)' })
     stars = Array.from({ length: Math.round(Math.min(900, W * H / 1600)) }, () => newStar())
-    bokeh = Array.from({ length: 16 }, () => ({ x: Math.random(), y: .1 + Math.random() * .9, r: 30 + Math.random() * 90, h: [0, 30, 60, 95][Math.floor(Math.random() * 4)], a: .4 + Math.random() * .6, sx: .1 + Math.random() * .25, sy: .08 + Math.random() * .2, p: Math.random() * 6, v: .01 + Math.random() * .03 }))
+    bokeh = Array.from({ length: 16 }, () => ({ x: Math.random(), y: .1 + Math.random() * .9, r: 30 + Math.random() * 90, h: [0, 40, 95, -62, 175][Math.floor(Math.random() * 5)], a: .4 + Math.random() * .6, sx: .1 + Math.random() * .25, sy: .08 + Math.random() * .2, p: Math.random() * 6, v: .01 + Math.random() * .03 }))
     caus = Array.from({ length: 110 }, (_, i) => ({ u: Math.random() * 2 - 1, w: Math.random() * 2 - 1, s: Math.random(), p: Math.random(), v: .12 + Math.random() * .2, up: i % 4 === 0 }))
-    nebula = paintNebula(); sprite = paintSprite()
+    nebula = paintNebula(); sprite = paintSprite(); bokehSprites = {}; raySprite = null
+    { const nc = root.querySelector('.nebc'); nebula.className = 'nebi'; nc.appendChild(nebula); nebEl = nc
+      if (!still) nebula.animate([{ transform: 'rotate(-17deg) scale(1,1)' }, { transform: 'rotate(4deg) scale(1.04,1)', offset: .5 }, { transform: 'rotate(25deg) scale(1,1)' }], { duration: 70000, easing: 'linear', fill: 'forwards' }) }
     Object.assign(sky, { oy: 0, speed: .4, warp: 0, gather: 0, orb: 0, orbR: 0, ring: 0, shock: [], flash: 0, shake: 0, rays: 0, bokeh: 0, neb: 0, dof: 0, ghosts: 0, caus: 0 }); Object.assign(camera, { x: 0, y: 0, px: 0, py: 0, push: 0, roll: 0, lift: 0 }); dofShown = -1
-    const onMove = e => { camera.px = e.clientX / innerWidth - .5; camera.py = e.clientY / innerHeight - .5; if (held) wake() }
+    let glintQ = 0
+    const onMove = e => {
+      camera.px = e.clientX / innerWidth - .5; camera.py = e.clientY / innerHeight - .5; if (held) wake()
+      if (!still && !glintQ) glintQ = requestAnimationFrame(() => { glintQ = 0; if (!root) return; root.style.setProperty('--gx', (50 + camera.px * 80).toFixed(0) + '%'); root.style.setProperty('--gy', (26 + camera.py * 50).toFixed(0) + '%') })
+    }
     addEventListener('pointermove', onMove)
     t0 = performance.now(); total = wn ? 21000 : 56000
     if (!held) raf = requestAnimationFrame(draw)   // a held frame stays on screen without redrawing
@@ -1348,7 +1462,7 @@
     // out: the frame dissolves into the browser
     SFX.fadeOut(.9)
     root.classList.remove('on')
-    await new Promise(r => { root.animate([{ opacity: 1, transform: 'scale(1)' }, { opacity: 0, transform: 'scale(1.05)' }], { duration: still ? 1 : 800, easing: 'ease-in', fill: 'forwards' }).onfinish = r })
+    await new Promise(r => { root.animate([{ opacity: 1, transform: 'scale(1)' }, { opacity: 0, transform: 'scale(1.05)' }], { duration: still ? 1 : 560, easing: 'cubic-bezier(.5,0,.7,.4)', fill: 'forwards' }).onfinish = r })
     cancelAnimationFrame(raf); clearTimeout(holdT); removeEventListener('resize', size); removeEventListener('pointermove', onMove); try { grainAnim && grainAnim.cancel() } catch {} grainAnim = null; root.remove(); defs = null
     onDone && onDone({ parcels: answer })
   }

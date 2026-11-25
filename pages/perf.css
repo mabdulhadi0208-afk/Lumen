@@ -51,3 +51,9 @@ html.is-scrolling body { pointer-events: none; }
 /* 7. Each Settings card (and each Home widget) is its own layer: it is drawn once, with its big soft shadows, and a
    scroll only moves it. Before, every scroll step re-drew newly exposed strips of the page, shadows and all. */
 body:not(.home-page) .main .card, body:not(.home-page) .main .hero, .hm-card { will-change: transform; }
+
+/* 8. The drifting dots in the Settings hero (pages41.css) looped forever. Even on the compositor that redraws the
+   hero every frame for as long as the page is open: a whole core in software rendering, and a GPU that never sleeps on
+   a Mac. They play two passes when the page opens, then rest where they started (alternate passes end on frame one).
+   (Home's banner ambience is left as designed; it pauses off screen. See docs/PERF.md.) */
+.hero-dots .hd1, .hero-dots .hd3 { animation-iteration-count: 2; }

@@ -54,11 +54,15 @@ then drop the override.
 | `ui/update.html:31` `.bg .au` | `filter: blur(34px)` on a full-window aurora behind the update card. | A pre-softened radial-gradient aurora, `transform` only. |
 | `pages/app.css:394-397` `.card:hover` and the glint in `pages/glass.js` | While Settings scrolled, cards passing under the still pointer started their hover (box-shadow transition) and glint one after another: two cards repainted on every frame. | Nothing under the pointer reacts while a page scrolls (`.is-scrolling`, `pages/perf.css` and `pages/glass.js`). |
 | `pages/app.css:394` `.card` shadows (`--shadow`, `--gsh`) | Two big outer shadows (up to 70px blur) and four inset ones per card were re-rasterised with every newly exposed strip of the page. | Each card is its own layer (`will-change: transform`, `pages/perf.css`), so it is drawn once and a scroll only moves it. |
+| `pages/home.css:209-215` `.amb-dots` (70 s), `.amb-spark`, `.amb-lines` (Home banner ambience, infinite) | Keeps the Home hero redrawing every frame while Home is on screen: about a whole core in software rendering (test/newtabspeed.js idle), and the GPU never idles on a Mac. Left as designed for now (home40 expects it); it pauses off screen. | Play two passes after the page opens, then rest (the Settings hero dots do this, `pages/perf.css`). |
+| `pages/pages41.css:375-376` `.hero-dots` `hd-a`/`hd-c` infinite | Same: Settings at idle used a full core in software rendering. | Two passes, then rest (done in `pages/perf.css`). |
 
 ## Main-process work that was on hot paths (fixed in this pass)
 
-- New Tab: a preloaded, already drawn New Tab per window (`warmSpare` in `src/main.js`), redrawn in the background
-  when what it shows changes; Cmd T adopts it instead of starting a renderer, loading the page and drawing it.
+- New Tab: a preloaded, already drawn New Tab per window (`warmSpare` in `src/main.js`), reloaded in the background
+  when what it shows changes. It stays attached just outside the window, at the page area's size, so on macOS it keeps
+  its drawn frame; Cmd T (handled in the main process, before the key goes anywhere) only moves it into place and sends
+  one state update to the chrome; everything else waits until after that frame. Measure with `test/newtabspeed.js`.
 - Tab switch and Cmd K: the page snapshot (hover preview, the glass under the command bar) is encoded as JPEG instead
   of PNG (several times quicker on the main process, a fraction of the size over IPC).
 - History: the sorted history and Most visited are worked out once per change instead of on every New Tab

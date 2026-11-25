@@ -532,10 +532,22 @@ class BrowserWin {
     this.spare = t
     t.gen = spareGen; t.readyAt = 0
     this.makeView(t)
-    t.view.setBounds({ x: 0, y: 0, width: Math.max(1, this.rect.width), height: Math.max(1, this.rect.height) })
+    // it stays attached (so it is drawn and kept drawn, like any visible page) but under everything and just outside the
+    // window, at the page area's exact size: taking it is then only a move, no layout and no first paint
+    this.win.contentView.addChildView(t.view, 0)
+    this.placeSpare()
     const wc = t.view.webContents
     wc.once('render-process-gone', () => { if (this.spare === t) this.dropSpare() })
     wc.once('did-finish-load', () => this.spareWhenDrawn(t))
+  }
+  placeSpare() {
+    const t = this.spare; if (!t || !t.view) return
+    const r = this.rect, w = Math.max(1, r.width), h = Math.max(1, r.height)
+    // On macOS a view outside the window is still a visible page to Chromium, so it keeps its drawn frame; Windows and
+    // Linux count it as covered and let it rest, and it is then drawn the moment it is taken. LUMEN_SPARE_PEEK (tests on
+    // Linux only) leaves one row of it under the chrome so it stays drawn there too, to measure the drawn case.
+    const peek = process.env.LUMEN_SPARE_PEEK === '1'
+    try { t.view.setBounds(peek ? { x: r.x, y: r.y - 1, width: w, height: h } : { x: -w - 400, y: r.y, width: w, height: h }); t.view.setVisible(true) } catch {}
   }
   // ready once the page has drawn its widgets (a short poll right after it loads, then nothing)
   spareWhenDrawn(t, tries = 0) {
@@ -557,15 +569,22 @@ class BrowserWin {
   }
   adoptSpare(t) {
     const wc = t.view.webContents
-    if (extensions && !this.incognito) { addingTab = true; try { extensions.addTab(wc, this.win) } catch {} finally { addingTab = false } }
-    // the page drew itself a while ago, so its entrance played unseen: play it again now that it is on screen
-    if (Date.now() - t.readyAt > 2400) wc.executeJavaScript(`(() => { const els = ['hero', 'widgets'].map(i => document.getElementById(i)).filter(Boolean); for (const e of els) { e.classList.remove('enter'); void e.offsetWidth; e.classList.add('enter') } clearTimeout(window.__lumenEnter); window.__lumenEnter = setTimeout(() => els.forEach(e => e.classList.remove('enter')), 2600); const q = document.getElementById('q'); if (q && document.activeElement !== q) q.focus({ preventScroll: true }) })()`, true).catch(() => {})
-    this._spareT = setTimeout(() => this.warmSpare(), 1500)
+    // on top of everything (it was underneath); activate() then moves it into the page area
+    try { this.win.contentView.addChildView(t.view) } catch {}
+    t.adopted = true
+    setImmediate(() => {
+      if (wc.isDestroyed()) return
+      if (extensions && !this.incognito) { addingTab = true; try { extensions.addTab(wc, this.win) } catch {} finally { addingTab = false } }
+      // a light entrance that starts from what is already on screen (nothing fades in from invisible)
+      wc.executeJavaScript(`(() => { if (document.body.dataset.motion === 'off' || matchMedia('(prefers-reduced-motion: reduce)').matches) return; const e = 'cubic-bezier(.3,1.3,.5,1)'; const h = document.getElementById('hero'); if (h) h.animate([{ transform: 'translateY(6px) scale(.992)' }, { transform: 'none' }], { duration: 620, easing: e }); [...document.querySelectorAll('#widgets > [data-w]')].forEach((c, i) => c.animate([{ transform: 'translateY(10px)' }, { transform: 'none' }], { duration: 640, delay: 40 + Math.min(i, 10) * 35, easing: e, fill: 'backwards' })); const q = document.getElementById('q'); if (q && document.activeElement !== q) q.focus({ preventScroll: true }) })()`, true).catch(() => {})
+    })
+    // the next one is made once this one is on screen and things are quiet
+    this._spareT = setTimeout(() => this.warmSpare(), 2500)
   }
   dropSpare() {
     const t = this.spare; this.spare = null
     clearTimeout(this._spareRT); this._spareRT = null
-    if (t && t.view) { try { if (!t.view.webContents.isDestroyed()) t.view.webContents.close({ waitForBeforeUnload: false }) } catch {} t.view = null }
+    if (t && t.view) { try { this.win.contentView.removeChildView(t.view) } catch {} try { if (!t.view.webContents.isDestroyed()) t.view.webContents.close({ waitForBeforeUnload: false }) } catch {} t.view = null }
     if (!this.win.isDestroyed() && !this._spareT) this._spareT = setTimeout(() => this.warmSpare(), 1500)
   }
   // redraw the hidden New Tab when its data changed: a moment after the change, at most every few seconds. It loads
@@ -725,7 +744,8 @@ class BrowserWin {
     if (prev && prev.id !== id && prev.view && prev.audible && D.settings.get('autoPip') && id !== this.splitId) {
       prev.view.webContents.executeJavaScript(`(() => { const v = [...document.querySelectorAll('video')].find(v => !v.paused && v.readyState > 2 && !v.disablePictureInPicture); if (v && !document.pictureInPictureElement) return v.requestPictureInPicture().then(() => true, () => false); return false })()`, true).catch(() => {})
     }
-    if (t.view && !t.asleep) t.view.webContents.executeJavaScript('document.pictureInPictureElement && document.exitPictureInPicture()', true).catch(() => {})
+    const fresh = t.adopted; t.adopted = false   // a just-taken New Tab: nothing to undo in it, and the rest can wait a frame
+    if (t.view && !t.asleep && !fresh) t.view.webContents.executeJavaScript('document.pictureInPictureElement && document.exitPictureInPicture()', true).catch(() => {})
     if (this.splitId) {
       if (id === this.splitId) this.splitId = this.activeId
       else if (id !== this.activeId) this.splitId = null
@@ -739,8 +759,8 @@ class BrowserWin {
     if (!t.view) this.makeView(t)
     this.layout()
     if (!this.overlay) t.view.webContents.focus()
-    if (extensions && !this.incognito) { try { extensions.selectTab(t.view.webContents) } catch {} }
-    this.send('hover-url', '')
+    if (extensions && !this.incognito) { const wc = t.view.webContents; const sel = () => { try { if (!wc.isDestroyed() && this.activeId === t.id) extensions.selectTab(wc) } catch {} }; if (fresh) setImmediate(sel); else sel() }
+    if (fresh) setImmediate(() => this.send('hover-url', '')); else this.send('hover-url', '')
     this.pushState()
     saveSession()
   }
@@ -780,6 +800,7 @@ class BrowserWin {
     }
     if (this.overlay) this.win.contentView.addChildView(this.ui) // keep UI on top while an overlay is open
     if (this.peek) { this.win.contentView.addChildView(this.peek); this.peek.setBounds(this.peekRect()) }
+    this.placeSpare()
     Nova.restack(this)
   }
 
@@ -1042,6 +1063,9 @@ class BrowserWin {
       const n = parseInt(input.key)
       const id = n === 9 ? this.order[this.order.length - 1] : this.order[n - 1]
       if (id) this.activate(id)
+    } else if (mod && !input.shift && !input.alt && (input.key === 't' || input.key === 'T')) {
+      // Cmd T is handled right here, before the key goes anywhere else: the New Tab is on screen in the next frame
+      e.preventDefault(); this.createTab()
     } else if (input.key === 'Escape' && this.fullscreenTab) {
       const a = this.active(); if (a && a.view) a.view.webContents.executeJavaScript('document.fullscreenElement && document.exitFullscreen()').catch(() => {})
     }
@@ -1763,7 +1787,7 @@ function tabMenu(w, id) {
 }
 function appMenuPopup(w) {
   Nova.popupMenu(w, [
-    { label: 'New Tab', accelerator: 'CmdOrCtrl+T', click: () => w.send('command', 'newtab') },
+    { label: 'New Tab', accelerator: 'CmdOrCtrl+T', click: () => w.createTab() },
     { label: 'New Window', accelerator: 'CmdOrCtrl+N', click: () => createWindow({}) },
     { label: 'New Private Window', accelerator: 'CmdOrCtrl+Shift+N', click: () => createWindow({ incognito: true }) },
     { type: 'separator' },
@@ -2121,7 +2145,7 @@ function buildMenu() {
       { role: 'hide' }, { role: 'hideOthers' }, { role: 'unhide' }, { type: 'separator' }, { label: 'Quit Lumen', accelerator: 'Cmd+Q', click: () => quitLumen() },
     ] }] : []),
     { label: 'File', submenu: [
-      { label: 'New Tab', accelerator: 'CmdOrCtrl+T', click: focused(w => w.send('command', 'newtab')) },
+      { label: 'New Tab', accelerator: 'CmdOrCtrl+T', click: focused(w => w.createTab()) },
       { label: 'New Window', accelerator: 'CmdOrCtrl+N', click: () => createWindow({}) },
       { label: 'New Private Window', accelerator: 'CmdOrCtrl+Shift+N', click: () => createWindow({ incognito: true }) },
       { label: 'Reopen Closed Tab', accelerator: 'CmdOrCtrl+Shift+T', click: focused(w => reopenClosed(w)) },

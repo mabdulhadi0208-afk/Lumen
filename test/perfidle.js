@@ -27,7 +27,7 @@ async function report(label, ms) {
   for (const wc of webContents.getAllWebContents()) {
     let pid; try { pid = wc.getOSProcessId() } catch { continue }
     const bw = BrowserWindow.fromWebContents(wc)
-    let anim = '?'; try { anim = await wc.executeJavaScript(`document.getAnimations().filter(a => a.playState === 'running').length + (document.hidden ? ' hidden' : ' visible')`) } catch {}
+    let anim = '?'; try { anim = await wc.executeJavaScript(`document.getAnimations().filter(a => a.playState === 'running').map(a => (a.animationName || a.transitionProperty || 'waapi') + ':' + (a.effect && a.effect.getTiming().iterations) + '@' + (a.effect && a.effect.target ? ((a.effect.target.id || String(a.effect.target.className || a.effect.target.tagName)).slice(0, 24) + (a.effect.pseudoElement || '')) : '')).slice(0, 8).join(',') + (document.hidden ? ' hidden' : ' visible')`) } catch {}
     out(`   ${d(pid).toFixed(2)}s pid ${pid} ${(wc.getURL() || '').replace(/^file:\/\/.*\/(apps|ui)\//, '$1/').replace(/\?.*/, '').slice(0, 60)} ${bw ? 'win' + (bw.isVisible() ? '+shown' : '-hidden') : 'view'} anims ${anim} throttle=${wc.getBackgroundThrottling()}`)
   }
 }

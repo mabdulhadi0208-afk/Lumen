@@ -272,7 +272,8 @@ function measureTabW(n) {
   const vis = list.filter(t => !(t.group && groupOf(t.group) && groupOf(t.group).collapsed)).length
   const seenG = new Set(); let heads = 0
   for (const t of list) { const g = t.group && groupOf(t.group); if (g && !seenG.has(g.id)) { seenG.add(g.id); heads += headW(g) + GAP } }
-  const avail = ($('#tablist').clientWidth || 600) - heads
+  // with tabs on top, leave room for the new tab button that follows the last tab
+  const avail = ($('#tablist').clientWidth || 600) - heads - (TOP ? 48 : 0)
   tabW = Math.max(84, Math.min(220, Math.floor((avail - Math.max(0, vis - 1) * GAP) / Math.max(1, vis))))
 }
 const pillG = new SpringGroup({ p: 0, o: 0, s: 1, w: 200 }, 'calm', v => {
@@ -404,7 +405,7 @@ function renderTabs() {
     pillG.to({ p, o: 1, w: tabW })
     // only when the tab in front or the strip's size changed: scrolling into view forces a layout on every state update
     const sk = S.activeId + '|' + LAYOUT.total + '|' + tabW + '|' + TOP
-    if (!drag && sk !== lastScrollKey) { lastScrollKey = sk; act.el.scrollIntoView({ block: 'nearest', inline: 'nearest' }) }
+    if (!drag && sk !== lastScrollKey) { lastScrollKey = sk; act.el.scrollIntoView({ block: 'nearest', inline: 'nearest' }); if (TOP) $('#tablist').scrollTop = 0 }
     // all tabs fit: never leave the strip scrolled sideways (a resize mid-spring can leave a stale scroll behind)
     if (TOP && !drag) { const tl = $('#tablist'); if (LAYOUT.total <= tl.clientWidth && tl.scrollLeft) tl.scrollLeft = 0 }
   } else pillG.to({ o: 0 })
@@ -460,9 +461,16 @@ function renameGroup(gid) {
   n.onblur = () => done(true)
 }
 
+// tabs on top never scroll up and down: a new tab sliding in from below would otherwise leave the row a few pixels high
+$('#tablist').addEventListener('scroll', e => { if (TOP && e.currentTarget.scrollTop) e.currentTarget.scrollTop = 0 }, { passive: true })
 function setTabLayout(top) {
   TOP = top
   document.body.classList.toggle('toplayout', top)
+  // 4.1.1: with tabs on top the new tab button sits right after the last tab, like Chrome; on the side it goes back
+  // above the tab list. Same button, same handlers, just moved.
+  { const nb = $('#btn-newtab'), tl = $('#tablist')
+    if (top && nb.parentElement !== tl) tl.appendChild(nb)
+    else if (!top && nb.parentElement === tl) tl.parentElement.insertBefore(nb, tl) }
   // re-seat every tab and the pill on the new axis without animating across the screen
   const list = S.tabs.filter(t => !t.pinned)
   if (TOP) measureTabW(list.length)

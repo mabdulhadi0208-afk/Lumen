@@ -28,6 +28,8 @@
       { icon: 'sparkle', text: 'The Lumen AI bubble now waits as a small orb at the end of your selection, so it never covers what you are reading' },
       { icon: 'play', text: 'Hover the orb and it springs open into Explain, Define, Translate, Rewrite and Ask, right under the text' },
       { icon: 'bolt', text: 'Near the edge of the window the bar slides left to stay on screen, and it opens above when there is no room below' },
+      { icon: 'tabs', text: 'A + button now sits right after your last tab, like Chrome, always visible' },
+      { icon: 'layers', text: 'The active tab now sits dead center in the tab bar, no matter how many tabs you open' },
     ],
   }
 

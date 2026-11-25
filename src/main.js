@@ -29,6 +29,7 @@ protocol.registerSchemesAsPrivileged([
 ])
 
 // Clean, plain-Chrome user agent so sites (and Google sign-in) treat Lumen like Chrome.
+const ARRIVE_BG = '#05060d'   // the restart screen's ink (ui/update.html and Intro.arrive in ui/intro.js)
 const winBg = () => nativeTheme.shouldUseDarkColors ? '#1b1c20' : '#e6e9f0'
 // Lumen is Chromium, so it says so, exactly the way Chrome does: no Electron or app tokens, and the reduced version
 // form real Chrome sends (Chrome/140.0.0.0). A full Electron build number or a mixed identity is what makes Google's
@@ -404,7 +405,8 @@ class BrowserWin {
       titleBarStyle: isMac ? 'hiddenInset' : 'hidden',
       trafficLightPosition: { x: 16, y: 18 },
       // solid window: macOS vibrancy behind WebContentsViews breaks video layers (YouTube showed a blank player)
-      backgroundColor: winBg(),
+      // right after an update it opens in the same ink the restart screen ended on, never grey
+      backgroundColor: Updater.arriving() ? ARRIVE_BG : winBg(),
       transparent: false, icon: ICON,
     })
     this.tabs = new Map()
@@ -421,7 +423,9 @@ class BrowserWin {
     })
     this.ui.setBackgroundColor('#00000000')
     this.win.contentView.addChildView(this.ui)
-    this.ui.webContents.loadFile(path.join(ROOT, 'ui', 'index.html'), { query: { incognito: incognito ? '1' : '0', platform: process.platform } })
+    this.arrived = !incognito && Updater.arriving()
+    const arrive = !incognito && Updater.arriving() ? { arrive: app.getVersion(), aicon: String(D.settings.get('appIcon') || 'default'), aacc: String(D.settings.get('accent') || '') } : {}
+    this.ui.webContents.loadFile(path.join(ROOT, 'ui', 'index.html'), { query: { incognito: incognito ? '1' : '0', platform: process.platform, ...arrive } })
     const fit = () => { const [w, h] = this.win.getContentSize(); this.ui.setBounds({ x: 0, y: 0, width: w, height: h }); if (this.fullscreenTab) this.layout() }
     fit()
     this.win.on('resize', fit)
@@ -2383,6 +2387,8 @@ app.whenReady().then(async () => {
     accent: () => D.settings.get('accent'),
     notify: (title, body) => { try { const { Notification } = require('electron'); if (Notification.isSupported()) new Notification({ title, body, silent: true }).show() } catch {} },
   })
+  // the windows opened in the restart screen's ink: back to the normal background once the arrival has played
+  if (windows.some(w => w.arrived)) setTimeout(() => { for (const w of windows) { try { w.win.setBackgroundColor(winBg()) } catch {} } }, 6000)
   log('boot ' + app.getVersion())
   startApps()
   Sync.start()

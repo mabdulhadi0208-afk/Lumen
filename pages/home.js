@@ -1,8 +1,8 @@
 /* Lumen 4.1 home: the New Tab page (lumen://newtab).
  *
- * The hero is the Settings section banner taken all the way: a wide glass banner with a colour wash, pools of
- * light, drifting dots and a giant watermark, a lock-screen clock (thin tabular numerals, a seconds hairline),
- * a huge title and a muted line about your day.
+ * The hero is a quiet stage: deep ink lit by one soft accent glow, a fine grid and tiny drifting dots, the date,
+ * a big confident greeting, a muted line about your day and four chips on the left, and a lock-screen clock (thin
+ * tabular numerals, a seconds hairline) on the right behind a hairline divider. No orbs, bubbles or watermark.
  * Under it: a fat search pill (suggestions, Cmd K, Ask), the pulse (big stat tiles for your day), and a grid of
  * liquid-glass widgets you can drag around on springs and switch on and off. The background is Match theme by
  * default (it follows the browser theme), or any theme, wallpaper or photo. The private window gets its own look.
@@ -105,7 +105,7 @@
   const anglesOf = d => ({ h: (d.getHours() % 12 + d.getMinutes() / 60) * 30, m: (d.getMinutes() + d.getSeconds() / 60) * 6, s: d.getSeconds() * 6 })
   function clockSize() {
     const hero = qs('#hero'), w = hero ? hero.clientWidth : innerWidth
-    return Math.round(w < 620 ? 96 : Math.min(176, Math.max(108, w * .138)))
+    return Math.round(w < 620 ? 92 : Math.min(156, Math.max(96, w * .122)))
   }
   const hm = d => { const [h, m] = nowText(d).split(':'); return [h, m || '00'] }
   const digitsHTML = (s, n0) => [...s].map((ch, i) => `<b style="--n:${n0 + i}">${ch}</b>`).join('')
@@ -936,7 +936,7 @@
   function choreograph() {
     if (still()) return
     const at = sel => qs(sel)
-    springIn(at('#cktile'), 90, { y: 30, s: .72, r: -6, fade: false })
+    springIn(at('#cktile'), 120, { y: 22, s: .94 })
     springIn(at('.hm-badge'), 160, { y: 18 })
     springIn(at('#date'), 160, { y: 22, s: .9 })
     springIn(at('#greet'), 230, { y: 34, s: .92 })
@@ -954,6 +954,24 @@
     springIn(qs('.hm-foot'), 420, { y: 20 })
   }
 
+  // the banner's chips lift on hover and squish on press, on jelly springs (translate and scale only, cleared once they settle)
+  function springChips(box) {
+    if (!box || !window.Jelly) return
+    box.querySelectorAll('.hm-act').forEach(el => {
+      let lift = null, sq = null
+      const paint = () => {
+        if (!lift || !sq) return
+        if (!lift.vel && !sq.vel && lift.v === 0 && sq.v === 1) { el.style.removeProperty('translate'); el.style.removeProperty('scale'); return }
+        el.style.translate = `0 ${(-lift.v).toFixed(2)}px`; el.style.scale = sq.v.toFixed(4)
+      }
+      lift = new Jelly.Spring(0, 'jelly', paint); sq = new Jelly.Spring(1, 'jelly', paint)
+      el.addEventListener('pointerenter', () => { if (!still()) { lift.to(2); sq.to(1.035) } })
+      el.addEventListener('pointerleave', () => { lift.to(0); sq.to(1) })
+      el.addEventListener('pointerdown', () => { if (!still()) sq.to(.95) })
+      el.addEventListener('pointerup', () => { if (!still()) sq.to(1.035) })
+    })
+  }
+
   async function newTab() {
     document.title = 'New Tab'
     document.body.classList.add('home-page')
@@ -964,22 +982,19 @@
     H.sites = H.sites || []; H.apps = H.apps || []; H.parcels = H.parcels || []; H.laterCount = H.laterCount || 0
     H.wp = wpKey()
     const style = clockStyle(), p = H.private, eng = ENGINES[S.searchEngine] || 'Google'
-    const hr = new Date().getHours(), sunUp = hr >= 6 && hr < 19
     root.innerHTML = `<div class="ntp home${p ? ' private' : ''}" id="ntp" data-nolens>
     <div class="ntp-bg"></div>
     <div class="hm-wrap">
-      <header class="hm-hero hm-lq enter ${style === 'off' ? 'no-clock' : ''}" id="hero">
-        <i class="hm-orb a"></i><i class="hm-orb b"></i><i class="hm-orb c"></i><i class="hm-orb d"></i><i class="hm-dots"></i><span class="hm-amb" aria-hidden="true"><i class="amb-dots"></i><i class="amb-spark"></i><i class="amb-lines"><svg viewBox="0 0 1000 360" preserveAspectRatio="xMidYMid slice"><path d="M60 300 L120 270 L190 292 L250 262 L300 300"/><path d="M390 50 L450 80 L520 40 L575 70 L560 118"/><path d="M860 300 L910 250 L965 280 L940 330 Z"/>${[[60, 300], [120, 270], [190, 292], [250, 262], [300, 300], [390, 50], [450, 80], [520, 40], [575, 70], [560, 118], [860, 300], [910, 250], [965, 280], [940, 330]].map(([x, y], i) => `<circle cx="${x}" cy="${y}" r="${i % 3 ? 1.6 : 2.4}"/>`).join('')}</svg></i></span><span class="hm-rim" aria-hidden="true"><i></i></span><i class="hm-ball s1"></i><i class="hm-ball s2"></i><i class="hm-ball s3"></i>
-        <span class="hm-art" aria-hidden="true">${p ? ICONS.mask : sunUp ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.05" stroke-linecap="round"><circle cx="12" cy="12" r="4.4"/><path d="M12 1.6v2.6M12 19.8v2.6M1.6 12h2.6M19.8 12h2.6M4.65 4.65l1.84 1.84M17.51 17.51l1.84 1.84M4.65 19.35l1.84-1.84M17.51 6.49l1.84-1.84"/></svg>' : '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linejoin="round"><path d="M19.5 14.2A8 8 0 0 1 9.8 4.5a8 8 0 1 0 9.7 9.7z"/><path d="M17 3.2l.5 1.3 1.3.5-1.3.5-.5 1.3-.5-1.3-1.3-.5 1.3-.5zM21 8.4l.3.8.8.3-.8.3-.3.8-.3-.8-.8-.3.8-.3z"/></svg>'}</span>
+      <header class="hm-hero enter ${style === 'off' ? 'no-clock' : ''}" id="hero">
+        <span class="hm-amb" aria-hidden="true"><i class="amb-dots"></i><i class="amb-fine"></i><i class="amb-spark"></i></span><i class="hm-mesh" aria-hidden="true"></i>
         <div class="hm-tile" id="cktile">
-          <span class="hm-glyph" aria-hidden="true">${p ? ICONS.mask : sunUp ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.5v2.2M12 19.3v2.2M2.5 12h2.2M19.3 12h2.2M5.3 5.3l1.6 1.6M17.1 17.1l1.6 1.6M5.3 18.7l1.6-1.6M17.1 6.9l1.6-1.6"/></svg>' : '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"><path d="M19.5 14.2A8 8 0 0 1 9.8 4.5a8 8 0 1 0 9.7 9.7z"/></svg>'}</span>
           <div id="clockslot">${clockMarkup(style)}</div>
         </div>
         <div class="hm-hi">
           ${p ? `<span class="hm-badge" data-in>${ICONS.mask}Private window</span>` : `<p class="hm-date" id="date" data-in></p>`}
           ${p ? `<h1 class="hm-greet" id="greet" data-in>Browse <em>privately</em></h1>` : `<h1 class="hm-greet" id="greet" data-in></h1>`}
           <p class="hm-sub" id="hsub" data-in></p>
-          ${p ? '' : `<div class="hm-acts" id="acts"><button class="hm-act" data-act="ask" style="--i:0">${ICONS.sparkle}Ask Lumen</button><button class="hm-act" data-act="cmd" style="--i:1">${ICONS.search}${cmdKey()} K</button><button class="hm-act" data-act="focus" style="--i:2">${ic('hourglass')}Focus</button><a class="hm-act" href="lumen://readlater" style="--i:3">${ICONS.book}Read later</a></div>`}
+          ${p ? '' : `<div class="hm-acts" id="acts"><button class="hm-act pri" data-act="ask" style="--i:0">${ICONS.sparkle}Ask Lumen</button><button class="hm-act" data-act="cmd" style="--i:1" aria-label="Command bar, ${cmdKey()} K">${ICONS.search}<kbd>${cmdKey()}</kbd><kbd>K</kbd></button><button class="hm-act" data-act="focus" style="--i:2">${ic('hourglass')}Focus</button><a class="hm-act" href="lumen://readlater" style="--i:3">${ICONS.book}Read later</a></div>`}
         </div>
       </header>
       <div class="hm-sbox" data-in><form class="hm-search hm-lq" id="sf" role="search">
@@ -1020,6 +1035,7 @@
     if (!p) { root.insertAdjacentHTML('beforeend', drawerHTML()) }
     heroText(); focusTick()
     const acts = qs('#acts')
+    springChips(acts)
     if (acts) acts.onclick = e => {
       const b = e.target.closest('[data-act]'); if (!b) return
       if (window.Jelly) Jelly.kick(b, .6, .3)

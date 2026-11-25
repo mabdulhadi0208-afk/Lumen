@@ -188,17 +188,46 @@ function refreshAdblock(force) {
   adRefreshing = setupAdblock({ fresh: true }).finally(() => { adRefreshing = null })
   return adRefreshing
 }
+// fetch the filter lists (Lumen's network stack, on the main process: it only waits), then parse and serialize them on a
+// worker thread: a second or more of CPU that used to freeze the browser at first launch and on every list refresh
+async function buildAdblockEngine(full) {
+  const A = require('@ghostery/adblocker')
+  const fetchImpl = (url, opts) => net.fetch(url, opts)
+  const [lists, resources] = await Promise.all([A.fetchLists(fetchImpl, full ? A.fullLists : A.adsAndTrackingLists), A.fetchResources(fetchImpl)])
+  const text = lists.join('\n')
+  try {
+    const { Worker } = require('worker_threads')
+    return await new Promise((res, rej) => {
+      const wk = new Worker(path.join(__dirname, 'adblock-worker.js'), { workerData: { text, resources } })
+      wk.once('message', m => { wk.terminate().catch(() => {}); m && m.ok ? res(m.buf) : rej(new Error(m && m.error || 'adblock worker failed')) })
+      wk.once('error', rej)
+      wk.once('exit', code => rej(new Error('adblock worker exited ' + code)))
+    })
+  } catch (e) {
+    // no worker threads here: build it the old way (slow, but the lists still work)
+    log('adblock: worker failed, parsing on the main thread:', e && e.message)
+    const engine = A.FiltersEngine.parse(text, {})
+    if (resources !== undefined) engine.updateResources(resources, '' + resources.length)
+    return engine.serialize()
+  }
+}
 async function setupAdblock({ fresh = false } = {}) {
   try {
     const { ElectronBlocker } = require('@ghostery/adblocker-electron')
     const full = !!D.settings.get('hideCookieBanners')
     const cache = adCachePath(), tmp = cache + '.new'
-    const fetchImpl = (url, opts) => net.fetch(url, opts)
     if (fresh) await fs.promises.rm(tmp, { force: true }).catch(() => {})
-    const caching = { path: fresh ? tmp : cache, read: fs.promises.readFile, write: fs.promises.writeFile }
-    const timeout = new Promise((_, rej) => setTimeout(() => rej(new Error('adblock list timeout')), fresh ? 90000 : 15000))
+    let tm
+    const timeout = new Promise((_, rej) => { tm = setTimeout(() => rej(new Error('adblock list timeout')), fresh ? 90000 : 15000) })
     const old = blocker
-    const next = await Promise.race([full ? ElectronBlocker.fromPrebuiltFull(fetchImpl, caching) : ElectronBlocker.fromPrebuiltAdsAndTracking(fetchImpl, caching), timeout])
+    // the saved engine loads in tens of milliseconds; building one from the lists happens on a worker thread
+    const load = async () => {
+      if (!fresh) { try { return ElectronBlocker.deserialize(new Uint8Array(await fs.promises.readFile(cache))) } catch {} }
+      const buf = await buildAdblockEngine(full)
+      await fs.promises.writeFile(fresh ? tmp : cache, buf)
+      return ElectronBlocker.deserialize(buf)
+    }
+    const next = await Promise.race([load(), timeout]).finally(() => clearTimeout(tm))
     if (fresh) { await fs.promises.rename(tmp, cache); log('adblock: fresh filter lists in use') }
     D.settings.set({ adblockUpdatedAt: fresh ? Date.now() : (D.settings.get('adblockUpdatedAt') || (() => { try { return fs.statSync(cache).mtimeMs } catch { return Date.now() } })()) })
     if (old) for (const ses of sessionsReady) { try { if (old.isBlockingEnabled(ses)) old.disableBlockingInSession(ses) } catch {} }
@@ -211,8 +240,9 @@ async function setupAdblock({ fresh = false } = {}) {
       if (id == null) return
       blockedByWc.set(id, (blockedByWc.get(id) || 0) + 1)
       blockedTotal++; bumpBlockedDay(); if (!blockedSaveT) blockedSaveT = setTimeout(() => { blockedSaveT = null; D.settings.set({ blockedTotal, blockedDays }) }, 15000)
-      const w = winForWc(id)
-      if (w) w.pushStateSoon()
+      // the shield in the toolbar counts the tab in front only: a background tab's blocked requests send nothing
+      const w = winForWc(id), a = w && w.active()
+      if (a && a.view && !a.view.webContents.isDestroyed() && a.view.webContents.id === id) w.pushStateSoon()
     })
     if (D.settings.get('adblock')) for (const ses of sessionsReady) { try { blocker.enableBlockingInSession(ses) } catch {} }
     return true
@@ -403,6 +433,7 @@ function onDownload(e, item, wc) {
   })
   item.once('done', (ev, state) => {
     d.state = state; d.received = item.getReceivedBytes(); d.path = item.getSavePath(); d.name = path.basename(d.path) || d.name
+    dlExists.delete(d.path)
     delete d._item
     if (state === 'completed' && isMac) app.dock && app.dock.downloadFinished(d.path)
     push()
@@ -412,7 +443,18 @@ function onDownload(e, item, wc) {
   const w = winForWc(wc && wc.id) || lastFocused()
   if (w) w.send('download-started', d.id)
 }
-const listDownloads = () => downloads.slice(0, 100).map(({ _item, ...d }) => ({ ...d, exists: d.path ? fs.existsSync(d.path) : false }))
+// whether each file is still on disk: looked up at most every few seconds per file (the list goes to the chrome five
+// times a second while something downloads, and it was a synchronous disk check for each of up to 100 files)
+const dlExists = new Map()
+function fileExists(p) {
+  if (!p) return false
+  const hit = dlExists.get(p), now = Date.now()
+  if (hit && now - hit.at < 4000) return hit.v
+  let v = false; try { v = fs.existsSync(p) } catch {}
+  dlExists.set(p, { at: now, v }); if (dlExists.size > 300) dlExists.delete(dlExists.keys().next().value)
+  return v
+}
+const listDownloads = () => downloads.slice(0, 100).map(({ _item, ...d }) => ({ ...d, exists: d.state === 'progressing' ? false : fileExists(d.path) }))
 
 // ---------------------------------------------------------------- windows & tabs
 const windows = []
@@ -430,13 +472,33 @@ for (const st of [D.bookmarks, D.readLater, D.archive, D.highlights, D.historySt
   D.settings.onChange(d => { const n = sig(d); if (n !== last) { last = n; spareChanged() } })
 }
 const closedTabs = []
+// history changes go to the chrome's own copy (it searches history as you type without asking): batched, and a
+// big batch becomes "reload it"
+let histOps = [], histT = null
+D.onHistory(op => {
+  histOps.push(op)
+  if (histT) return
+  histT = setTimeout(() => {
+    histT = null
+    const ops = histOps.length > 300 || histOps.some(o => o[0] === 'reset') ? [['reset']] : histOps
+    histOps = []
+    broadcast('hist', ops)
+  }, 120)
+})
+// goes up whenever the bookmarks change, so the chrome's bookmarks bar fetches them only then
+let bmRev = 0
+D.bookmarks.onChange(() => { bmRev++; for (const w of windows) w.pushStateSoon() })
 
 function lastFocused() {
   const f = BaseWindow.getFocusedWindow()
   return windows.find(w => w.win === f) || windows[windows.length - 1] || null
 }
+// which window a webContents belongs to: remembered when a tab's view is made (this runs for every blocked request)
+const wcOwner = new Map()
 function winForWc(wcId) {
   if (wcId == null) return null
+  const known = wcOwner.get(wcId)
+  if (known && windows.includes(known)) return known
   return windows.find(w => w.ui.webContents.id === wcId || (w.spare && w.spare.view && !w.spare.view.webContents.isDestroyed() && w.spare.view.webContents.id === wcId) || [...w.tabs.values()].some(t => t.view && !t.view.webContents.isDestroyed() && t.view.webContents.id === wcId)) || null
 }
 function broadcast(ch, data) { for (const w of windows) w.send(ch, data) }
@@ -489,13 +551,22 @@ class BrowserWin {
       windows.splice(windows.indexOf(this), 1)
       saveSession()
     })
-    this.ui.webContents.once('did-finish-load', () => { this.win.show(); this.pushState(); setTimeout(() => Nova.prewarm(this), 1500); setTimeout(() => this.warmSpare(), 2600) })
-    this.ui.webContents.on('render-process-gone', () => { setTimeout(() => { if (!this.ui.webContents.isDestroyed()) this.ui.webContents.reload() }, 300) })
+    // shown as soon as the chrome's document is ready (its scripts have run), not when every image in it has loaded:
+    // restored tabs' and bookmarks' favicons come over the network and held the window back for seconds. Until the
+    // chrome paints, the window shows its Nova background, as designed.
+    let shown = false
+    const ready = () => { if (shown || this.win.isDestroyed()) return; shown = true; this.win.show(); this.pushState(); setTimeout(() => Nova.prewarm(this), 1500); setTimeout(() => this.warmSpare(), 2600) }
+    this.ui.webContents.once('dom-ready', ready)
+    this.ui.webContents.once('did-finish-load', ready)
+    this.ui.webContents.on('did-start-loading', () => { this._lastState = null; this._hover = undefined })
+    this.ui.webContents.on('render-process-gone', () => { this._lastState = null; setTimeout(() => { if (!this.ui.webContents.isDestroyed()) this.ui.webContents.reload() }, 300) })
     this.ui.webContents.on('before-input-event', (e, input) => this.handleKeys(e, input))
     windows.push(this)
   }
 
   send(ch, data) { if (!this.ui.webContents.isDestroyed()) this.ui.webContents.send(ch, data) }
+  // the link under the pointer: only when it changes (every tab switch cleared it again, every hover repeated it)
+  hoverURL(u) { u = u || ''; if (u === this._hover) return; this._hover = u; this.send('hover-url', u) }
   active() { return this.tabs.get(this.activeId) }
   tabByWc(id) { return [...this.tabs.values()].find(t => t.view && !t.view.webContents.isDestroyed() && t.view.webContents.id === id) }
 
@@ -618,16 +689,22 @@ class BrowserWin {
     view.setBackgroundColor(tabBg(t.url, this.incognito))
     t.view = view; t.asleep = false
     const wc = view.webContents
+    { const id = wc.id; wcOwner.set(id, this); wc.once('destroyed', () => { if (wcOwner.get(id) === this) wcOwner.delete(id) }) }
     // the colour under the page follows what it is (a Lumen page or a web page), so nothing flashes on the way in
     wc.on('did-start-navigation', e => { if (e.isMainFrame && !e.isSameDocument) { try { view.setBackgroundColor(tabBg(e.url, this.incognito)) } catch {} } })
     // the extensions library marks every added tab as active; ignore that so background tabs stay in the background
     if (extensions && !this.incognito && !t.spare) { addingTab = true; try { extensions.addTab(wc, this.win) } catch {} finally { addingTab = false } }
-    const upd = () => { if (!t.spare) this.pushStateSoon() }
+    const upd = () => { if (!t.spare) this.pushStateSoon(this.activeId === t.id || this.splitId === t.id) }
     wc.on('page-title-updated', (e, title) => { t.title = title; D.updateHistoryTitle(wc.getURL(), title); upd() })
     wc.on('page-favicon-updated', (e, icons) => { t.favicon = icons[icons.length - 1] || icons[0] || ''; upd() })
     wc.on('did-start-loading', () => { t.loading = true; t.crashed = false; upd() })
     wc.on('did-stop-loading', () => { t.loading = false; upd() })
-    wc.on('did-finish-load', () => { offerTranslate(this, t).catch(() => {}); darkPage(wc); paintHighlights(wc); readingTime(this, t); parcelPage(this, t); googleBlockCheck(this, t) })
+    wc.on('did-finish-load', () => {
+      offerTranslate(this, t).catch(() => {}); darkPage(wc); paintHighlights(wc); parcelPage(this, t); googleBlockCheck(this, t)
+      // the reading time is only shown for the tab in front: a background tab counts its words when it comes forward
+      // (reading the text of every paragraph forces the page to lay out)
+      if (this.activeId === t.id || this.splitId === t.id) { t.readDue = false; readingTime(this, t) } else { t.readMin = 0; t.readDue = true }
+    })
     wc.on('did-navigate-in-page', () => googleBlockCheck(this, t))
     wc.on('did-navigate', () => darkKeys.delete(wc.id))
     wc.on('did-stop-loading', () => setTimeout(() => { if (this.activeId === t.id) snapTab(t) }, 350))
@@ -678,7 +755,7 @@ class BrowserWin {
     wc.on('audio-state-changed', e => { t.audible = e.audible; upd() })
     wc.on('media-started-playing', () => { t.playing = true; t.mediaAt = Date.now(); upd() })
     wc.on('media-paused', () => { t.playing = false; t.mediaAt = Date.now(); upd() })
-    wc.on('update-target-url', (e, url) => { if (this.activeId === t.id) this.send('hover-url', url) })
+    wc.on('update-target-url', (e, url) => { if (this.activeId === t.id) this.hoverURL(url) })
     wc.on('found-in-page', (e, r) => this.send('find-result', { active: r.activeMatchOrdinal, total: r.matches }))
     wc.on('zoom-changed', (e, dir) => { this.zoom(t.id, dir === 'in' ? 0.5 : -0.5) })
     wc.on('enter-html-full-screen', () => { this.fullscreenTab = true; if (!this.win.isFullScreen()) this.win.setFullScreen(true); this.layout() })
@@ -761,13 +838,14 @@ class BrowserWin {
     this.activeId = id
     t.lastActive = Date.now()
     if (t.offerLater) { t.offerLater = false; setTimeout(() => offerTranslate(this, t).catch(() => {}), 400) }
+    if (t.readDue) { t.readDue = false; setTimeout(() => { if (this.tabs.has(t.id)) readingTime(this, t) }, 250) }
     if (D.settings.get('soundActiveOnly')) for (const o of this.tabs.values()) if (o.view && o.id !== id && o.id !== this.splitId) { o.view.webContents.setAudioMuted(true); o.autoMuted = true }
     if (t.autoMuted && t.view) { t.view.webContents.setAudioMuted(!!t.muted); t.autoMuted = false }
     if (!t.view) this.makeView(t)
     this.layout()
     if (!this.overlay) t.view.webContents.focus()
     if (extensions && !this.incognito) { const wc = t.view.webContents; const sel = () => { try { if (!wc.isDestroyed() && this.activeId === t.id) extensions.selectTab(wc) } catch {} }; if (fresh) setImmediate(sel); else sel() }
-    if (fresh) setImmediate(() => this.send('hover-url', '')); else this.send('hover-url', '')
+    if (fresh) setImmediate(() => this.hoverURL('')); else this.hoverURL('')
     this.pushState()
     saveSession()
   }
@@ -880,6 +958,7 @@ class BrowserWin {
       else if (next) this.activate(next)
     }
     this.destroyView(t)
+    thumbQueue.delete(t); t.thumbImg = null
     this.pruneGroups()
     if (!this.order.length) { this.win.close(); return }
     this.pushState(); saveSession()
@@ -971,10 +1050,27 @@ class BrowserWin {
       adOff: a ? adAllowed(awc ? awc.getURL() : a.url) : false,
       secure: a ? /^(https|lumen):/.test(a.url) : true,
       closedCount: closedTabs.length,
+      bmRev,
     }
   }
-  pushState() { clearTimeout(this._pst); this._pst = null; this.send('state', this.serialize()) }
-  pushStateSoon() { if (!this._pst) this._pst = setTimeout(() => this.pushState(), 50) }
+  // the chrome re-renders on every state it gets, so an update identical to the last one is not sent
+  pushState() {
+    clearTimeout(this._pst); this._pst = null
+    const s = this.serialize(); let sig = null
+    try { sig = JSON.stringify(s) } catch {}
+    if (sig && sig === this._lastState) return
+    // while the chrome is still loading a message can arrive before it listens: remember nothing until it has loaded
+    let loading = true; try { loading = this.ui.webContents.isLoading() } catch {}
+    this._lastState = loading ? null : sig
+    this.send('state', s)
+  }
+  // background changes are gathered for 50 ms; fast (the tab in front loading, navigating, changing title) goes out
+  // on the next turn of the event loop, so the toolbar answers within the same frame
+  pushStateSoon(fast) {
+    if (this._pst && (!fast || this._pstFast)) return
+    clearTimeout(this._pst); this._pstFast = !!fast
+    this._pst = setTimeout(() => this.pushState(), fast ? 0 : 50)
+  }
 
   async contextMenu(t, p) {
     const wc = t.view.webContents
@@ -1422,9 +1518,10 @@ function applyAppIcon() {
 }
 
 // ---------------------------------------------------------------- page tools
+let READER_SRC = null   // read once, not from disk on every Reader Mode
 function readerMode(wc) {
   const acc = String(D.settings.get('accent') || '#5b8cff'), motion = String(D.settings.get('motion') || 'jelly')
-  const code = fs.readFileSync(path.join(__dirname, 'reader.js'), 'utf8')
+  const code = READER_SRC || (READER_SRC = fs.readFileSync(path.join(__dirname, 'reader.js'), 'utf8'))
     .replace('__LUMEN_ACCENT__', /^#[0-9a-f]{3,8}$/i.test(acc) ? acc : '#5b8cff').replace('__LUMEN_MOTION__', /^[a-z]+$/.test(motion) ? motion : 'jelly')
   // runs in the tab's preload world (999), so it can save the reader's choices and the page cannot see them
   wc.executeJavaScriptInIsolatedWorld(999, [{ code: code.replace('__LUMEN_READER_PREFS__', JSON.stringify(readerPrefs())).replace('__LUMEN_READER_POS__', String(readerPos(wc.getURL()) || 0)) }]).catch(() => {})
@@ -1531,7 +1628,30 @@ function convOf(q) {
   return { value: r, text: `${v.toLocaleString('en-US', { maximumFractionDigits: 10 })} ${nm(a, m[2])} = ${r.toLocaleString('en-US', { maximumFractionDigits: 8 })} ${nm(b, m[3])}` }
 }
 
-async function suggest(w, text) {
+// the search engine's suggestions, fetched apart from the local ones so history, bookmarks and tabs show at once and
+// the network never holds them up; answers are kept a minute, so typing back over a word costs nothing
+const webSugCache = new Map()
+async function webSuggest(w, text) {
+  const q = String(text || '').trim()
+  const eng = SEARCH[D.settings.get('searchEngine')] || SEARCH.google
+  if (!q || !D.settings.get('showSuggestions') || !eng.suggest || (w && w.incognito)) return []
+  const key = eng.name + '\n' + q.toLowerCase(), hit = webSugCache.get(key)
+  if (hit && Date.now() - hit.at < 60000) return hit.list
+  let list = []
+  try {
+    const ctrl = new AbortController(); const tm = setTimeout(() => ctrl.abort(), 1500)
+    try {
+      const r = await net.fetch(eng.suggest.replace('%s', encodeURIComponent(q)), { signal: ctrl.signal })
+      const j = await r.json()
+      list = (Array.isArray(j) ? (Array.isArray(j[1]) ? j[1] : j.map(x => x.phrase || x)) : []).filter(x => typeof x === 'string').slice(0, 5)
+    } finally { clearTimeout(tm) }
+    webSugCache.set(key, { at: Date.now(), list })
+    if (webSugCache.size > 200) webSugCache.delete(webSugCache.keys().next().value)
+  } catch {}
+  return list
+}
+async function suggest(w, text, opts) {
+  const local = !!(opts && opts.local)
   const q = (text || '').trim()
   const out = { query: q, tabs: [], history: [], bookmarks: [], search: [] }
   const sc = shortcutFor(q); if (sc) out.shortcut = { name: sc.name, query: sc.query }
@@ -1558,15 +1678,10 @@ async function suggest(w, text) {
   })
   out.history = hist.slice(0, 5).map(h => ({ url: h.url, title: h.title }))
   const eng = SEARCH[D.settings.get('searchEngine')] || SEARCH.google
-  if (D.settings.get('showSuggestions') && eng.suggest && !w.incognito) {
-    try {
-      const ctrl = new AbortController(); setTimeout(() => ctrl.abort(), 1500)
-      const r = await net.fetch(eng.suggest.replace('%s', encodeURIComponent(q)), { signal: ctrl.signal })
-      const j = await r.json()
-      const list = Array.isArray(j) ? (Array.isArray(j[1]) ? j[1] : j.map(x => x.phrase || x)) : []
-      out.search = list.filter(x => typeof x === 'string').slice(0, 5)
-    } catch {}
-  }
+  const web = D.settings.get('showSuggestions') && eng.suggest && !w.incognito
+  // local: the caller asks for the search engine's part separately (suggestWeb)
+  if (local) { out.webPending = !!web; return out }
+  if (web) out.search = await webSuggest(w, q)
   return out
 }
 
@@ -1591,15 +1706,17 @@ ipcMain.handle('ui', async (e, action, ...a) => {
       case 'switchTab': { const ww = windows[a[1]] || w; ww.activate(a[0]); ww.win.focus(); return }
       case 'activate': return w.activate(a[0])
       case 'close': return w.closeTab(a[0], { undo: true })
-      case 'move': return w.moveTab(a[0], a[1])
+      // the chrome already moved the tab on its side: always answer with the real order, even if nothing changed
+      case 'move': w._lastState = null; return w.moveTab(a[0], a[1])
       case 'back': return wc && wc.navigationHistory.goBack()
       case 'forward': return wc && wc.navigationHistory.goForward()
       case 'reload': if (t && (t.crashed || !t.view)) { w.destroyView(t); w.makeView(t); w.layout(); return } return wc && (a[0] ? wc.reloadIgnoringCache() : wc.reload())
       case 'stop': return wc && wc.stop()
       case 'layout': w.rect = a[0]; return w.layout()
       case 'overlay': return w.setOverlay(!!a[0], !!a[1])
-      case 'tabThumb': { const x = w.tabs.get(a[0]); if (!x) return null; if (x.id === w.activeId || x.id === w.splitId) await snapTab(x); return x.thumb || null }
-      case 'suggest': return suggest(w, a[0])
+      case 'tabThumb': { const x = w.tabs.get(a[0]); if (!x) return null; if (x.id === w.activeId || x.id === w.splitId) await snapTab(x); return thumbOf(x) }
+      case 'suggest': return suggest(w, a[0], a[1])
+      case 'suggestWeb': return webSuggest(w, a[0])
       case 'find': if (wc && a[0]) wc.findInPage(a[0], { forward: a[1] !== false, findNext: !!a[2] }); return
       case 'stopFind': if (wc) wc.stopFindInPage('clearSelection'); return
       case 'prompt': { const fn = pendingPrompts.get(a[0]); pendingPrompts.delete(a[0]); if (fn) fn(a[1]); return }
@@ -1684,6 +1801,8 @@ ipcMain.handle('ui', async (e, action, ...a) => {
       case 'translateLangs': { const from = t && t.translated && t.trFrom ? t.trFrom : wc && /^https?:/.test(wc.getURL()) ? await Translate.pageLang(wc) : ''; return { to: Translate.target(D.settings), from, translated: !!(t && t.translated), always: (D.settings.get('alwaysTranslate') || []).includes(from), busy: trJobs.has(w), web: !!(wc && /^https?:/.test(wc.getURL())) } }
       case 'alwaysTranslate': { const l = String(a[0] || ''); if (l) { const s = new Set(D.settings.get('alwaysTranslate') || []); a[1] === false ? s.delete(l) : s.add(l); D.settings.set({ alwaysTranslate: [...s] }) } return }
       case 'translateCancel': { const j = trJobs.get(w); if (j) j.cancelled = true; return }
+      case 'histMirror': return D.historyCompact()
+      case 'bmAll': return D.liveBookmarks().map(b => [b.url, b.title || ''])
       case 'bmList': return D.liveBookmarks().slice(0, 200).map(b => ({ url: b.url, title: b.title || '' }))
       case 'bmRemove': D.removeBookmark(String(a[0])); w.pushState(); return
       case 'siteDark': return toggleSiteDark(w, !!a[0])
@@ -1860,7 +1979,14 @@ ipcMain.on('nav:swipe', (e, dir) => {
   if (dir === 'forward' && h.canGoForward()) h.goForward()
 })
 ipcMain.on('peek:open', (e, url) => { const w = winForWc(e.sender.id); if (w && /^https?:/.test(url)) w.openPeek(url) })
-ipcMain.on('lumen:qol', e => { const a = String(D.settings.get('accent') || '#5b8cff'); e.returnValue = { swipe: !!D.settings.get('swipeNav'), speed: !!D.settings.get('videoSpeedKeys'), accent: /^#[0-9a-f]{3,8}$/i.test(a) ? a : '#5b8cff', motion: D.settings.get('motion') || 'jelly', ai: AI.ready() && D.settings.get('aiSelBubble') !== false } })
+// asked by every page and frame as it starts (without waiting for the answer); pw says whether this site has saved
+// passwords, so the page only watches for login fields where there is something to fill in
+ipcMain.handle('lumen:qol', e => {
+  const a = String(D.settings.get('accent') || '#5b8cff')
+  let pw = false
+  try { const o = frameOrigin(e); pw = !!o && /^https?:/.test(o) && D.passwords.get().some(p => !p.deleted && p.origin === o) } catch {}
+  return { swipe: !!D.settings.get('swipeNav'), speed: !!D.settings.get('videoSpeedKeys'), accent: /^#[0-9a-f]{3,8}$/i.test(a) ? a : '#5b8cff', motion: D.settings.get('motion') || 'jelly', pw, ai: AI.ready() && D.settings.get('aiSelBubble') !== false }
+})
 ipcMain.on('lumen:auth-ua', e => { e.returnValue = googleCompat() && isGoogleSignIn(e.senderFrame && e.senderFrame.url) ? firefoxUA() : '' })
 
 // ---------------------------------------------------------------- passkeys
@@ -1960,7 +2086,8 @@ ipcMain.handle('lumen', async (e, action, ...a) => {
       case 'topSites': return D.topSites(8)
       case 'stats': return { blocked: blockedTotal, since: D.settings.get('statsSince') || 0 }
       case 'home': { const week = blockedWeek(); return { private: !!(w && w.incognito), today: week[6].n, week, total: blockedTotal, adblock: !!D.settings.get('adblock'), closed: w && w.incognito ? [] : closedTabs.slice(-6).reverse().map(c => ({ url: c.url, title: c.title || '' })) } }
-      case 'suggest': return suggest(w || { incognito: false }, String(a[0] || '').slice(0, 300))
+      case 'suggest': return suggest(w || { incognito: false }, String(a[0] || '').slice(0, 300), a[1])
+      case 'suggestWeb': return webSuggest(w || { incognito: false }, String(a[0] || '').slice(0, 300))
       case 'weather': return weatherFor(a[0])
       case 'homeCmd': { if (!w) return; const c = a[0]; if (c === 'palette' || c === 'ai') w.send('command', c); else if (c && typeof c === 'object' && typeof c.ask === 'string' && c.ask.trim()) w.send('command', { ai: 'chat', text: c.ask.trim().slice(0, 4000) }); return }
       case 'adblockInfo': return { updatedAt: D.settings.get('adblockUpdatedAt') || 0, refreshing: !!adRefreshing }
@@ -2203,10 +2330,28 @@ function buildMenu() {
 async function snapTab(t) {
   if (!t || !t.view || t.view.webContents.isDestroyed() || t.asleep) return
   try {
-    const img = await Promise.race([t.view.webContents.capturePage(), new Promise(r => setTimeout(() => r(null), 1500))])
-    // JPEG: several times quicker to encode than PNG on the main process, and a fraction of the size over IPC
-    if (img && !img.isEmpty()) t.thumb = 'data:image/jpeg;base64,' + img.resize({ width: 480, quality: 'good' }).toJPEG(84).toString('base64')
+    let tm
+    const img = await Promise.race([t.view.webContents.capturePage(), new Promise(r => { tm = setTimeout(() => r(null), 1500) })]).finally(() => clearTimeout(tm))
+    // the picture is kept as taken and encoded later, when nothing is happening (or right away when someone asks for
+    // it): shrinking and encoding it took 10 to 40 ms of the main process on every tab switch
+    if (img && !img.isEmpty()) { t.thumbImg = img; thumbQueue.add(t); thumbSoon() }
   } catch {}
+}
+// JPEG: several times quicker to encode than PNG on the main process, and a fraction of the size over IPC
+function thumbOf(t) {
+  if (t && t.thumbImg) { const img = t.thumbImg; t.thumbImg = null; thumbQueue.delete(t); try { t.thumb = 'data:image/jpeg;base64,' + img.resize({ width: 480, quality: 'good' }).toJPEG(84).toString('base64') } catch {} }
+  return (t && t.thumb) || null
+}
+const thumbQueue = new Set()
+let thumbT = null
+function thumbSoon() {
+  clearTimeout(thumbT)
+  thumbT = setTimeout(function next() {
+    thumbT = null
+    const t = thumbQueue.values().next().value; if (!t) return
+    thumbOf(t)
+    if (thumbQueue.size) thumbT = setTimeout(next, 30)
+  }, 1200)
 }
 
 // ---------------------------------------------------------------- dark mode for websites
@@ -2562,4 +2707,4 @@ app.whenReady().then(async () => {
   powerMonitor.on('resume', () => Sync.syncNow().catch(() => {}))
 })
 
-module.exports = { windows, createWindow, D, allowSites, toggleSiteAdblock, __refreshAdblock: refreshAdblock, __adblockAge: adblockAge, __hl_add: addHighlight, __hl_recolor: recolorHighlight, __addToNTP: addToNTP, __checkParcels: checkParcels, __separateApps: { check: separateAppsCheck, had: hadBuiltInApps, LINKS: SEPARATE_APPS }, __nova: Nova, __novaDialog: novaDialog, __tabMenu: tabMenu, __readerMode: readerMode, __appMenu: appMenuPopup, __confirmQuit: confirmQuit, __printFailed: printFailed, __dockTemplate: dockTemplate, __jumpTasks: jumpTasks, __handleArgs: handleArgs, __recentSites: recentSites }
+module.exports = { windows, createWindow, D, __suggest: suggest, allowSites, toggleSiteAdblock, __refreshAdblock: refreshAdblock, __adblockAge: adblockAge, __hl_add: addHighlight, __hl_recolor: recolorHighlight, __addToNTP: addToNTP, __checkParcels: checkParcels, __separateApps: { check: separateAppsCheck, had: hadBuiltInApps, LINKS: SEPARATE_APPS }, __nova: Nova, __novaDialog: novaDialog, __tabMenu: tabMenu, __readerMode: readerMode, __appMenu: appMenuPopup, __confirmQuit: confirmQuit, __printFailed: printFailed, __dockTemplate: dockTemplate, __jumpTasks: jumpTasks, __handleArgs: handleArgs, __recentSites: recentSites }

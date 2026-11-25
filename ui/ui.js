@@ -58,6 +58,9 @@ function favHTML(t) {
   if (!t.favicon) return fallback
   return `<img src="${esc(t.favicon)}" draggable="false" data-fallback="${esc(fallback)}">`
 }
+// for long lists (the bookmarks bar, its popover): icons load only when their row is shown, so 200 bookmarks do not
+// start 200 favicon downloads at launch (chips that do not fit are hidden and never fetch theirs)
+const lazyFav = t => favHTML(t).replace('<img ', '<img loading="lazy" ')
 document.addEventListener('error', e => {
   const img = e.target
   if (img.tagName === 'IMG' && img.dataset.fallback) img.outerHTML = img.dataset.fallback
@@ -178,6 +181,7 @@ $('#btn-split').onclick = () => toggleSplit()
 $('#btn-newtab').onclick = () => api.do('newTab')
 $('#urltext').onclick = () => openCmd('location')
 $('#btn-site').onclick = () => openSiteInfo()
+for (const [sel, fn] of [['#btn-menu', () => prefetchMenu()], ['#btn-site', () => prefetchSite()], ['#shield', () => prefetchSite()]]) { const el = $(sel); if (el) el.addEventListener('pointerenter', fn) }
 $('#btn-downloads').onclick = () => openDownloads()
 $('#btn-update').onclick = () => api.do('update', 'install')
 
@@ -191,13 +195,17 @@ function toggleSplit() {
 const activeTab = () => S.tabs.find(t => t.id === S.activeId)
 
 // ---------------------------------------------------------------- render state
+// swap a button's icon only when it changes: rewriting the same SVG on every state update re-parsed it and dirtied
+// the toolbar's style and layout for nothing
+const iconHTML = new WeakMap()
+function setHTML(el, html) { if (iconHTML.get(el) === html) return; iconHTML.set(el, html); el.innerHTML = html }
 function renderChrome() {
   const a = activeTab()
   $('#btn-back').disabled = !S.canBack
   $('#btn-forward').disabled = !S.canForward
-  $('#btn-reload').innerHTML = a && a.loading ? ICONS.stop : ICONS.reload
+  setHTML($('#btn-reload'), a && a.loading ? ICONS.stop : ICONS.reload)
   $('#btn-translate').classList.toggle('on', !!S.translated)
-  $('#btn-star').innerHTML = S.bookmarked ? ICONS.starFill : ICONS.star
+  setHTML($('#btn-star'), S.bookmarked ? ICONS.starFill : ICONS.star)
   $('#btn-star').classList.toggle('on', S.bookmarked)
   $('#btn-split').classList.toggle('on', !!S.splitId)
   const url = S.url || ''
@@ -212,7 +220,7 @@ function renderChrome() {
   ut.querySelector('.host').textContent = host
   ut.querySelector('.path').textContent = path
   const site = $('#btn-site')
-  site.innerHTML = url.startsWith('lumen://') || !url ? ICONS.search : (S.secure ? ICONS.tune : ICONS.unlock)
+  setHTML(site, url.startsWith('lumen://') || !url ? ICONS.search : (S.secure ? ICONS.tune : ICONS.unlock))
   site.classList.toggle('insecure', !S.secure && !!url && !url.startsWith('lumen://'))
   const rp = $('#readpill'), rm = S.readMin || 0
   if (rp.dataset.m !== String(rm)) { rp.dataset.m = rm; rp.textContent = rm ? rm + ' min read' : ''; rp.classList.toggle('show', !!rm); if (rm) requestAnimationFrame(() => Jelly.kick && Jelly.kick(rp, 0.6, 0.5)) }
@@ -273,6 +281,7 @@ const pillG = new SpringGroup({ p: 0, o: 0, s: 1, w: 200 }, 'calm', v => {
   pill.style.opacity = Math.max(0, Math.min(1, v.o))
 })
 let drag = null
+let lastScrollKey = ''
 
 function tabInner(t) {
   // a crashed or frozen tab says so right on the tab, with its own Reload button
@@ -289,6 +298,23 @@ function tabInner(t) {
 }
 function tabSig(t) { return [t.title, t.url, t.favicon, t.loading, t.muted, t.audible, t.crashed, t.hung].join('|') }
 
+// a click on a tab shows it as the tab in front in this same frame; the browser's state (which follows a few
+// milliseconds later) then fills in the rest of the toolbar
+function localActivate(id) {
+  if (S.activeId === id || !S.tabs.some(t => t.id === id)) return
+  S = { ...S, activeId: id }
+  renderTabs()
+}
+// a closed tab starts leaving the strip in this same frame (the browser picks the next tab; this guesses the same
+// neighbour it does, and the state that follows settles it)
+function localClose(id) {
+  const i = S.tabs.findIndex(t => t.id === id); if (i < 0 || S.tabs.length < 2) return
+  const tabs = S.tabs.filter(t => t.id !== id)
+  let activeId = S.activeId
+  if (activeId === id) { const n = tabs[Math.min(i, tabs.length - 1)]; activeId = n ? n.id : null }
+  S = { ...S, tabs, activeId }
+  renderTabs()
+}
 function renderTabs() {
   const pinned = S.tabs.filter(t => t.pinned)
   const list = S.tabs.filter(t => !t.pinned)
@@ -376,7 +402,9 @@ function renderTabs() {
     const p = LAYOUT.pos.get(S.activeId)
     if (pillG.state.o < 0.05) pillG.set({ p, w: tabW })
     pillG.to({ p, o: 1, w: tabW })
-    if (!drag) act.el.scrollIntoView({ block: 'nearest', inline: 'nearest' })
+    // only when the tab in front or the strip's size changed: scrolling into view forces a layout on every state update
+    const sk = S.activeId + '|' + LAYOUT.total + '|' + tabW + '|' + TOP
+    if (!drag && sk !== lastScrollKey) { lastScrollKey = sk; act.el.scrollIntoView({ block: 'nearest', inline: 'nearest' }) }
     // all tabs fit: never leave the strip scrolled sideways (a resize mid-spring can leave a stale scroll behind)
     if (TOP && !drag) { const tl = $('#tablist'); if (LAYOUT.total <= tl.clientWidth && tl.scrollLeft) tl.scrollLeft = 0 }
   } else pillG.to({ o: 0 })
@@ -497,13 +525,13 @@ function bindTab(v, id) {
       S.tabs = rest
       renderTabs()
       api.do('move', id, pinnedCount + d.index)
-    } else if (e.type === 'pointerup') api.do('activate', id)
+    } else if (e.type === 'pointerup') { localActivate(id); api.do('activate', id) }
   }
   el.addEventListener('pointerup', end)
   el.addEventListener('pointercancel', end)
-  el.addEventListener('auxclick', e => { if (e.button === 1) api.do('close', id) })
+  el.addEventListener('auxclick', e => { if (e.button === 1) { localClose(id); api.do('close', id) } })
   el.addEventListener('click', e => {
-    if (e.target.closest('.x')) { e.stopPropagation(); api.do('close', id) }
+    if (e.target.closest('.x')) { e.stopPropagation(); localClose(id); api.do('close', id) }
     else if (e.target.closest('.add')) { e.stopPropagation(); api.do('newTabAfter', id) }
     else if (e.target.closest('.audio')) { e.stopPropagation(); api.do('mute', id) }
     else if (e.target.closest('.rl')) { e.stopPropagation(); reloadTab(id) }
@@ -518,7 +546,7 @@ function bindTab(v, id) {
 pinsEl.addEventListener('click', e => {
   const p = e.target.closest('.pin'); if (!p) return
   const t = S.tabs.find(x => x.id === +p.dataset.id)
-  if (t && (t.crashed || t.hung)) reloadTab(t.id); else api.do('activate', +p.dataset.id)
+  if (t && (t.crashed || t.hung)) reloadTab(t.id); else { localActivate(+p.dataset.id); api.do('activate', +p.dataset.id) }
 })
 // reload a crashed or frozen tab: bring it forward, then reload (main rebuilds a crashed tab's view)
 function reloadTab(id) {
@@ -728,15 +756,70 @@ function renderResults() {
   const s = cmdResults.querySelector('.res.sel'); if (s) s.scrollIntoView({ block: 'nearest' })
 }
 
-async function refresh(q) {
+// ---- the chrome's own copy of history and bookmarks, searched as you type: the local results are drawn in the same
+// task as the key, with no message to the main process and no wait. The main process sends history changes as they
+// happen ('hist'); the bookmarks are fetched again when their revision in the state changes.
+const HM = { list: null, byUrl: new Map(), loading: false, last: null }
+const lowEnt = h => { h.u = h.url.toLowerCase(); h.ti = String(h.title || '').toLowerCase(); return h }
+function hmLoad() {
+  if (HM.loading) return
+  HM.loading = true
+  Promise.resolve(api.do('histMirror')).then(r => {
+    HM.loading = false; if (!Array.isArray(r)) return
+    HM.list = r.map(([url, title, visits, t]) => lowEnt({ url, title, visits, t }))
+    HM.byUrl = new Map(HM.list.map(h => [h.url, h])); HM.last = null
+  }).catch(() => { HM.loading = false })
+}
+api.on('hist', ops => {
+  if (!HM.list) return
+  HM.last = null
+  for (const op of ops || []) {
+    if (op[0] === 'reset') { HM.list = null; hmLoad(); return }
+    if (op[0] === 'title') { const h = HM.byUrl.get(op[1]); if (h) { h.title = op[2]; lowEnt(h) } }
+    if (op[0] === 'add') {
+      let h = HM.byUrl.get(op[1])
+      if (h) { const i = HM.list.indexOf(h); if (i > 0) { HM.list.splice(i, 1); HM.list.unshift(h) } }
+      else { h = { url: op[1] }; HM.byUrl.set(h.url, h); HM.list.unshift(h) }
+      h.title = op[2]; h.visits = op[3]; h.t = op[4]; lowEnt(h)
+    }
+  }
+})
+const BM = { list: null, rev: null }
+function bmMirror(rev) {
+  if (BM.rev === rev && BM.list) return
+  BM.rev = rev
+  Promise.resolve(api.do('bmAll')).then(r => { if (Array.isArray(r)) BM.list = r.map(([url, title]) => lowEnt({ url, title })) }).catch(() => {})
+}
+api.on('state', s => bmMirror(s.bmRev))
+// loaded when the browser is idle after it starts, so the first Cmd K already has it
+;(window.requestIdleCallback || (f => setTimeout(f, 1500)))(() => hmLoad(), { timeout: 4000 })
+// the same matching and ranking as suggest() in src/main.js
+function localSuggest(typed) {
+  const q = typed.trim(); if (!q || !HM.list || !BM.list) return null
+  const s = q.toLowerCase()
+  const from = HM.last && s.startsWith(HM.last.s) ? HM.last.hits : HM.list
+  const hits = []
+  for (const h of from) if (h.u.includes(s) || h.ti.includes(s)) hits.push(h)
+  HM.last = { s, hits }
+  const score = h => (h.url.replace(/^https?:\/\/(www\.)?/, '').startsWith(s) ? 50 : 0) + h.visits
+  const hist = hits.slice(0, 40).sort((a, b) => score(b) - score(a)).slice(0, 5).map(h => ({ url: h.url, title: h.title }))
+  const tabs = []
+  for (const t of S.tabs) { if (tabs.length >= 3) break; const u = String(t.url || ''); if (!u.startsWith('lumen://newtab') && (u.toLowerCase().includes(s) || String(t.title || '').toLowerCase().includes(s))) tabs.push({ id: t.id, title: t.title, url: t.url, favicon: t.favicon }) }
+  const bookmarks = []
+  for (const b of BM.list) { if (bookmarks.length >= 3) break; if (b.u.includes(s) || b.ti.includes(s)) bookmarks.push({ url: b.url, title: b.title }) }
+  return { query: q, tabs, history: hist, bookmarks, search: [], local: true }
+}
+const sameList = (a, b, k) => (a || []).length === (b || []).length && (a || []).every((x, i) => x[k] === b[i][k] && (x.title || '') === (b[i].title || ''))
+
+function refresh(q) {
   const my = ++suggestSeq
   const typed = q.slice(0, cmdInput.selectionStart === cmdInput.selectionEnd ? q.length : cmdInput.selectionStart)
-  results = buildResults(typed, {}); sel = 0; renderResults()
-  const data = await api.do('suggest', typed)
-  if (my !== suggestSeq || overlayOpen !== 'cmd' || (typeof aiCmdBusy === 'function' && aiCmdBusy())) return
-  results = buildResults(typed, data || {}); sel = 0; renderResults()
-  // inline completion of a domain you have been to
-  if (typed && !/\s/.test(typed) && inlineAllowed && data && data.history) {
+  // history, bookmarks and this window's tabs, from the chrome's own copy: drawn now, in this task
+  const loc = localSuggest(typed)
+  let data = loc || {}, inlineRow = null
+  results = buildResults(typed, data); sel = 0
+  const inline = () => {
+    if (!(typed && !/\s/.test(typed) && inlineAllowed && data && data.history)) return
     const t = typed.toLowerCase()
     for (const h of data.history) {
       const bare = h.url.replace(/^https?:\/\/(www\.)?/, '').replace(/\/$/, '')
@@ -746,19 +829,48 @@ async function refresh(q) {
         if (completion.length > typed.length && cmdInput.value === typed) {
           cmdInput.value = typed + completion.slice(typed.length)
           cmdInput.setSelectionRange(typed.length, cmdInput.value.length)
-          results.unshift({ sec: '', icon: ICONS.globe, title: completion, sub: '', key: 'Open', go: () => go(completion) })
-          results = results.filter((r, i) => i === 0 || r.title !== typed)
-          sel = 0; renderResults()
+          inlineRow = { sec: '', icon: ICONS.globe, title: completion, sub: '', key: 'Open', go: () => go(completion) }
         }
         break
       }
     }
   }
+  const withInline = () => {
+    if (inlineRow && cmdInput.value.startsWith(typed) && cmdInput.value.length > typed.length) { results.unshift(inlineRow); results = results.filter((r, i) => i === 0 || r.title !== typed) }
+  }
+  inline(); withInline(); renderResults()
+  // the main process adds what only it knows (the calculator, units, parcels, other windows' tabs), then the
+  // search engine's suggestions follow after a short pause in typing
+  Promise.resolve(api.do('suggest', typed, { local: true })).then(full => {
+    if (my !== suggestSeq || overlayOpen !== 'cmd' || !full || (typeof aiCmdBusy === 'function' && aiCmdBusy())) return
+    const extra = full.calc != null || full.conv || full.parcel || full.shortcut
+    const same = loc && !extra && sameList(loc.tabs, full.tabs, 'id') && sameList(loc.history, full.history, 'url') && sameList(loc.bookmarks, full.bookmarks, 'url')
+    const webPending = full.webPending
+    if (!same) {
+      data = full
+      const keep = sel
+      results = buildResults(typed, data)
+      if (!loc) { inline(); sel = 0 } else sel = Math.max(0, Math.min(keep, results.length))
+      withInline(); sel = Math.min(sel, Math.max(0, results.length - 1)); renderResults()
+    }
+    if (!webPending || !typed.trim()) return
+    setTimeout(() => {
+      if (my !== suggestSeq || overlayOpen !== 'cmd') return
+      Promise.resolve(api.do('suggestWeb', typed)).then(search => {
+        if (my !== suggestSeq || overlayOpen !== 'cmd' || !search || !search.length || (typeof aiCmdBusy === 'function' && aiCmdBusy())) return
+        data = { ...data, search }
+        const keep = sel
+        results = buildResults(typed, data); withInline()
+        sel = Math.max(0, Math.min(keep, results.length - 1)); renderResults()
+      }).catch(() => {})
+    }, 90)
+  }).catch(() => {})
 }
 let inlineAllowed = true
 cmdInput.addEventListener('beforeinput', e => { inlineAllowed = /^insert/.test(e.inputType) && !e.inputType.includes('Paste') })
 let refreshT
-cmdInput.addEventListener('input', () => { clearTimeout(refreshT); refreshT = setTimeout(() => refresh(cmdInput.value), 40) })
+// the local results are drawn in the same task as the key (see refresh)
+cmdInput.addEventListener('input', () => { clearTimeout(refreshT); refresh(cmdInput.value) })
 cmdInput.addEventListener('keydown', e => {
   if (e.key === 'ArrowDown') { e.preventDefault(); sel = Math.min(results.length - 1, sel + 1); renderResults() }
   else if (e.key === 'ArrowUp') { e.preventDefault(); sel = Math.max(0, sel - 1); renderResults() }
@@ -852,12 +964,27 @@ function closePopover(instant) {
 addEventListener('keydown', e => { if (e.key === 'Escape') { if (overlayOpen === 'pop') closePopover(); else if (overlayOpen === 'peek') api.do('peekClose'); else if (findOpen) closeFind() } })
 
 const PERM_NAMES = { 'media-audio': 'Microphone', 'media-video': 'Camera', 'media-audio+video': 'Camera and microphone', geolocation: 'Location', notifications: 'Notifications', 'clipboard-read': 'Clipboard', 'display-capture': 'Screen sharing', midi: 'MIDI', midiSysex: 'MIDI control', 'idle-detection': 'Idle detection', 'window-management': 'Window management' }
+// what the site info and main menu popovers show is fetched ahead of time (after the state settles, and when the
+// pointer reaches their button), so a click draws them in the same frame; a fresher answer replaces the contents quietly
+const pre = { menu: null, site: null, siteUrl: '' }
+function prefetchMenu() { return Promise.resolve(api.do('menuInfo')).then(i => { if (i) pre.menu = i; return i }).catch(() => null) }
+function prefetchSite() { const u = S.url; if (!u || u.startsWith('lumen://')) return Promise.resolve(null); return Promise.resolve(api.do('siteInfo')).then(i => { if (i && S.url === u) { pre.site = i; pre.siteUrl = u } return i }).catch(() => null) }
+let preT = 0
+api.on('state', () => { clearTimeout(preT); preT = setTimeout(() => { prefetchMenu(); prefetchSite() }, 700) })
+const quietSwap = (marker, html) => { if (overlayOpen === 'pop' && pop.querySelector(marker)) { const st = pop.scrollTop; pop.innerHTML = html; pop.scrollTop = st } }
 async function openSiteInfo() {
   if (!S.url || S.url.startsWith('lumen://')) { openCmd('location'); return }
-  const info = await api.do('siteInfo')
+  const cached = pre.site && pre.siteUrl === S.url ? { ...pre.site, blocked: S.blocked || 0, adOff: !!S.adOff } : null
+  const info = cached || await prefetchSite()
   if (!info) return
+  const html = siteInfoHTML(info)
+  openPopover(html, $('#urlbar'))
+  if (cached) prefetchSite().then(f => { if (f && JSON.stringify(f) !== JSON.stringify(info)) quietSwap('.si-head', siteInfoHTML(f)) })
+  siteInfoWire()
+}
+function siteInfoHTML(info) {
   const perms = Object.entries(info.permissions || {})
-  const html = `
+  return `
     <div class="si-head chero ${info.secure ? 'ok' : 'bad'}">${heroBits('shield')}<span class="si-lock">${info.secure ? ICONS.lock : ICONS.unlock}</span><div class="grow"><h3>${esc(info.host)}</h3>
     <div class="sub">${info.secure ? 'Connection is secure' : 'Connection is not secure'}</div></div>${S.blocked > 0 ? `<span class="si-count"><b>${S.blocked > 999 ? '999+' : S.blocked}</b>blocked</span>` : ''}</div>
     <div class="mm-card" data-c="0"><div class="mm-label">This site</div>
@@ -872,7 +999,8 @@ async function openSiteInfo() {
     <div class="item" data-act="shot"><span class="ri">${ICONS.camera}</span><div class="grow">Take screenshot</div></div>
     </div><div class="mm-card danger" data-c="3">
     <div class="item danger" data-act="clear"><span class="ri">${ICONS.trash}</span><div class="grow">Clear data for this site<div class="small">Cookies and storage. Signs you out here.</div></div></div></div>`
-  openPopover(html, $('#urlbar'))
+}
+function siteInfoWire() {
   api.do('pageStats').then(st => { const el = $('#rtime'); if (el && st && st.words > 120) el.textContent = `${st.mins} min read, ${st.words.toLocaleString('en-US')} words` })
   pop.onclick = async e => {
     const z = e.target.closest('[data-z]')
@@ -912,11 +1040,16 @@ peekbar.addEventListener('click', e => { const b = e.target.closest('[data-pk]')
 
 // ---------------------------------------------------------------- Now playing
 const np = $('#nowplaying')
+let npSig = ''
 function renderNowPlaying() {
   const media = S.tabs.filter(t => t.id !== S.activeId && (t.playing || (t.mediaAt && Date.now() - t.mediaAt < 10 * 60000)))
     .sort((a, b) => (b.playing - a.playing) || (b.mediaAt - a.mediaAt))[0]
-  if (!media) { np.classList.remove('show'); np.innerHTML = ''; return }
+  if (!media) { np.classList.remove('show'); if (np.firstChild) np.innerHTML = ''; npSig = ''; return }
   np.classList.add('show'); np.classList.toggle('playing', !!media.playing)
+  // rebuilt only when what it shows changes, not on every state update while something plays
+  const sig = [media.id, media.playing, titleOf(media), media.url, media.favicon].join('\n')
+  if (sig === npSig && np.firstChild) return
+  npSig = sig
   np.innerHTML = `<button class="np-main" data-np="go" title="Go to tab"><span class="np-ico">${favHTML(media)}</span><span class="np-t"><b>${esc(titleOf(media))}</b><span>${media.playing ? '<i class="np-eq"><i></i><i></i><i></i></i>Playing' : 'Paused'}  ·  ${esc(hostOf(media.url))}</span></span></button>
     <button class="ib" data-np="toggle" title="${media.playing ? 'Pause' : 'Play'}">${media.playing ? '<svg viewBox="0 0 16 16" width="16" height="16" fill="currentColor"><rect x="4" y="3" width="3" height="10" rx="1"/><rect x="9" y="3" width="3" height="10" rx="1"/></svg>' : '<svg viewBox="0 0 16 16" width="16" height="16" fill="currentColor"><path d="M5 3.2v9.6c0 .5.6.8 1 .5l7-4.8c.4-.3.4-.8 0-1L6 2.7c-.4-.3-1 0-1 .5z"/></svg>'}</button>`
   np.dataset.tab = media.id
@@ -955,7 +1088,13 @@ function openShortcuts() {
 // ---------------------------------------------------------------- main menu
 const K = IS_MAC ? { cmd: 'Cmd', sh: 'Shift', opt: 'Opt' } : { cmd: 'Ctrl', sh: 'Shift', opt: 'Alt' }
 async function openMainMenu() {
-  const info = await api.do('menuInfo') || {}
+  const cached = pre.menu ? { ...pre.menu, zoom: S.zoom, update: updateState && updateState.status ? updateState : pre.menu.update } : null
+  const info = cached || await prefetchMenu() || {}
+  openPopover(mainMenuHTML(info), $('#btn-menu'), { above: !TOP, wide: true })
+  if (cached) prefetchMenu().then(f => { if (f && JSON.stringify({ ...f, zoom: 0, update: 0 }) !== JSON.stringify({ ...info, zoom: 0, update: 0 })) quietSwap('.mm-tiles', mainMenuHTML({ ...f, zoom: S.zoom })) })
+  mainMenuWire()
+}
+function mainMenuHTML(info) {
   const up = info.update || {}
   const updateLine = up.status === 'ready' ? `<div class="mm-update" data-mm="install">${ICONS.download}<span>Lumen ${esc(String(up.latest || '').replace(/^v/, ''))} is ready</span><b>Restart</b></div>`
     : up.status === 'downloading' ? `<div class="mm-update quiet">${ICONS.download}<span>Downloading update  ${Math.round((up.progress || 0))}%</span></div>` : ''
@@ -1000,7 +1139,9 @@ async function openMainMenu() {
     <div class="mm-card" data-c="0">
     ${item('layout', info.tabLayout === 'top' ? 'sidebarL' : 'tabsTop', info.tabLayout === 'top' ? 'Move tabs to the sidebar' : 'Move tabs to the top', `${K.opt} ${K.cmd} S`)}
     ${item('intro', 'play', 'Replay intro', '')}</div>`
-  openPopover(html, $('#btn-menu'), { above: !TOP, wide: true })
+  return html
+}
+function mainMenuWire() {
   pop.onclick = async e => {
     const b = e.target.closest('[data-mm]'); if (!b) return
     const a = b.dataset.mm
@@ -1692,11 +1833,16 @@ api.on('state', s => {
 
 // ---------------------------------------------------------------- bookmarks bar (tabs-on-top layout)
 let bmItems = [], bmT = 0
+let bmSig = ''
 function bmRender() {
   const el = $('#bmbar'), on = settings.bookmarksBar !== false && TOP && bmItems.length > 0 && !INCOGNITO
   el.classList.toggle('show', on)
-  if (!on) { el.innerHTML = ''; return }
-  el.innerHTML = bmItems.map((b, i) => `<button class="bm" data-i="${i}" title="${esc(b.url)}">${favHTML({ url: b.url, favicon: (() => { try { return new URL(b.url).origin + '/favicon.ico' } catch { return '' } })() })}<span>${esc(b.title || hostOf(b.url))}</span></button>`).join('') + `<button class="bm more" id="bm-more" title="All bookmarks">${ICONS.more}</button>`
+  if (!on) { el.innerHTML = ''; bmSig = ''; return }
+  // nothing changed (same bookmarks, same width): keep the bar as it is, no rebuild and no measuring
+  const sig = el.clientWidth + '\n' + bmItems.map(b => b.url + '\t' + (b.title || '')).join('\n')
+  if (sig === bmSig && el.firstChild) return
+  bmSig = sig
+  el.innerHTML = bmItems.map((b, i) => `<button class="bm" data-i="${i}" title="${esc(b.url)}">${lazyFav({ url: b.url, favicon: (() => { try { return new URL(b.url).origin + '/favicon.ico' } catch { return '' } })() })}<span>${esc(b.title || hostOf(b.url))}</span></button>`).join('') + `<button class="bm more" id="bm-more" title="All bookmarks">${ICONS.more}</button>`
   // hide chips that do not fit; they stay reachable from the menu at the end
   const more = $('#bm-more'), limit = el.clientWidth - 40; let hidden = 0
   for (const c of el.querySelectorAll('.bm:not(.more)')) { const over = c.offsetLeft + c.offsetWidth > limit; c.style.display = over ? 'none' : ''; if (over) hidden++ }
@@ -1706,7 +1852,7 @@ async function bmLoad() { try { bmItems = await api.do('bmList') || [] } catch {
 $('#bmbar').addEventListener('click', e => {
   const c = e.target.closest('.bm'); if (!c) return
   if (c.id === 'bm-more') {
-    openPopover(`<h3>Bookmarks</h3><div class="sub">${bmItems.length} saved</div><div class="bm-list" style="max-height:420px;overflow:auto">${bmItems.map((b, i) => `<div class="item" data-bm="${i}"><span class="ri">${favHTML({ url: b.url, favicon: (() => { try { return new URL(b.url).origin + '/favicon.ico' } catch { return '' } })() })}</span><div class="grow">${esc(b.title || hostOf(b.url))}<div class="small">${esc(hostOf(b.url))}</div></div></div>`).join('')}</div>`, c, { wide: true })
+    openPopover(`<h3>Bookmarks</h3><div class="sub">${bmItems.length} saved</div><div class="bm-list" style="max-height:420px;overflow:auto">${bmItems.map((b, i) => `<div class="item" data-bm="${i}"><span class="ri">${lazyFav({ url: b.url, favicon: (() => { try { return new URL(b.url).origin + '/favicon.ico' } catch { return '' } })() })}</span><div class="grow">${esc(b.title || hostOf(b.url))}<div class="small">${esc(hostOf(b.url))}</div></div></div>`).join('')}</div>`, c, { wide: true })
     pop.onclick = ev => { const it = ev.target.closest('[data-bm]'); if (it) { closePopover(true); api.do('navigate', bmItems[+it.dataset.bm].url, ev.metaKey || ev.ctrlKey) } }
     return
   }
@@ -1719,7 +1865,9 @@ $('#bmbar').addEventListener('contextmenu', e => {
   openPopover(`<div class="mini-head">${esc(b.title || hostOf(b.url))}</div><div class="item" data-a="open"><span class="ri">${ICONS.plus}</span><div class="grow">Open in new tab</div></div><div class="item danger" data-a="rm"><span class="ri">${ICONS.trash}</span><div class="grow">Remove bookmark</div></div>`, c, { mini: true })
   pop.onclick = ev => { const it = ev.target.closest('[data-a]'); if (!it) return; closePopover(true); if (it.dataset.a === 'open') api.do('navigate', b.url, true); else api.do('bmRemove', b.url).then(bmLoad) }
 })
-api.on('state', () => { clearTimeout(bmT); bmT = setTimeout(bmLoad, 250) })
+// the list is fetched again only when the bookmarks changed (the state carries a revision), not on every state
+let bmRev = null
+api.on('state', s => { if (s.bmRev === bmRev) return; bmRev = s.bmRev; clearTimeout(bmT); bmT = setTimeout(bmLoad, 250) })
 api.on('settings', () => setTimeout(bmRender, 50))
 window.addEventListener('resize', () => { clearTimeout(bmT); bmT = setTimeout(bmRender, 120) })
 bmLoad()

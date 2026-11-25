@@ -241,7 +241,7 @@
   #intro .home .wg span{display:block;font:600 10.5px/1.3 system-ui;color:#6d7080;margin-top:3px;white-space:nowrap}
   #intro .home .wg .bars{position:absolute;right:12px;bottom:12px;display:flex;align-items:flex-end;gap:3px;height:26px}
   #intro .home .wg .bars s{width:5px;border-radius:2px;background:var(--nova);opacity:.75;text-decoration:none}
-  @media (max-width:1000px){#intro .home .wgs{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;bottom:3%}#intro .home .wg{height:50px}#intro .home .wg .bars{display:none}#intro .home .scs{gap:12px}#intro .home .sc i{width:36px;height:36px;border-radius:12px}#intro .home .srch{height:40px;width:70%}}
+  @media (max-width:1000px){#intro .home .wgs{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;bottom:4%}#intro .home .wg{height:54px}#intro .home .wg:nth-child(n+3){display:none}#intro .home .hc{bottom:16%}#intro .home .wg .bars{display:none}#intro .home .scs{gap:12px}#intro .home .sc i{width:36px;height:36px;border-radius:12px}#intro .home .srch{height:40px;width:70%}}
   #intro .desk{position:relative;width:min(720px,72vw);height:min(396px,44vh);border-radius:20px;overflow:hidden;background:radial-gradient(120% 90% at 30% 20%,color-mix(in srgb,var(--a) 42%,#1a1d3a),#12142a 60%,#0b0c18)}
   #intro .desk::before{content:'';position:absolute;inset:0;background:radial-gradient(1px 1px at 12% 30%,#fff,transparent),radial-gradient(1px 1px at 40% 70%,#fff,transparent),radial-gradient(1.4px 1.4px at 66% 22%,#fff,transparent),radial-gradient(1px 1px at 84% 60%,#fff,transparent),radial-gradient(1px 1px at 22% 84%,#fff,transparent);opacity:.4}
   #intro .desk .menubar{position:relative;height:26px;background:rgba(255,255,255,.08);backdrop-filter:blur(14px);display:flex;align-items:center;justify-content:flex-end;gap:12px;padding:0 12px;font:600 11px -apple-system,system-ui,sans-serif;color:rgba(255,255,255,.8);box-shadow:inset 0 -1px 0 rgba(255,255,255,.06)}
@@ -788,7 +788,7 @@
       slamIn(tcs[i]); SFX.hit(i); pop(.12, 3)
       await sleep(BEAT)
     }
-    cutOut(tcs[tcs.length - 1])
+    hardCut(tcs[tcs.length - 1])
     // the count: one number per half beat, each a little brighter, and a ring of light goes out with every one
     const steps = ['1.0', '2.0', '3.0']
     anim(cnt, [{ opacity: 0 }, { opacity: 1 }], { duration: 200 })

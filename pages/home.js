@@ -89,9 +89,23 @@
   const icTile = (id, extra = '') => `<span class="hm-ic" style="--ic:oklch(from var(--accent) l c calc(h + ${WIDGETS[id].hue}))" aria-hidden="true">${ic(WIDGETS[id].icon)}</span>${extra}`
   const grip = id => `<button class="hm-grip" data-grip="${id}" title="Drag to move, or use the arrow keys" aria-label="Move ${esc(WIDGETS[id].name)}"><i></i><i></i><i></i><i></i><i></i><i></i></button>`
   const head = (id, title, right = '') => `<span class="hm-wm" aria-hidden="true">${ic(WIDGETS[id].icon)}</span><div class="hm-h">${icTile(id)}<b>${esc(title || WIDGETS[id].name)}</b>${right}${H.private ? '' : grip(id)}</div>`
-  const siteFace = url => { const h = hostOf(url) || '?'; return `<span class="hm-face" style="--th:${hue(h)}"><b>${esc(h[0].toUpperCase())}</b>${/^https?:/.test(url) ? `<img class="hm-fb" loading="lazy" decoding="async" src="${esc(new URL(url).origin)}/favicon.ico" alt="">` : ''}</span>` }
-  document.addEventListener('error', e => { if (e.target.classList && e.target.classList.contains('hm-fb')) e.target.remove() }, true)
-  document.addEventListener('load', e => { if (e.target.classList && e.target.classList.contains('hm-fb') && e.target.naturalWidth > 1) e.target.parentNode.classList.add('has-fb') }, true)
+  // site faces show the site's real logo: the sharpest icon Lumen saw on that site (its touch icon, an SVG or its
+  // biggest PNG), else its /apple-touch-icon.png, else its favicon; the glossy letter tile stays under it as the fallback
+  const siteFace = url => {
+    const h = hostOf(url) || '?', web = /^https?:/.test(url), o = web ? new URL(url).origin : ''
+    const ic = web && H.icons && H.icons[h]
+    const img = web ? `<img class="hm-lg" data-k="${ic ? esc(ic.k) : 'touch'}" data-alt="${esc(o)}/favicon.ico" decoding="async" src="${esc(ic ? ic.u : o + '/apple-touch-icon.png')}" alt="">` : ''
+    return `<span class="hm-face" style="--th:${hue(h)}"><b>${esc(h[0].toUpperCase())}</b>${img}</span>`
+  }
+  const logoFail = im => { const alt = im.dataset.alt; if (alt && im.src !== alt) { im.dataset.k = 'icon'; im.src = alt; im.dataset.alt = '' } else { const f = im.parentNode; im.remove(); f && f.classList.remove('lg', 'lg-touch', 'lg-icon', 'lg-small') } }
+  document.addEventListener('error', e => { if (e.target.classList && e.target.classList.contains('hm-lg')) logoFail(e.target) }, true)
+  document.addEventListener('load', e => {
+    const im = e.target; if (!im.classList || !im.classList.contains('hm-lg')) return
+    if (im.naturalWidth < 8) return logoFail(im)
+    const f = im.parentNode; f.classList.remove('lg-touch', 'lg-icon', 'lg-small')
+    f.classList.add('lg', im.dataset.k === 'touch' ? 'lg-touch' : 'lg-icon')
+    if (im.dataset.k !== 'touch' && im.naturalWidth < 48 && !/\.svg(\?|$)/i.test(im.src)) f.classList.add('lg-small')
+  }, true)
 
   // the banner layout (setting ntpBanner): Modern (words left, clock right, the default) or Classic (clock left, words
   // right). Only the arrangement changes; see .hm-hero.classic in home.css.
@@ -323,6 +337,10 @@
       H.hl = 0
       H.downloads = dl.slice(0, 3)
     } else { H.bookmarks = []; H.highlights = []; H.downloads = [] }
+    // the logos Lumen remembers for every site the widgets show, fetched in one go before the first paint
+    const hosts = new Set(); const addH = u => { const h = /^https?:/.test(u || '') && hostOf(u); if (h) hosts.add(h) }
+    for (const x of [...(H.sites || []), ...H.recent, ...((H.home && H.home.closed) || []), ...H.later, ...H.bookmarks, ...H.highlights.slice(0, 20)]) addH(x && x.url)
+    H.icons = H.private ? {} : await safe(() => L.invoke('siteIcons', [...hosts]), {})
     await loadWeather()
   }
 

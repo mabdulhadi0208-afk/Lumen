@@ -40,7 +40,7 @@ function applyLook(s) {
   const was = window.Glass && Glass.on
   if (window.Glass) { Glass.setMode(Jelly.getMode()); if (was !== Glass.on && typeof buildClock === 'function' && document.getElementById('clock')) buildClock() }
 }
-Jelly.init({ buttons: '.btn, .ib, .seg button, .swatches button, .nav a, .ntp .foot a, .customize, .cswatch, .gtoggle, .sb-eng', cards: '.tile, .err .ico, .key, .wpb, .thb, .icb, .rc, .pcard, .clkb, .hero-ic, .an-dial', press: '.list .row, a.row.hit' })
+Jelly.init({ buttons: '.btn, .ib, .seg button, .swatches button, .vc, .fchip, .npd-nav, .nav a, .ntp .foot a, .customize, .cswatch, .gtoggle, .sb-eng', cards: '.tile, .err .ico, .key, .wpb, .thb, .icb, .rc, .pcard, .clkb, .hero-ic, .an-dial', press: '.list .row, a.row.hit' })
 Jelly.smoothScroll(window)
 
 // ======================================================================= new tab
@@ -269,7 +269,7 @@ async function newTab() {
 const SECTIONS = [
   ['general', 'General', 'gear'], ['appearance', 'Appearance', 'moon'], ['apps', 'Surge and Koi', 'sparkle'], ['ai', 'Lumen AI', 'bolt'], ['privacy', 'Privacy and security', 'shield'],
   ['passwords', 'Passwords', 'key'], ['sync', 'Sync', 'reload'], ['import', 'Move from Chrome', 'arrowRight'],
-  ['extensions', 'Extensions', 'puzzle'], ['history', 'History', 'clock'], ['bookmarks', 'Bookmarks', 'star'],
+  ['extensions', 'Extensions', 'puzzle'], ['history', 'History', 'clock'], ['bookmarks', 'Bookmarks', 'star'], ['readlater', 'Read later', 'book'],
   ['parcels', 'Parcels', 'box'], ['downloads', 'Downloads', 'download'], ['about', 'About Lumen', 'info'],
 ]
 const NAV_GROUPS = { general: 'Browser', passwords: 'You', history: 'Library' }
@@ -283,7 +283,7 @@ function stagger(main) {
 }
 function shell(active) {
   CUR_SECTION = active
-  root.innerHTML = `<div class="shell"><nav class="nav"><div class="navhead"><img class="navlogo" src="lumen://assets/icon-${esc(S.appIcon || 'default')}.png" alt=""><h1>Lumen</h1></div><div class="navsearch">${ICONS.search}<input type="search" id="setq" placeholder="Search settings" spellcheck="false" autocomplete="off"><kbd>/</kbd></div>${SECTIONS.map(([id, label, icon]) => `${NAV_GROUPS[id] ? `<div class="navgrp">${NAV_GROUPS[id]}</div>` : ''}<a title="${label}" href="${id === 'history' || id === 'bookmarks' || id === 'downloads' || id === 'passwords' || id === 'extensions' || id === 'parcels' ? 'lumen://' + id : 'lumen://settings/' + id}" class="${id === active ? 'on' : ''}">${ICONS[icon]}${label}</a>`).join('')}</nav><main class="main rise" id="main"></main></div>`
+  root.innerHTML = `<div class="shell"><nav class="nav"><div class="navhead"><img class="navlogo" src="lumen://assets/icon-${esc(S.appIcon || 'default')}.png" alt=""><h1>Lumen</h1></div><div class="navsearch">${ICONS.search}<input type="search" id="setq" placeholder="Search settings" spellcheck="false" autocomplete="off"><kbd>/</kbd></div>${SECTIONS.map(([id, label, icon]) => `${NAV_GROUPS[id] ? `<div class="navgrp">${NAV_GROUPS[id]}</div>` : ''}<a title="${label}" href="${id === 'history' || id === 'bookmarks' || id === 'readlater' || id === 'downloads' || id === 'passwords' || id === 'extensions' || id === 'parcels' ? 'lumen://' + id : 'lumen://settings/' + id}" class="${id === active ? 'on' : ''}">${ICONS[icon]}${label}</a>`).join('')}</nav><main class="main rise" id="main"></main></div>`
   document.title = active === 'general' ? 'Settings' : (SECTIONS.find(s => s[0] === active) || [, 'Settings'])[1]
   bindSettingsSearch(active)
   stagger($('#main'))
@@ -323,78 +323,124 @@ function bindSettingsSearch(active) {
     m.innerHTML = `<h2>Search</h2><p class="lead">${hits.length ? hits.length + ' setting' + (hits.length > 1 ? 's' : '') + ' found' : 'Nothing matches that. Try another word.'}</p>` + (hits.length ? `<div class="card list">${hits.map(x => `<a class="row hit" href="lumen://settings/${x.id}#${encodeURIComponent(x.t)}"><div class="grow"><div class="t">${mark(x.t)}</div>${x.d ? `<div class="d">${mark(x.d)}</div>` : ''}</div><span class="pill">${esc(x.label)}</span><span class="hitgo">${ICONS.arrowRight}</span></a>`).join('')}</div>` : '')
   }
   if (!bindSettingsSearch.k) { bindSettingsSearch.k = true; addEventListener('keydown', e => { const t = document.activeElement; if (e.key === '/' && !e.metaKey && !e.ctrlKey && !(t && /INPUT|SELECT|TEXTAREA/.test(t.tagName)) && $('#setq')) { e.preventDefault(); $('#setq').focus() } }) }
-  q.onkeydown = e => { if (e.key === 'Enter') { const a = document.querySelector('#main a.hit'); if (a) location.href = a.href } else if (e.key === 'Escape') { q.value = ''; q.oninput() } }
+  // arrow keys walk the results, Enter opens the one that is lit
+  q.onkeydown = e => {
+    const hits = [...document.querySelectorAll('#main a.hit')], at = hits.findIndex(a => a.classList.contains('act'))
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+      if (!hits.length) return; e.preventDefault()
+      const n = (at + (e.key === 'ArrowDown' ? 1 : -1) + hits.length) % hits.length
+      hits.forEach((a, i) => a.classList.toggle('act', i === n)); hits[n].scrollIntoView({ block: 'nearest' })
+    } else if (e.key === 'Enter') { const a = hits[Math.max(0, at)]; if (a) location.href = a.href } else if (e.key === 'Escape') { q.value = ''; q.oninput() }
+  }
 }
 const sw = (key, on) => `<label class="switch"><input type="checkbox" data-set="${key}" ${on ? 'checked' : ''}><span></span></label>`
 const row = (t, d, ctl) => `<div class="row"><div class="grow"><div class="t">${t}</div>${d ? `<div class="d">${d}</div>` : ''}</div>${ctl || ''}</div>`
 const seg = (key, opts, val) => `<div class="seg" data-seg="${key}">${opts.map(([v, l]) => `<button data-v="${v}" class="${String(v) === String(val) ? 'on' : ''}">${l}</button>`).join('')}</div>`
+// ---------------------------------------------------------------- Lumen 4.0 settings pieces
+const tint = n => `oklch(from var(--accent) l c calc(h + ${n}))`
+// a feature tile: its icon and live state on top, a tiny picture of what it does, then the words. The whole tile flips the switch.
+function ft(key, on, title, desc, icon, hue, art = '', o = {}) {
+  return `<div class="ftile row ${on ? 'is-on' : ''} ${o.wide ? 'wide' : ''}" style="--ic:${tint(hue)}"><div class="ft-top"><span class="ft-ic">${ICONS[icon] || ''}</span><span class="ft-st"><i></i><b>${on ? 'On' : 'Off'}</b></span>${o.input || sw(key, on)}</div>${art ? `<div class="ft-art" aria-hidden="true">${art}</div>` : ''}<div class="grow"><div class="t">${title}</div>${desc ? `<div class="d">${desc}</div>` : ''}${o.extra || ''}</div></div>`
+}
+const ftCard = (h, tiles, before = '') => `<div class="card fcard">${h ? `<h3>${h}</h3>` : ''}${before}<div class="ftiles">${tiles.join('')}</div></div>`
+// live numbers at the top of a section
+const glance = items => `<div class="glance">${items.filter(Boolean).map(([v, l, icon, hue, cls = '', extra = '']) => `<div class="gl ${cls}" style="--ic:${tint(hue)}"><span class="gl-ic">${ICONS[icon] || ''}</span><div><b>${v}</b><span>${l}</span>${extra}</div></div>`).join('')}</div>`
+// big picture choices that behave like a segmented control (data-seg)
+const vchoice = (key, opts, val) => `<div class="vch" data-seg="${key}" role="group">${opts.map(([v, l, art, sub, inner]) => `<button class="vc ${String(v) === String(val) ? 'on' : ''}" data-v="${v}" aria-pressed="${String(v) === String(val)}"><span class="vc-art ${art}" aria-hidden="true">${inner || (art.startsWith('tabs') ? '<i></i><i></i><i></i>' : '<i></i>')}</span><b>${l}</b>${sub ? `<small>${sub}</small>` : ''}</button>`).join('')}</div>`
+const vrow = (t, d, body) => `<div class="row stack"><div class="grow"><div class="t">${t}</div>${d ? `<div class="d">${d}</div>` : ''}</div>${body}</div>`
+const chip = (txt, cls = '') => `<span class="fa-chip ${cls}">${txt}</span>`
+const K = (...k) => k.map(x => `<kbd>${x}</kbd>`).join('')
+const faIc = (icon, x) => `<span class="fa-ic ${x ? 'x' : ''}">${ICONS[icon] || ''}</span>`
+const ARR = `<span class="fa-arr">${ICONS.arrowRight}</span>`
+const MOD = () => PLATFORM === 'darwin' ? 'Cmd' : 'Ctrl'
 function bindSettings(m) {
   m.querySelectorAll('[data-set]').forEach(el => el.addEventListener('change', () => { S[el.dataset.set] = el.checked; L.invoke('setSetting', el.dataset.set, el.checked) }))
   m.querySelectorAll('[data-seg]').forEach(g => g.addEventListener('click', e => {
     const b = e.target.closest('button'); if (!b) return
-    g.querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b))
+    g.querySelectorAll('button').forEach(x => { x.classList.toggle('on', x === b); if (x.hasAttribute('aria-pressed')) x.setAttribute('aria-pressed', String(x === b)) })
     let v = b.dataset.v; if (/^\d+$/.test(v)) v = parseInt(v)
     S[g.dataset.seg] = v; L.invoke('setSetting', g.dataset.seg, v)
   }))
   m.querySelectorAll('select[data-sel]').forEach(el => el.addEventListener('change', () => { S[el.dataset.sel] = el.value; L.invoke('setSetting', el.dataset.sel, el.value) }))
+  bindTiles(m)
+}
+// a tile lights up with its switch, and a click anywhere on the tile flips the switch
+function bindTiles(m) {
+  m.querySelectorAll('.ftile').forEach(t => {
+    if (t.dataset.bound) return; t.dataset.bound = '1'
+    const i = t.querySelector('.ft-top input[type=checkbox]'); if (!i) return
+    const paint = () => { t.classList.toggle('is-on', i.checked); const b = t.querySelector('.ft-st b'); if (b) b.textContent = i.checked ? 'On' : 'Off' }
+    i.addEventListener('change', paint)
+    t.addEventListener('click', e => { if (e.target.closest('.switch, button, select, a, input, label, .seg, .vch')) return; if (!i.disabled) i.click() })
+  })
 }
 
 async function general(m) {
   const isDefault = await L.invoke('defaultBrowser')
-  m.innerHTML = `<h2>General</h2><p class="lead">The basics.</p>
-  <div class="card">
+  const eng = ENGINES[S.searchEngine] || 'Google'
+  const sleep = { 0: 'Never', 15: '15 min', 30: '30 min', 60: '1 hour', 240: '4 hours' }[S.sleepTabsAfterMin || 0] || 'Never'
+  const arch = { 0: 'Never', 12: '12 hours', 24: '1 day', 168: '1 week' }[S.archiveTabsAfterH || 0] || 'Never'
+  const on = k => S[k] !== false
+  m.innerHTML = `<h2>General</h2><p class="lead">How Lumen opens, searches, plays and tidies up after itself. Every change works right away.</p>
+  ${glance([[isDefault ? 'Default' : 'Not default', 'Your browser', 'globe', 0, isDefault ? 'good' : ''], [esc(eng), 'Searches with', 'search', 50], [sleep, 'Tabs sleep after', 'moon', 200], [arch, 'Unused tabs archived', 'layers', 260]])}
+  <div class="card"><h3>ESSENTIALS</h3>
     ${row('Default browser', isDefault ? 'Lumen is your default browser.' : 'Open links from other apps in Lumen.', isDefault ? '<span class="pill">Default</span>' : '<button class="btn primary" id="mkdef">Make default</button>')}
-    ${row('Search engine', 'Used in the address bar and on the new tab page.', `<select data-sel="searchEngine">${Object.entries(ENGINES).map(([k, v]) => `<option value="${k}" ${k === S.searchEngine ? 'selected' : ''}>${esc(v)}</option>`).join('')}</select>`)}
-    ${row('Search suggestions', 'Show suggestions from your search engine as you type.', sw('showSuggestions', S.showSuggestions))}
-    ${row('Open where you left off', 'Bring back your tabs when Lumen starts. Pinned tabs always come back.', sw('restoreSession', S.restoreSession))}
-    ${row('Show frequently visited on new tab', '', sw('homeTiles', S.homeTiles))}
-    ${row('Translate pages into', 'Lumen offers to translate pages in other languages. Right-click selected text to translate just that.', `<select data-sel="translateTo">${[['', 'System language'], ['en', 'English'], ['ar', 'Arabic'], ['ur', 'Urdu'], ['hi', 'Hindi'], ['fr', 'French'], ['es', 'Spanish'], ['de', 'German'], ['tr', 'Turkish'], ['zh-CN', 'Chinese'], ['ja', 'Japanese'], ['ko', 'Korean'], ['ru', 'Russian'], ['pt', 'Portuguese'], ['it', 'Italian'], ['id', 'Indonesian']].map(([v, l]) => `<option value="${v}" ${v === (S.translateTo || '') ? 'selected' : ''}>${l}</option>`).join('')}</select>`)}
-    ${row('Offer to translate', 'Ask when a page is in another language.', sw('offerTranslate', S.offerTranslate !== false))}
-    ${row('Flip the page direction', 'When Arabic turns into English (or the other way), the layout switches from right-to-left to left-to-right to match.', sw('translateFlipDir', S.translateFlipDir !== false))}
-    ${row('Picture in picture when you switch tabs', 'A playing video pops out into a floating window when you leave its tab, and back in when you return.', sw('autoPip', S.autoPip !== false))}
+    ${row('Search engine', 'Used in the address bar and on the new tab page.', `<select data-sel="searchEngine" aria-label="Search engine">${Object.entries(ENGINES).map(([k, v]) => `<option value="${k}" ${k === S.searchEngine ? 'selected' : ''}>${esc(v)}</option>`).join('')}</select>`)}
   </div>
-  <div class="card"><h3>QUALITY OF LIFE</h3>
-    ${row('Clean links', 'Removes tracking junk like utm_source and fbclid from links before they open.', sw('cleanLinks', S.cleanLinks !== false))}
-    ${row('Swipe to go back and forward', 'Two-finger swipe left or right on the trackpad.', sw('swipeNav', S.swipeNav !== false))}
-    ${row('Video speed keys', 'Shift + &gt; speeds up and Shift + &lt; slows down any video, on any site.', sw('videoSpeedKeys', S.videoSpeedKeys !== false))}
-    ${row('Hide cookie pop-ups', 'Blocks cookie consent banners and other annoyances along with ads.', sw('hideCookieBanners', S.hideCookieBanners !== false))}
-    ${row('Block notification requests', 'Sites never ask to send you notifications.', sw('blockNotifications', !!S.blockNotifications))}
-    ${row('Search shortcuts', 'Type yt, gh, w, amz, noon, maps, img, r, x, sp, tr, so, npm, news or ai, then a space and your search. Example: yt lofi beats.', sw('searchShortcuts', S.searchShortcuts !== false))}
-    ${row('Remember zoom for each site', 'A site you zoomed stays zoomed next time.', sw('rememberZoom', S.rememberZoom !== false))}
-    ${row('Scroll on the tab bar to switch tabs', 'Works when tabs are on top.', sw('wheelTabs', S.wheelTabs !== false))}
-    ${row('Only play sound from the tab you are on', 'Other tabs are muted while you look at something else.', sw('soundActiveOnly', !!S.soundActiveOnly))}
-    ${row('Open new tabs from links in the background', 'Links that open a new tab stay behind the page you are reading.', sw('linksBackground', !!S.linksBackground))}
-    ${row('Ask before quitting', 'Asks before Cmd Q closes a window with several tabs.', sw('confirmQuit', S.confirmQuit !== false))}
+  ${ftCard('EVERYDAY', [
+    ft('restoreSession', !!S.restoreSession, 'Open where you left off', 'Bring back your tabs when Lumen starts. Pinned tabs always come back.', 'reload', 0, `<span class="fa-tabs"><i class="on"></i><i></i><i></i></span>${ARR}<span class="fa-tabs"><i class="on"></i><i></i><i></i></span>`),
+    ft('showSuggestions', !!S.showSuggestions, 'Search suggestions', 'Show suggestions from your search engine as you type.', 'search', 30, '<span class="fa-list"><i>lofi be</i><i>lofi beats</i><i>lofi beats to study</i></span>'),
+    ft('homeTiles', !!S.homeTiles, 'Show frequently visited on new tab', 'The sites you open most, one click away on every new tab.', 'star', 60, `${faIc('globe')}${faIc('star')}${faIc('book')}${faIc('plus')}`),
+    ft('searchShortcuts', on('searchShortcuts'), 'Search shortcuts', 'Type yt, gh, w, amz, noon, maps, img, r, x, sp, tr, so, npm, news or ai, then a space and your search. Example: yt lofi beats.', 'bolt', 90, `${chip('yt', 'ac')}${chip('lofi beats')}${ARR}${faIc('play')}`),
+    ft('cleanLinks', on('cleanLinks'), 'Clean links', 'Removes tracking junk like utm_source and fbclid from links before they open.', 'link', 120, chip('shop.com/item<s>?utm_source=mail</s>', 'mono')),
+    ft('linksBackground', !!S.linksBackground, 'Open new tabs from links in the background', 'Links that open a new tab stay behind the page you are reading.', 'tabs', 150, `<span class="fa-tabs"><i class="on"></i><i></i><i class="zz"></i></span>`),
+  ])}
+  ${ftCard('PAGES AND MEDIA', [
+    ft('autoPip', S.autoPip !== false, 'Picture in picture when you switch tabs', 'A playing video pops out into a floating window when you leave its tab, and back in when you return.', 'pip', 180, '<span class="fa-page"><span class="vid"></span></span>'),
+    ft('videoSpeedKeys', on('videoSpeedKeys'), 'Video speed keys', 'Shift + &gt; speeds up and Shift + &lt; slows down any video, on any site.', 'play', 210, `${K('Shift', '&gt;')}${chip('1.5x', 'ac')}`),
+    ft('soundActiveOnly', !!S.soundActiveOnly, 'Only play sound from the tab you are on', 'Other tabs are muted while you look at something else.', 'speaker', 240, `${faIc('speaker')}${faIc('muted', true)}${faIc('muted', true)}`),
+    ft('rememberZoom', on('rememberZoom'), 'Remember zoom for each site', 'A site you zoomed stays zoomed next time.', 'search', 270, `${chip('example.com')}${chip('125%', 'ac')}`),
+    ft('swipeNav', on('swipeNav'), 'Swipe to go back and forward', 'Two-finger swipe left or right on the trackpad.', 'back', 300, `${faIc('back')}<span class="fa-page"></span>${faIc('forward')}`),
+    ft('wheelTabs', on('wheelTabs'), 'Scroll on the tab bar to switch tabs', 'Works when tabs are on top.', 'tabsTop', 330, '<span class="fa-tabs"><i></i><i class="on"></i><i></i><i></i></span>'),
+  ])}
+  ${ftCard('A CALMER WEB', [
+    ft('hideCookieBanners', on('hideCookieBanners'), 'Hide cookie pop-ups', 'Blocks cookie consent banners and other annoyances along with ads.', 'shield', 140, `<span class="fa-page"><span class="ban"></span></span>${ARR}<span class="fa-page"></span>`),
+    ft('blockNotifications', !!S.blockNotifications, 'Block notification requests', 'Sites never ask to send you notifications.', 'info', 20, `${chip('Allow notifications?')}${faIc('close', true)}`),
+    ft('confirmQuit', on('confirmQuit'), 'Ask before quitting', `Asks before ${MOD()} Q closes a window with several tabs.`, 'winClose', 350, `${K(MOD(), 'Q')}${ARR}${chip('Quit Lumen?', 'ac')}`),
+    ft('parcelsAuto', S.parcelsAuto === true, 'Save orders to Parcels automatically', 'When you place an order, the order page is saved so you can get back to it in one click, and it stays until it is delivered.', 'box', 100, `${chip('Order placed')}${ARR}${faIc('box')}`),
+    ft('askWhereToSave', !!S.askWhereToSave, 'Ask where to save each file', 'Otherwise files go straight to your Downloads folder.', 'download', 200, `${faIc('download')}${ARR}${faIc('folder')}`),
+  ])}
+  <div class="card fcard"><h3>TRANSLATE</h3>
+    ${row('Translate pages into', 'Lumen offers to translate pages in other languages. Right-click selected text to translate just that.', `<select data-sel="translateTo" aria-label="Translate pages into">${[['', 'System language'], ['en', 'English'], ['ar', 'Arabic'], ['ur', 'Urdu'], ['hi', 'Hindi'], ['fr', 'French'], ['es', 'Spanish'], ['de', 'German'], ['tr', 'Turkish'], ['zh-CN', 'Chinese'], ['ja', 'Japanese'], ['ko', 'Korean'], ['ru', 'Russian'], ['pt', 'Portuguese'], ['it', 'Italian'], ['id', 'Indonesian']].map(([v, l]) => `<option value="${v}" ${v === (S.translateTo || '') ? 'selected' : ''}>${l}</option>`).join('')}</select>`)}
+    <div class="ftiles">
+      ${ft('offerTranslate', S.offerTranslate !== false, 'Offer to translate', 'Ask when a page is in another language.', 'translate', 60, `${chip('Bonjour')}${ARR}${chip('Hello', 'ac')}`)}
+      ${ft('translateFlipDir', S.translateFlipDir !== false, 'Flip the page direction', 'When Arabic turns into English (or the other way), the layout switches from right-to-left to left-to-right to match.', 'split', 100, `${chip('RTL')}${ARR}${chip('LTR', 'ac')}`)}
+    </div>
+  </div>
+  <div class="card vcard" style="--ic:${tint(250)}"><div class="vart" aria-hidden="true"><span class="fa-page"></span><span class="fa-page soft"></span><span class="fa-page dk"></span><span class="fa-page deep"></span><span class="lbl">Every site, your way</span></div><div class="vrows"><h3>DARK MODE</h3>
     ${row('Dark mode for every website', 'Turns light sites dark and leaves sites that are already dark alone. Turn it off for one site from the lock icon in the address bar.', sw('forceDark', !!S.forceDark))}
     ${row('Dark mode style', 'Soft is easier on the eyes, Deep is true black.', seg('darkStyle', [['soft', 'Soft'], ['balanced', 'Balanced'], ['deep', 'Deep']], S.darkStyle || 'balanced'))}
-  </div>
-  <div class="card"><h3>PERFORMANCE</h3>
-    ${row('Sleep inactive tabs', 'Frees memory from tabs you have not looked at in a while. They wake up instantly when you click them.', seg('sleepTabsAfterMin', [[0, 'Never'], [15, '15 min'], [30, '30 min'], [60, '1 hour'], [240, '4 hours']], S.sleepTabsAfterMin))}
-  </div>
-  <div class="card"><h3>PARCELS</h3>
-    ${row('Save orders to Parcels automatically', 'When you place an order, the order page is saved so you can get back to it in one click, and it stays until it is delivered.', sw('parcelsAuto', S.parcelsAuto === true))}
-  </div>
-  <div class="card"><h3>TIDY TABS</h3>
+  </div></div>
+  <div class="card vcard" style="--ic:${tint(200)}"><div class="vart" aria-hidden="true"><span class="fa-tabs"><i class="on"></i><i></i><i class="zz"></i><i class="zz"></i><i class="zz"></i><i></i></span><span class="lbl">Tabs that look after themselves</span></div><div class="vrows"><h3>TABS</h3>
+    ${row('Sleep inactive tabs', 'Frees memory from tabs you have not looked at in a while. They wake up instantly when you click them.', seg('sleepTabsAfterMin', [[0, 'Never'], [15, '15 min'], [30, '30 min'], [60, '1 hour'], [240, '4 hours']], S.sleepTabsAfterMin || 0))}
     ${row('Archive tabs you have not used', 'Tabs you have not opened in this long close themselves. Pinned tabs and tabs playing sound stay. Find them again in History, Archived tabs.', seg('archiveTabsAfterH', [[0, 'Never'], [12, '12 hours'], [24, '1 day'], [168, '1 week']], S.archiveTabsAfterH || 0))}
-  </div>
-  <div class="card"><h3>DOWNLOADS</h3>
-    ${row('Ask where to save each file', 'Otherwise files go straight to your Downloads folder.', sw('askWhereToSave', S.askWhereToSave))}
-  </div>`
+  </div></div>`
   bindSettings(m)
-  const rs = $('#restart'); if (rs) rs.onclick = () => L.invoke('restart')
   const b = $('#mkdef'); if (b) b.onclick = async () => { await L.invoke('defaultBrowser', 'set'); setTimeout(() => general(m), 1200) }
 }
 
 async function aiPage(m) {
   const st = await L.invoke('aiStatus') || {}
-  m.innerHTML = `<h2>Lumen AI</h2><p class="lead">Summarize any page, ask questions about it, or get a highlighted paragraph explained. Open it with Shift ${PLATFORM === 'darwin' ? 'Cmd' : 'Ctrl'} A, from the menu, or by right-clicking a page.</p>
+  const bars = hs => hs.map(h => `<i style="height:${h}px"></i>`).join('')
+  m.innerHTML = `<h2>Lumen AI</h2><p class="lead">Summarize any page, ask questions about it, or get a highlighted paragraph explained. Open it with Shift ${MOD()} A, from the menu, or by right-clicking a page.</p>
+  <div class="glance aiuses">${[['book', 'Summarize', 'Any page in a few lines'], ['search', 'Ask', 'Questions about the page'], ['sparkle', 'Explain', 'Right-click selected text']].map(([i, t, d], n) => `<div class="gl" style="--ic:${tint(n * 70)}"><span class="gl-ic">${ICONS[i]}</span><div><b>${t}</b><span>${d}</span></div></div>`).join('')}</div>
   <div class="card"><h3>CLAUDE API KEY</h3>
-    ${row(st.ready ? 'Key saved' : 'No key yet', st.ready ? 'Your key is stored encrypted on this device and only sent to Anthropic.' : 'Lumen AI runs on Claude with your own API key. Create one at console.anthropic.com, under API Keys, then paste it here.', st.ready ? '<span class="pill">Connected</span><button class="btn sm" id="aikeyrm">Remove</button>' : '')}
-    <div class="row"><input id="aikey" type="password" placeholder="sk-ant-..." autocomplete="off" spellcheck="false" style="flex:1"><button class="btn primary" id="aikeysave">${st.ready ? 'Replace' : 'Save key'}</button></div>
+    <div class="row aikeyrow"><span class="aiorb ${st.ready ? '' : 'off'}">${ICONS.sparkle}</span><div class="grow"><div class="t">${st.ready ? 'Key saved' : 'No key yet'}</div><div class="d">${st.ready ? 'Your key is stored encrypted on this device and only sent to Anthropic.' : 'Lumen AI runs on Claude with your own API key. Create one at console.anthropic.com, under API Keys, then paste it here.'}</div></div>${st.ready ? '<span class="pill">Connected</span><button class="btn sm" id="aikeyrm">Remove</button>' : ''}</div>
+    <div class="row keyfield"><input id="aikey" type="password" placeholder="sk-ant-..." autocomplete="off" spellcheck="false" aria-label="Claude API key"><button class="btn primary" id="aikeysave">${st.ready ? 'Replace' : 'Save key'}</button></div>
   </div>
-  <div class="card"><h3>OPTIONS</h3>
-    ${row('Model', 'Fast is quicker and cheaper. Smart writes deeper answers.', seg('aiModel', [['fast', 'Fast'], ['smart', 'Smart']], S.aiModel || 'fast'))}
-    ${row('Use AI to sort tab groups', 'When on, Sort tabs into groups sends your tab titles and links to Claude for smarter groups. When off, Lumen groups tabs on your device.', sw('aiTabGroups', S.aiTabGroups !== false))}
+  <div class="card fcard"><h3>OPTIONS</h3>
+    ${vrow('Model', 'Fast is quicker and cheaper. Smart writes deeper answers.', vchoice('aiModel', [['fast', 'Fast', 'mdl', 'Quick answers, low cost', `<em>Fast</em>${bars([14, 22, 18, 28])}`], ['smart', 'Smart', 'mdl', 'Deeper, more careful answers', `<em>Smart</em>${bars([24, 36, 46, 56])}`]], S.aiModel || 'fast'))}
+    <div class="ftiles">${ft('aiTabGroups', S.aiTabGroups !== false, 'Use AI to sort tab groups', 'When on, Sort tabs into groups sends your tab titles and links to Claude for smarter groups. When off, Lumen groups tabs on your device.', 'layers', 140, `<span class="fa-tabs"><i class="on"></i><i class="on"></i></span><span class="fa-tabs"><i></i><i></i><i></i></span>`)}</div>
   </div>
   <p class="note">Page text is sent to Anthropic only when you ask Lumen AI something. Nothing is sent in the background.</p>`
   bindSettings(m)
@@ -406,34 +452,52 @@ async function aiPage(m) {
   const rm = $('#aikeyrm'); if (rm) rm.onclick = async () => { await L.invoke('aiSetKey', ''); aiPage(m) }
 }
 
+// Appearance: a live picture of your browser at the top that follows every change
+function paintPreview() {
+  const a = $('#apv'); if (!a) return
+  const th = LUMEN_THEMES[S.browserTheme] || null, tc = S.themeCustom || {}
+  const dark = S.theme === 'dark' || (S.theme !== 'light' && matchMedia('(prefers-color-scheme: dark)').matches)
+  const bg = S.browserTheme === 'custom' ? `linear-gradient(${tc.angle || 135}deg, ${tc.a || '#5b8cff'}, ${tc.b || '#8a63f2'})` : (th && th.bg) || ''
+  const chromeDark = S.browserTheme && S.browserTheme !== 'default' ? (S.browserTheme === 'custom' ? dark : !!(th && th.dark)) : dark
+  a.classList.toggle('dark', chromeDark); a.classList.toggle('side', S.tabLayout === 'side'); a.classList.toggle('compact', !!S.compact)
+  a.classList.toggle('no-bm', S.bookmarksBar === false || S.tabLayout === 'side')
+  a.style.background = bg
+  const f = $('#apvf'); if (f) f.innerHTML = [S.tabLayout === 'side' ? 'Tabs in the sidebar' : 'Tabs on top', S.compact ? 'Compact' : 'Roomy', (S.browserTheme === 'custom' ? 'Your colors' : (th ? th.name : 'Default')) + ' theme', { jelly: 'Jelly', lively: 'Jelly', calm: 'Calm', off: 'No' }[S.motion || 'jelly'] + ' motion', { system: 'Follows your computer', light: 'Light', dark: 'Dark' }[S.theme || 'system']].map(x => `<span><i></i>${esc(x)}</span>`).join('')
+}
 function appearance(m) {
   const colors = ['#5b8cff', '#7c5cff', '#e5487d', '#f0763b', '#e8b22c', '#2fb67c', '#16a3b8', '#7a7d87']
-  m.innerHTML = `<h2>Appearance</h2><p class="lead">Make it yours.</p>
-  <div class="card">
-    ${row('Tabs', 'Down the side in a sidebar, or across the top like Chrome.', seg('tabLayout', [['side', 'Sidebar'], ['top', 'Top']], S.tabLayout || 'top'))}
-    ${row('Compact mode', 'Thinner bars and tabs, more room for the page.', sw('compact', !!S.compact))}
-    ${row('Bookmarks bar', 'Shows your bookmarks under the address bar when tabs are on top.', sw('bookmarksBar', S.bookmarksBar !== false))}
-    ${row('Interface sounds', 'Soft pops when you open, close and switch tabs.', sw('uiSounds', !!S.uiSounds))}
+  const own = S.accent && !colors.includes(S.accent)
+  m.innerHTML = `<h2>Appearance</h2><p class="lead">Make it yours. The picture below follows every change, and so does all of Lumen.</p>
+  <div class="apv-stage"><div class="apv" id="apv" role="img" aria-label="A preview of your browser"><div class="apv-bar"><span class="apv-dots"><i></i><i></i><i></i></span><span class="apv-tabs"><i class="on"></i><i></i><i></i></span></div><div class="apv-url">lumen</div><div class="apv-bm"><i></i><i></i><i></i><i></i></div><div class="apv-body"><div class="apv-side"><i class="on"></i><i></i><i></i><i></i></div><div class="apv-page"><b></b><i></i><i></i><i></i><em></em></div></div></div>
+    <div class="apv-tx"><h3>Your Lumen</h3><p>Tabs, theme, color and motion, all in one look. Change anything on this page and watch it here.</p><div class="apv-facts" id="apvf"></div></div></div>
+  <div class="card fcard"><h3>LAYOUT</h3>
+    ${vrow('Tabs', 'Down the side in a sidebar, or across the top like Chrome.', vchoice('tabLayout', [['top', 'Top', 'tabs-top', 'Across the top, like Chrome'], ['side', 'Sidebar', 'tabs-side', 'Down the side, room for long titles']], S.tabLayout || 'top'))}
+    <div class="ftiles">
+      ${ft('compact', !!S.compact, 'Compact mode', 'Thinner bars and tabs, more room for the page.', 'minus', 40, '<span class="fa-tabs"><i class="on"></i><i></i><i></i></span>')}
+      ${ft('bookmarksBar', S.bookmarksBar !== false, 'Bookmarks bar', 'Shows your bookmarks under the address bar when tabs are on top.', 'star', 90, `${chip(ICONS.star + 'Docs')}${chip(ICONS.star + 'Mail')}${chip(ICONS.star + 'News')}`)}
+      ${ft('uiSounds', !!S.uiSounds, 'Interface sounds', 'Soft pops when you open, close and switch tabs.', 'speaker', 140, `${faIc('speaker')}${chip('pop', 'ac')}${chip('tick')}`)}
+    </div>
   </div>
   <div class="card"><h3>BROWSER THEME</h3>
     <div class="themes">${Object.entries(LUMEN_THEMES).map(([k, v]) => `<button class="thb ${k === (S.browserTheme || 'default') ? 'on' : ''}" data-th="${k}"><i style="background:${v.bg || 'linear-gradient(135deg, #e9ecf2, #d9dde6)'}"><b class="${v.dark ? 'dk' : ''}"></b></i><span>${v.name}</span></button>`).join('')}
       <button class="thb ${S.browserTheme === 'custom' ? 'on' : ''}" data-th="custom"><i id="cprev" style="background:linear-gradient(${(S.themeCustom || {}).angle || 135}deg, ${(S.themeCustom || {}).a || '#5b8cff'}, ${(S.themeCustom || {}).b || '#8a63f2'})"><b></b></i><span>Custom</span></button></div>
     <div class="row" id="customrow" style="${S.browserTheme === 'custom' ? '' : 'display:none'}"><div class="grow"><div class="t">Your colors</div><div class="d">Pick two colors for the gradient.</div></div>
-      ${[['ca', (S.themeCustom || {}).a || '#5b8cff', 'First color'], ['cb', (S.themeCustom || {}).b || '#8a63f2', 'Second color']].map(([id, v, t]) => `<label class="cswatch" title="${t}" style="--c:${esc(v)}"><input type="color" id="${id}" value="${esc(v)}"><i></i><span>${esc(v)}</span></label>`).join('')}
-      <span class="angchip" style="--a:${(S.themeCustom || {}).angle || 135}deg"><em></em><select id="cang">${[90, 135, 180, 225].map(a => `<option value="${a}" ${a === ((S.themeCustom || {}).angle || 135) ? 'selected' : ''}>${a} degrees</option>`).join('')}</select></span>
+      ${[['ca', (S.themeCustom || {}).a || '#5b8cff', 'First color'], ['cb', (S.themeCustom || {}).b || '#8a63f2', 'Second color']].map(([id, v, t]) => `<label class="cswatch" title="${t}" style="--c:${esc(v)}"><input type="color" id="${id}" value="${esc(v)}" aria-label="${t}"><i></i><span>${esc(v)}</span></label>`).join('')}
+      <span class="angchip" style="--a:${(S.themeCustom || {}).angle || 135}deg"><em></em><select id="cang" aria-label="Gradient angle">${[90, 135, 180, 225].map(a => `<option value="${a}" ${a === ((S.themeCustom || {}).angle || 135) ? 'selected' : ''}>${a} degrees</option>`).join('')}</select></span>
       <label class="gtoggle">Glass<span class="switch"><input type="checkbox" id="cglass" ${(S.themeCustom || {}).glass ? 'checked' : ''}><span></span></span></label></div>
   </div>
   <div class="card"><h3>APP ICON</h3>
     <div class="icons">${['default', 'midnight', 'sunset', 'mint', 'ocean', 'gold', 'rose', 'mono'].map(k => `<button class="icb ${k === (S.appIcon || 'default') ? 'on' : ''}" data-ic="${k}"><img src="lumen://assets/icon-${k}.png" alt=""><span>${k[0].toUpperCase() + k.slice(1)}</span></button>`).join('')}</div>
     <p class="note" style="padding:0 18px 14px">Changes Lumen's icon in the Dock while it's running.</p>
   </div>
-  <div class="card"><h3>COLORS AND MOTION</h3>
-    ${row('Theme', '', seg('theme', [['system', 'System'], ['light', 'Light'], ['dark', 'Dark']], S.theme))}
-    ${row('Accent color', '', `<div class="swatches">${colors.map(c => `<button data-c="${c}" style="background:${c};color:${c}" class="${c === S.accent ? 'on' : ''}"></button>`).join('')}</div>`)}
-    ${row('Motion', 'Jelly is the default: things overshoot a little and settle with a soft wobble. Calm barely overshoots. Off removes animation. Scrolling always glides straight to a stop.', seg('motion', [['jelly', 'Jelly'], ['calm', 'Calm'], ['off', 'Off']], S.motion === 'lively' ? 'jelly' : S.motion))}
+  <div class="card fcard"><h3>COLORS AND MOTION</h3>
+    ${vrow('Theme', 'Follow your computer, or pick one.', vchoice('theme', [['system', 'System', 'th-system', 'Matches your computer'], ['light', 'Light', 'th-light', 'Porcelain and glass'], ['dark', 'Dark', 'th-dark', 'Deep ink and star dust']], S.theme || 'system'))}
+    ${row('Accent color', 'Every glow, gradient and highlight in Lumen comes from this one color.', `<div class="swatches big">${colors.map(c => `<button data-c="${c}" style="background:${c};color:${c}" class="${c === S.accent ? 'on' : ''}" aria-label="Accent ${c}"></button>`).join('')}<label class="accent-custom ${own ? 'on' : ''}" title="Your own color" style="--cc:${own ? esc(S.accent) : '#fff'}"><input type="color" id="accentc" value="${esc(own ? S.accent : '#5b8cff')}" aria-label="Your own accent color"></label></div>`)}
+    ${vrow('Motion', 'Jelly is the default: things overshoot a little and settle with a soft wobble. Calm barely overshoots. Off removes animation. Scrolling always glides straight to a stop. Point at one to feel it.', vchoice('motion', [['jelly', 'Jelly', 'mo mo-jelly', 'Overshoots, then settles'], ['calm', 'Calm', 'mo mo-calm', 'Barely overshoots'], ['off', 'Off', 'mo mo-off', 'No animation at all']], S.motion === 'lively' ? 'jelly' : S.motion || 'jelly'))}
   </div>
-  <p class="note">Tip: hide the sidebar with Shift + ${PLATFORM === 'darwin' ? 'Cmd' : 'Ctrl'} + S and move your mouse to the left edge to peek at it. Switch between sidebar and top tabs with Option + ${PLATFORM === 'darwin' ? 'Cmd' : 'Ctrl'} + S.</p>`
+  <p class="note">Tip: hide the sidebar with Shift + ${MOD()} + S and move your mouse to the left edge to peek at it. Switch between sidebar and top tabs with Option + ${MOD()} + S.</p>`
   bindSettings(m)
+  m.querySelectorAll('.vc-art.mo').forEach(a => a.style.setProperty('--w', a.offsetWidth + 'px'))
   m.querySelectorAll('[data-th]').forEach(b => b.onclick = () => {
     m.querySelectorAll('[data-th]').forEach(x => x.classList.toggle('on', x === b))
     S.browserTheme = b.dataset.th; L.invoke('setSetting', 'browserTheme', b.dataset.th)
@@ -451,13 +515,22 @@ function appearance(m) {
     m.querySelectorAll('[data-ic]').forEach(x => x.classList.toggle('on', x === b))
     S.appIcon = b.dataset.ic; L.invoke('setSetting', 'appIcon', b.dataset.ic)
   })
+  const setAccent = c => { S.accent = c; applyLook(S); clearTimeout(setAccent.t); setAccent.t = setTimeout(() => L.invoke('setSetting', 'accent', c), 120) }
   m.querySelectorAll('[data-c]').forEach(b => b.onclick = () => {
-    m.querySelectorAll('[data-c]').forEach(x => x.classList.toggle('on', x === b))
-    S.accent = b.dataset.c; L.invoke('setSetting', 'accent', b.dataset.c); applyLook(S)
+    m.querySelectorAll('[data-c]').forEach(x => x.classList.toggle('on', x === b)); $('.accent-custom').classList.remove('on')
+    setAccent(b.dataset.c)
   })
+  $('#accentc').addEventListener('input', e => {
+    const c = e.target.value; m.querySelectorAll('[data-c]').forEach(x => x.classList.remove('on'))
+    const l = $('.accent-custom'); l.classList.add('on'); l.style.setProperty('--cc', c); setAccent(c)
+  })
+  const repaint = () => requestAnimationFrame(paintPreview)
+  for (const ev of ['click', 'change', 'input']) m.addEventListener(ev, repaint)
+  paintPreview()
 }
 
 const PERM_NAMES = { 'media-audio': 'Microphone', 'media-video': 'Camera', 'media-audio+video': 'Camera and microphone', geolocation: 'Location', notifications: 'Notifications', 'clipboard-read': 'Clipboard', 'display-capture': 'Screen sharing', midi: 'MIDI', midiSysex: 'MIDI control', 'idle-detection': 'Idle detection', 'window-management': 'Window management' }
+const PERM_ICON = { 'media-audio': ['speaker', 300], 'media-video': ['camera', 0], 'media-audio+video': ['camera', 0], geolocation: ['location', 140], notifications: ['info', 40], 'clipboard-read': ['file', 200], 'display-capture': ['layers', 250], midi: ['keyboard', 80], midiSysex: ['keyboard', 80], 'idle-detection': ['clock', 170], 'window-management': ['tabs', 220] }
 // the ad blocker's filter lists: how fresh they are, and a button to fetch them now (they refresh every 8 hours anyway)
 const ago = t => { const m = Math.round((Date.now() - t) / 60000); return m < 1 ? 'just now' : m < 60 ? m + (m === 1 ? ' minute' : ' minutes') + ' ago' : m < 1440 ? Math.round(m / 60) + (Math.round(m / 60) === 1 ? ' hour' : ' hours') + ' ago' : Math.round(m / 1440) + (Math.round(m / 1440) === 1 ? ' day' : ' days') + ' ago' }
 async function adblockFreshness(m) {
@@ -475,33 +548,44 @@ async function adblockFreshness(m) {
 }
 async function privacy(m) {
   const perms = await L.invoke('permissions')
-  const sites = Object.entries(perms)
+  let stats = {}; try { stats = (await L.invoke('stats')) || {} } catch {}
+  const sites = Object.entries(perms), allow = S.adblockAllow || []
+  const nPerm = sites.reduce((n, [, p]) => n + Object.keys(p).length, 0), blocked = stats.blocked || 0
+  const saved = blocked * 0.05 < 90 ? Math.round(blocked * 0.05) + ' seconds' : Math.round(blocked * 0.05 / 60) + ' minutes'
+  const sch = (id, on, dis) => `<label class="switch"><input type="checkbox" ${id ? `id="${id}"` : ''} ${on ? 'checked' : ''} ${dis ? 'disabled' : ''}><span></span></label>`
   m.innerHTML = `<h2>Privacy and security</h2><p class="lead">Ads and trackers are blocked out of the box. No account, no telemetry.</p>
-  <div class="card">
-    ${row('Block ads and trackers', 'Built in, works on every site, faster pages and less data. No extension needed.', sw('adblock', S.adblock))}
+  ${glance([[blocked.toLocaleString('en-US'), 'Ads and trackers blocked', 'shield', 140, 'good'], [S.httpsOnly ? 'On' : 'Off', 'Secure connections only', 'lock', 200], [String(allow.length), allow.length === 1 ? 'Site with ads allowed' : 'Sites with ads allowed', 'globe', 40], [String(nPerm), nPerm === 1 ? 'Site permission' : 'Site permissions', 'key', 300]])}
+  <div class="card fcard"><h3>SHIELDS</h3>
+    <div class="shieldrow"><span class="shield-big ${S.adblock ? '' : 'off'}" id="shbig">${ICONS.shield}</span><div class="grow"><b>${blocked.toLocaleString('en-US')}</b><span>${blocked ? `ads and trackers kept off your pages, about ${saved} of loading saved` : 'ads and trackers will be counted here as Lumen blocks them'}</span></div></div>
+    <div class="ftiles">
+      ${ft('adblock', !!S.adblock, 'Block ads and trackers', 'Built in, works on every site, faster pages and less data. No extension needed.', 'shield', 140, `<span class="fa-page"><span class="ban"></span></span>${ARR}<span class="fa-page"></span>`)}
+      ${ft('doNotTrack', !!S.doNotTrack, 'Ask sites not to track you', 'Sends Global Privacy Control and Do Not Track with every request.', 'mask', 260, `${chip('Sec-GPC: 1', 'mono')}${chip('DNT: 1', 'mono ac')}`)}
+      ${ft('httpsOnly', !!S.httpsOnly, 'Always use secure connections', 'Upgrades sites to HTTPS when they support it.', 'lock', 200, `${chip('http://', 'mono')}${ARR}${chip(ICONS.lock + 'https://', 'mono ac')}`)}
+    </div>
     ${row('Filter lists', '<span id="abl-when">Checking</span>', '<button class="btn sm abl-btn" id="abl-go"><span class="abl-spin"></span><span class="abl-t">Update now</span></button>')}
-    ${row('Sites where the ad blocker is off', (S.adblockAllow || []).length ? 'If a site looks broken or is missing things, turn the blocker off just there from the shield in the address bar.' : 'None yet. If a site looks broken or is missing things, click the shield in the address bar and turn the blocker off just for that site.', '')}
-    ${(S.adblockAllow || []).map(h => `<div class="row"><div class="grow"><div class="t" style="font-weight:500">${esc(h)}</div></div><button class="btn sm" data-unallow="${esc(h)}">Block ads again</button></div>`).join('')}
-    ${row('Ask sites not to track you', 'Sends Global Privacy Control and Do Not Track with every request.', sw('doNotTrack', S.doNotTrack))}
+    ${row('Sites where the ad blocker is off', allow.length ? 'If a site looks broken or is missing things, turn the blocker off just there from the shield in the address bar.' : 'None yet. If a site looks broken or is missing things, click the shield in the address bar and turn the blocker off just for that site.', '')}
+    ${allow.length ? `<div class="allowchips">${allow.map(h => `<span class="allowchip">${letterFav(h)}${esc(h)}<button class="btn sm" data-unallow="${esc(h)}">Block ads again</button></span>`).join('')}</div>` : ''}
     ${row('Google sign-in', 'If Google says this browser may not be secure, switch modes and sign in again. Lumen also switches by itself once when that happens.', seg('googleSignInMode', [['chrome', 'Standard'], ['firefox', 'Compatibility']], S.googleSignInMode || 'chrome'))}
-    ${row('Always use secure connections', 'Upgrades sites to HTTPS when they support it.', sw('httpsOnly', S.httpsOnly))}
   </div>
-  <div class="card"><h3>CLEAR BROWSING DATA</h3>
-    ${row('Time range', '', `<select id="range"><option value="3600000">Last hour</option><option value="86400000">Last 24 hours</option><option value="604800000">Last 7 days</option><option value="0" selected>All time</option></select>`)}
-    ${row('History', '', '<label class="switch"><input type="checkbox" checked disabled><span></span></label>')}
-    ${row('Cookies and site data', 'Signs you out of most sites.', '<label class="switch"><input type="checkbox" id="cc"><span></span></label>')}
-    ${row('Cached images and files', '', '<label class="switch"><input type="checkbox" id="ca" checked><span></span></label>')}
-    <div class="row"><div class="grow"></div><button class="btn primary" id="clear">Clear data</button></div>
+  <div class="card fcard"><h3>CLEAR BROWSING DATA</h3>
+    <div class="clrgrid">
+      ${ft('', true, 'History', 'Pages you visited. Always cleared.', 'clock', 0, '', { input: sch('', true, true) })}
+      ${ft('', false, 'Cookies and site data', 'Signs you out of most sites.', 'key', 60, '', { input: sch('cc', false) })}
+      ${ft('', true, 'Cached images and files', 'Pages load from the web again.', 'file', 120, '', { input: sch('ca', true) })}
+    </div>
+    <div class="row clrfoot"><div class="grow"><div class="t">Time range</div><div class="d">How far back to clear.</div></div><select id="range" aria-label="Time range"><option value="3600000">Last hour</option><option value="86400000">Last 24 hours</option><option value="604800000">Last 7 days</option><option value="0" selected>All time</option></select><button class="btn primary" id="clear">${ICONS.trash}Clear data</button></div>
   </div>
   <div class="card"><h3>SITE PERMISSIONS</h3>
-    ${sites.length ? sites.map(([origin, p]) => Object.entries(p).map(([k, v]) => `<div class="row"><div class="grow"><div class="t">${esc(hostOf(origin))}</div><div class="d">${esc(PERM_NAMES[k] || k)}</div></div>${seg('', [['allow', 'Allow'], ['deny', 'Block']], v).replace('data-seg=""', `data-origin="${esc(origin)}" data-perm="${esc(k)}"`)}<button class="ib" data-del-origin="${esc(origin)}" data-del-perm="${esc(k)}" title="Remove">${ICONS.close}</button></div>`).join('')).join('') : '<div class="row"><div class="d">Sites you allow or block camera, location, notifications and more will show up here.</div></div>'}
+    ${sites.length ? sites.map(([origin, p]) => `<div class="permsite">${fav(origin)}<div class="grow"><div class="t">${esc(hostOf(origin))}</div>${Object.entries(p).map(([k, v]) => { const [ic, hh] = PERM_ICON[k] || ['info', 0]; return `<div class="permline"><span class="pn" style="--ic:${tint(hh)}">${ICONS[ic] || ''}${esc(PERM_NAMES[k] || k)}</span>${seg('', [['allow', 'Allow'], ['deny', 'Block']], v).replace('data-seg=""', `data-origin="${esc(origin)}" data-perm="${esc(k)}"`)}<button class="ib" data-del-origin="${esc(origin)}" data-del-perm="${esc(k)}" title="Remove">${ICONS.close}</button></div>` }).join('')}</div></div>`).join('') : '<div class="row"><div class="d">Sites you allow or block camera, location, notifications and more will show up here.</div></div>'}
   </div>`
   bindSettings(m); adblockFreshness(m)
+  const ab = m.querySelector('[data-set=adblock]'); if (ab) ab.addEventListener('change', () => $('#shbig').classList.toggle('off', !ab.checked))
   m.querySelectorAll('[data-unallow]').forEach(b => b.onclick = async () => { S.adblockAllow = (S.adblockAllow || []).filter(x => x !== b.dataset.unallow); await L.invoke('setSetting', 'adblockAllow', S.adblockAllow); privacy(m) })
   $('#clear').onclick = async () => {
-    const b = $('#clear'); b.disabled = true; b.textContent = 'Clearing...'
+    const b = $('#clear'); b.disabled = true; b.lastChild.textContent = 'Clearing'
     await L.invoke('clearHistory', parseInt($('#range').value), $('#cc').checked, $('#ca').checked)
-    b.textContent = 'Cleared'; setTimeout(() => { b.disabled = false; b.textContent = 'Clear data' }, 1500)
+    b.classList.add('cleared'); b.lastChild.textContent = 'Cleared'; flash('Browsing data cleared')
+    setTimeout(() => { b.disabled = false; b.classList.remove('cleared'); b.lastChild.textContent = 'Clear data' }, 1800)
   }
   m.querySelectorAll('[data-origin]').forEach(g => g.addEventListener('click', e => {
     const b = e.target.closest('button'); if (!b) return
@@ -512,19 +596,30 @@ async function privacy(m) {
 }
 
 let confirmDelete = false
+// a rough strength score from 0 to 4: length, variety, and no obvious patterns
+function pwScore(v) {
+  if (!v) return 0
+  let s = 0; if (v.length >= 8) s++; if (v.length >= 12) s++; if (v.length >= 16) s++
+  const kinds = [/[a-z]/, /[A-Z]/, /\d/, /[^A-Za-z0-9]/].filter(r => r.test(v)).length; if (kinds >= 3) s++
+  if (/^(password|qwerty|123456|letmein|hunter)/i.test(v) || /(.)\1{3,}/.test(v) || kinds < 2) s = Math.min(s, 1)
+  return Math.max(0, Math.min(4, s))
+}
 async function passwords(m) {
   const list = await L.invoke('passwords')
+  const health = await L.invoke('passwordHealth') || {}
+  const pks = await L.invoke('passkeys')
+  const weakN = Object.values(health).filter(h => h.weak).length, reusedN = Object.values(health).filter(h => h.reused).length
+  const risky = list.filter(p => health[p.id] && (health[p.id].weak || health[p.id].reused)).length
+  const pct = list.length ? Math.round((list.length - risky) / list.length * 100) : 100
   m.innerHTML = `<h2>Passwords</h2><p class="lead">Passwords and passkeys, saved and filled in for you, encrypted with your ${PLATFORM === 'darwin' ? 'macOS Keychain' : 'system keychain'}. Syncs end-to-end encrypted if you turn on Sync.</p>
-  <div class="toolbar"><input type="search" id="q" placeholder="Search passwords"><button class="btn" id="add">Add</button><button class="btn" id="imp">Import CSV</button><button class="btn" id="exp">Export</button></div>
+  ${glance([[String(list.length), list.length === 1 ? 'Saved password' : 'Saved passwords', 'key', 0], [String(pks.length), pks.length === 1 ? 'Passkey' : 'Passkeys', 'shield', 300], [String(reusedN), 'Reused', 'reload', 40, reusedN ? 'warn' : 'good'], [String(weakN), 'Weak', 'info', 40, weakN ? 'warn' : 'good']])}
+  ${list.length ? `<div class="card health"><div class="pwhealth"><span class="ring"><svg viewBox="0 0 100 100" aria-hidden="true"><defs><linearGradient id="ringg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" style="stop-color:${risky ? '#ffb15c' : 'var(--accent)'}"/><stop offset="1" style="stop-color:${risky ? '#f0763b' : 'var(--accent3)'}"/></linearGradient></defs><circle class="bg" cx="50" cy="50" r="42"/><circle class="fg" cx="50" cy="50" r="42" stroke-dasharray="264" stroke-dashoffset="${(264 - 264 * pct / 100).toFixed(1)}"/></svg><b>${pct}</b></span><div class="grow"><div class="t">${risky ? 'Some passwords could be stronger' : 'Your passwords look good'}</div><div class="d">${list.length} saved  ·  ${reusedN} reused  ·  ${weakN} weak. ${pct} out of 100 are safe. Checked on this device only.</div></div>${risky ? '<button class="btn sm" id="onlyrisk">Show them</button>' : ''}</div></div>` : ''}
+  <div class="toolbar"><input type="search" id="q" placeholder="Search passwords"><button class="btn primary" id="add">${ICONS.plus}Add</button><button class="btn" id="imp">Import CSV</button><button class="btn" id="exp">Export</button></div>
+  <div class="card hidden" id="addcard"><h3>ADD PASSWORD</h3><div class="row" style="gap:8px;flex-wrap:wrap"><input type="text" id="a-site" placeholder="Website" style="flex:1" aria-label="Website"><input type="text" id="a-user" placeholder="Username" style="flex:1" aria-label="Username"><input type="text" id="a-pass" placeholder="Password" style="flex:1" aria-label="Password"><button class="btn" id="a-gen">${ICONS.sparkle}Generate</button><button class="btn primary" id="a-save">Save</button></div><div class="pwm" id="pwm" data-s="0"><span></span><b>Type or generate a password</b></div></div>
   <div class="card list" id="list"></div>
-  <div class="card hidden" id="addcard"><h3>ADD PASSWORD</h3><div class="row" style="gap:8px;flex-wrap:wrap"><input type="text" id="a-site" placeholder="Website" style="flex:1"><input type="text" id="a-user" placeholder="Username" style="flex:1"><input type="text" id="a-pass" placeholder="Password" style="flex:1"><button class="btn" id="a-gen">Generate</button><button class="btn primary" id="a-save">Save</button></div></div>
-  <h3 style="margin:26px 4px 10px;font-size:15px">Passkeys</h3>
-  <div class="card list" id="pklist"></div>
+  <div class="card pkcard"><h3>PASSKEYS</h3><div class="list" id="pklist"></div></div>
   <p class="note">When a site offers to create a passkey, Lumen saves it here and signs you in with Touch ID next time. Passkeys sync with Sync on, end-to-end encrypted.</p>
   <p class="note">In Chrome: Settings, Passwords and autofill, Google Password Manager, Settings, Export passwords. Then import the CSV here.</p>`
-  const health = await L.invoke('passwordHealth') || {}
-  const weakN = Object.values(health).filter(h => h.weak).length, reusedN = Object.values(health).filter(h => h.reused).length
-  if (list.length) $('#main').querySelector('.toolbar').insertAdjacentHTML('beforebegin', `<div class="card health"><div class="row"><span class="hscore ${weakN + reusedN ? 'warn' : 'ok'}">${ICONS.shield}</span><div class="grow"><div class="t">${weakN + reusedN ? 'Some passwords could be stronger' : 'Your passwords look good'}</div><div class="d">${list.length} saved  ·  ${reusedN} reused  ·  ${weakN} weak. Checked on this device only.</div></div>${weakN + reusedN ? '<button class="btn sm" id="onlyrisk">Show them</button>' : ''}</div></div>`)
   let onlyRisk = false
   const draw = q => {
     const f = list.filter(p => (!q || p.origin.includes(q) || p.username.toLowerCase().includes(q)) && (!onlyRisk || (health[p.id] && (health[p.id].weak || health[p.id].reused))))
@@ -545,11 +640,12 @@ async function passwords(m) {
     if (b.dataset.a === 'copy') { await L.invoke('copyPassword', id); b.textContent = 'Copied'; setTimeout(() => b.textContent = 'Copy', 1400) }
     if (b.dataset.a === 'del') { await L.invoke('deletePassword', id); passwords(m) }
   }
-  const pks = await L.invoke('passkeys')
   $('#pklist').innerHTML = pks.length ? pks.map(p => `<div class="row" data-pk="${p.id}">${fav('https://' + p.rpId)}<div class="grow"><div class="t">${esc(p.rpId)}</div><div class="d">${esc(p.userName || 'Account')}  ·  saved ${new Date(p.createdAt).toLocaleDateString()}${p.lastUsed ? '  ·  last used ' + new Date(p.lastUsed).toLocaleDateString() : ''}</div></div><span class="pill">Passkey</span><button class="ib" data-a="delpk" title="Delete">${ICONS.close}</button></div>`).join('') : '<div class="empty">No passkeys yet. Sites like Google, GitHub, Amazon and PayPal can save one for you.</div>'
   $('#pklist').onclick = async e => { const b = e.target.closest('[data-a="delpk"]'); if (!b) return; if (!confirmDelete) { confirmDelete = true; b.title = 'Click again to delete'; b.style.color = '#e5484d'; setTimeout(() => { confirmDelete = false }, 3000); return } await L.invoke('deletePasskey', b.closest('[data-pk]').dataset.pk); passwords(m) }
-  $('#add').onclick = () => $('#addcard').classList.toggle('hidden')
-  $('#a-gen').onclick = async () => { $('#a-pass').value = await L.invoke('genPassword') }
+  $('#add').onclick = () => { $('#addcard').classList.toggle('hidden'); if (!$('#addcard').classList.contains('hidden')) $('#a-site').focus() }
+  const meter = () => { const v = $('#a-pass').value, sc = pwScore(v), mt = $('#pwm'); mt.style.setProperty('--s', v ? (sc + 1) / 5 : 0); mt.dataset.s = sc; mt.querySelector('b').textContent = v ? ['Very weak', 'Weak', 'Okay', 'Strong', 'Very strong'][sc] : 'Type or generate a password' }
+  $('#a-pass').oninput = meter
+  $('#a-gen').onclick = async () => { $('#a-pass').value = await L.invoke('genPassword'); meter() }
   $('#a-save').onclick = async () => { if (await L.invoke('addPassword', $('#a-site').value, $('#a-user').value, $('#a-pass').value)) passwords(m) }
   $('#imp').onclick = async () => { const r = await L.invoke('importPasswords'); if (r && r.ok) { passwords(m) } else if (r && r.error) alertBox(r.error) }
   $('#exp').onclick = async () => { await L.invoke('exportPasswords') }
@@ -559,16 +655,20 @@ function alertBox(msg) { const n = document.createElement('p'); n.className = 'n
 async function sync(m) {
   const st = await L.invoke('sync', 'status')
   const when = st.lastSync ? new Date(st.lastSync).toLocaleString() : 'Not yet'
+  const what = `<div class="whatsyncs">${[['star', 'Bookmarks'], ['key', 'Passwords'], ['shield', 'Passkeys'], ['gear', 'Settings']].map(([i, l], n) => `<span class="hero-chip" style="--ic:${tint(n * 60)}">${ICONS[i]}${l}</span>`).join('')}</div>`
+  const viz = mid => `<div class="syncviz"><span class="dev">${ICONS.globe}</span><span class="link"></span><span class="dev cloud">${mid}</span><span class="link"></span><span class="dev">${ICONS.globe}</span></div>`
   m.innerHTML = `<h2>Sync</h2><p class="lead">Your bookmarks, passwords and settings on every Mac and PC you use. Encrypted on this device with your passphrase before anything leaves it. No account needed.</p>
-  ${st.enabled ? `<div class="card">
-      ${row('Sync is on', esc(st.folder), '<span class="pill">On</span>')}
-      ${row('Last synced', esc(when), '<button class="btn" id="now">Sync now</button>')}
+  ${st.enabled ? `<div class="card syncon">${viz(ICONS.reload)}<div class="synccap"><b>Sync is on</b><span>Last synced ${esc(when)}</span></div>${what}
+      ${row('Sync is on', `<span class="folderchip">${ICONS.folder}<span>${esc(st.folder)}</span></span>`, '<span class="pill">On</span>')}
+      ${row('Last synced', esc(when), `<button class="btn" id="now">${ICONS.reload}Sync now</button>`)}
       ${row('Turn off sync', 'Your data stays on this device.', '<button class="btn danger" id="off">Turn off</button>')}
-    </div>` : `<div class="card"><h3>TURN ON SYNC</h3>
-      ${row('Sync folder', st.icloud ? 'iCloud Drive (recommended on Mac). Or pick a Dropbox, Google Drive or OneDrive folder.' : 'Pick a folder that syncs between your computers, like Dropbox, Google Drive, OneDrive or iCloud Drive.', `<span class="mono" id="folder" style="max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--fg3)">${esc(st.folder || 'None')}</span><button class="btn" id="pick">Choose</button>`)}
-      <div class="row"><div class="grow"><div class="t">Sync passphrase</div><div class="d">Use the same passphrase on each computer. Lumen cannot recover it for you.</div></div><input type="password" id="pp" placeholder="At least 8 characters" style="width:220px"></div>
-      <div class="row"><div class="grow errtext" id="msg"></div><button class="btn primary" id="on">Turn on sync</button></div>
-    </div>`}`
+    </div>` : `<div class="card">${viz(ICONS.lock)}<div class="synccap"><b>Your things, on every computer</b><span>Locked here with your passphrase before they leave this device.</span></div>${what}</div>
+    <div class="card steps"><h3>TURN ON SYNC</h3>
+      ${row('Sync folder', st.icloud ? 'iCloud Drive (recommended on Mac). Or pick a Dropbox, Google Drive or OneDrive folder.' : 'Pick a folder that syncs between your computers, like Dropbox, Google Drive, OneDrive or iCloud Drive.', `<span class="folderchip">${ICONS.folder}<span class="mono" id="folder">${esc(st.folder || 'None')}</span></span><button class="btn" id="pick">Choose</button>`)}
+      <div class="row"><div class="grow"><div class="t">Sync passphrase</div><div class="d">Use the same passphrase on each computer. Lumen cannot recover it for you.</div></div><input type="password" id="pp" placeholder="At least 8 characters" style="width:220px" aria-label="Sync passphrase"></div>
+      <div class="row"><div class="grow"><div class="t">Turn it on</div><div class="d errtext" id="msg"></div></div><button class="btn primary" id="on">Turn on sync</button></div>
+    </div>`}
+  <div class="glance e2e">${[['lock', 'Encrypted here', 'Locked with your passphrase first'], ['folder', 'Your own folder', 'No Lumen account, ever'], ['key', 'Only you hold the key', 'Lumen cannot read it']].map(([i, t, d], n) => `<div class="gl" style="--ic:${tint(120 + n * 60)}"><span class="gl-ic">${ICONS[i]}</span><div><b>${t}</b><span>${d}</span></div></div>`).join('')}</div>`
   let folder = st.folder
   const p = $('#pick'); if (p) p.onclick = async () => { const f = await L.invoke('sync', 'pickFolder'); if (f) { folder = f; $('#folder').textContent = f } }
   const on = $('#on'); if (on) on.onclick = async () => {
@@ -577,20 +677,26 @@ async function sync(m) {
     const r = await L.invoke('sync', 'enable', $('#pp').value, folder)
     if (r && r.ok) sync(m); else { $('#msg').textContent = (r && r.error) || 'Could not turn on sync'; on.disabled = false; on.textContent = 'Turn on sync'; await L.invoke('sync', 'disable') }
   }
-  const now = $('#now'); if (now) now.onclick = async () => { now.textContent = 'Syncing...'; const r = await L.invoke('sync', 'now'); if (r && !r.ok) alertBox(r.error); sync(m) }
-  const off = $('#off'); if (off) off.onclick = async () => { await L.invoke('sync', 'disable'); sync(m) }
+  const now = $('#now'); if (now) now.onclick = async () => { now.lastChild.textContent = 'Syncing...'; now.classList.add('busy'); const r = await L.invoke('sync', 'now'); if (r && !r.ok) alertBox(r.error); sync(m) }
+  const off = $('#off'); if (off) off.onclick = async () => { if (await novaConfirm({ title: 'Turn off sync?', text: 'Your data stays on this device. Other computers stop getting changes from this one.', ok: 'Turn off', danger: true, icon: ICONS.reload })) { await L.invoke('sync', 'disable'); sync(m) } }
 }
 
+const BR_COLOR = { chrome: '#4285f4', brave: '#fb542b', edge: '#0f7bd8', arc: '#ff5f7e', vivaldi: '#ef3939', opera: '#ff1b2d', chromium: '#4a7fd6' }
 async function importPage(m) {
   const list = await L.invoke('importables')
+  const col = b => BR_COLOR[String(b.id).toLowerCase()] || BR_COLOR[String(b.name).toLowerCase().split(' ')[0]] || 'var(--accent)'
   m.innerHTML = `<h2>Move from Chrome</h2><p class="lead">Bring your bookmarks and extensions over in one click. Passwords come over with a CSV export.</p>
-  <div class="card">${list.length ? list.map(b => row(esc(b.name), 'Bookmarks and extensions', `<label style="display:flex;gap:6px;align-items:center;font-size:13px;color:var(--fg2)"><input type="checkbox" data-ext="${b.id}" checked> Extensions</label><button class="btn primary" data-imp="${b.id}">Import</button>`)).join('') : row('No other browsers found', 'Lumen looks for Chrome, Brave, Edge and Arc on this computer.', '')}</div>
-  <div class="card">${row('Passwords', 'Export them from Chrome as a CSV, then import that file.', '<button class="btn" id="pw">Import passwords CSV</button>')}</div>
+  <div class="card">${list.length ? `<h3>FOUND ON THIS COMPUTER</h3><div class="brgrid">${list.map(b => `<div class="brcard row" style="--bc:${col(b)}"><div class="brhead"><span class="brlogo">${esc((b.name || '?')[0])}</span><div class="grow"><div class="t">${esc(b.name)}</div><div class="d">Bookmarks and extensions</div></div></div><div class="brrow"><span>Bring extensions too</span><label class="switch"><input type="checkbox" data-ext="${b.id}" checked aria-label="Bring extensions from ${esc(b.name)} too"><span></span></label></div><button class="btn primary" data-imp="${b.id}">${ICONS.arrowRight}Import from ${esc(b.name)}</button></div>`).join('')}</div>` : row('No other browsers found', 'Lumen looks for Chrome, Brave, Edge and Arc on this computer.', '')}</div>
+  <div class="card steps"><h3>PASSWORDS</h3>
+    ${row('Export them from Chrome', 'In Chrome: Settings, Passwords and autofill, Google Password Manager, Settings, Export passwords.', '')}
+    ${row('Passwords', 'Import that CSV file here. Lumen keeps them encrypted.', '<button class="btn primary" id="pw">Import passwords CSV</button>')}
+    ${row('Delete the CSV', 'It holds your passwords in plain text, so throw it away once they are in.', '')}
+  </div>
   <p class="note" id="res"></p>`
   m.querySelectorAll('[data-imp]').forEach(b => b.onclick = async () => {
     b.disabled = true; b.textContent = 'Importing...'
     const r = await L.invoke('importFrom', b.dataset.imp, m.querySelector(`[data-ext="${b.dataset.imp}"]`).checked)
-    b.textContent = 'Done'
+    b.outerHTML = `<span class="brdone">${ICONS.check}Imported ${r.bookmarks} bookmarks${r.extensions ? ` and ${r.extensions} extensions` : ''}</span>`
     $('#res').textContent = `Imported ${r.bookmarks} bookmarks${r.extensions ? ` and ${r.extensions} extensions` : ''}.`
   })
   $('#pw').onclick = async () => { const r = await L.invoke('importPasswords'); if (r && r.ok) $('#res').textContent = `Imported ${r.count} passwords.`; else if (r && r.error) $('#res').textContent = r.error }
@@ -599,8 +705,9 @@ async function importPage(m) {
 async function extensionsPage(m) {
   const list = await L.invoke('extensions')
   m.innerHTML = `<h2>Extensions</h2><p class="lead">Lumen runs Chrome extensions. Get them from the Chrome Web Store, same as in Chrome.</p>
-  <div class="toolbar"><a class="btn primary" href="https://chromewebstore.google.com/" id="store">${ICONS.puzzle}Open Chrome Web Store</a><button class="btn" id="unpacked">Load unpacked</button></div>
-  <div class="card list">${list.length ? list.map(x => `<div class="row">${x.icon ? `<img class="extico" src="${x.icon}" alt="">` : `<span class="extico">${ICONS.puzzle}</span>`}<div class="grow"><div class="t">${esc(x.name)}<span class="extver">${esc(x.version)}</span></div><div class="d">${esc(x.description).slice(0, 140)}</div></div><button class="btn sm danger" data-rm="${x.id}">Remove</button></div>`).join('') : '<div class="empty">No extensions yet. Add one from the Chrome Web Store.</div>'}</div>
+  ${glance([[String(list.length), list.length === 1 ? 'Extension installed' : 'Extensions installed', 'puzzle', 0], ['Web Store', 'Where they come from', 'globe', 80], ['Same as Chrome', 'They install and update', 'check', 160, 'good']])}
+  <div class="toolbar"><a class="btn primary" href="https://chromewebstore.google.com/" id="store">${ICONS.puzzle}Open Chrome Web Store</a><button class="btn" id="unpacked">${ICONS.folder}Load unpacked</button></div>
+  ${list.length ? `<div class="extgrid">${list.map(x => `<div class="card extcard"><div class="eh">${x.icon ? `<img class="extico" src="${x.icon}" alt="">` : `<span class="extico">${ICONS.puzzle}</span>`}<div class="grow" style="min-width:0"><div class="t">${esc(x.name)}</div><span class="extver">${esc(x.version)}</span></div></div><div class="d">${esc(x.description).slice(0, 200)}</div><div class="ef"><span class="pill">Turned on</span><button class="btn sm danger" data-rm="${x.id}">Remove</button></div></div>`).join('')}</div>` : '<div class="card"><div class="empty">No extensions yet. Add one from the Chrome Web Store.</div></div>'}
   <p class="note">Some extensions that depend on features only Google Chrome has may not work fully.</p>`
   $('#store').onclick = e => { e.preventDefault(); L.invoke('open', 'https://chromewebstore.google.com/') }
   $('#unpacked').onclick = async () => { if (await L.invoke('loadUnpacked')) extensionsPage(m) }
@@ -612,31 +719,67 @@ function dayLabel(t) {
   const diff = Math.floor((today - new Date(d).setHours(0, 0, 0, 0)) / 864e5)
   return diff === 0 ? 'Today' : diff === 1 ? 'Yesterday' : d.toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric' })
 }
+// the library tabs over History, Highlights, Archived tabs and Read later
+const LIB_TABS = [['history', 'History', 'clock'], ['highlights', 'Highlights', 'sparkle'], ['archive', 'Archived tabs', 'layers'], ['readlater', 'Read later', 'book']]
+const libTabs = on => `<div class="seg big" id="hseg">${LIB_TABS.map(([k, l, i]) => `<button ${k === on ? 'class="on" aria-current="page"' : `data-go="${k}"`}>${ICONS[i]}${l}</button>`).join('')}</div>`
+function bindLibTabs(m) {
+  $('#hseg').onclick = e => {
+    const b = e.target.closest('[data-go]'); if (!b) return
+    const g = b.dataset.go
+    if (g === 'readlater') { location.href = 'lumen://readlater'; return }
+    if (page !== 'history') { location.href = 'lumen://history' + (g === 'history' ? '' : '#' + g); return }
+    if (g === 'history') history.replaceState(null, '', location.pathname); else location.hash = g
+    historyPage(m)
+  }
+}
+const siteHue = u => `hsl(${hue(hostOf(u) || '?')} 72% 56%)`
+const shortAgo = t => { const mm = Math.round((Date.now() - t) / 60000); return mm < 1 ? 'just now' : mm < 60 ? mm + ' min ago' : mm < 1440 ? Math.round(mm / 60) + ' hr ago' : Math.round(mm / 1440) + ' d ago' }
+// the last 7 days as little glass bars, today on the right
+function weekBars(all) {
+  const day0 = new Date().setHours(0, 0, 0, 0), n = [0, 0, 0, 0, 0, 0, 0]
+  for (const h of all) { const d = Math.floor((day0 - new Date(h.t).setHours(0, 0, 0, 0)) / 864e5); if (d >= 0 && d < 7) n[6 - d]++ }
+  const mx = Math.max(1, ...n)
+  return `<span class="wk" aria-hidden="true">${n.map((v, i) => `<i style="--v:${(v / mx).toFixed(3)};--d:${i}" class="${i === 6 ? 'now' : ''}"><em>${new Date(day0 - (6 - i) * 864e5).toLocaleDateString([], { weekday: 'narrow' })}</em></i>`).join('')}</span>`
+}
+function topHosts(list, n) { const c = new Map(); for (const h of list) { const k = hostOf(h.url); if (k) c.set(k, (c.get(k) || 0) + (h.visits || 1)) } return [...c].sort((a, b) => b[1] - a[1]).slice(0, n).map(x => x[0]) }
 async function historyPage(m) {
   if (location.hash === '#archive') return archivePage(m)
   if (location.hash === '#highlights') return highlightsPage(m)
-  m.innerHTML = `<h2>History</h2><p class="lead">Everything you have visited, searchable.</p><div class="seg big" id="hseg"><button class="on">History</button><button data-go="highlights">Highlights</button><button data-go="archive">Archived tabs</button></div><div class="toolbar"><input type="search" id="q" placeholder="Search history"><button class="btn" id="clr">Clear browsing data</button></div><div id="out"></div>`
-  $('#hseg').onclick = e => { const b = e.target.closest('[data-go]'); if (b) { location.hash = b.dataset.go; historyPage(m) } }
+  let all = await L.invoke('history', '')
+  const day0 = new Date().setHours(0, 0, 0, 0), today = all.filter(h => h.t >= day0).length, week = all.filter(h => h.t >= day0 - 6 * 864e5).length
+  const top = topHosts(all.filter(h => h.t >= day0 - 6 * 864e5), 5)
+  m.innerHTML = `<h2>History</h2><p class="lead">Everything you have visited, searchable. It stays on this device.</p>${libTabs('history')}
+    ${glance([[String(today), today === 1 ? 'Page today' : 'Pages today', 'clock', 0], [String(week), week === 1 ? 'Page this week' : 'Pages this week', 'layers', 60, 'wkgl', weekBars(all)], [top.length ? esc(top[0].replace(/^www\./, '')) : 'Nothing yet', 'Where you spend time', 'star', 120, '', top.length ? `<span class="favs">${top.map(h => fav('https://' + h)).join('')}</span>` : '']])}
+    <div class="toolbar"><input type="search" id="q" placeholder="Search history"><button class="btn" id="clr">${ICONS.trash}Clear browsing data</button></div><div id="out"></div>`
+  bindLibTabs(m)
   const draw = async q => {
-    const list = await L.invoke('history', q)
+    const list = q ? await L.invoke('history', q) : all
     if (!list.length) { $('#out').innerHTML = `<div class="empty">${q ? 'No matches' : 'Nothing here yet'}</div>`; return }
-    let html = '', cur = null
+    let html = '', cur = null, n = 0, run = null
+    const days = new Map(); for (const h of list) { const lab = dayLabel(h.t); days.set(lab, (days.get(lab) || 0) + 1) }
     for (const h of list) {
       const lab = dayLabel(h.t)
-      if (lab !== cur) { if (cur) html += '</div>'; html += `<div class="daylabel">${esc(lab)}</div><div class="card list">`; cur = lab }
-      html += `<div class="row" data-url="${esc(h.url)}"><span class="htime">${new Date(h.t).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}</span>${fav(h.url)}<div class="grow"><div class="t" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(h.title || h.url)}</div><div class="d">${esc(hostOf(h.url))}</div></div><button class="ib hov" data-forget title="Forget everything from ${esc(hostOf(h.url))}">${ICONS.trash || ICONS.close}</button><button class="ib" data-del title="Remove">${ICONS.close}</button></div>`
+      if (lab !== cur) { if (cur) html += '</div>'; html += `<div class="daylabel">${esc(lab)} <b>${days.get(lab)}</b></div><div class="card list tl">`; cur = lab }
+      // three or more pages in a row from one site fold into one line you can open up
+      const host = hostOf(h.url), prev = list[n - 1], same = !!prev && hostOf(prev.url) === host && dayLabel(prev.t) === lab
+      if (!same) { let k = n + 1; while (k < list.length && hostOf(list[k].url) === host && dayLabel(list[k].t) === lab) k++; run = k - n >= 3 ? { id: 'g' + n, start: n, more: k - n - 1 } : null }
+      const fold = !!run && same
+      if (fold && n === run.start + 1) html += `<button class="hmore" data-g="${run.id}">${fav(h.url)}<span>${run.more} more from ${esc(host.replace(/^www\./, ''))}</span>${ICONS.arrowRight}</button>`
+      html += `<div class="row ${fold ? 'hfold' : ''}" ${fold ? `data-g="${run.id}"` : ''} data-url="${esc(h.url)}"><span class="htime">${new Date(h.t).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}</span>${fav(h.url)}<div class="grow"><div class="t" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(h.title || h.url)}</div><div class="d">${esc(hostOf(h.url))}</div></div>${h.visits > 1 ? `<span class="hvisits">${h.visits} visits</span>` : ''}<button class="ib hov" data-forget title="Forget everything from ${esc(hostOf(h.url))}">${ICONS.trash || ICONS.close}</button><button class="ib" data-del title="Remove">${ICONS.close}</button></div>`
+      n++
     }
     $('#out').innerHTML = html + '</div>'
   }
   let t; $('#q').oninput = e => { clearTimeout(t); t = setTimeout(() => draw(e.target.value), 120) }
   $('#clr').onclick = () => { location.href = 'lumen://settings/privacy' }
   $('#out').onclick = async e => {
+    const g = e.target.closest('.hmore'); if (g) { g.remove(); $$(`.hfold[data-g="${g.dataset.g}"]`).forEach((x, i) => { x.classList.remove('hfold'); x.style.animationDelay = i * 30 + 'ms'; x.classList.add('unfold') }); return }
     const r = e.target.closest('[data-url]'); if (!r) return
     if (e.target.closest('[data-del]')) { await L.invoke('deleteHistory', r.dataset.url); r.remove(); return }
     if (e.target.closest('[data-forget]')) {
       const host = hostOf(r.dataset.url)
       if (!await novaConfirm({ title: `Forget ${host}?`, text: `Remove every page from ${host} from your history?`, ok: 'Remove', danger: true, icon: ICONS.trash || ICONS.close })) return
-      const n = await L.invoke('deleteHistoryHost', host); draw($('#q').value); flash(`Forgot ${n} page${n === 1 ? '' : 's'} from ${host}`); return
+      const n = await L.invoke('deleteHistoryHost', host); all = await L.invoke('history', ''); draw($('#q').value); flash(`Forgot ${n} page${n === 1 ? '' : 's'} from ${host}`); return
     }
     if (e.metaKey || e.ctrlKey) L.invoke('open', r.dataset.url, true); else L.invoke('navigate', r.dataset.url)
   }
@@ -751,10 +894,11 @@ async function appsPage(m) {
       <div class="appkeys">${i.keys.map(([k, t]) => `<span><kbd>${esc(k)}</kbd>${esc(t)}</span>`).join('')}</div>
       ${a.running ? `<div class="appacts">${i.actions.map(([k, t], n) => `<button class="btn ${n ? '' : 'primary'}" data-open="${k}">${esc(t)}</button>`).join('')}</div>` : ''}
     </div>` }).join('')}
-    <div class="card">
-      ${row('Show in the toolbar', 'Surge and Koi buttons next to Reload, in your accent color.', sw('toolbarApps', d.toolbarApps))}
-      ${row('Keep Surge and Koi running when Lumen quits', `${PLATFORM === 'darwin' ? 'Cmd Q' : 'Ctrl Q'} closes your windows and Lumen keeps running quietly for Surge and Koi. Open Lumen again and every window and tab comes back. ${PLATFORM === 'darwin' ? 'Cmd Option Q' : 'Exit Lumen, Surge and Koi'} quits everything.`, sw('backgroundApps', d.backgroundApps))}
-      ${row('Start Lumen when you log in', 'Lumen opens quietly in the background so Surge and Koi are ready, without opening a window.', sw('openAtLogin', d.openAtLogin))}
+    <div class="card fcard"><h3>HOW THEY RUN</h3><div class="ftiles">
+      ${ft('toolbarApps', !!d.toolbarApps, 'Show in the toolbar', 'Surge and Koi buttons next to Reload, in your accent color.', 'sparkle', 0, `${faIc('reload')}${faIc('bolt')}${faIc('sparkle')}`)}
+      ${ft('backgroundApps', !!d.backgroundApps, 'Keep Surge and Koi running when Lumen quits', `${PLATFORM === 'darwin' ? 'Cmd Q' : 'Ctrl Q'} closes your windows and Lumen keeps running quietly for Surge and Koi. Open Lumen again and every window and tab comes back. ${PLATFORM === 'darwin' ? 'Cmd Option Q' : 'Exit Lumen, Surge and Koi'} quits everything.`, 'moon', 120, `${K(MOD(), 'Q')}${ARR}${faIc('bolt')}${faIc('sparkle')}`)}
+      ${ft('openAtLogin', !!d.openAtLogin, 'Start Lumen when you log in', 'Lumen opens quietly in the background so Surge and Koi are ready, without opening a window.', 'bolt', 240, `${chip('Log in')}${ARR}${chip('Ready', 'ac')}`)}
+    </div>
       ${row('Keyboard and mouse access', 'Keyboard sounds, click ripples and typing stats need macOS to allow Lumen in Privacy and Security, Accessibility and Input Monitoring. Surge asks when you turn one of them on.', '')}
     </div>`
     bindSettings(m)
@@ -773,23 +917,29 @@ async function appsPage(m) {
   }
 }
 
+const HL_COLORS = [['yellow', 'Yellow', '#ffc800'], ['green', 'Green', '#34c759'], ['blue', 'Blue', '#0a84ff'], ['pink', 'Pink', '#ff2d87']]
 async function highlightsPage(m) {
-  let list = await L.invoke('highlights')
+  let list = await L.invoke('highlights'), color = ''
+  const pagesN = new Set(list.map(h => h.url)).size
   m.innerHTML = `<h2>Highlights</h2><p class="lead">Select text on any page, right-click and pick Highlight. It stays there every time you come back.</p>
-    <div class="seg big" id="hseg"><button data-go="history">History</button><button class="on">Highlights</button><button data-go="archive">Archived tabs</button></div>
-    <div class="toolbar"><input type="search" id="q" placeholder="Search highlights"></div><div id="out"></div>`
-  $('#hseg').onclick = e => { const b = e.target.closest('[data-go]'); if (!b) return; if (b.dataset.go === 'history') history.replaceState(null, '', location.pathname); else location.hash = b.dataset.go; historyPage(m) }
+    ${libTabs('highlights')}
+    ${glance([[String(list.length), list.length === 1 ? 'Highlight' : 'Highlights', 'sparkle', 0], [String(pagesN), pagesN === 1 ? 'Page' : 'Pages', 'file', 70]])}
+    <div class="toolbar"><input type="search" id="q" placeholder="Search highlights"></div><div class="fchips" id="hlf"></div><div id="out"></div>`
+  bindLibTabs(m)
+  const chips = () => { $('#hlf').innerHTML = list.length ? [['', 'All', ''], ...HL_COLORS].map(([k, l, c]) => { const n = k ? list.filter(h => h.color === k).length : list.length; return n || !k ? `<button class="fchip ${color === k ? 'on' : ''}" data-hc="${k}">${c ? `<i style="background:${c};box-shadow:0 0 8px ${c}"></i>` : ''}${l} <b>${n}</b></button>` : '' }).join('') : '' }
   const draw = q => {
-    const f = list.filter(h => !q || (h.text + ' ' + h.title + ' ' + h.url).toLowerCase().includes(q.toLowerCase()))
-    if (!f.length) { $('#out').innerHTML = `<div class="empty">${q ? 'No matches' : 'No highlights yet.'}</div>`; return }
+    const f = list.filter(h => (!q || (h.text + ' ' + h.title + ' ' + h.url).toLowerCase().includes(q.toLowerCase())) && (!color || h.color === color))
+    if (!f.length) { $('#out').innerHTML = `<div class="empty">${q || color ? 'No matches' : 'No highlights yet.'}</div>`; return }
     const pages = new Map(); for (const h of f) { if (!pages.has(h.url)) pages.set(h.url, []); pages.get(h.url).push(h) }
     $('#out').innerHTML = [...pages].map(([url, hs]) => `<div class="card hlcard"><a class="hlhead" data-go="${esc(url)}">${fav(url)}<div class="grow"><div class="t">${esc(hs[0].title || hostOf(url))}</div><div class="d">${esc(hostOf(url))}  ·  ${hs.length} highlight${hs.length > 1 ? 's' : ''}</div></div></a>${hs.map(h => `<div class="hl" data-id="${esc(h.id)}" data-url="${esc(url)}" data-text="${esc(h.text.slice(0, 120))}"><span class="hlbar hl-${esc(h.color)}"></span><q>${esc(h.text.length > 420 ? h.text.slice(0, 420) + '...' : h.text)}</q><button class="ib hov" data-copy title="Copy">${ICONS.link || ICONS.close}</button><button class="ib hov" data-del title="Remove">${ICONS.close}</button></div>`).join('')}</div>`).join('')
   }
+  chips()
+  $('#hlf').onclick = e => { const b = e.target.closest('[data-hc]'); if (!b) return; color = b.dataset.hc; chips(); draw($('#q').value) }
   $('#q').oninput = e => draw(e.target.value)
   $('#out').onclick = async e => {
     const head = e.target.closest('[data-go]'); if (head) { L.invoke('navigate', head.dataset.go); return }
     const r = e.target.closest('.hl'); if (!r) return
-    if (e.target.closest('[data-del]')) { await L.invoke('highlightRemove', r.dataset.id); list = list.filter(h => h.id !== r.dataset.id); draw($('#q').value); flash('Highlight removed'); return }
+    if (e.target.closest('[data-del]')) { await L.invoke('highlightRemove', r.dataset.id); list = list.filter(h => h.id !== r.dataset.id); chips(); draw($('#q').value); flash('Highlight removed'); return }
     if (e.target.closest('[data-copy]')) { await navigator.clipboard.writeText(list.find(h => h.id === r.dataset.id).text); flash('Copied'); return }
     // jump straight to the passage on the page
     const words = r.dataset.text.trim().split(/\s+/), frag = (words.length > 8 ? [words.slice(0, 4).join(' '), words.slice(-4).join(' ')] : [words.join(' ')]).map(x => encodeURIComponent(x).replace(/-/g, '%2D')).join(',')
@@ -798,83 +948,188 @@ async function highlightsPage(m) {
   draw('')
 }
 
+// a glass tile for one saved page: a header in the site's own color with its icon, then the title
+const pageTile = (x, cls, foot, extra = '') => `<div class="card bmt ${cls}" data-url="${esc(x.url)}"${x.id ? ` data-id="${esc(x.id)}"` : ''} style="--th:${siteHue(x.url)}" tabindex="0"><div class="bm-head" data-l="${esc((hostOf(x.url) || '?').replace(/^www\./, '')[0].toUpperCase())}">${extra}${fav(x.url)}</div><div class="t">${esc(x.title || x.url)}</div><div class="d">${esc(hostOf(x.url).replace(/^www\./, ''))}</div><div class="bm-foot">${foot}</div><button class="ib bm-x" data-del title="Remove">${ICONS.close}</button></div>`
 async function archivePage(m) {
   const list = await L.invoke('archive')
-  const ago = t => { const mm = Math.round((Date.now() - t) / 60000); return mm < 1 ? 'just now' : mm < 60 ? mm + ' min ago' : mm < 1440 ? Math.round(mm / 60) + ' hr ago' : Math.round(mm / 1440) + ' d ago' }
-  m.innerHTML = `<h2>Archived tabs</h2><p class="lead">Tabs that tidied themselves away after you stopped using them. ${S.archiveTabsAfterH ? '' : '<a href="lumen://settings/general#Archive%20tabs%20you%20have%20not%20used">Turn on tab archiving</a>'}</p>
-    <div class="seg big" id="hseg"><button data-go="history">History</button><button data-go="highlights">Highlights</button><button class="on">Archived tabs</button></div>
-    <div class="toolbar"><input type="search" id="q" placeholder="Search archived tabs">${list.length ? '<button class="btn" id="clrA">Clear archive</button>' : ''}</div><div id="out"></div>`
-  $('#hseg').onclick = e => { const b = e.target.closest('[data-go]'); if (!b) return; if (b.dataset.go === 'history') history.replaceState(null, '', location.pathname); else location.hash = b.dataset.go; historyPage(m) }
+  const on = !!S.archiveTabsAfterH
+  m.innerHTML = `<h2>Archived tabs</h2><p class="lead">Tabs that tidied themselves away after you stopped using them. Open one and it comes right back.</p>
+    ${libTabs('archive')}
+    ${on ? '' : `<div class="card vcard" style="--ic:${tint(250)}"><div class="vart" aria-hidden="true"><span class="fa-tabs"><i class="on"></i><i></i><i class="zz"></i><i class="zz"></i></span><span class="lbl">Tidy tabs is off</span></div><div class="vrows"><h3>TIDY TABS</h3>${row('Archive tabs you have not used', 'Turn it on and tabs you have not opened in a while close themselves and wait here.', '<a class="btn primary" href="lumen://settings/general#Archive%20tabs%20you%20have%20not%20used">Turn on tab archiving</a>')}</div></div>`}
+    <div class="toolbar"><input type="search" id="q" placeholder="Search archived tabs">${list.length ? `<button class="btn" id="clrA">${ICONS.trash}Clear archive</button>` : ''}</div><div id="out"></div>`
+  bindLibTabs(m)
   const draw = q => {
     const f = list.filter(x => !q || (x.title + ' ' + x.url).toLowerCase().includes(q.toLowerCase()))
-    $('#out').innerHTML = f.length ? `<div class="card list">${f.map(x => `<div class="row" data-url="${esc(x.url)}">${fav(x.url)}<div class="grow"><div class="t" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(x.title || x.url)}</div><div class="d">${esc(hostOf(x.url))}  ·  archived ${ago(x.at)}</div></div><button class="btn sm" data-open>Open</button><button class="ib" data-del title="Remove">${ICONS.close}</button></div>`).join('')}</div>`
+    $('#out').innerHTML = f.length ? `<div class="bmgrid">${f.map(x => pageTile(x, '', `<span class="grow">Archived ${shortAgo(x.at)}</span><button class="btn sm primary" data-open>Open</button>`)).join('')}</div>`
       : `<div class="empty">${q ? 'No matches' : 'No archived tabs yet. Idle tabs land here when tab archiving is on.'}</div>`
   }
   $('#q').oninput = e => draw(e.target.value)
-  if ($('#clrA')) $('#clrA').onclick = async () => { await L.invoke('archiveRemove'); archivePage(m) }
-  $('#out').onclick = async e => {
-    const r = e.target.closest('[data-url]'); if (!r) return
+  if ($('#clrA')) $('#clrA').onclick = async () => { if (!await novaConfirm({ title: 'Clear the archive?', text: `Remove all ${list.length} archived tabs?`, ok: 'Clear', danger: true, icon: ICONS.trash })) return; await L.invoke('archiveRemove'); archivePage(m) }
+  const act = async (e, r) => {
     if (e.target.closest('[data-del]')) { await L.invoke('archiveRemove', r.dataset.url); list.splice(list.findIndex(x => x.url === r.dataset.url), 1); r.remove(); return }
     await L.invoke('archiveRemove', r.dataset.url)
-    if (e.target.closest('[data-open]') || true) { if (e.metaKey || e.ctrlKey) { L.invoke('open', r.dataset.url, true); r.remove() } else L.invoke('navigate', r.dataset.url) }
+    if (e.metaKey || e.ctrlKey) { L.invoke('open', r.dataset.url, true); r.remove() } else L.invoke('navigate', r.dataset.url)
   }
+  $('#out').onclick = e => { const r = e.target.closest('[data-url]'); if (r) act(e, r) }
+  $('#out').onkeydown = e => { const r = e.target.closest('.bmt'); if (r && e.target === r && e.key === 'Enter') act(e, r) }
   draw('')
 }
 
+// ======================================================================= read later
+async function readLaterPage(m) {
+  let list = (await L.invoke('readLater', 300)) || [], q = '', sort = 'new'
+  m.innerHTML = `<h2>Read later</h2><p class="lead">Pages you saved with ${MOD()} Shift D or from the menu. Open one and it comes off the list, so this stays short.</p>
+    ${libTabs('readlater')}<div id="rlglance"></div>
+    <div class="toolbar"><input type="search" id="q" placeholder="Search saved pages"><div class="seg" id="rlsort"><button data-v="new" class="on">Newest</button><button data-v="old">Oldest</button></div><button class="btn" id="rlall">${ICONS.tabs}Open all</button></div><div id="out"></div>`
+  bindLibTabs(m)
+  const draw = () => {
+    const sites = new Set(list.map(x => hostOf(x.url))).size, oldest = list.length ? Math.min(...list.map(x => x.t)) : 0
+    $('#rlglance').innerHTML = glance([[String(list.length), list.length === 1 ? 'Page saved' : 'Pages saved', 'book', 70], [String(sites), sites === 1 ? 'Site' : 'Sites', 'globe', 130], [oldest ? shortAgo(oldest) : 'Nothing yet', 'Oldest one saved', 'clock', 200, oldest && Date.now() - oldest > 7 * 864e5 ? 'warn' : '']])
+    $('#rlall').disabled = !list.length
+    const f = list.filter(x => !q || (x.title + ' ' + x.url).toLowerCase().includes(q)).sort((a, b) => sort === 'new' ? b.t - a.t : a.t - b.t)
+    $('#out').innerHTML = f.length ? `<div class="rlgrid">${f.map(x => pageTile(x, 'rlc' + (Date.now() - x.t > 7 * 864e5 ? ' old' : ''), `<span class="grow">${esc(hostOf(x.url).replace(/^www\./, ''))}</span><button class="btn sm primary" data-open>Read now</button>`, `<span class="rl-age"><i></i>Saved ${shortAgo(x.t)}</span>`).replace('<div class="d">' + esc(hostOf(x.url).replace(/^www\./, '')) + '</div>', '')).join('')}</div>`
+      : `<div class="empty">${q ? 'No matches' : `Nothing saved for later. On any page press ${MOD()} Shift D, and it waits here until you are ready.`}</div>`
+  }
+  const done = async (r, how) => {
+    const url = r.dataset.url
+    await L.invoke('readLaterDone', url); list = list.filter(x => x.url !== url)
+    if (how === 'remove') { r.classList.add('gone'); setTimeout(draw, 300); flash('Removed from Read later'); return }
+    if (how === 'tab') { L.invoke('open', url, true); r.classList.add('gone'); setTimeout(draw, 300); return }
+    L.invoke('navigate', url)
+  }
+  $('#out').onclick = e => { const r = e.target.closest('[data-url]'); if (!r) return; done(r, e.target.closest('[data-del]') ? 'remove' : e.metaKey || e.ctrlKey ? 'tab' : 'go') }
+  $('#out').onkeydown = e => { const r = e.target.closest('.bmt'); if (r && e.target === r && e.key === 'Enter') done(r, e.metaKey || e.ctrlKey ? 'tab' : 'go'); if (r && e.target === r && (e.key === 'Delete' || e.key === 'Backspace')) done(r, 'remove') }
+  $('#q').oninput = e => { q = e.target.value.trim().toLowerCase(); draw() }
+  $('#rlsort').onclick = e => { const b = e.target.closest('button'); if (!b) return; $('#rlsort').querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b)); sort = b.dataset.v; draw() }
+  $('#rlall').onclick = async () => {
+    if (list.length > 6 && !await novaConfirm({ title: `Open ${list.length} pages?`, text: 'Each one opens in its own tab and comes off the list.', ok: 'Open all', icon: ICONS.tabs })) return
+    for (const x of list) { L.invoke('open', x.url, true); await L.invoke('readLaterDone', x.url) }
+    flash(`Opened ${list.length} page${list.length === 1 ? '' : 's'}`); list = []; draw()
+  }
+  draw()
+}
+
+// add or edit a bookmark in a Nova sheet: name, address and folder (an existing one, or a new one)
+function bookmarkDialog(b, folders, done) {
+  const d = document.createElement('div'); d.className = 'dialog-wrap'
+  const fs = folders.filter(Boolean)
+  d.innerHTML = `<form class="dialog pdialog bmdialog"><div class="sc-head"><span class="sc-prev" id="bm-prev">${b ? letterFav(hostOf(b.url).replace(/^www\./, '') || '?') : ICONS.star}</span><div><h3>${b ? 'Edit bookmark' : 'Add a bookmark'}</h3><p class="sub" style="margin:2px 0 0">${b ? 'Rename it, move it or point it somewhere new.' : 'It shows up here and in the bookmarks bar.'}</p></div></div>
+    <label>Name<input id="bm-t" autocomplete="off" value="${esc(b ? b.title : '')}" placeholder="My favourite site"></label>
+    <label>Address<input id="bm-u" required autocomplete="off" spellcheck="false" value="${esc(b ? b.url : '')}" placeholder="example.com"></label>
+    <div class="pd-row"><label>Folder<select id="bm-f"><option value="">No folder</option>${fs.map(f => `<option ${b && b.folder === f ? 'selected' : ''}>${esc(f)}</option>`).join('')}<option value="+new">New folder...</option></select></label><label class="hidden" id="bm-nfw">New folder<input id="bm-nf" autocomplete="off" placeholder="Reading"></label></div>
+    <div class="actions"><button type="button" class="btn" id="bm-c">Cancel</button><button class="btn primary">${b ? 'Save' : 'Add bookmark'}</button></div></form>`
+  document.body.appendChild(d)
+  const close = () => d.remove(), sel = d.querySelector('#bm-f')
+  sel.onchange = () => { const n = sel.value === '+new'; d.querySelector('#bm-nfw').classList.toggle('hidden', !n); if (n) d.querySelector('#bm-nf').focus() }
+  d.querySelector('#bm-u').oninput = e => { const h = hostOf(/^https?:\/\//i.test(e.target.value) ? e.target.value : 'https://' + e.target.value.trim()); d.querySelector('#bm-prev').innerHTML = h && h.includes('.') ? letterFav(h.replace(/^www\./, '')) : ICONS.star }
+  d.querySelector('#bm-c').onclick = close
+  d.onclick = e => { if (e.target === d) close() }
+  d.onkeydown = e => { if (e.key === 'Escape') close() }
+  setTimeout(() => d.querySelector(b ? '#bm-t' : '#bm-u').focus(), 40)
+  d.querySelector('form').onsubmit = async e => {
+    e.preventDefault()
+    let url = d.querySelector('#bm-u').value.trim(); if (!/^[a-z]+:\/\//i.test(url)) url = 'https://' + url
+    try { new URL(url) } catch { d.querySelector('#bm-u').focus(); return }
+    const title = d.querySelector('#bm-t').value.trim() || hostOf(url), folder = sel.value === '+new' ? d.querySelector('#bm-nf').value.trim() : sel.value
+    if (b) await L.invoke('editBookmark', b.id, { title, url, folder })
+    else { const nb = await L.invoke('addBookmark', url, title); if (nb && nb.id && folder) await L.invoke('editBookmark', nb.id, { folder }) }
+    close(); flash(b ? 'Bookmark saved' : 'Bookmark added'); done()
+  }
+}
 async function bookmarksPage(m) {
-  m.innerHTML = `<h2>Bookmarks</h2><p class="lead">Press ${PLATFORM === 'darwin' ? 'Cmd' : 'Ctrl'} + D on any page to save it here.</p><div class="toolbar"><input type="search" id="q" placeholder="Search bookmarks"></div><div id="out"></div>`
-  const all = await L.invoke('bookmarks')
-  const draw = q => {
-    const f = all.filter(b => !q || (b.title || '').toLowerCase().includes(q) || b.url.toLowerCase().includes(q))
+  let all = await L.invoke('bookmarks'), folder = null, q = ''
+  const folders = () => [...new Set(all.map(b => b.folder || ''))].sort((a, b) => a.localeCompare(b))
+  m.innerHTML = `<h2>Bookmarks</h2><p class="lead">Press ${MOD()} + D on any page to save it here. Point at one to edit it.</p>
+    <div id="bmglance"></div>
+    <div class="toolbar"><input type="search" id="q" placeholder="Search bookmarks"><button class="btn primary" id="bmadd">${ICONS.plus}Add bookmark</button></div><div class="fchips" id="bmf"></div><div id="out"></div>`
+  const draw = () => {
+    const fo = folders()
+    $('#bmglance').innerHTML = glance([[String(all.length), all.length === 1 ? 'Bookmark' : 'Bookmarks', 'star', 30], [String(fo.filter(Boolean).length), fo.filter(Boolean).length === 1 ? 'Folder' : 'Folders', 'folder', 90], [String(new Set(all.map(b => hostOf(b.url))).size), 'Sites', 'globe', 150]])
+    if (folder !== null && !fo.includes(folder)) folder = null
+    $('#bmf').innerHTML = fo.length > 1 ? [[null, 'All'], ...fo.map(f => [f, f || 'Unfiled'])].map(([k, l]) => `<button class="fchip ${folder === k ? 'on' : ''}" data-f="${k === null ? '*' : esc(k)}">${k === null ? ICONS.star : ICONS.folder}${esc(l)} <b>${k === null ? all.length : all.filter(b => (b.folder || '') === k).length}</b></button>`).join('') : ''
+    const f = all.filter(b => (!q || (b.title || '').toLowerCase().includes(q) || b.url.toLowerCase().includes(q)) && (folder === null || (b.folder || '') === folder))
     if (!f.length) { $('#out').innerHTML = `<div class="empty">${q ? 'No matches' : 'No bookmarks yet'}</div>`; return }
     const groups = {}
     for (const b of f) (groups[b.folder || ''] = groups[b.folder || ''] || []).push(b)
-    $('#out').innerHTML = Object.entries(groups).sort((a, b) => a[0].localeCompare(b[0])).map(([folder, items]) => `${folder ? `<div class="daylabel">${esc(folder)}</div>` : ''}<div class="card list">${items.map(b => `<div class="row" data-id="${b.id}" data-url="${esc(b.url)}">${fav(b.url)}<div class="grow"><div class="t" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(b.title || b.url)}</div><div class="d">${esc(hostOf(b.url))}</div></div><button class="ib" data-del title="Delete">${ICONS.close}</button></div>`).join('')}</div>`).join('')
+    $('#out').innerHTML = Object.entries(groups).sort((a, b) => a[0].localeCompare(b[0])).map(([fo, items]) => `${fo || Object.keys(groups).length > 1 ? `<div class="daylabel">${esc(fo || 'Unfiled')} <b>${items.length}</b></div>` : ''}<div class="bmgrid">${items.map(b => pageTile(b, '', `<span class="grow">${esc(fo || 'Bookmarks')}</span><button class="ib" data-edit title="Edit">${ICONS.tune}</button>`)).join('')}</div>`).join('')
   }
-  draw('')
-  $('#q').oninput = e => draw(e.target.value.toLowerCase())
-  $('#out').onclick = async e => {
-    const r = e.target.closest('[data-id]'); if (!r) return
-    if (e.target.closest('[data-del]')) { await L.invoke('removeBookmark', r.dataset.id); all.splice(all.findIndex(b => b.id === r.dataset.id), 1); r.remove(); return }
+  const reload = async () => { all = await L.invoke('bookmarks'); draw() }
+  draw()
+  $('#bmadd').onclick = () => bookmarkDialog(null, folders(), reload)
+  $('#q').oninput = e => { q = e.target.value.toLowerCase(); draw() }
+  $('#bmf').onclick = e => { const b = e.target.closest('[data-f]'); if (!b) return; folder = b.dataset.f === '*' ? null : b.dataset.f; draw() }
+  const act = async (e, r) => {
+    if (e.target.closest('[data-edit]')) return bookmarkDialog(all.find(b => b.id === r.dataset.id), folders(), reload)
+    if (e.target.closest('[data-del]')) { await L.invoke('removeBookmark', r.dataset.id); all.splice(all.findIndex(b => b.id === r.dataset.id), 1); r.classList.add('rlc', 'gone'); setTimeout(draw, 300); return }
     if (e.metaKey || e.ctrlKey) L.invoke('open', r.dataset.url, true); else L.invoke('navigate', r.dataset.url)
   }
+  $('#out').onclick = e => { const r = e.target.closest('[data-id]'); if (r) act(e, r) }
+  $('#out').onkeydown = e => { const r = e.target.closest('.bmt'); if (r && e.target === r && e.key === 'Enter') act(e, r) }
 }
 
 function fmtBytes(n) { if (!n) return '0 B'; const u = ['B', 'KB', 'MB', 'GB']; let i = 0; while (n >= 1024 && i < 3) { n /= 1024; i++ } return n.toFixed(i ? 1 : 0) + ' ' + u[i] }
+const FKIND = [[/\.pdf$/i, 'PDF', '#e5484d', 'file'], [/\.(png|jpe?g|gif|webp|heic|svg|avif|bmp)$/i, 'IMG', '#12b886', 'camera'], [/\.(zip|rar|7z|gz|tgz|bz2|xz|tar)$/i, 'ZIP', '#e8a02c', 'box'], [/\.(mp4|mov|mkv|webm|avi|m4v)$/i, 'VIDEO', '#845ef7', 'play'], [/\.(mp3|wav|m4a|flac|aac|ogg)$/i, 'AUDIO', '#e5487d', 'speaker'], [/\.(docx?|pages|rtf|txt|md|odt)$/i, 'DOC', '#3b82f6', 'file'], [/\.(xlsx?|csv|numbers|ods)$/i, 'SHEET', '#16a34a', 'layers'], [/\.(pptx?|key|odp)$/i, 'SLIDES', '#f0763b', 'layers'], [/\.(dmg|pkg|exe|msi|deb|appimage|rpm)$/i, 'APP', '#64748b', 'download']]
+const fkind = n => FKIND.find(k => k[0].test(n || '')) || [null, (String(n).split('.').pop() || 'FILE').slice(0, 5).toUpperCase(), '#7c86a2', 'file']
 async function downloadsPage(m) {
-  m.innerHTML = `<h2>Downloads</h2><p class="lead">Files you downloaded since Lumen started.</p><div class="toolbar"><div style="flex:1"></div><button class="btn" id="clr">${ICONS.trash || ''}Clear list</button></div><div class="card list" id="out"></div>`
+  m.innerHTML = `<h2>Downloads</h2><p class="lead">Files you downloaded since Lumen started.</p><div id="dlglance"></div><div class="toolbar"><div style="flex:1"></div><button class="btn" id="clr">${ICONS.trash || ''}Clear list</button></div><div class="card list" id="out"></div>`
+  let last = '', lastG = '', timer = 0
   const draw = async () => {
+    clearTimeout(timer)
+    if (!document.getElementById('out')) return
     const list = await L.invoke('downloads')
-    $('#out').innerHTML = list.length ? list.map(d => {
-      const pct = d.total ? Math.round(d.received / d.total * 100) : 0
-      const status = d.state === 'progressing' ? `${fmtBytes(d.received)} of ${d.total ? fmtBytes(d.total) : 'unknown'}${d.paused ? ', paused' : ''}` : d.state === 'completed' ? (d.exists ? fmtBytes(d.total || d.received) + '  ·  ' + esc(hostOf(d.url)) : 'Moved or deleted') : d.state === 'cancelled' ? 'Cancelled' : 'Failed'
-      return `<div class="row" data-id="${d.id}"><span class="dlico ${d.state === 'progressing' ? 'busy' : d.state === 'completed' && d.exists ? '' : 'bad'}">${ICONS.download}</span><div class="grow"><div class="t" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(d.name)}</div><div class="d">${status}</div>${d.state === 'progressing' ? `<div class="bar"><i style="width:${pct}%"></i></div>` : ''}</div>
-        ${d.state === 'completed' && d.exists ? '<button class="btn sm" data-a="open">Open</button><button class="btn sm" data-a="show">Show in folder</button>' : ''}
-        ${d.state === 'progressing' ? `<button class="btn sm" data-a="pause">${d.paused ? 'Resume' : 'Pause'}</button><button class="btn sm danger" data-a="cancel">Cancel</button>` : ''}
+    const busy = list.filter(d => d.state === 'progressing').length, total = list.filter(d => d.state === 'completed').reduce((s, d) => s + (d.total || d.received || 0), 0)
+    const g = glance([[String(list.length), list.length === 1 ? 'File' : 'Files', 'download', 0], [fmtBytes(total), 'Downloaded', 'box', 70], [String(busy), busy === 1 ? 'Downloading now' : 'Downloading now', 'reload', 150, busy ? '' : 'good']])
+    if (g !== lastG) { lastG = g; $('#dlglance').innerHTML = g }
+    const html = list.length ? list.map(d => {
+      const pct = d.total ? Math.round(d.received / d.total * 100) : 0, k = fkind(d.name), live = d.state === 'progressing', ok = d.state === 'completed' && d.exists
+      const status = live ? `${fmtBytes(d.received)} of ${d.total ? fmtBytes(d.total) : 'unknown'}${d.paused ? ', paused' : ''}` : d.state === 'completed' ? (d.exists ? fmtBytes(d.total || d.received) + '  ·  ' + esc(hostOf(d.url)) : 'Moved or deleted') : d.state === 'cancelled' ? 'Cancelled' : 'Failed'
+      return `<div class="row dlrow" data-id="${d.id}"><span class="ftype ${live ? 'busy' : ok ? '' : 'bad'}" style="--fc:${k[2]}">${ICONS[k[3]] || ''}${esc(k[1])}</span><div class="grow"><div class="t" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(d.name)}</div><div class="d">${status}${live && d.total ? `  ·  <span class="dlpct">${pct}%</span>` : ''}</div>${live ? `<div class="bar"><i style="width:${pct}%"></i></div>` : ''}</div>
+        ${ok ? '<button class="btn sm primary" data-a="open">Open</button><button class="btn sm" data-a="show">Show in folder</button>' : ''}
+        ${live ? `<button class="btn sm" data-a="pause">${d.paused ? 'Resume' : 'Pause'}</button><button class="btn sm danger" data-a="cancel">Cancel</button>` : ''}
         ${d.state === 'interrupted' || d.state === 'cancelled' ? '<button class="btn sm" data-a="retry">Retry</button>' : ''}
         <button class="ib" data-a="remove" title="Remove from list">${ICONS.close}</button></div>`
     }).join('') : '<div class="empty">No downloads yet</div>'
+    // only touch the page when something changed, so nothing redraws at idle
+    if (html !== last) {
+      const bars = list.length && last && list.every(d => document.querySelector(`.dlrow[data-id="${d.id}"]`)) && html.replace(/width:\d+%|\d+(\.\d)? [KMG]?B of|\d+%/g, '') === last.replace(/width:\d+%|\d+(\.\d)? [KMG]?B of|\d+%/g, '')
+      if (bars) list.forEach(d => { const r = document.querySelector(`.dlrow[data-id="${d.id}"]`), b = r.querySelector('.bar i'), pct = d.total ? Math.round(d.received / d.total * 100) : 0; if (b) b.style.width = pct + '%'; const t = r.querySelector('.d'); if (t) t.innerHTML = `${fmtBytes(d.received)} of ${d.total ? fmtBytes(d.total) : 'unknown'}${d.paused ? ', paused' : ''}${d.total ? `  ·  <span class="dlpct">${pct}%</span>` : ''}` })
+      else $('#out').innerHTML = html
+      last = html
+    }
+    timer = setTimeout(draw, busy ? 1000 : 4000)
   }
   $('#out').onclick = async e => { const b = e.target.closest('[data-a]'); if (!b) return; await L.invoke('download', +b.closest('[data-id]').dataset.id, b.dataset.a); draw() }
   $('#clr').onclick = async () => { await L.invoke('download', -1, 'clear'); draw() }
-  draw(); setInterval(draw, 1000)
+  draw()
 }
 
 async function about(m) {
   const st = await L.invoke('update', 'state')
   const desc = s => !s ? '' : s.status === 'checking' ? 'Checking for updates...' : s.status === 'downloading' ? `Downloading update... ${Math.round(s.progress || 0)}%` : s.status === 'ready' ? `Version ${esc(s.latest)} is ready. Restart to finish updating.` : s.status === 'available' ? (s.reason || `Version ${esc(s.latest)} is available.`) : s.status === 'uptodate' ? 'Lumen is up to date.' : s.status === 'unpacking' ? 'Unpacking the update...' : s.status === 'installing' ? 'Restarting...' : s.status === 'error' ? 'Could not check for updates. ' + esc(s.error || '') : ''
+  const title = s => !s ? 'Updates' : s.status === 'ready' ? 'Ready to restart' : s.status === 'downloading' || s.status === 'unpacking' ? 'Getting the update' : s.status === 'checking' ? 'Checking' : s.status === 'uptodate' ? 'You have the latest Lumen' : s.status === 'available' ? 'An update is available' : s.status === 'error' ? 'Updates' : 'Updates'
   m.innerHTML = `<div class="abouthero rise"><img class="ahicon" src="lumen://assets/icon-${esc(S.appIcon || 'default')}.png" alt=""><div><h2>Lumen</h2><div class="ahver">Version ${esc(VERSION)}</div><p class="lead">A fast, private browser with Chrome's engine and a calmer feel.</p>
-    <div class="ahbtns"><button class="btn" id="replay">Replay the intro</button><a class="btn" href="lumen://settings/general">Settings</a></div></div></div>
-  <div class="card">
-    ${row('Updates', `<span id="ud">${desc(st)}</span>`, `<button class="btn" id="chk">Check for updates</button><button class="btn primary ${st && st.status === 'ready' ? '' : 'hidden'}" id="rst">Restart</button>`)}
+    <div class="ahbtns"><button class="btn" id="replay">${ICONS.play}Replay the intro</button><a class="btn" href="lumen://settings/general">${ICONS.gear}Settings</a></div></div></div>
+  <div class="card"><h3>UPDATES</h3>
+    <div class="row updrow"><span class="updorb" id="udorb"></span><div class="grow"><div class="t" id="udt"></div><div class="d"><span id="ud">${desc(st)}</span></div><div class="bar hidden" id="udbar"><i></i></div></div><div class="updbtns"><button class="btn" id="chk">Check for updates</button><button class="btn primary ${st && st.status === 'ready' ? '' : 'hidden'}" id="rst">${ICONS.reload}Restart</button></div></div>
     ${row('Automatic updates', 'Download updates in the background and install them when you quit.', sw('autoUpdate', S.autoUpdate))}
   </div>
-  <div class="card">
-    ${row('Engine', 'Chromium, the same engine as Google Chrome, so every site works the same.', '')}
-    ${row('Built in', 'Ad and tracker blocking, password manager, encrypted sync, split view, reader mode, picture in picture, tab sleeping, Chrome extensions.', '')}
+  <div class="card"><h3>INSIDE LUMEN</h3>
+    ${row('Engine', 'Chromium, the same engine as Google Chrome, so every site works the same.', '<span class="pill">Chromium</span>')}
+    <div class="builtins">${[['shield', 'Ad and tracker blocking'], ['key', 'Password manager'], ['lock', 'Encrypted sync'], ['split', 'Split view'], ['book', 'Reader mode'], ['pip', 'Picture in picture'], ['moon', 'Tab sleeping'], ['puzzle', 'Chrome extensions'], ['sparkle', 'Lumen AI'], ['box', 'Parcels'], ['translate', 'Translate'], ['bolt', 'Surge and Koi']].map(([i, t], n) => `<span style="--ic:${tint(n * 30)}">${ICONS[i] || ''}${t}</span>`).join('')}</div>
   </div>`
   bindSettings(m)
-  $('#chk').onclick = async () => { $('#ud').textContent = 'Checking for updates...'; const s = await L.invoke('update', 'check'); $('#ud').innerHTML = desc(s); $('#rst').classList.toggle('hidden', !(s && s.status === 'ready')) }
+  let poll = 0
+  const paint = s => {
+    const busy = s && /checking|downloading|unpacking|installing/.test(s.status)
+    $('#ud').innerHTML = desc(s) || 'Lumen checks for updates by itself. You can also check now.'; $('#udt').textContent = title(s)
+    const orb = $('#udorb'); orb.className = 'updorb' + (s && s.status === 'uptodate' ? ' ok' : '') + (busy ? ' busy' : '')
+    orb.innerHTML = s && s.status === 'uptodate' ? ICONS.check : s && s.status === 'ready' ? ICONS.reload : ICONS.download
+    const bar = $('#udbar'); bar.classList.toggle('hidden', !(s && (s.status === 'downloading' || s.status === 'unpacking'))); bar.firstChild.style.width = Math.round(s && s.status === 'unpacking' ? 100 : (s && s.progress) || 0) + '%'
+    $('#rst').classList.toggle('hidden', !(s && s.status === 'ready'))
+    clearTimeout(poll); if (busy && document.getElementById('udorb')) poll = setTimeout(async () => paint(await L.invoke('update', 'state')), 1000)
+  }
+  paint(st)
+  $('#chk').onclick = async () => { paint({ status: 'checking' }); paint(await L.invoke('update', 'check')) }
   $('#rst').onclick = () => L.invoke('update', 'install')
   $('#replay').onclick = () => L.invoke('replayIntro')
 }
@@ -900,24 +1155,37 @@ const ERR_ART = {
   refused: '<path d="M6 2v3M10 2v3M4.5 5h7v3a3.5 3.5 0 0 1-7 0zM8 11.5V14"/>',
   other: '<circle cx="8" cy="8" r="6"/><path d="M8 4.8v3.6M8 10.9v.1"/>',
 }
+const ERR_TRY = {
+  offline: ['Check that Wi-Fi is on, or that the network cable is plugged in.', 'Restart your router if other devices are offline too.', 'Turn a VPN or proxy off for a moment.'],
+  dns: ['Check the address for typos.', 'Search for the site instead. It may have moved.', 'If other sites work, this one may be down.'],
+  cert: ['Go back, and do not type passwords or card numbers here.', 'Check the date and time on your computer. A wrong clock breaks certificates.', 'If this is your own site, renew its certificate.'],
+  slow: ['Try again in a moment. The server may be busy.', 'Check whether other sites load quickly.', 'A VPN or weak Wi-Fi can make sites time out.'],
+  refused: ['Try again in a moment.', 'The site may be down for maintenance.', 'A firewall or VPN can block the connection.'],
+  other: ['Try again.', 'Go back and open the link again.', 'If it keeps happening, the site may be having trouble.'],
+  crash: ['Reload. Most crashes do not happen twice.', 'Close tabs you are not using to free up memory.', 'If one site keeps crashing, try it in a private window.'],
+}
+const errScene = (art, big) => `<div class="scene" aria-hidden="true"><span class="orbit o2"></span><span class="orbit"></span><span class="bigk">${big}</span><span class="sat s1"></span><span class="sat s2"></span><span class="sat s3"></span><div class="ico"><svg viewBox="0 0 16 16" width="30" height="30" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">${art}</svg></div></div>`
+const errTries = kind => `<div class="tries"><b>Things to try</b>${ERR_TRY[kind].map(t => `<span>${esc(t)}</span>`).join('')}</div>`
 function errorPage() {
   const p = new URLSearchParams(location.search)
-  const code = p.get('code') || '', url = p.get('url') || ''
+  const code = p.get('code') || '', url = p.get('url') || '', desc = p.get('desc') || ''
   const [title, text] = ERRORS[code] || (parseInt(code) <= -200 && parseInt(code) > -300 ? ERRORS['-200'] : ['This page is not working', 'Something went wrong while loading it.'])
-  const kind = ERR_KIND(code), host = hostOf(url)
+  const kind = ERR_KIND(code), host = hostOf(url), back = history.length > 1
   document.title = host || 'Error'
-  root.innerHTML = `<div class="err k-${kind}"><div class="errglow"></div><div class="rise">
-    <div class="ico"><svg viewBox="0 0 16 16" width="30" height="30" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">${ERR_ART[kind]}</svg></div>
+  root.innerHTML = `<div class="err k-${kind}"><div class="errglow"></div><div class="err4">${errScene(ERR_ART[kind], esc(String(Math.abs(parseInt(code)) || '')))}<div class="rise">
     <div class="crash-why">${{ offline: 'No internet', dns: 'Address not found', cert: 'Certificate problem', slow: 'Timed out', refused: 'Connection refused', other: 'Could not load' }[kind]}</div>
     <h1>${esc(title)}</h1><p>${esc(text)}</p>
-    <code>${esc(host || url)}  ·  ${esc(p.get('desc') || '')}</code>
+    <code>${esc(host || url)}${desc ? '  ·  ' + esc(desc) : ''}</code>
     ${kind === 'offline' ? '<div class="errwait"><i></i>Lumen will reload the page as soon as you are back online</div>' : ''}
-    <div class="erracts">${history.length > 1 ? '<button class="btn" id="eback">Go back</button>' : ''}${kind === 'dns' && host ? `<button class="btn" id="esearch">Search for ${esc(host.replace(/^www\./, ''))}</button>` : ''}<button class="btn primary" id="retry">Try again</button></div>
-  </div></div>`
+    <div class="erracts">${back ? `<button class="btn ${kind === 'cert' ? 'primary' : ''}" id="eback">${ICONS.back}${kind === 'cert' ? 'Back to safety' : 'Go back'}</button>` : ''}${kind === 'dns' && host ? `<button class="btn" id="esearch">${ICONS.search}Search for ${esc(host.replace(/^www\./, ''))}</button>` : ''}<button class="btn ${kind === 'cert' && back ? '' : 'primary'}" id="retry">${ICONS.reload}Try again</button></div>
+    ${kind === 'cert' ? `<details class="errdetails"><summary>What happened</summary><div>Lumen stopped before loading ${esc(host || 'this site')} because its security certificate could not be checked. The site may be set up wrong, or someone may be pretending to be it. Lumen will not load it for you.${desc ? `<code>${esc(desc)}</code>` : ''}</div></details>` : ''}
+    ${errTries(kind)}
+  </div></div></div>`
   $('#retry').onclick = () => L.invoke('retry', url)
   if ($('#eback')) $('#eback').onclick = () => history.back()
   if ($('#esearch')) $('#esearch').onclick = () => L.invoke('navigate', host.replace(/^www\./, '').split('.')[0] + ' ' + host)
   if (kind === 'offline') addEventListener('online', () => L.invoke('retry', url), { once: true })
+  setTimeout(() => { const b = $(kind === 'cert' && back ? '#eback' : '#retry'); if (b) b.focus({ preventScroll: true }) }, 80)
 }
 
 // ======================================================================= crashed tab
@@ -926,14 +1194,13 @@ function crashedPage() {
   const p = new URLSearchParams(location.search)
   const url = p.get('url') || '', host = hostOf(url), why = CRASH_WHY[p.get('reason')] || ''
   document.title = host ? host + ' crashed' : 'This tab crashed'
-  root.innerHTML = `<div class="err crash"><div class="errglow"></div><div class="rise">
-    <div class="ico"><svg viewBox="0 0 16 16" width="30" height="30" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3.5h10a1 1 0 0 1 1 1v7a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1v-7a1 1 0 0 1 1-1zM2 6h12"/><path d="m6 8.2 1.6 1.6M7.6 8.2 6 9.8M8.6 8.2l1.6 1.6M10.2 8.2 8.6 9.8"/></svg></div>
-    ${why ? `<div class="crash-why">${esc(why)}</div>` : ''}
+  root.innerHTML = `<div class="err crash"><div class="errglow"></div><div class="err4">${errScene('<path d="M3 3.5h10a1 1 0 0 1 1 1v7a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1v-7a1 1 0 0 1 1-1zM2 6h12"/><path d="m6 8.2 1.6 1.6M7.6 8.2 6 9.8M8.6 8.2l1.6 1.6M10.2 8.2 8.6 9.8"/>', `<span class="bigic">${ICONS.crash || ''}</span>`)}<div class="rise">
+    <div class="crash-why">${esc(why || 'The page stopped working')}</div>
     <h1>This tab crashed</h1><p>Something went wrong while showing ${host ? esc(host.replace(/^www\./, '')) : 'this page'}. Your other tabs are fine. Reload to try again.</p>
     ${url ? `<code>${esc(url)}</code>` : '<div style="height:26px"></div>'}
-    <div class="erracts"><button class="btn" id="cnew">Open New Tab</button><button class="btn primary" id="creload">${ICONS.reload}Reload</button></div>
-    <p class="crash-tip">If it keeps crashing, the page may need more memory than it can get. Closing a few tabs can help.</p>
-  </div></div>`
+    <div class="erracts"><button class="btn" id="cnew">${ICONS.plus}Open New Tab</button><button class="btn primary" id="creload">${ICONS.reload}Reload</button></div>
+    ${errTries('crash')}
+  </div></div></div>`
   $('#creload').onclick = () => L.invoke('retry', /^(https?|lumen):\/\//i.test(url) ? url : 'lumen://newtab')
   $('#cnew').onclick = () => L.invoke('retry', 'lumen://newtab')
   setTimeout(() => $('#creload').focus(), 60)
@@ -944,7 +1211,7 @@ function crashedPage() {
 // in the same color as its chip in the sidebar.
 let CUR_SECTION = ''
 const HERO_HUE = [0, 40, 85, 140, 200, 250, 300]
-const HERO_ICON = { Search: 'search', Highlights: 'book', 'Archived tabs': 'layers' }
+const HERO_ICON = { Search: 'search', Highlights: 'sparkle', 'Archived tabs': 'layers' }
 let heroSeen = ''
 function springPop(el, from) {
   // the hero icon lands with a real Jelly spring: scale and a small turn settle together
@@ -1000,7 +1267,7 @@ new MutationObserver(decorate).observe(root, { childList: true, subtree: true })
   const routes = {
     newtab: newTab, error: errorPage, crashed: crashedPage,
     parcels: () => parcelsPage(shell('parcels')),
-    history: () => historyPage(shell('history')), bookmarks: () => bookmarksPage(shell('bookmarks')), downloads: () => downloadsPage(shell('downloads')),
+    history: () => historyPage(shell('history')), readlater: () => readLaterPage(shell('readlater')), bookmarks: () => bookmarksPage(shell('bookmarks')), downloads: () => downloadsPage(shell('downloads')),
     passwords: () => passwords(shell('passwords')), extensions: () => extensionsPage(shell('extensions')), about: () => about(shell('about')),
     settings: () => {
       const s = sub || 'general'

@@ -935,7 +935,7 @@ class BrowserWin {
       items.push({ label: 'Reader Mode', click: () => readerMode(wc) })
       items.push({ label: 'Take Screenshot', click: () => screenshot(wc) })
       items.push({ label: 'Save Page As...', click: () => savePage(wc) })
-      items.push({ label: 'Print...', click: () => wc.print() })
+      items.push({ label: 'Print...', click: () => printPage(this, wc) })
       sep()
       items.push({ label: 'View Page Source', click: () => this.createTab('view-source:' + wc.getURL(), { openerId: t.id }) })
     }
@@ -1532,7 +1532,7 @@ ipcMain.handle('ui', async (e, action, ...a) => {
       case 'unsplit': w.splitId = null; w.layout(); w.pushState(); return
       case 'tabMenu': return tabMenu(w, a[0])
       case 'appMenu': return Menu.getApplicationMenu() && appMenuPopup(w)
-      case 'print': return wc && wc.print()
+      case 'print': return wc && printPage(w, wc)
       case 'autoGroup': return autoGroupWindow(w)
       case 'aiAsk': aiAsk(w, a[0] || {}); return true
       case 'aiStop': { const c = aiRuns.get(a[0]); if (c) c.abort(); return true }
@@ -1698,7 +1698,7 @@ function appMenuPopup(w) {
     { label: 'Reader Mode', click: () => { const t = w.active(); if (t && t.view) readerMode(t.view.webContents) } },
     { label: 'Picture in Picture', click: () => w.send('command', 'pip') },
     { label: 'Take Screenshot', click: () => { const t = w.active(); if (t && t.view) screenshot(t.view.webContents) } },
-    { label: 'Print...', accelerator: 'CmdOrCtrl+P', click: () => { const t = w.active(); if (t && t.view) t.view.webContents.print() } },
+    { label: 'Print...', accelerator: 'CmdOrCtrl+P', click: () => { const t = w.active(); if (t && t.view) printPage(w, t.view.webContents) } },
     { type: 'separator' },
     { label: 'Settings', accelerator: 'CmdOrCtrl+,', click: () => openSettings(w) },
   ], { kind: 'app' })
@@ -2063,7 +2063,7 @@ function buildMenu() {
       { label: 'Close Window', accelerator: 'CmdOrCtrl+Shift+W', click: focused(w => w.win.close()) },
       { type: 'separator' },
       { label: 'Save Page As...', accelerator: 'CmdOrCtrl+S', click: focused((w, t) => activeWc(w, t) && savePage(activeWc(w, t))) },
-      { label: 'Print...', accelerator: 'CmdOrCtrl+P', click: focused((w, t) => activeWc(w, t) && activeWc(w, t).print()) },
+      { label: 'Print...', accelerator: 'CmdOrCtrl+P', click: focused((w, t) => activeWc(w, t) && printPage(w, activeWc(w, t))) },
       ...(isMac ? [] : [{ type: 'separator' }, { label: 'Settings', accelerator: 'Ctrl+,', click: focused(w => openSettings(w)) }, { label: 'Exit', accelerator: 'Ctrl+Q', click: () => quitLumen() }, { label: 'Exit Lumen, Surge and Koi', click: () => quitEverything() }]),
     ] },
     { label: 'Edit', submenu: [
@@ -2390,10 +2390,67 @@ function openExternalURL(url) {
 app.on('open-url', (e, url) => { e.preventDefault(); openExternalURL(url) })
 app.on('open-file', (e, file) => { e.preventDefault(); openExternalURL('file://' + file) })
 app.on('second-instance', (e, argv) => {
+  if (handleArgs(argv)) return
   const urls = argv.filter(a => /^(https?|file):/.test(a))
   if (urls.length) urls.forEach(openExternalURL)
   else { const w = windows.length ? lastFocused() : comeBack(); if (w) { if (w.win.isMinimized()) w.win.restore(); w.win.show(); w.win.focus() } }
 })
+
+// ---------------------------------------------------------------- print, Dock menu, Windows jump list
+// wc.print() is Chromium's own print dialog (the system one on Mac and Windows); Lumen only steps in when it fails
+function printFailed(w, why) {
+  if (!why || /cancel/i.test(why)) return false
+  return novaDialog(w, { kind: 'print', icon: 'printer', buttons: ['OK'], message: 'Could not print this page', detail: /fail/i.test(why) ? 'The printer or the print system did not take the job. Check that a printer is connected, then try again.' : String(why) }).catch(() => {})
+}
+function printPage(w, wc) {
+  try { wc.print({}, (ok, why) => { if (!ok && w && !w.win.isDestroyed()) printFailed(w, why) }) } catch (e) { printFailed(w, e && e.message || 'failed') }
+}
+// the windows to open things in from the Dock or the taskbar
+function dockWin() { const w = windows.find(x => !x.incognito && !x.win.isDestroyed()) || comeBack(); if (w && w.win.isMinimized()) w.win.restore(); return w }
+function dockOpen(url) { const w = dockWin(); if (!w) return; w.createTab(url); w.win.show(); w.win.focus() }
+// the five sites you opened last (one per host), for the Dock menu
+function recentSites(n = 5) {
+  const best = new Map()
+  for (const h of D.historyMap.values()) {
+    if (!/^https?:/.test(h.url)) continue
+    let host; try { host = new URL(h.url).host } catch { continue }
+    const b = best.get(host); if (!b || h.t > b.t) best.set(host, h)
+  }
+  return [...best.values()].sort((a, b) => b.t - a.t).slice(0, n).map(h => ({ title: h.title || h.url, url: h.url }))
+}
+function dockTemplate(recent = []) {
+  const tpl = [
+    { label: 'New Window', click: () => { if (isMac && app.dock) app.dock.show(); inBackground = false; const w = createWindow({}); w.win.show() } },
+    { label: 'New Private Window', click: () => { if (isMac && app.dock) app.dock.show(); inBackground = false; const w = createWindow({ incognito: true }); w.win.show() } },
+    { label: 'New Tab', click: () => dockOpen('lumen://newtab') },
+    { type: 'separator' },
+    { label: 'Read Later', click: () => dockOpen('lumen://readlater') },
+    { label: 'Downloads', click: () => dockOpen('lumen://downloads') },
+  ]
+  if (recent.length) tpl.push({ type: 'separator' }, ...recent.map(r => ({ label: r.title.length > 40 ? r.title.slice(0, 39) + '...' : r.title, click: () => openExternalURL(r.url) })))
+  return tpl
+}
+const JUMP = [['--lumen-new-window', 'New Window', 'Open a new Lumen window'], ['--lumen-private', 'New Private Window', 'Open a private window that keeps no history'], ['--lumen-new-tab', 'New Tab', 'Open a new tab']]
+function jumpTasks(exe) { return JUMP.map(([arg, title, description]) => ({ program: exe, arguments: arg, iconPath: exe, iconIndex: 0, title, description })) }
+// the jump list and the Dock pass these; true when one was handled
+function handleArgs(argv) {
+  const a = argv || []
+  if (a.includes('--lumen-private')) { dockTemplate()[1].click(); return true }
+  if (a.includes('--lumen-new-window')) { dockTemplate()[0].click(); return true }
+  if (a.includes('--lumen-new-tab')) { dockOpen('lumen://newtab'); return true }
+  return false
+}
+function setupDockAndJumpList() {
+  try {
+    if (isMac && app.dock) {
+      const set = () => { try { app.dock.setMenu(Menu.buildFromTemplate(dockTemplate(recentSites()))) } catch {} }
+      set()
+      // the recent sites stay fresh: rebuilt when Lumen stops being the active app (as you reach for the Dock)
+      app.on('did-resign-active', set)
+    }
+    if (process.platform === 'win32') app.setUserTasks(jumpTasks(process.execPath))
+  } catch (e) { log('dock / jump list failed', e && e.message) }
+}
 
 // ---------------------------------------------------------------- lifecycle
 let quitting = false
@@ -2445,6 +2502,8 @@ app.whenReady().then(async () => {
   else if (saved.length) restoreWindows(false)
   else createWindow({})
   for (const u of [...argUrls, ...pendingOpen.splice(0)]) openExternalURL(u)
+  if (!openedHidden()) handleArgs(process.argv)
+  setupDockAndJumpList()
   applyAppIcon()
   Updater.onState(s => broadcast('update', s))
   Updater.start({
@@ -2468,4 +2527,4 @@ app.whenReady().then(async () => {
   powerMonitor.on('resume', () => Sync.syncNow().catch(() => {}))
 })
 
-module.exports = { windows, createWindow, D, allowSites, toggleSiteAdblock, __refreshAdblock: refreshAdblock, __adblockAge: adblockAge, __hl_add: addHighlight, __hl_recolor: recolorHighlight, __addToNTP: addToNTP, __checkParcels: checkParcels, __appOpen: appOpen, __goBackground: goBackground, __comeBack: comeBack, __isBackground: () => inBackground, __quitLumen: quitLumen, __nova: Nova, __novaDialog: novaDialog, __tabMenu: tabMenu, __readerMode: readerMode, __appMenu: appMenuPopup, __confirmQuit: confirmQuit }
+module.exports = { windows, createWindow, D, allowSites, toggleSiteAdblock, __refreshAdblock: refreshAdblock, __adblockAge: adblockAge, __hl_add: addHighlight, __hl_recolor: recolorHighlight, __addToNTP: addToNTP, __checkParcels: checkParcels, __appOpen: appOpen, __goBackground: goBackground, __comeBack: comeBack, __isBackground: () => inBackground, __quitLumen: quitLumen, __nova: Nova, __novaDialog: novaDialog, __tabMenu: tabMenu, __readerMode: readerMode, __appMenu: appMenuPopup, __confirmQuit: confirmQuit, __printFailed: printFailed, __dockTemplate: dockTemplate, __jumpTasks: jumpTasks, __handleArgs: handleArgs, __recentSites: recentSites }

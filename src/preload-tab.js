@@ -293,6 +293,15 @@ if (location.protocol === 'lumen:') {
     const move = d => setCur(((cur < 0 && d < 0 ? 0 : cur) + d + items.length) % items.length)
     return { host, close, move, get cur() { return cur } }
   }
+  // 4.1 drawing kit for the swipe bead and the speed badge: a static grain tile and two layers of specks that drift
+  // once while the piece is on screen (transform and opacity only; still under Motion Off / reduced motion)
+  const GRAIN41 = 'url("data:image/png;base64,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")'
+  const MOTES41 = `.gr{position:absolute;inset:0;z-index:-1;pointer-events:none;border-radius:inherit;background:${GRAIN41};mix-blend-mode:overlay;opacity:.9}
+    .mt{position:absolute;inset:-10%;z-index:-1;pointer-events:none;opacity:0}
+    .mt.a{background:radial-gradient(1.8px 1.8px at 14% 30%,#fff,transparent),radial-gradient(1.3px 1.3px at 38% 78%,rgba(255,255,255,.8),transparent),radial-gradient(2.2px 2.2px at 70% 24%,#fff,transparent),radial-gradient(1.2px 1.2px at 86% 66%,rgba(255,255,255,.7),transparent);animation:mta 1.8s .1s ease-out both}
+    .mt.b{background:radial-gradient(1.2px 1.2px at 24% 62%,rgba(255,255,255,.75),transparent),radial-gradient(2px 2px at 58% 44%,#fff0fa,transparent),radial-gradient(1.4px 1.4px at 44% 12%,rgba(255,255,255,.7),transparent),radial-gradient(1.6px 1.6px at 8% 86%,rgba(255,255,255,.7),transparent);animation:mtb 2.2s .2s ease-out both}
+    @keyframes mta{0%{opacity:0;transform:translate3d(0,8px,0)}30%{opacity:.9}100%{opacity:.55;transform:translate3d(4px,-8px,0)}}
+    @keyframes mtb{0%{opacity:0;transform:translate3d(0,-4px,0)}35%{opacity:.7}100%{opacity:.35;transform:translate3d(-5px,7px,0)}}`
   if (QOL.swipe && window === window.top) {
     let acc = 0, timer = null, ui = null
     const canScrollX = (el, dir) => {
@@ -305,43 +314,61 @@ if (location.protocol === 'lumen:') {
       const se = document.scrollingElement
       return se && (dir < 0 ? se.scrollLeft > 0 : se.scrollLeft + innerWidth < se.scrollWidth - 1)
     }
-    // a liquid glass bead slides in from the edge with an accent glow along that edge; its ring fills as you swipe,
-    // and when letting go will go it fills with the accent and says so
+    // 4.1: a gem of colour slides in from the edge on a pool of saturated light. A glass bead with a spectral ring that
+    // fills as you swipe; when letting go will go, it floods with the banner gradient (pink, violet, cyan), squishes on
+    // a jelly spring and a hero tag springs out beside it: a colour banner with a huge word and a giant faded arrow
+    // bleeding off its edge. Only transform and opacity move; two blurs at most (the bead; the tag is opaque colour).
     const show = p => {
       if (!ui) {
         const { host, sh } = surface('right:0;bottom:0;pointer-events:none')
+        const AR = '<path d="M10 3.5 5.5 8l4.5 4.5"/>'
         sh.innerHTML = `<style>${novaCSS()}
-          .nv{position:fixed;inset:0;pointer-events:none}
-          .edge{position:absolute;top:0;bottom:0;width:180px;opacity:0;background:radial-gradient(60% 46% at 0% 50%,color-mix(in srgb,var(--accent) 34%,transparent),transparent 100%)}
-          .edge.r{right:0;transform:scaleX(-1)}
-          .w{position:absolute;top:50%;width:68px;height:68px;margin-top:-34px}
-          .c{position:absolute;inset:0;border-radius:50%;display:grid;place-items:center;color:var(--fg);transition:transform .5s var(--jelly),box-shadow .3s}
-          .c .fill{position:absolute;inset:5px;border-radius:50%;background:var(--nova);opacity:0;transform:scale(.3);z-index:1;transition:opacity .18s,transform .55s var(--jelly);box-shadow:0 10px 30px color-mix(in srgb,var(--accent) 60%,transparent),inset 0 1px 0 rgba(255,255,255,.55),inset 0 -8px 14px -8px rgba(0,0,0,.3)}
-          .c.go{box-shadow:var(--spec),var(--halo),var(--shadow)}
+          .nv{position:fixed;inset:0;pointer-events:none;--pink:#ec3d97;--amber:#ffad33;--cyan:#22c4e8;
+            --banner:radial-gradient(70% 120% at 0% 0%,rgba(255,255,255,.4),transparent 60%),radial-gradient(60% 140% at 100% 100%,color-mix(in srgb,var(--cyan) 70%,transparent),transparent 70%),linear-gradient(120deg,var(--pink),var(--accent2) 52%,var(--accent))}
+          .edge{position:absolute;top:0;bottom:0;left:0;width:240px;opacity:0;
+            background:radial-gradient(48% 34% at 0% 50%,color-mix(in srgb,var(--pink) 55%,transparent),transparent 100%),radial-gradient(70% 58% at 0% 46%,color-mix(in srgb,var(--accent2) 36%,transparent),transparent 100%),radial-gradient(40% 70% at 0% 60%,color-mix(in srgb,var(--cyan) 22%,transparent),transparent 100%)}
+          .edge::after{content:'';position:absolute;left:0;top:18%;bottom:18%;width:3px;border-radius:3px;background:linear-gradient(180deg,transparent,var(--pink) 30%,var(--accent2) 55%,var(--cyan) 80%,transparent);box-shadow:0 0 18px var(--pink),0 0 4px #fff}
+          .edge.r{left:auto;right:0;transform:scaleX(-1)}
+          .w{position:absolute;top:50%;width:76px;height:76px;margin-top:-38px}
+          .c{position:absolute;inset:0;border-radius:50%;display:grid;place-items:center;color:var(--fg);transition:transform .5s var(--jelly)}
+          .c.glass{box-shadow:var(--spec),var(--caustic),0 14px 34px -8px color-mix(in srgb,var(--pink) 45%,transparent),0 0 0 6px color-mix(in srgb,var(--accent) 10%,transparent),var(--shadow)}
+          .c .fill{position:absolute;inset:4px;border-radius:50%;z-index:1;background:var(--banner);opacity:0;transform:scale(.3);transition:opacity .16s,transform .55s var(--jelly);
+            box-shadow:inset 0 1px 0 rgba(255,255,255,.7),inset 0 -10px 16px -8px rgba(40,0,60,.4),0 12px 34px color-mix(in srgb,var(--pink) 60%,transparent),0 0 46px color-mix(in srgb,var(--accent2) 50%,transparent)}
+          .c .fill::after{content:'';position:absolute;left:14%;right:14%;top:7%;height:40%;border-radius:50%;background:linear-gradient(180deg,rgba(255,255,255,.75),rgba(255,255,255,0))}
           .c.go .fill{opacity:1;transform:none}
-          .c svg.ar{position:relative;z-index:4;width:26px;height:26px;transition:transform .5s var(--jelly)}
-          .c.go svg.ar{transform:scale(1.15);color:#fff;filter:drop-shadow(0 1px 2px rgba(0,0,0,.3))}
-          .ring{position:absolute;inset:-4px;width:76px;height:76px;z-index:4;transform:rotate(-90deg);overflow:visible}
-          .ring circle{fill:none;stroke-width:3;stroke-linecap:round}
-          .ring .bg{stroke:color-mix(in srgb,var(--accent) 18%,transparent)}
-          .ring .fg{stroke:var(--accent);stroke-dasharray:226;stroke-dashoffset:226;filter:drop-shadow(0 0 5px var(--accent))}
-          .lb{position:absolute;top:80px;padding:7px 13px;border-radius:999px;font:800 13px/1.1 var(--display);letter-spacing:-.01em;white-space:nowrap;opacity:0;transform:translateY(-6px) scale(.9);transition:opacity .18s,transform .5s var(--jelly);color:var(--fg)}
-          .lb small{display:block;font:600 10.5px/1.2 var(--sans);color:var(--fg3);margin-top:2px;letter-spacing:0}
-          .w.l .lb{left:0}.w.r .lb{right:0}
-          .c.go~.lb{opacity:1;transform:none}</style>
-          <div class="nv"><div class="edge"></div><div class="w"><div class="c glass"><span class="fill"></span><svg class="ring" viewBox="0 0 76 76"><circle class="bg" cx="38" cy="38" r="36"/><circle class="fg" cx="38" cy="38" r="36"/></svg><svg class="ar" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M10 3.5 5.5 8l4.5 4.5"/></svg></div><div class="lb glass"><span class="tx"></span><small>Let go to leave this page</small></div></div></div>`
+          .c svg.ar{position:relative;z-index:4;width:30px;height:30px;color:color-mix(in srgb,var(--accent) 70%,var(--fg));transition:transform .5s var(--jelly)}
+          .c.go svg.ar{transform:scale(1.2);color:#fff;filter:drop-shadow(0 2px 3px rgba(60,0,60,.4))}
+          .ring{position:absolute;inset:-4px;width:84px;height:84px;z-index:4;transform:rotate(-90deg);overflow:visible}
+          .ring circle{fill:none;stroke-width:3.5;stroke-linecap:round}
+          .ring .bg{stroke:color-mix(in srgb,var(--accent) 16%,transparent)}
+          .ring .fg{stroke:url(#swg);stroke-dasharray:251;stroke-dashoffset:251}
+          .lb{position:absolute;isolation:isolate;top:50%;width:212px;margin-top:-38px;height:76px;border-radius:26px;overflow:hidden;opacity:0;transform:translateX(-14px) scale(.8);transition:opacity .16s,transform .6s var(--jelly);
+            background:var(--banner);color:#fff;box-shadow:inset 0 1px 0 rgba(255,255,255,.6),inset 0 -14px 24px -16px rgba(40,0,60,.45),0 18px 40px -12px color-mix(in srgb,var(--pink) 70%,transparent),0 0 0 1px rgba(255,255,255,.22)}
+          .lb::before{content:'';position:absolute;inset:0;border-radius:inherit;padding:1.5px;background:linear-gradient(120deg,rgba(255,255,255,.9),rgba(255,255,255,.15) 40%,rgba(255,255,255,.55));-webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask-composite:exclude}
+          .lb .wm{position:absolute;right:-26px;top:-30px;width:130px;height:130px;color:#fff;opacity:.2;transform:rotate(-8deg)}
+          .lb .pool{position:absolute;left:-30px;top:-50px;width:160px;height:100px;border-radius:50%;background:radial-gradient(closest-side,rgba(255,255,255,.45),transparent)}
+          .lb .in{position:relative;display:flex;flex-direction:column;justify-content:center;height:100%;padding:0 20px}
+          .lb .tx{font:850 30px/1 var(--display);letter-spacing:-.045em;text-shadow:0 2px 14px rgba(60,0,60,.3)}
+          .lb small{display:block;font:700 11px/1.2 var(--sans);color:rgba(255,255,255,.85);margin-top:5px;letter-spacing:.01em}
+          .w .lb{top:0;margin-top:0}
+          .w.l .lb{left:90px}.w.r .lb{right:90px;transform:translateX(14px) scale(.8)}.w.r .lb .wm{right:auto;left:-26px;transform:rotate(8deg) scaleX(-1)}
+          .c.go~.lb{opacity:1;transform:none}
+          ${MOTES41}.lb .mt{animation-play-state:paused}.c.go~.lb .mt{animation-play-state:running}</style>
+          <div class="nv"><div class="edge"></div><div class="w"><div class="c glass"><span class="fill"></span><svg class="ring" viewBox="0 0 84 84"><defs><linearGradient id="swg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ec3d97"/><stop offset=".5" stop-color="${ACC}"/><stop offset="1" stop-color="#22c4e8"/></linearGradient></defs><circle class="bg" cx="42" cy="42" r="40"/><circle class="fg" cx="42" cy="42" r="40"/></svg><svg class="ar" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">${AR}</svg></div><div class="lb"><span class="gr"></span><span class="mt a"></span><span class="mt b"></span><span class="pool"></span><svg class="wm" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">${AR}</svg><div class="in"><span class="tx"></span><small>Let go to leave this page</small></div></div></div></div>`
         document.documentElement.appendChild(host)
         ui = { host, sh, w: sh.querySelector('.w'), c: sh.querySelector('.c'), ring: sh.querySelector('.ring .fg'), edge: sh.querySelector('.edge'), tx: sh.querySelector('.lb .tx'), lb: sh.querySelector('.lb'), lens: false }
       }
       const back = p < 0, k = Math.min(1, Math.abs(p) / 220)
-      const off = Math.round(k * 84 - 68) + 'px'
+      const x = Math.round(k * 96 - 76)
       ui.w.className = 'w ' + (back ? 'l' : 'r')
-      ui.w.style.left = back ? off : ''; ui.w.style.right = back ? '' : off
+      // the bead rides on transform only: pinned to its edge, slid in with translateX
+      ui.w.style.left = back ? '0' : ''; ui.w.style.right = back ? '' : '0'
+      ui.w.style.transform = `translateX(${back ? x : -x}px)`
       ui.edge.className = 'edge' + (back ? '' : ' r'); ui.edge.style.opacity = String(Math.min(1, k * 1.2) * (k >= 1 ? 1 : 0.7))
       const go = k >= 1
       if (ui.c.classList.contains('go') !== go) { ui.c.classList.toggle('go', go); ui.tx.textContent = back ? 'Back' : 'Forward' }
       ui.c.style.transform = `scale(${0.6 + k * 0.4}) rotate(${back ? 0 : 180}deg)`; ui.c.style.opacity = String(Math.min(1, k * 1.8))
-      ui.ring.style.strokeDashoffset = String(226 * (1 - k))
+      ui.ring.style.strokeDashoffset = String(251 * (1 - k))
     }
     const reset = () => { acc = 0; if (ui) { ui.host.remove(); ui = null } }
     addEventListener('wheel', e => {
@@ -366,33 +393,55 @@ if (location.protocol === 'lumen:') {
       if (!v) return
       e.preventDefault(); e.stopPropagation()
       v.playbackRate = Math.max(0.25, Math.min(4, Math.round((v.playbackRate + (e.key === '>' ? 0.25 : -0.25)) * 100) / 100))
-      // a glass speed capsule over the video: a dial tile, the big number, and a meter from 0.25x to 4x with a mark at 1x
+      // 4.1: a hero capsule over the video. A colour banner on the left (pink to violet to cyan, a light pool, a giant
+      // faded dial bleeding off its edge) holds a glossy dial tile whose needle swings to the speed; then the huge
+      // number in gradient type, and a meter of light from 0.25x to 4x with marks at 1x and 2x.
+      // One blur (the capsule). The meter grows with scaleX, the number pops once: transform and opacity only.
       if (!badge || !badge.host.isConnected) {
         const { host, sh } = surface('transform:translateX(-50%);pointer-events:none')
         host.id = '__lumen_speed'
+        const DIAL = '<path d="M2.5 11.5a5.5 5.5 0 1 1 11 0"/><path class="nd" d="m8 11.5 3-4"/><circle cx="8" cy="11.5" r=".6" fill="currentColor"/>'
+        const pct = r => ((r - 0.25) / 3.75 * 100).toFixed(2) + '%'
         sh.innerHTML = `<style>${novaCSS()}
-          .p{display:flex;align-items:center;gap:14px;padding:10px 20px 10px 10px;border-radius:999px;opacity:0;transform:translateY(-10px) scale(.88);transition:opacity .2s,transform .6s var(--spring)}
+          .nv{--pink:#ec3d97;--amber:#ffad33;--cyan:#22c4e8;
+            --banner:radial-gradient(70% 120% at 0% 0%,rgba(255,255,255,.42),transparent 60%),radial-gradient(70% 140% at 100% 100%,color-mix(in srgb,var(--cyan) 70%,transparent),transparent 70%),linear-gradient(130deg,var(--pink),var(--accent2) 55%,var(--accent))}
+          .p{display:flex;align-items:stretch;gap:0;padding:6px;border-radius:30px;opacity:0;transform:translateY(-14px) scale(.82);transition:opacity .18s,transform .7s var(--jelly)}
           .p.on{opacity:1;transform:none}
-          .p .tile{width:44px;height:44px;border-radius:50%;position:relative;z-index:4}
-          .p .tile svg{width:22px;height:22px;transition:transform .55s var(--jelly)}
-          .tx{position:relative;z-index:4;display:flex;flex-direction:column;gap:5px}
-          .row{display:flex;align-items:baseline;gap:10px}
-          .n{font:800 28px/1 var(--display);letter-spacing:-.04em;font-variant-numeric:tabular-nums;padding-right:2px}
-          .lbl{font:700 10.5px/1 var(--sans);letter-spacing:.08em;text-transform:uppercase;color:var(--fg3);margin-left:auto}
-          .m{position:relative;width:150px;height:7px;border-radius:9px;background:var(--chip);box-shadow:inset 0 1px 2px rgba(0,0,0,.12)}
-          .m i{position:absolute;left:0;top:0;bottom:0;border-radius:inherit;background:var(--nova);box-shadow:0 0 10px var(--accent);transition:width .55s var(--spring)}
-          .m b{position:absolute;top:-3px;bottom:-3px;width:2px;border-radius:2px;left:${(0.75 / 3.75 * 100).toFixed(2)}%;background:var(--fg3)}
-          .hint{display:flex;align-items:center;gap:4px;font:600 10.5px var(--sans);color:var(--fg3);margin-top:2px}.hint kbd{padding:2px 5px;font-size:9.5px}
-          .pop .n{animation:pop .5s var(--jelly)}@keyframes pop{from{transform:scale(1.22)}}</style>
-          <div class="nv"><div class="p glass" role="status" aria-live="polite"><span class="sweep"></span><span class="tile"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 11.5a5.5 5.5 0 1 1 11 0"/><path d="m8 11.5 3-4"/></svg></span><span class="tx"><span class="row"><span class="n gt"></span><span class="lbl">Playback</span></span><span class="m"><i></i><b></b></span><span class="hint"><kbd>Shift</kbd><kbd>&lt;</kbd><kbd>&gt;</kbd> slower, faster</span></span></div></div>`
+          .p.glass{box-shadow:var(--spec),var(--caustic),0 0 0 6px color-mix(in srgb,var(--accent) 9%,transparent),0 22px 50px -16px color-mix(in srgb,var(--pink) 55%,transparent),var(--shadow)}
+          .bn{position:relative;z-index:4;width:84px;border-radius:24px;overflow:hidden;display:grid;place-items:center;background:var(--banner);
+            box-shadow:inset 0 1px 0 rgba(255,255,255,.65),inset 0 -12px 20px -14px rgba(40,0,60,.5),0 10px 26px -8px color-mix(in srgb,var(--pink) 70%,transparent)}
+          .bn .wm{position:absolute;right:-30px;bottom:-34px;width:104px;height:104px;color:#fff;opacity:.2;transform:rotate(-14deg)}
+          .bn .pool{position:absolute;left:-20px;top:-40px;width:110px;height:80px;border-radius:50%;background:radial-gradient(closest-side,rgba(255,255,255,.5),transparent)}
+          .tile{position:relative;width:52px;height:52px;border-radius:18px;color:#fff;
+            background:linear-gradient(180deg,rgba(255,255,255,.5),rgba(255,255,255,.08) 55%),rgba(255,255,255,.14);
+            box-shadow:inset 0 1px 0 rgba(255,255,255,.9),inset 0 0 0 1px rgba(255,255,255,.4),0 0 0 5px rgba(255,255,255,.12),0 10px 22px -6px rgba(40,0,60,.45)}
+          .tile svg{width:28px;height:28px;filter:drop-shadow(0 2px 2px rgba(40,0,60,.35))}
+          .tile .nd{transform-origin:8px 11.5px;transition:transform .6s var(--jelly)}
+          .tx{position:relative;z-index:4;display:flex;flex-direction:column;justify-content:center;gap:7px;padding:8px 22px 9px 18px}
+          .row{display:flex;align-items:baseline;gap:12px}
+          .n{display:inline-block;font:850 40px/.95 var(--display);letter-spacing:-.05em;font-variant-numeric:tabular-nums;padding-right:3px;
+            background:linear-gradient(120deg,var(--fg) 15%,color-mix(in srgb,var(--pink) 80%,var(--fg)) 60%,var(--accent2));-webkit-background-clip:text;background-clip:text;color:transparent}
+          .lbl{font:800 10px/1.15 var(--sans);letter-spacing:.14em;text-transform:uppercase;color:var(--fg3);margin-left:auto;text-align:right}
+          .lbl b{display:block;font:800 12.5px/1.1 var(--display);letter-spacing:-.01em;text-transform:none;color:color-mix(in srgb,var(--pink) 70%,var(--fg));margin-top:2px}
+          .m{position:relative;width:200px;height:9px;border-radius:9px;background:var(--chip);box-shadow:inset 0 1px 2px rgba(0,0,0,.14),inset 0 0 0 1px var(--line);overflow:visible}
+          .m i{position:absolute;inset:0;border-radius:inherit;background:linear-gradient(90deg,var(--cyan),var(--accent) 35%,var(--accent2) 65%,var(--pink));
+            box-shadow:0 0 12px color-mix(in srgb,var(--pink) 60%,transparent),inset 0 1px 0 rgba(255,255,255,.55);transform-origin:0 50%;transform:scaleX(0);transition:transform .6s var(--spring)}
+          .m b{position:absolute;top:-4px;bottom:-4px;width:2px;border-radius:2px;background:var(--fg3)}
+          .m b::after{position:absolute;top:13px;left:50%;transform:translateX(-50%);font:800 8.5px/1 var(--sans);color:var(--fg3);letter-spacing:.02em}
+          .m b.x1{left:${pct(1)}}.m b.x1::after{content:'1x'}.m b.x2{left:${pct(2)}}.m b.x2::after{content:'2x'}
+          .hint{display:flex;align-items:center;gap:4px;font:650 10.5px var(--sans);color:var(--fg3);margin-top:9px}.hint kbd{padding:2px 5px;font-size:9.5px}
+          .pop .n{animation:pop .55s var(--jelly)}@keyframes pop{from{transform:scale(1.28) translateY(-2px)}}
+          .pop .tile{animation:tpop .6s var(--jelly)}@keyframes tpop{from{transform:scale(.86) rotate(-8deg)}}
+          ${MOTES41}</style>
+          <div class="nv"><div class="p glass" role="status" aria-live="polite"><span class="sweep"></span><span class="bn"><span class="gr"></span><span class="mt a"></span><span class="mt b"></span><span class="pool"></span><svg class="wm" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.1" stroke-linecap="round">${DIAL}</svg><span class="tile"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${DIAL}</svg></span></span><span class="tx"><span class="row"><span class="n"></span><span class="lbl">Playback<b>Speed</b></span></span><span class="m"><i></i><b class="x1"></b><b class="x2"></b></span><span class="hint"><kbd>Shift</kbd><kbd>&lt;</kbd><kbd>&gt;</kbd> slower, faster</span></span></div></div>`
         document.documentElement.appendChild(host)
         badge = { host, sh, pill: sh.querySelector('.p'), lens: false }
       }
       const r = v.getBoundingClientRect(), { host, sh, pill } = badge
-      host.style.left = Math.round(Math.max(130, Math.min(innerWidth - 130, r.left + r.width / 2))) + 'px'; host.style.top = Math.max(10, Math.round(r.top + 22)) + 'px'
+      host.style.left = Math.round(Math.max(170, Math.min(innerWidth - 170, r.left + r.width / 2))) + 'px'; host.style.top = Math.max(10, Math.round(r.top + 22)) + 'px'
       sh.querySelector('.n').textContent = v.playbackRate + 'x'
-      sh.querySelector('.m i').style.width = Math.round((v.playbackRate - 0.25) / 3.75 * 100) + '%'
-      sh.querySelector('.tile svg').style.transform = `rotate(${Math.max(-60, Math.min(80, (v.playbackRate - 1) * 30))}deg)`
+      sh.querySelector('.m i').style.transform = `scaleX(${((v.playbackRate - 0.25) / 3.75).toFixed(3)})`
+      sh.querySelector('.tile .nd').style.transform = `rotate(${Math.max(-60, Math.min(80, (v.playbackRate - 1) * 30))}deg)`
       pill.classList.remove('pop'); void pill.offsetWidth; pill.classList.add('on', 'pop')
       clearTimeout(badge.t); badge.t = setTimeout(() => { pill.classList.remove('on'); badge.t2 = setTimeout(() => { if (badge && !pill.classList.contains('on')) { badge.host.remove(); badge = null } }, 400) }, 1200)
       clearTimeout(badge.t2)

@@ -1108,27 +1108,46 @@ api.on('find-result', r => { $('#find-count').textContent = r.total ? `${r.activ
 // ---------------------------------------------------------------- prompts (permissions, passwords)
 const prompts = []
 const promptsEl = $('#prompts')
+// 4.1: each kind of request gets its own colour banner and glyph (ui/sweep41.css): location cyan, camera pink,
+// microphone violet, notifications amber, screen and devices deep blue
+const PI = d => `<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">${d}</svg>`
+const PERM_ICONS = {
+  mic: PI('<rect x="5.75" y="1.75" width="4.5" height="8" rx="2.25"/><path d="M3.25 7.75a4.75 4.75 0 0 0 9.5 0M8 12.5v2"/>'),
+  bell: PI('<path d="M4 11.5V7a4 4 0 0 1 8 0v4.5l1.25 1.25H2.75z"/><path d="M6.5 14a1.6 1.6 0 0 0 3 0"/>'),
+  screen: PI('<rect x="1.75" y="2.5" width="12.5" height="8.5" rx="1.75"/><path d="M5.5 14h5M8 11v3"/>'),
+  plug: PI('<path d="M5.5 1.75v3M10.5 1.75v3M3.75 4.75h8.5V7a4.25 4.25 0 0 1-8.5 0zM8 11.25v3"/>'),
+  cookie: PI('<path d="M13.9 8.6A6 6 0 1 1 7.4 2.1a2.2 2.2 0 0 0 2.7 2.7 2.2 2.2 0 0 0 3.8 3.8z"/><path d="M5.5 6.5v.1M6.5 10.5v.1M10 9.5v.1"/>'),
+}
+function permKind(text) {
+  return /locat/i.test(text) ? 'location' : /camera|video/i.test(text) ? 'camera' : /micro|audio/i.test(text) ? 'mic' : /notif/i.test(text) ? 'notifications'
+    : /screen|window/i.test(text) ? 'screen' : /usb|hid|serial|midi|device/i.test(text) ? 'device' : /cookie|clipboard|copy/i.test(text) ? 'data' : 'other'
+}
+const PERM_ICON = { location: ICONS.location, camera: ICONS.camera, mic: PERM_ICONS.mic, notifications: PERM_ICONS.bell, screen: PERM_ICONS.screen, device: PERM_ICONS.plug, data: PERM_ICONS.cookie, other: ICONS.shield }
+const promptBanner = svg => `<span class="pban"><i class="gr41"></i><i class="mt41 a"></i><i class="mt41 b"></i><span class="ppool"></span><span class="pwm">${svg}</span><span class="pic">${svg}</span></span>`
 function addPrompt(p) {
   const el = document.createElement('div')
   el.className = 'prompt'
-  const pic = p.kind === 'permission' ? (/locat/i.test(p.text) ? 'location' : /camera|video/i.test(p.text) ? 'camera' : /micro|audio/i.test(p.text) ? 'speaker' : /notif/i.test(p.text) ? 'bolt' : 'shield') : p.kind === 'translate' ? 'translate' : 'key'
+  const perm = p.kind === 'permission' ? permKind(p.text) : ''
+  const svg = p.kind === 'permission' ? PERM_ICON[perm] : p.kind === 'translate' ? ICONS.translate : ICONS.key
   el.dataset.kind = p.kind || 'password'
+  if (perm) el.dataset.perm = perm
   if (p.kind === 'permission') {
-    el.innerHTML = `<span class="pic">${ICONS[pic]}</span><div class="ph">${esc(p.host)}</div><div class="pt">Wants to ${esc(p.text)}</div>
+    const what = String(p.text || '')
+    el.innerHTML = `${promptBanner(svg)}<div class="ptx"><div class="ph"><b>${esc(p.host)}</b> wants to</div><div class="pt">${esc(what.charAt(0).toUpperCase() + what.slice(1))}</div></div>
       <label class="pcheck"><input type="checkbox" checked><span class="box">${ICONS.check}</span>Remember for this site</label>
       <div class="row"><button class="btn primary" data-a="allow">Allow</button><button class="btn" data-a="block">Block</button></div>`
   } else if (p.kind === 'translate') {
-    el.innerHTML = `<span class="pic">${ICONS[pic]}</span><div class="ph">Lumen Translate</div><div class="pt">${esc(p.text)}</div>
+    el.innerHTML = `${promptBanner(svg)}<div class="ptx"><div class="ph">Lumen Translate</div><div class="pt">${esc(p.text)}</div></div>
       <label class="pcheck"><input type="checkbox"><span class="box">${ICONS.check}</span>Always translate ${esc(p.lang || 'this language')}</label>
       <div class="row"><button class="btn primary" data-a="translate">Translate</button><button class="btn" data-a="later">Not now</button><div class="spacer"></div><button class="btn" data-a="never">Never</button></div>`
   } else {
-    el.innerHTML = `<span class="pic">${ICONS[pic]}</span><div class="ph">${esc(p.host)}</div><div class="pt">${esc(p.text)}</div>
+    el.innerHTML = `${promptBanner(svg)}<div class="ptx"><div class="ph">${esc(p.host)}</div><div class="pt">${esc(p.text)}</div></div>
       <div class="row"><button class="btn primary" data-a="save">Save</button><button class="btn" data-a="later">Not now</button><div class="spacer"></div><button class="btn" data-a="never">Never</button></div>`
   }
   promptsEl.appendChild(el)
   // pops in on a spring, then hands the card to Jelly for hover tilt
   el.setAttribute('data-nojelly', '')
-  const g = new SpringGroup({ y: 28, o: 0, s: 0.88 }, 'calm', v => { el.style.transform = `translateY(${v.y}px) scale(${v.s})`; el.style.opacity = Math.max(0, Math.min(1, v.o)) })
+  const g = new SpringGroup({ y: TOP ? -16 : 28, o: 0, s: 0.9 }, 'jelly', v => { el.style.transform = `translateY(${v.y}px) scale(${v.s})`; el.style.opacity = Math.max(0, Math.min(1, v.o)) })
   g.to({ y: 0, o: 1, s: 1 })
   g.onRest(() => { if (el.isConnected) { el.removeAttribute('data-nojelly'); el.style.transform = '' } })
   const entry = { p, el, g }
@@ -1441,41 +1460,23 @@ const trCard = $('#trcard')
 let trPct = 0
 const trFill = new Spring(0, 'jelly', v => {
   const p = Math.max(0, Math.min(100, v))
-  $('#tr-fill').style.width = p + '%'
-  $('#tr-progc').style.strokeDashoffset = 352 - 352 * p / 100
+  // 4.1: the bar grows with scaleX (transform only); data-p keeps the number for tests
+  const f = $('#tr-fill'); f.style.transform = `scaleX(${(p / 100).toFixed(4)})`; f.dataset.p = p.toFixed(1)
   $('#tr-pct').textContent = Math.round(Math.min(trPct, p)) + '%'
 })
 let trHideT = null, trSparkT = null, trInfo = null, trHover = false
 $('#tr-ring').innerHTML = TR_GLYPHS.slice(0, 8).map(g => `<span><b>${g}</b></span>`).join('')
-// glyphs orbit the globe on a tilted ellipse: bigger and in front at the bottom, smaller and behind at the top
-let trOrbitRaf = 0
+// 4.1: the glyphs no longer orbit on a loop. They are scattered across the banner as glossy chips and spring in once,
+// staggered (ui/sweep41.css); nothing runs per frame while a page translates.
+const TR_SPOTS = [[18, 22, -10], [70, 12, 8], [86, 58, -6], [8, 70, 12], [56, 78, -14], [92, 18, 16], [36, 8, 4], [28, 88, -4]]
 function trOrbit(on) {
-  cancelAnimationFrame(trOrbitRaf)
   if (!on) return
-  const els = [...document.querySelectorAll('#tr-ring span')], t0 = performance.now()
-  const step = now => {
-    const t = (now - t0) / 1000
-    els.forEach((el, i) => {
-      const a = t * 0.9 + i / els.length * Math.PI * 2, depth = (Math.sin(a) + 1) / 2
-      el.style.transform = `translate(${Math.cos(a) * 68}px, ${Math.sin(a) * 24 + Math.sin(t * 2 + i) * 3}px) scale(${0.62 + depth * 0.5})`
-      el.style.opacity = 0.35 + depth * 0.65
-      el.style.zIndex = depth > 0.5 ? 3 : 0
-    })
-    trOrbitRaf = requestAnimationFrame(step)
-  }
-  trOrbitRaf = requestAnimationFrame(step)
+  document.querySelectorAll('#tr-ring span').forEach((el, i) => {
+    const [x, y, r] = TR_SPOTS[i % TR_SPOTS.length]
+    el.style.left = x + '%'; el.style.top = y + '%'; el.style.setProperty('--r', r + 'deg'); el.style.setProperty('--i', i)
+  })
 }
-function trSparks(on) {
-  clearInterval(trSparkT)
-  if (!on) return
-  trSparkT = setInterval(() => {
-    const s = document.createElement('span')
-    s.textContent = TR_GLYPHS[Math.floor(Math.random() * TR_GLYPHS.length)]
-    s.style.left = (8 + Math.random() * 84) + '%'
-    s.style.setProperty('--r', (Math.random() * 40 - 20) + 'deg')
-    $('#tr-sparks').appendChild(s); setTimeout(() => s.remove(), 1700)
-  }, 160)
-}
+function trSparks() {}
 // letters scramble through other scripts before settling into the translation
 function decode(el, text) {
   const pool = 'abcdefghijklmnopqrstuvwxyzابتعم文字ЖЯあか'
@@ -1576,7 +1577,7 @@ function taAnswer(ans) {
 api.on('trask', p => {
   if (taCur) taAnswer({ allow: false })
   taCur = p
-  $('#ta-glyph').textContent = ({ ar: '\u0639', fa: '\u0641', ur: '\u0627\u0631', he: '\u05d0', ru: '\u0416', zh: '\u6587', ja: '\u3042', ko: '\ud55c', hi: '\u0915', el: '\u03a9', th: '\u0e01' })[String(p.from).split('-')[0]] || native(p.from).slice(0, 1).toUpperCase() || 'A'
+  $('#ta-wm').textContent = $('#ta-glyph').textContent = ({ ar: '\u0639', fa: '\u0641', ur: '\u0627\u0631', he: '\u05d0', ru: '\u0416', zh: '\u6587', ja: '\u3042', ko: '\ud55c', hi: '\u0915', el: '\u03a9', th: '\u0e01' })[String(p.from).split('-')[0]] || native(p.from).slice(0, 1).toUpperCase() || 'A'
   $('#ta-title').textContent = `Translate this page to ${p.toName}?`
   $('#ta-sub').innerHTML = `It looks like it is written in ${esc(p.fromName)}${native(p.from) !== p.fromName ? ` <span dir="auto">(${esc(native(p.from))})</span>` : ''}.`
   $('#ta-always').checked = false
@@ -1584,7 +1585,7 @@ api.on('trask', p => {
   $('#ta-never').textContent = `Never for ${p.fromName}`
   const r = $('#content-shadow').getBoundingClientRect()
   taEl.style.top = (r.top + 14) + 'px'
-  taEl.style.left = (r.left + r.width / 2) + 'px'; taEl.style.marginLeft = '-220px'
+  taEl.style.left = (r.left + r.width / 2) + 'px'; taEl.style.marginLeft = '-250px'
   taEl.classList.add('show')
   api.do('overlay', true, true)   // quiet: the page keeps keyboard focus
   taG.set({ y: -40, o: 0, s: 0.9 }); taG.to({ y: 0, o: 1, s: 1 })
@@ -1702,7 +1703,7 @@ function trConfetti() {
     const a = Math.random() * Math.PI * 2, d = 70 + Math.random() * 110
     s.style.setProperty('--dx', Math.cos(a) * d + 'px'); s.style.setProperty('--dy', Math.sin(a) * d - 20 + 'px')
     s.style.setProperty('--rot', (Math.random() * 300 - 150) + 'deg')
-    s.style.color = ['#5b8cff', '#8a63f2', '#e9609c', '#f0a03c', '#3fd08a'][i % 5]
+    s.style.color = ['#ffffff', '#ffe066', '#b6fff0', '#ffd1ec', '#c9b8ff'][i % 5]
     s.style.animationDelay = (Math.random() * 0.12) + 's'
     st.appendChild(s); setTimeout(() => s.remove(), 1400)
   }

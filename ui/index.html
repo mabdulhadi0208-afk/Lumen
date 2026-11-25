@@ -5,6 +5,7 @@
 <title>Lumen</title>
 <link rel="stylesheet" href="ui.css">
 <link rel="stylesheet" href="chrome41.css">
+<link rel="stylesheet" href="sweep41.css">
 </head>
 <body>
   <div id="app">
@@ -91,34 +92,46 @@
   </div>
 
   <div id="trcard" aria-live="polite">
-    <div class="tr-scrim"><div class="tr-scan"></div></div>
+    <div class="tr-scrim"></div>
     <div class="tr-box">
-      <div class="tr-aurora"><i></i><i></i><i></i></div>
-      <div class="tr-border"></div>
-      <div class="tr-stage">
-        <div class="tr-halo"></div>
-        <div class="tr-orb"><svg viewBox="0 0 100 100"><defs><radialGradient id="trorb" cx="35%" cy="30%" r="75%"><stop offset="0" stop-color="#9fc0ff"/><stop offset=".45" stop-color="#5b8cff"/><stop offset="1" stop-color="#5a2fd0"/></radialGradient></defs><circle cx="50" cy="50" r="46" fill="url(#trorb)"/><g class="tr-lat"><ellipse cx="50" cy="50" rx="46" ry="14"/><ellipse cx="50" cy="50" rx="46" ry="30"/><line x1="4" y1="50" x2="96" y2="50"/></g><g class="tr-lon"><ellipse class="l1" cx="50" cy="50" rx="12" ry="46"/><ellipse class="l2" cx="50" cy="50" rx="30" ry="46"/><ellipse class="l3" cx="50" cy="50" rx="42" ry="46"/></g><circle cx="50" cy="50" r="46" fill="none" stroke="rgba(255,255,255,.35)" stroke-width="1"/><ellipse cx="36" cy="28" rx="16" ry="9" fill="rgba(255,255,255,.28)"/></svg></div>
-        <svg class="tr-prog" viewBox="0 0 150 150"><defs><linearGradient id="trpg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#5b8cff"/><stop offset=".5" stop-color="#8a63f2"/><stop offset="1" stop-color="#e9609c"/></linearGradient></defs><circle class="bg" cx="75" cy="75" r="56"/><circle class="fg" id="tr-progc" cx="75" cy="75" r="56"/></svg>
+      <div class="tr-hero">
+        <i class="gr41"></i><i class="mt41 a"></i><i class="mt41 b"></i>
+        <span class="tr-pool"></span>
+        <svg class="tr-wm" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width=".7" stroke-linecap="round"><circle cx="8" cy="8" r="6.2"/><path d="M1.8 8h12.4M8 1.8c1.8 1.7 2.7 3.8 2.7 6.2S9.8 12.5 8 14.2C6.2 12.5 5.3 10.4 5.3 8S6.2 3.5 8 1.8z"/></svg>
         <div class="tr-ring" id="tr-ring"></div>
-        <div class="tr-done"><svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></div>
-        <div class="tr-burst"><i></i><i></i><i></i></div>
+        <div class="tr-stage">
+          <div class="tr-orb"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><circle cx="8" cy="8" r="6.2"/><path d="M1.8 8h12.4M8 1.8c1.8 1.7 2.7 3.8 2.7 6.2S9.8 12.5 8 14.2C6.2 12.5 5.3 10.4 5.3 8S6.2 3.5 8 1.8z"/></svg></div>
+          <div class="tr-done"><svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></div>
+          <div class="tr-burst"><i></i><i></i></div>
+        </div>
+        <div class="tr-htx">
+          <div class="tr-kick">Lumen Translate</div>
+          <div class="tr-title" id="tr-title">Translating</div>
+          <div class="tr-langs"><span class="tr-chip" id="tr-from"></span><span class="tr-arrow"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8h10M9.5 4.5 13 8l-3.5 3.5"/></svg></span><span class="tr-chip to" id="tr-to"></span></div>
+        </div>
       </div>
-      <div class="tr-langs"><span class="tr-chip" id="tr-from"></span><span class="tr-arrow"><i></i><i></i><i></i></span><span class="tr-chip to" id="tr-to"></span></div>
-      <div class="tr-title" id="tr-title">Translating</div>
-      <div class="tr-sub" id="tr-sub"></div>
-      <div class="tr-preview" id="tr-preview"><div class="tr-orig" id="tr-orig"></div><div class="tr-new" id="tr-new"></div></div>
-      <div class="tr-barwrap"><div class="tr-bar"><i id="tr-fill"></i><b></b></div><span class="tr-pct" id="tr-pct">0%</span></div>
-      <div class="tr-count" id="tr-count">Reading the page</div>
-      <div class="tr-actions"><button class="tr-btn" id="tr-cancel">Cancel</button><button class="tr-btn" id="tr-orig-btn">Show original</button><button class="tr-btn" id="tr-always"></button></div>
+      <div class="tr-body">
+        <div class="tr-sub" id="tr-sub"></div>
+        <div class="tr-preview" id="tr-preview"><div class="tr-orig" id="tr-orig"></div><div class="tr-new" id="tr-new"></div></div>
+        <div class="tr-barwrap"><div class="tr-bar"><i id="tr-fill"></i></div><span class="tr-pct" id="tr-pct">0%</span></div>
+        <div class="tr-count" id="tr-count">Reading the page</div>
+        <div class="tr-actions"><button class="tr-btn" id="tr-cancel">Cancel</button><button class="tr-btn" id="tr-orig-btn">Show original</button><button class="tr-btn" id="tr-always"></button></div>
+      </div>
       <div class="tr-sparks" id="tr-sparks"></div>
     </div>
   </div>
   <div id="trask" role="dialog" aria-label="Translate this page">
-    <div class="ta-glow"></div>
-    <div class="ta-icon"><span class="ta-g a">A</span><span class="ta-g b" id="ta-glyph"></span></div>
-    <div class="ta-text"><div class="ta-title" id="ta-title"></div><div class="ta-sub" id="ta-sub"></div>
-      <label class="ta-check"><input type="checkbox" id="ta-always"><span></span><em id="ta-always-l"></em></label></div>
-    <div class="ta-btns"><button class="ta-btn primary" id="ta-yes">Translate</button><button class="ta-btn" id="ta-no">Not now</button><button class="ta-link" id="ta-never"></button></div>
+    <div class="ta-ban">
+      <i class="gr41"></i><i class="mt41 a"></i><i class="mt41 b"></i>
+      <span class="ta-pool"></span>
+      <span class="ta-wm" id="ta-wm">A</span>
+      <div class="ta-icon"><span class="ta-g a">A</span><span class="ta-g b" id="ta-glyph"></span></div>
+    </div>
+    <div class="ta-main">
+      <div class="ta-text"><div class="ta-kick">Lumen Translate</div><div class="ta-title" id="ta-title"></div><div class="ta-sub" id="ta-sub"></div>
+        <label class="ta-check"><input type="checkbox" id="ta-always"><span></span><em id="ta-always-l"></em></label></div>
+      <div class="ta-btns"><button class="ta-btn primary" id="ta-yes">Translate</button><button class="ta-btn" id="ta-no">Not now</button><button class="ta-link" id="ta-never"></button></div>
+    </div>
     <div class="ta-timer"><i id="ta-timer"></i></div>
   </div>
   <div id="tabgrid">

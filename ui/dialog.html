@@ -176,6 +176,86 @@ h1 { font-size: 26px; }
 .glass .orb.a, .glass .orb.b { animation-iteration-count: 2; }
 .icon::before { animation-iteration-count: 4; }
 @media (max-width: 460px) { #sheet { padding: 22px 20px 18px; } h1 { font-size: 22px; } .buttons .btn { flex: 1; min-width: 0; } }
+
+/* ------------------------------------------------------------- Lumen 4.1: recomposed
+   The sheet opens on a full-width banner of colour with the icon floating in it; the question is centred under it in
+   big type and the answers are full-width capsules. */
+:root { --banner: radial-gradient(60% 120% at 0% 0%, rgba(255, 255, 255, .34), transparent 60%), radial-gradient(50% 140% at 100% 100%, color-mix(in srgb, var(--accent3) 85%, transparent), transparent 70%), linear-gradient(120deg, var(--accent), var(--accent2) 55%, var(--accent3)); }
+.dark { --banner: radial-gradient(60% 120% at 0% 0%, rgba(255, 255, 255, .2), transparent 60%), radial-gradient(50% 140% at 100% 100%, color-mix(in srgb, var(--accent3) 70%, transparent), transparent 70%), linear-gradient(120deg, color-mix(in srgb, var(--accent) 88%, #000), color-mix(in srgb, var(--accent2) 85%, #000) 55%, color-mix(in srgb, var(--accent3) 85%, #000)); }
+.incognito { --banner: radial-gradient(60% 120% at 0% 0%, rgba(255, 220, 255, .22), transparent 60%), radial-gradient(50% 140% at 100% 100%, rgba(255, 79, 184, .8), transparent 70%), linear-gradient(120deg, #6d3bd8, #a24bff 55%, #e0479f); }
+body[data-kind="danger"], body[data-kind="clear"] { --banner: radial-gradient(60% 120% at 0% 0%, rgba(255, 255, 255, .3), transparent 60%), linear-gradient(120deg, #e5484d, #f0703c 60%, #f3a03a); }
+#sheet { width: min(452px, calc(100vw - 32px)); padding: 10px 30px 26px; border-radius: 34px; text-align: center; top: 60px;
+  box-shadow: var(--spec), var(--shadow), 0 0 0 8px color-mix(in srgb, var(--accent) 9%, transparent), 0 40px 140px -20px color-mix(in srgb, var(--accent) 55%, transparent); }
+#sheet::after { border-radius: 33px; }
+#sheet::before { padding: 1.5px; background: radial-gradient(200px circle at var(--gx) var(--gy), rgba(255, 255, 255, .95), transparent 70%), linear-gradient(120deg, var(--accent), color-mix(in srgb, var(--accent2) 70%, #fff) 40%, rgba(255, 255, 255, .5) 55%, var(--accent3)); }
+.glass .art { display: none; }
+.hero { position: relative; height: 176px; margin: 0 -20px 22px; border-radius: 26px; display: grid; place-items: center; overflow: hidden; isolation: isolate;
+  background: var(--banner); box-shadow: inset 0 1px 0 rgba(255, 255, 255, .55), inset 0 -18px 34px -20px rgba(0, 0, 0, .35), 0 18px 40px -18px color-mix(in srgb, var(--accent) 90%, transparent); }
+.hero .hb { position: absolute; z-index: -1; border-radius: 50%; filter: blur(22px); pointer-events: none; }
+.hero .hb.a { width: 200px; height: 150px; left: -50px; top: -70px; background: rgba(255, 255, 255, .32); }
+.hero .hb.b { width: 220px; height: 160px; right: -60px; bottom: -90px; background: color-mix(in srgb, var(--accent2) 80%, transparent); }
+.hero .hl { position: absolute; inset: 0; z-index: -1; background: linear-gradient(105deg, transparent 35%, rgba(255, 255, 255, .45) 50%, transparent 65%); transform: translateX(-110%); }
+.go .hero .hl { animation: sweepin 1.3s .25s ease-out both; }
+.off .hero .hl { display: none; }
+.hero .hart { position: absolute; z-index: -1; right: -34px; top: -30px; width: 210px; height: 210px; color: #fff; opacity: .2; transform: rotate(-12deg); pointer-events: none; }
+.hero .hart svg { width: 100%; height: 100%; stroke-width: .9; }
+.hero .icon { margin: 0; width: 100px; height: 100px; border-radius: 34px; color: #fff;
+  background: radial-gradient(120% 100% at 30% 0%, rgba(255, 255, 255, .6), rgba(255, 255, 255, .14) 60%), rgba(255, 255, 255, .14);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .85), inset 0 0 0 1px rgba(255, 255, 255, .4), 0 0 0 8px rgba(255, 255, 255, .12), 0 20px 40px -12px rgba(0, 0, 0, .4); }
+.hero .icon::before { inset: -26px; border-radius: 50%; background: radial-gradient(closest-side, rgba(255, 255, 255, .45), transparent); }
+.hero .icon::after { background: linear-gradient(180deg, rgba(255, 255, 255, .3), transparent 50%); }
+.hero .icon svg { width: 46px; height: 46px; filter: drop-shadow(0 2px 4px rgba(0, 0, 0, .25)); }
+.hero .icon.img { background: rgba(255, 255, 255, .9); }
+.hero .icon.img img { width: 52px; height: 52px; border-radius: 12px; }
+.kicker { margin-bottom: 8px; }
+h1 { font-size: 34px; line-height: 1.1; letter-spacing: -.045em; }
+.detail { font-size: 14.5px; margin-top: 10px; }
+.fields, .list, .err { text-align: left; }
+.check { margin-left: auto; margin-right: auto; justify-content: center; }
+.buttons { justify-content: stretch; gap: 12px; margin-top: 26px; flex-wrap: nowrap; }
+.buttons .btn { flex: 1; min-width: 0; height: 50px; border-radius: 999px; font: 800 15px var(--display); letter-spacing: -.01em; }
+.btn.primary { box-shadow: inset 0 1px 0 rgba(255, 255, 255, .5), 0 0 0 4px color-mix(in srgb, var(--accent) 16%, transparent), 0 14px 30px -10px color-mix(in srgb, var(--accent) 90%, transparent); }
+.btn.primary:hover { box-shadow: inset 0 1px 0 rgba(255, 255, 255, .5), 0 0 0 6px color-mix(in srgb, var(--accent) 20%, transparent), 0 18px 36px -10px color-mix(in srgb, var(--accent) 95%, transparent); }
+.hero::after { content: ''; position: absolute; left: 15%; right: 15%; bottom: -40px; height: 60px; border-radius: 50%; z-index: -1; background: rgba(255, 255, 255, .35); filter: blur(24px); pointer-events: none; }
+#sheet > .glass::after { content: ''; position: absolute; left: 0; right: 0; top: 120px; height: 200px; pointer-events: none;
+  background: radial-gradient(50% 60% at 50% 0%, color-mix(in srgb, var(--accent) 24%, transparent), transparent 75%); }
+@media (max-width: 460px) { #sheet { padding: 8px 20px 20px; } .hero { margin: 0 -12px 18px; height: 130px; } h1 { font-size: 24px; } }
+
+/* ultra liquid glass, cheaply: a bright top-left specular edge, inner glow, a fake-refraction sheen, chromatic edge tint */
+:root { --spec: inset 1.5px 1.5px 0 rgba(255, 255, 255, .95), inset -1px -1px 0 rgba(255, 255, 255, .3), inset 0 0 22px color-mix(in srgb, var(--accent) 16%, transparent), inset 3px 0 0 -1px rgba(255, 60, 140, .16), inset -3px 0 0 -1px rgba(50, 180, 255, .2); }
+.dark { --spec: inset 1.5px 1.5px 0 rgba(255, 255, 255, .3), inset -1px -1px 0 rgba(255, 255, 255, .06), inset 0 0 24px color-mix(in srgb, var(--accent) 24%, transparent), inset 3px 0 0 -1px rgba(255, 80, 150, .24), inset -3px 0 0 -1px rgba(60, 190, 255, .26); }
+.glass .sheen { background: linear-gradient(135deg, rgba(255, 255, 255, .6), rgba(255, 255, 255, .1) 30%, transparent 44%, transparent 72%, rgba(255, 255, 255, .2) 94%), radial-gradient(80% 40% at 0% 0%, color-mix(in srgb, var(--accent) 18%, transparent), transparent 70%); }
+.dark .glass .sheen { background: linear-gradient(135deg, rgba(255, 255, 255, .15), rgba(255, 255, 255, .03) 30%, transparent 44%, transparent 72%, rgba(255, 255, 255, .06) 94%), radial-gradient(80% 40% at 0% 0%, color-mix(in srgb, var(--accent) 24%, transparent), transparent 70%); }
+#sheet::before { padding: 2px; }
+
+/* ------------------------------------------------------------- 4.1 palette: deep, saturated, many hues (not pink)
+   deep violet -> the accent -> electric cyan, an amber spark in the corner, a fine dot grain for detail */
+:root {
+  --c-cyan: oklch(from var(--accent) .74 .16 calc(h - 62));
+  --c-violet: oklch(from var(--accent) .46 .24 calc(h + 28));
+  --c-amber: oklch(from var(--accent) .82 .17 calc(h + 155));
+  --c-pink: oklch(from var(--accent) .6 .25 calc(h + 92));
+  --c-deep: oklch(from var(--accent) .34 .16 calc(h + 10));
+  --grain: radial-gradient(circle, rgba(255, 255, 255, .22) 1px, transparent 1.6px) 0 0 / 13px 13px;
+  --banner: var(--grain),
+    radial-gradient(55% 120% at 0% 0%, rgba(255, 255, 255, .3), transparent 60%),
+    radial-gradient(38% 110% at 100% 110%, color-mix(in srgb, var(--c-amber) 75%, transparent), transparent 70%),
+    radial-gradient(40% 120% at 70% -20%, color-mix(in srgb, var(--c-cyan) 80%, transparent), transparent 70%),
+    linear-gradient(118deg, var(--c-violet), var(--accent) 42%, var(--c-pink));
+  --rim41: linear-gradient(120deg, var(--c-cyan), rgba(255, 255, 255, .85) 22%, var(--accent) 45%, var(--c-violet) 66%, var(--c-pink));
+}
+.dark {
+  --banner: var(--grain),
+    radial-gradient(55% 120% at 0% 0%, rgba(255, 255, 255, .18), transparent 60%),
+    radial-gradient(38% 110% at 100% 110%, color-mix(in srgb, var(--c-amber) 60%, transparent), transparent 70%),
+    radial-gradient(40% 120% at 70% -20%, color-mix(in srgb, var(--c-cyan) 70%, transparent), transparent 70%),
+    linear-gradient(118deg, var(--c-deep), color-mix(in srgb, var(--accent) 85%, #000) 42%, color-mix(in srgb, var(--c-pink) 82%, #000));
+}
+.incognito { --banner: var(--grain), radial-gradient(55% 120% at 0% 0%, rgba(255, 220, 255, .2), transparent 60%), radial-gradient(38% 110% at 100% 110%, rgba(255, 140, 90, .55), transparent 70%), radial-gradient(40% 120% at 70% -20%, rgba(90, 200, 255, .5), transparent 70%), linear-gradient(118deg, #3a1580, #7a3cf0 50%, #c040d8); }
+#sheet::before { background: radial-gradient(200px circle at var(--gx) var(--gy), rgba(255, 255, 255, .95), transparent 70%), var(--rim41); }
+h1 { background: linear-gradient(120deg, var(--fg) 0%, var(--fg) 45%, color-mix(in srgb, var(--accent) 85%, var(--fg)) 70%, var(--c-cyan) 100%); -webkit-background-clip: text; background-clip: text; }
+.btn.primary { background: radial-gradient(60% 140% at 0% 0%, rgba(255, 255, 255, .3), transparent 60%), linear-gradient(118deg, var(--c-violet), var(--accent) 50%, var(--c-pink)); }
+#sheet { background-image: linear-gradient(180deg, color-mix(in srgb, var(--accent) 6%, transparent), color-mix(in srgb, var(--c-violet) 14%, transparent)); }
 </style>
 </head>
 <body>
@@ -183,7 +263,7 @@ h1 { font-size: 26px; }
 <div id="veil"><div class="shot"></div><div class="dim"></div><div class="nebula"></div></div>
 <div id="sheet" role="dialog" aria-modal="true" aria-labelledby="msg">
   <div class="glass"><div class="orb a"></div><div class="orb b"></div><div class="art"></div><div class="caustic"></div><div class="sheen"></div><div class="sweep"></div><div class="glint"></div></div>
-  <div class="icon" hidden></div>
+  <div class="hero"><i class="hb a"></i><i class="hb b"></i><i class="hl"></i><div class="hart"></div><div class="icon" hidden></div></div>
   <div class="kicker" hidden></div>
   <h1 id="msg"></h1>
   <p class="detail"></p>
@@ -232,6 +312,7 @@ function lensMap(w, h, r, rim) {
   return c.toDataURL()
 }
 function applyLens(el) {
+  return // 4.1: no SVG displacement over content (perf); the glass look comes from rims, sheens and glows
   if (MOTION === 'off') return
   try {
     const w = el.offsetWidth, h = el.offsetHeight, ns = 'http://www.w3.org/2000/svg'
@@ -292,6 +373,7 @@ function open(d) {
   if (d.icon && d.icon.src) { ic.className = 'icon img'; ic.innerHTML = '<img alt="">'; ic.querySelector('img').src = d.icon.src; ic.hidden = false }
   else { ic.className = 'icon'; ic.innerHTML = GLYPH[(d.icon && d.icon.glyph) || 'question'] || GLYPH.question; ic.hidden = false }
   $('.glass .art').innerHTML = GLYPH[(d.icon && d.icon.glyph) || (d.fields ? 'lock' : 'question')] || GLYPH.question
+  $('.hero .hart').innerHTML = $('.glass .art').innerHTML
   $('#sheet').classList.remove('go'); void $('#sheet').offsetWidth; $('#sheet').classList.add('go')
   const k = $('.kicker'); k.textContent = d.title || ''; k.hidden = !d.title
   $('#msg').textContent = d.message
@@ -339,19 +421,19 @@ function enter() {
     sheet.style.opacity = Math.min(1, v * 1.8)
     sheet.style.transform = `translateY(${(1 - v) * -28}px) scale(${0.93 + 0.07 * v}, ${0.9 + 0.1 * v})`
   }).to(1)
-  const parts = [...sheet.querySelectorAll('.icon:not([hidden]), .kicker:not([hidden]), h1, .detail, .fields, .list, .check:not([hidden]), .buttons')]
+  const parts = [...sheet.querySelectorAll('.hero, .kicker:not([hidden]), h1, .detail, .fields, .list, .check:not([hidden]), .buttons')]
   parts.forEach((n, i) => {
     n.style.opacity = '0'
     const s = new Spring(0, v => { n.style.opacity = Math.min(1, v * 1.4); n.style.transform = `translateY(${(1 - v) * 8}px)` })
     setTimeout(() => s.to(1), 60 + i * 45)
   })
   const ic = sheet.querySelector('.icon')
-  if (ic && !ic.hidden) { const s = new Spring(0.6, v => { ic.style.scale = String(v) }); setTimeout(() => s.to(1), 60) }
+  if (ic && !ic.hidden) { const s = new Spring(0.5, v => { ic.style.scale = String(v); ic.style.rotate = `${(1 - v) * -14}deg` }); setTimeout(() => s.to(1), 110) }
   // if frames were held back (a view that was waiting in the background), land on the final state anyway
   clearTimeout(settleT)
   settleT = setTimeout(() => {
     if (answered) return
-    live.clear(); sheet.style.opacity = '1'; sheet.style.transform = 'none'; if (ic) ic.style.scale = '1'
+    live.clear(); sheet.style.opacity = '1'; sheet.style.transform = 'none'; if (ic) ic.style.scale = '1'; if (ic) ic.style.rotate = '0deg'
     parts.forEach(n => { n.style.opacity = '1'; n.style.transform = 'none' })
   }, 1100)
 }

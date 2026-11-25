@@ -74,7 +74,8 @@ async function main() {
   ok(await menuJS(w, `!!document.querySelector('.panel .glass .refract') && !!document.querySelector('.panel kbd, .panel .row .ic svg')`), 'rows have Nova icons, the panel has its glass layers')
   await wait(400)
   ok(await menuJS(w, `document.querySelectorAll('.refract img').length > 0`), 'the glass refracts a picture of the window underneath')
-  ok(await menuJS(w, `document.body.classList.contains('lens') && /url\\("?#lens/.test(getComputedStyle(document.querySelector('.refract')).filter)`), 'the lens displacement filter is on: ' + await menuJS(w, `getComputedStyle(document.querySelector('.refract')).filter.slice(0, 80)`))
+  // 4.1: no SVG displacement over content (perf); the glass reads through rims, sheens and glows instead
+  ok(await menuJS(w, `!document.body.classList.contains('lens') && !/url/.test(getComputedStyle(document.querySelector('.refract')).filter) && !!document.querySelector('.panel .grp')`), 'no displacement filter, rows sit in glass cards')
   await shot(w, 'g2-menu-page-light')
   // keyboard: arrow down highlights, Esc closes (keys typed into the page drive the menu; the page keeps focus)
   key(wc, 'Down'); await wait(150)

@@ -2205,9 +2205,8 @@ body[data-motion="off"] .popover.show::after, body[data-motion="off"] .cmdbar.sh
    visible, and sticks to the right edge when the strip scrolls. */
 body.toplayout .pill { top: 4px; left: 4px; }
 body.compact.toplayout .pill { top: 3px; left: 3px; }
-body.toplayout .tablist { display: flex; align-items: center; }
-body.toplayout .tabs { flex: none; }
-body.toplayout .tablist > .newtab { grid-area: auto; flex: none; position: sticky; right: 0; z-index: 2; width: 30px; height: 30px; margin: 0 0 0 8px; border-radius: 11px; }
-body.toplayout .tablist > .newtab .plus svg { width: 15px; height: 15px; }
-body.compact.toplayout .tablist > .newtab { width: 26px; height: 26px; border-radius: 9px; }
-
+#plusdock { position: absolute; left: 0; top: 1px; z-index: 2; will-change: transform; }
+body.compact.toplayout #plusdock { top: 1px; }
+body.toplayout #plusdock > .newtab { grid-area: auto; width: 30px; height: 30px; margin: 0; border-radius: 11px; }
+body.toplayout #plusdock > .newtab .plus svg { width: 15px; height: 15px; }
+body.compact.toplayout #plusdock > .newtab { width: 26px; height: 26px; border-radius: 9px; }

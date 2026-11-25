@@ -23,13 +23,10 @@
 ;(function () {
   // ---- edit this list every release: it is the "New in Lumen" act of the film (only this version's changes)
   const WHATS_NEW = {
-    version: '4.1.1',
+    version: '4.1.2',
     items: [
-      { icon: 'sparkle', text: 'The Lumen AI bubble now waits as a small orb at the end of your selection, so it never covers what you are reading' },
-      { icon: 'play', text: 'Hover the orb and it springs open into Explain, Define, Translate, Rewrite and Ask, right under the text' },
-      { icon: 'bolt', text: 'Near the edge of the window the bar slides left to stay on screen, and it opens above when there is no room below' },
-      { icon: 'tabs', text: 'A + button now sits right after your last tab, like Chrome, always visible' },
-      { icon: 'layers', text: 'The active tab now sits dead center in the tab bar, no matter how many tabs you open' },
+      { icon: 'tabs', text: 'The + now rides right next to the tab you are in, and the tabs after it slide over to make room' },
+      { icon: 'play', text: 'Press + and the new tab opens right after the tab you were on, not at the end' },
     ],
   }
 

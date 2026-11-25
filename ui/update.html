@@ -420,6 +420,10 @@
   .bignum{animation:numjelly 1.25s .2s cubic-bezier(.2,.9,.3,1) both,split411 1s .2s cubic-bezier(.2,.9,.3,1) both}
   @keyframes split411{0%{filter:drop-shadow(-7px 0 0 rgba(255,60,120,.75)) drop-shadow(7px 0 0 rgba(60,170,255,.75)) blur(3px)}55%{filter:drop-shadow(-1.5px 0 0 rgba(255,60,120,.45)) drop-shadow(1.5px 0 0 rgba(60,170,255,.45)) blur(0)}100%{filter:none}}
 
+  /* 4.1.2: the app icon on the poster tips in on a spring as the card lands, then settles */
+  .poster .ic{animation:tip412 1.1s .35s cubic-bezier(.2,.9,.3,1) backwards}
+  @keyframes tip412{0%{transform:rotate(-14deg) scale(.7);opacity:0}45%{transform:rotate(5deg) scale(1.06);opacity:1}70%{transform:rotate(-2deg) scale(.98)}100%{transform:none}}
+
   @media (prefers-reduced-motion:reduce){*,*::before,*::after{animation:none !important;transition:none !important}}
 </style></head><body>
 <svg class="defs" aria-hidden="true"><defs id="defs"><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" style="stop-color:var(--accent)"/><stop offset=".55" style="stop-color:var(--a2)"/><stop offset="1" style="stop-color:var(--a3)"/></linearGradient></defs></svg>

@@ -178,7 +178,8 @@ $('#btn-star').onclick = () => api.do('bookmark')
 $('#btn-settings').onclick = () => api.do('openPage', 'settings')
 $('#btn-menu').onclick = () => openMainMenu()
 $('#btn-split').onclick = () => toggleSplit()
-$('#btn-newtab').onclick = () => api.do('newTab')
+// with tabs on top the + sits next to the tab you are in and opens the new tab right after it
+$('#btn-newtab').onclick = () => { if (TOP && S.activeId && S.tabs.some(t => t.id === S.activeId && !t.pinned)) api.do('newTabAfter', S.activeId); else api.do('newTab') }
 $('#urltext').onclick = () => openCmd('location')
 $('#btn-site').onclick = () => openSiteInfo()
 for (const [sel, fn] of [['#btn-menu', () => prefetchMenu()], ['#btn-site', () => prefetchSite()], ['#shield', () => prefetchSite()]]) { const el = $(sel); if (el) el.addEventListener('pointerenter', fn) }
@@ -248,9 +249,16 @@ const groupOf = id => (S.groups || []).find(g => g.id === id)
 const headW = g => g.collapsed ? Math.min(150, 34 + g.name.length * 7) : Math.min(150, 26 + g.name.length * 7)
 const HEAD_H = () => ROW - 8
 // where every tab and group header sits along the tab axis, for a given order of tab objects
+// with tabs on top the + rides right after the tab you are in, so the tabs after it make room for it
+const PLUS_W = 36
+function plusAnchorOf(list) {
+  const vis = list.filter(t => !(t.group && groupOf(t.group) && groupOf(t.group).collapsed))
+  return (vis.find(t => t.id === S.activeId) || vis[vis.length - 1] || {}).id
+}
 function layoutOf(list) {
   const pos = new Map(), heads = [], hidden = new Set()
-  let p = 0, cur = null
+  let p = 0, cur = null, plus = 0
+  const anchor = TOP ? plusAnchorOf(list) : null
   for (const t of list) {
     const g = t.group && groupOf(t.group)
     if (g && (!cur || cur.id !== g.id)) {
@@ -263,17 +271,18 @@ function layoutOf(list) {
     if (g && g.collapsed) { pos.set(t.id, Math.max(0, p - (TOP ? GAP : 0) - (TOP ? headW(g) : HEAD_H()))); hidden.add(t.id); continue }
     pos.set(t.id, p)
     p += stepOf()
+    if (TOP && t.id === anchor) { plus = p - GAP + 4; p += PLUS_W }
   }
-  return { pos, heads, hidden, total: Math.max(0, p - (TOP ? GAP : 0)) }
+  return { pos, heads, hidden, plus, total: Math.max(0, p - (TOP ? GAP : 0)) }
 }
-let LAYOUT = { pos: new Map(), heads: [], hidden: new Set(), total: 0 }
+let LAYOUT = { pos: new Map(), heads: [], hidden: new Set(), plus: 0, total: 0 }
 function measureTabW(n) {
   const list = S.tabs.filter(t => !t.pinned)
   const vis = list.filter(t => !(t.group && groupOf(t.group) && groupOf(t.group).collapsed)).length
   const seenG = new Set(); let heads = 0
   for (const t of list) { const g = t.group && groupOf(t.group); if (g && !seenG.has(g.id)) { seenG.add(g.id); heads += headW(g) + GAP } }
   // with tabs on top, leave room for the new tab button that follows the last tab
-  const avail = ($('#tablist').clientWidth || 600) - heads - (TOP ? 48 : 0)
+  const avail = ($('#tablist').clientWidth || 600) - heads - (TOP ? PLUS_W + 8 : 0)
   tabW = Math.max(84, Math.min(220, Math.floor((avail - Math.max(0, vis - 1) * GAP) / Math.max(1, vis))))
 }
 const pillG = new SpringGroup({ p: 0, o: 0, s: 1, w: 200 }, 'calm', v => {
@@ -394,7 +403,7 @@ function renderTabs() {
     v.g.to({ o: 0, s: 0.9, e: TOP ? 8 : -8 })
     v.g.onRest(() => { v.el.remove(); tabViews.delete(id) })
   }
-  if (TOP) { tabsEl.style.height = ''; tabsEl.style.width = LAYOUT.total + 'px' }
+  if (TOP) { tabsEl.style.height = ''; tabsEl.style.width = LAYOUT.total + 'px'; plusG.to({ p: LAYOUT.plus }) }
   else { tabsEl.style.width = ''; tabsEl.style.height = LAYOUT.total + 'px' }
   renderGroupHeads()
 
@@ -463,14 +472,16 @@ function renameGroup(gid) {
 
 // tabs on top never scroll up and down: a new tab sliding in from below would otherwise leave the row a few pixels high
 $('#tablist').addEventListener('scroll', e => { if (TOP && e.currentTarget.scrollTop) e.currentTarget.scrollTop = 0 }, { passive: true })
+const plusDock = document.createElement('div'); plusDock.id = 'plusdock'
+const plusG = new SpringGroup({ p: 0 }, 'calm', v => { plusDock.style.transform = `translateX(${v.p}px)` })
 function setTabLayout(top) {
   TOP = top
   document.body.classList.toggle('toplayout', top)
   // 4.1.1: with tabs on top the new tab button sits right after the last tab, like Chrome; on the side it goes back
   // above the tab list. Same button, same handlers, just moved.
   { const nb = $('#btn-newtab'), tl = $('#tablist')
-    if (top && nb.parentElement !== tl) tl.appendChild(nb)
-    else if (!top && nb.parentElement === tl) tl.parentElement.insertBefore(nb, tl) }
+    if (top && nb.parentElement !== plusDock) { plusDock.appendChild(nb); tabsEl.appendChild(plusDock) }
+    else if (!top && nb.parentElement === plusDock) { tl.parentElement.insertBefore(nb, tl); plusDock.remove() } }
   // re-seat every tab and the pill on the new axis without animating across the screen
   const list = S.tabs.filter(t => !t.pinned)
   if (TOP) measureTabW(list.length)
@@ -479,6 +490,7 @@ function setTabLayout(top) {
   for (const [, v] of headViews) v.el.remove()
   headViews.clear()
   pillG.set({ p: LAYOUT.pos.get(S.activeId) || 0, w: tabW })
+  plusG.set({ p: LAYOUT.plus })
   renderTabs()
 }
 addEventListener('resize', () => { if (TOP) renderTabs() })

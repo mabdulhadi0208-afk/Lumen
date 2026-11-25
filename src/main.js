@@ -2456,7 +2456,7 @@ app.whenReady().then(async () => {
   if (saved.length) restoreWindows(false)
   else createWindow({})
   for (const u of [...argUrls, ...pendingOpen.splice(0)]) openExternalURL(u)
-  if (!openedHidden()) handleArgs(process.argv)
+  handleArgs(process.argv)
   setupDockAndJumpList()
   applyAppIcon()
   Updater.onState(s => broadcast('update', s))

@@ -91,7 +91,7 @@ function fitCard() { if (popup && !popup.isDestroyed()) { const b = popup.getBou
 // glass orb and the new number) and holds it for a moment before Lumen quits. The relaunched window opens on that same
 // frame (main.js paints it in the same ink and the browser chrome plays Intro.arrive), so there is never a grey window.
 // Purely visual: if anything about it fails, Lumen quits on the old schedule and the update goes ahead the same.
-const CURTAIN_MS = 1300
+const CURTAIN_MS = 1700   // 4.1: long enough to see the number land and the rail check off, still well under 2 s
 function curtain() {
   try {
     if (!C || !C.cardEnabled()) return false

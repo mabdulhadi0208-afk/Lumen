@@ -40,7 +40,7 @@ Lumen is an Electron (Chromium) browser for Mac and Windows: just the browser. S
 
 - Run a test with `xvfb-run -a npx electron test/NAME.js --no-sandbox`. Each test prints PASS and FAIL lines; newer tests also write them to `/tmp/lumen-NAME.log`.
 - Before every release, run the full suite on a git worktree of the exact release commit, with `node_modules` symlinked in.
-- The suite: `adallow addbtn batch12 dark dark2 polish qol3 sweep trcard trcard2 v17 v20 readlater wave13 wave14 wave15 wave16 gsignin updatecard wave19 ytfix passkeys2 novamenus inpage home40 noapps sweep41 motion40 ai41 layout42 logos43 totop44 speed42 agent43 passkeys45 intro444 aimode445 shop446`.
+- The suite: `adallow addbtn batch12 dark dark2 polish qol3 sweep trcard trcard2 v17 v20 readlater wave13 wave14 wave15 wave16 gsignin updatecard wave19 ytfix passkeys2 novamenus inpage home40 noapps sweep41 motion40 ai41 layout42 logos43 totop44 speed42 agent43 passkeys45 intro444 aimode445 shop446 heading447`.
   - `sweep` should print NO ERRORS.
   - `selftest.js` was already broken before these rules and is unrelated.
 

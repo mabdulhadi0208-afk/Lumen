@@ -504,6 +504,11 @@
   .ver .arrow{animation:nudge446 1.3s 1.2s cubic-bezier(.3,1.4,.5,1) both}
   @keyframes nudge446{0%,100%{transform:none}25%{transform:translateX(4px)}45%{transform:translateX(-1px)}65%{transform:translateX(3px)}82%{transform:none}}
 
+  /* 4.4.7: the label settles. As the card lands, the small LUMEN label above the version number tightens on a spring,
+     from a touch wide to just right, like a headline snapping into place (transform and opacity only, drawn once) */
+  .pv small{transform-origin:left center;animation:snap447 1s .35s cubic-bezier(.3,1.4,.5,1) both}
+  @keyframes snap447{0%{transform:scaleX(1.12);opacity:.4}55%{transform:scaleX(.98);opacity:1}100%{transform:none;opacity:1}}
+
   @media (prefers-reduced-motion:reduce){*,*::before,*::after{animation:none !important;transition:none !important}}
 </style></head><body>
 <svg class="defs" aria-hidden="true"><defs id="defs"><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" style="stop-color:var(--accent)"/><stop offset=".55" style="stop-color:var(--a2)"/><stop offset="1" style="stop-color:var(--a3)"/></linearGradient></defs></svg>

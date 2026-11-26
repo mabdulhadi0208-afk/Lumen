@@ -406,3 +406,10 @@ img.fav.lgx-icon { background: linear-gradient(180deg, #fff, #f2f3f8) !important
 @keyframes lgx415 { from { opacity: .3; transform: scale(.7); filter: blur(3px); } 60% { opacity: 1; transform: scale(1.06); filter: none; } to { opacity: 1; transform: none; } }
 @media (prefers-reduced-motion: reduce) { img.fav.lgx { animation: none; } }
 body[data-motion="off"] img.fav.lgx { animation: none; }
+
+/* 4.4.7: page titles fit their banner. The big title used to break inside a long word ("Appearanc / e") because it
+   was sized by the window and allowed to break anywhere. Now it is also capped by the width of its own column (about
+   six letters of the longest word per line), breaks only between words, and balances lines of several words. */
+.main .hero .hero-tx, .err .hero .hero-tx { container-type: inline-size; }
+.main .hero h2, .err .hero h1 { font-size: min(clamp(52px, 6.2vw, 96px), 16cqi); overflow-wrap: break-word; text-wrap: balance; hyphens: manual; }
+@media (max-width: 1040px) { .main .hero h2, .err .hero h1 { font-size: min(clamp(38px, 5.2vw, 56px), 16cqi); } }

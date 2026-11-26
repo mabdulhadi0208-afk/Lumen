@@ -27,6 +27,7 @@ Lumen is an Electron (Chromium) browser for Mac and Windows: just the browser. S
 ## How to release
 
 1. Bump `version` in `package.json` and push to `main`. Only a `package.json` change on `main` starts a release.
+   - The owner said (2026-11-26): "Always remember no need for my permission to ship." Once the full suite passes on the exact release commit and sweep prints NO ERRORS, push the release to `main` without asking.
 2. GitHub Actions (`.github/workflows/release.yml`) builds the app, runs the release gate and publishes it.
 3. The release notes come from the bullet list in the release commit's message, so write that list for users.
 

@@ -23,11 +23,10 @@
 ;(function () {
   // ---- edit this list every release: it is the "New in Lumen" act of the film (only this version's changes)
   const WHATS_NEW = {
-    version: '4.4.3',
+    version: '4.4.4',
     items: [
-      { icon: 'sparkle', text: 'Passkeys tell you what is going on: when a site asks for one Lumen does not have, you can use your password or open the page in Safari' },
-      { icon: 'play', text: 'A passkey macOS will not let Lumen unlock no longer breaks the sign-in: Lumen says which one and how to fix it' },
-      { icon: 'sparkle', text: 'Passkeys made in Lumen are tested on a real passkey site, from saving one to signing in with it' },
+      { icon: 'sparkle', text: 'The intro plays again after every update: patch releases like 4.4.1 to 4.4.3 used to skip it' },
+      { icon: 'play', text: 'Each update now shows exactly what changed in it, once, right after Lumen restarts' },
     ],
   }
 
@@ -1276,6 +1275,18 @@
       host.appendChild(gl)
       gl.animate([{ WebkitMaskPosition: '100% 0', opacity: 0 }, { opacity: .95, offset: .2 }, { opacity: .95, offset: .8 }, { WebkitMaskPosition: '0% 0', opacity: 0 }], { duration: 1100, easing: 'cubic-bezier(.45,.05,.35,1)' }).finished.then(() => gl.remove(), () => gl.remove())
     }, 2300)
+    // 4.4.4: stars come out. Four small four-pointed stars twinkle at the corners of the title, one after another, and
+    // fade (transform and opacity only)
+    setTimeout(() => {
+      if (skip || still || !logo.offsetParent) return
+      const host = logo.offsetParent, L0 = logo.offsetLeft, T0 = logo.offsetTop, W0 = logo.offsetWidth, H0 = logo.offsetHeight
+      ;[[-.04, .1, 0], [1.03, .05, 160], [1.0, .95, 320], [-.02, .9, 480]].forEach(([fx, fy, d]) => {
+        const st = document.createElement('i'), sz = 22
+        st.style.cssText = `position:absolute;left:${L0 + W0 * fx - sz / 2}px;top:${T0 + H0 * fy - sz / 2}px;width:${sz}px;height:${sz}px;pointer-events:none;mix-blend-mode:screen;background:radial-gradient(circle,#fff 0 8%,transparent 9%),conic-gradient(from 45deg,transparent 0 10%,color-mix(in srgb,var(--hi) 80%,#fff) 12.5%,transparent 15% 35%,color-mix(in srgb,var(--hi) 80%,#fff) 37.5%,transparent 40% 60%,color-mix(in srgb,var(--hi) 80%,#fff) 62.5%,transparent 65% 85%,color-mix(in srgb,var(--hi) 80%,#fff) 87.5%,transparent 90%);-webkit-mask:radial-gradient(circle,#000 30%,transparent 70%)`
+        host.appendChild(st)
+        st.animate([{ opacity: 0, transform: 'scale(.2) rotate(-30deg)' }, { opacity: 1, transform: 'scale(1.15) rotate(0)', offset: .4 }, { opacity: 0, transform: 'scale(.6) rotate(25deg)' }], { duration: 1000, delay: d, easing: 'cubic-bezier(.3,1.3,.5,1)', fill: 'both' }).finished.then(() => st.remove(), () => st.remove())
+      })
+    }, 2700)
     // 4.1.6: a ripple of light rolls out from under the title as it settles, like a stone dropped in still water
     setTimeout(() => {
       if (skip || still || !logo.offsetParent) return
@@ -1757,5 +1768,13 @@
     cancelAnimationFrame(raf); clearTimeout(holdT); removeEventListener('resize', size); removeEventListener('pointermove', onMove); try { grainAnim && grainAnim.cancel() } catch {} grainAnim = null; root.remove(); defs = null
     onDone && onDone({ parcels: answer })
   }
-  window.Intro = { play, WHATS_NEW, arrive, leaveArrive }
+  // 4.4.4: does this version have a what's-new film you have not seen? The film is written for one version: '4.4' covers
+  // 4.4.0 (and any 4.4.x without its own film), '4.4.3' covers exactly 4.4.3. Before, only the first kind matched, so every
+  // patch release (4.4.1 to 4.4.3) skipped its film after the update.
+  function wantsWhatsNew(version, seen) {
+    const v = String(version || ''), f = String(WHATS_NEW.version || ''), norm = x => x.replace(/(\.0)+$/, '')
+    if (!v || !f || seen === v) return false
+    return norm(v) === norm(f) || v.startsWith(f + '.')
+  }
+  window.Intro = { play, WHATS_NEW, arrive, leaveArrive, wantsWhatsNew }
 })()

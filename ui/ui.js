@@ -1504,7 +1504,7 @@ addEventListener('keydown', e => {
   queueLayout()
   if (!init.settings.introSeen) playIntro()
   // after an update: the short what's-new film, once per version that has one
-  else if (Intro.WHATS_NEW && String(init.version).startsWith(Intro.WHATS_NEW.version + '.') && init.settings.whatsNewSeen !== init.version) playIntro({ whatsNew: init.version, askParcels: init.settings.parcelsAuto == null })
+  else if (Intro.wantsWhatsNew && Intro.wantsWhatsNew(init.version, init.settings.whatsNewSeen)) playIntro({ whatsNew: init.version, askParcels: init.settings.parcelsAuto == null })
 })()
 let VERSION = ''
 function playIntro(opts = {}) {

@@ -493,6 +493,36 @@ function detect(n) {
   for (const [re, id] of PATTERNS) if (re.test(n)) return id
   return 'other'
 }
+// ------------------------------------------------------------ tracking links
+// every carrier link above, turned around: "https://www.ups.com/track?tracknum=1Z..." -> UPS, 1Z...
+// (the number sits in a query value or in the path, where the {n} was). Shop pages link to these.
+const BASE = h => { const p = String(h || '').toLowerCase().replace(/^www\./, '').split('.'); return p.slice(p.length > 2 && /^(co|com|org|net|gov|ac|edu)$/.test(p[p.length - 2]) && p[p.length - 1].length === 2 ? -3 : -2).join('.') }
+const LINKS = []
+for (const [id, , , url] of LIST) {
+  if (!url || !url.includes('{n}')) continue
+  try {
+    const u = new URL(url.replace('{n}', 'NUMBER0')), q = [...u.searchParams].find(([, v]) => v === 'NUMBER0')
+    LINKS.push({ id, base: BASE(u.hostname), param: q ? q[0].toLowerCase() : '', path: q ? '' : u.pathname.split('NUMBER0')[0] })
+  } catch {}
+}
+// the names shops (and Shopify) use for the number in a tracking link, whoever the carrier is
+const PARAMS = ['tracknum', 'tracknumbers', 'tlabels', 'trknbr', 'tracking-id', 'trackingnumber', 'tracking_number', 'trackingnumbers', 'tracking', 'trackingid', 'tracking_id', 'trackno', 'track', 'awb', 'shipmentnumber', 'consignment', 'cons', 'barcode', 'parcelnumber', 'parcel', 'number', 'id', 'nums']
+function fromLink(href) {
+  let u; try { u = new URL(href) } catch { return null }
+  if (!/^https?:$/.test(u.protocol)) return null
+  const base = BASE(u.hostname), mine = LINKS.filter(l => l.base === base)
+  const q = {}; for (const [k, v] of u.searchParams) q[k.toLowerCase()] = v
+  const ok = v => { const n = clean(String(v || '').split(/[,\s]/)[0]); return n.length >= 8 && n.length <= 34 && /\d{5,}/.test(n) && /^[A-Z0-9]+$/.test(n) ? n : '' }
+  for (const l of mine) {
+    const n = l.param ? ok(q[l.param]) : u.pathname.startsWith(l.path) ? ok(decodeURIComponent(u.pathname.slice(l.path.length).split('/')[0])) : ''
+    if (n) return { number: n, carrier: l.id }
+  }
+  // a carrier we know by its site, but with a link shape we have not seen; or any page with a tracking-ish value
+  const known = mine.length ? mine[0].id : ''
+  for (const k of PARAMS) { const n = ok(q[k]); if (n && /track|parcel|ship|deliver|post|courier|17track|aftership|narvar|route/i.test(u.hostname + u.pathname)) return { number: n, carrier: known || detect(n) } }
+  return null
+}
+
 const looksLikeTracking = s => { const n = clean(s); return n.length >= 9 && n.length <= 34 && /\d{6,}/.test(n) && /^[A-Z0-9]+$/.test(n) && (detect(n) !== 'other' || /^[A-Z]{2,4}\d{8,}[A-Z]{0,2}$/.test(n)) }
 
 const trackURL = p => (CARRIERS[p.carrier] || CARRIERS.other).url(encodeURIComponent(p.number))
@@ -524,6 +554,17 @@ function statusOf(text) {
 // runs inside the page; returns what it found, or null when this is not an order page
 const ORDER_SCAN = `(() => {
   const url = location.href, text = (document.body && document.body.innerText || '').slice(0, 30000)
+  // Shopify and Shop: their checkout, thank-you and order status pages look the same on every store
+  const shopify = /(^|\\.)(myshopify\\.com|shop\\.app|shopify\\.com)$/.test(location.hostname) || !!document.querySelector('meta[name="shopify-checkout-api-token"],meta[name="shopify-digital-wallet"],link[href*="cdn.shopify.com"],script[src*="cdn.shopify.com"],link[href*="shopifycdn"],[data-shopify]')
+  const sn = document.querySelector('meta[property="og:site_name"],meta[name="application-name"]')
+  const store = (sn && sn.content || '').trim().slice(0, 40)
+  if (shopify && /\\/(checkouts?\\/[^?#]*thank[-_]?you|orders\\/[0-9a-f]{12,}|account\\/orders\\/)/i.test(url) && /(thank you|order\\s*#|confirmation\\s*#|your order is (confirmed|on its way)|shipping updates)/i.test(text)) {
+    const om = text.match(/(?:order|confirmation)\\s*(?:number|no\\.?)?\\s*#\\s*([A-Z0-9][A-Z0-9-]{2,30})/i)
+    const tr = new Set(); for (const m of text.matchAll(/\\b(1Z[0-9A-Z]{16}|TB[ACM]\\d{12}|[A-Z]{2}\\d{9}[A-Z]{2})\\b/g)) tr.add(m[1])
+    for (const m of text.matchAll(/(?:tracking|track)[^\\n\\d]{0,30}(\\d{10,22})/gi)) tr.add(m[1])
+    const links = [...new Set([...document.querySelectorAll('a[href]')].map(a => a.href).filter(h => /^https?:/.test(h) && !h.startsWith(location.origin + '/') && /\\d{6,}/.test(h)))].slice(0, 120)
+    return { url, title: document.title, orderNo: om ? om[1] : '', tracking: [...tr].slice(0, 3), links, store, shopify, text: text.slice(0, 6000) }
+  }
   const urlHit = /(order[-_ ]?(confirm\\w*|complete\\w*|success|received|details?|placed|status|summary)|thank[-_ ]?you|checkout\\/(success|complete|thank\\w*)|purchase\\/(complete|success)|\\/orders?\\/[\\w-]{5,}|order-?id=|orderid=)/i.test(url)
   const textHit = /(thank(s| you) for (your )?(order|purchase|shopping)|your order (has been |is )?(placed|confirmed|received)|order (has been )?(placed|confirmed)|order (number|no\\.?|#|id)\\s*[:#]?\\s*[A-Z0-9-]{5,}|تم تأكيد طلبك|رقم الطلب|شكرا لطلبك)/i.test(text)
   if (!textHit || (!urlHit && !/thank(s| you) for (your )?(order|purchase)/i.test(text))) return null
@@ -532,12 +573,14 @@ const ORDER_SCAN = `(() => {
   const tr = new Set()
   for (const m of text.matchAll(/\\b(1Z[0-9A-Z]{16}|TB[ACM]\\d{12}|[A-Z]{2}\\d{9}[A-Z]{2})\\b/g)) tr.add(m[1])
   for (const m of text.matchAll(/(?:tracking|track|airway ?bill|awb|رقم التتبع|رقم الشحنة)[^\\n\\d]{0,30}(\\d{10,22})/gi)) tr.add(m[1])
-  return { url, title: document.title, orderNo: om ? om[1] : '', tracking: [...tr].slice(0, 3), text: text.slice(0, 6000) }
+  // links out to a carrier (Shopify's "Track your order" button, a shop's "Track package" link)
+  const links = [...new Set([...document.querySelectorAll('a[href]')].map(a => a.href).filter(h => /^https?:/.test(h) && !h.startsWith(location.origin + '/') && /\\d{6,}/.test(h)))].slice(0, 120)
+  return { url, title: document.title, orderNo: om ? om[1] : '', tracking: [...tr].slice(0, 3), links, store, shopify, text: text.slice(0, 6000) }
 })()`
 
 function list() { return store.get() }
 function active() { return store.get().filter(p => p.status !== 'delivered') }
-function add({ number = '', name = '', carrier = '', url = '', shop = '', orderNo = '', source = 'manual' } = {}) {
+function add({ number = '', name = '', carrier = '', url = '', shop = '', orderNo = '', source = 'manual', via = '' } = {}) {
   number = clean(number)
   if (!number && !url) return null
   const all = store.get()
@@ -545,10 +588,12 @@ function add({ number = '', name = '', carrier = '', url = '', shop = '', orderN
   if (same) {   // the same order seen again: fill in what we learned (a tracking number, a better name)
     if (number && !same.number) { same.number = number; same.carrier = carrier || detect(number) }
     if (url && !same.url) same.url = url
+    if (via && !same.via) same.via = via
+    if (number && carrier && CARRIERS[carrier] && same.number === number && same.carrier !== carrier && same.source === 'auto') same.carrier = carrier
     if (name && (!same.name || same.source === 'auto')) same.name = name
     store.save(); return same
   }
-  const p = { id: uid(), number, carrier: number ? (CARRIERS[carrier] ? carrier : detect(number)) : '', name: String(name || '').slice(0, 80), url, shop, orderNo, status: 'placed', statusText: number ? 'Waiting for news' : 'Order placed', added: Date.now(), checked: 0, delivered: 0, source }
+  const p = { id: uid(), number, carrier: number ? (CARRIERS[carrier] ? carrier : detect(number)) : '', name: String(name || '').slice(0, 80), url, shop, orderNo, status: 'placed', statusText: number ? 'Waiting for news' : 'Order placed', added: Date.now(), checked: 0, delivered: 0, source, ...(via ? { via } : {}) }
   store.replace([p, ...all].slice(0, 200))
   return p
 }
@@ -578,4 +623,4 @@ function shopName(host) {
 // a link you typed in always comes first, then the carrier you picked (or that the number belongs to)
 const openURL = p => p.url || (p.number ? trackURL(p) : '')
 
-module.exports = { etaOf, shopName, store, LIST, looksLikeTracking, CARRIERS, detect, trackURL, carrierName, statusOf, ORDER_SCAN, list, active, add, update, remove, setStatus, prune, openURL, clean }
+module.exports = { fromLink, etaOf, shopName, store, LIST, looksLikeTracking, CARRIERS, detect, trackURL, carrierName, statusOf, ORDER_SCAN, list, active, add, update, remove, setStatus, prune, openURL, clean }

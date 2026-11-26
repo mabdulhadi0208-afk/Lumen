@@ -499,6 +499,11 @@
   .porb circle:nth-child(4){animation-delay:.7s}.porb circle:nth-child(3){animation-delay:.8s}.porb circle:nth-child(2){animation-delay:.9s}.porb circle:nth-child(1){animation-delay:1s}
   @keyframes breath445{0%,100%{transform:none;opacity:1}40%{transform:scale(1.07);opacity:.55}}
 
+  /* 4.4.6: the arrow nudges. After the card lands, the arrow between the old and new version glides forward twice
+     on a spring, pointing the way to the new version (transform only, drawn once) */
+  .ver .arrow{animation:nudge446 1.3s 1.2s cubic-bezier(.3,1.4,.5,1) both}
+  @keyframes nudge446{0%,100%{transform:none}25%{transform:translateX(4px)}45%{transform:translateX(-1px)}65%{transform:translateX(3px)}82%{transform:none}}
+
   @media (prefers-reduced-motion:reduce){*,*::before,*::after{animation:none !important;transition:none !important}}
 </style></head><body>
 <svg class="defs" aria-hidden="true"><defs id="defs"><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" style="stop-color:var(--accent)"/><stop offset=".55" style="stop-color:var(--a2)"/><stop offset="1" style="stop-color:var(--a3)"/></linearGradient></defs></svg>

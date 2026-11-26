@@ -57,7 +57,7 @@ function agentRun(task) {
   if (c.busy) api.do('aiStop', c.busy)
   const id = 'g' + (++aiSeq)
   const u = { role: 'user', label: task, text: task, tabId, solo: true }
-  const m = { role: 'agent', id, tabId, steps: new Map(), state: 'run' }
+  const m = { role: 'agent', id, tabId, task, steps: new Map(), state: 'run' }
   agentEl(m)
   c.msgs.push(u, m); c.busy = id; agents.set(id, m)
   if (aiOpen && aiShown === tabId) {
@@ -104,8 +104,23 @@ api.on('agent', ev => {
     if (ev.error) { const li = document.createElement('li'); li.className = 'ag-err'; li.textContent = ev.error; agAdd(m, li) }
     if (aiOpen && aiShown === m.tabId) panel.classList.remove('busy')
     if (!STILL_AG()) m.el.querySelector('.ag-orb').animate([{ transform: 'scale(1.25) rotate(-12deg)' }, { transform: 'none' }], { duration: 620, easing: 'cubic-bezier(.3,1.5,.5,1)' })
+    agAgain(m)
   }
 })
+// 4.4.2: a finished run offers Run again (the same task, one tap) and Edit task (back in the box to change it)
+function agAgain(m) {
+  if (m.el.querySelector('.ag-again')) return
+  const f = document.createElement('div'); f.className = 'ag-again'
+  f.innerHTML = `<button type="button" class="ag-ab primary" data-g="again">${ICONS.reload}<span>Run again</span></button><button type="button" class="ag-ab" data-g="edit">${AG_IC.type}<span>Edit task</span></button>`
+  f.addEventListener('click', e => {
+    const b = e.target.closest('button[data-g]'); if (!b) return
+    if (b.dataset.g === 'again') { if (agentMode !== 'do') setAgentMode('do'); agentRun(m.task) }
+    else { if (agentMode !== 'do') setAgentMode('do'); aiQ.value = m.task; aiQ.dispatchEvent(new Event('input')); aiQ.focus(); aiQ.setSelectionRange(aiQ.value.length, aiQ.value.length) }
+  })
+  m.el.appendChild(f)
+  if (!STILL_AG()) [...f.children].forEach((b, i) => b.animate([{ opacity: 0, transform: 'translateY(6px) scale(.94)' }, { opacity: 1, transform: 'none' }], { duration: 460, delay: 90 + i * 60, easing: 'cubic-bezier(.3,1.4,.5,1)', fill: 'backwards' }))
+  agStick()
+}
 // a card when Claude needs you: Allow or Stop, or an answer
 function agAsk(m, q) {
   const li = document.createElement('li'); li.className = 'ag-card ' + q.kind

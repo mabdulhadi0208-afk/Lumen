@@ -24,6 +24,11 @@ Lumen is an Electron (Chromium) browser for Mac and Windows: just the browser. S
     - Make the intro more cinematic than the last version.
 12. Whenever the work touches anything with an auto-update feature, make the update experience look way, way better. In Lumen that means the update card (`ui/update.html`) and the restart flow, and the update bits in Surge and Koi.
 
+## The hourly update
+
+- The hourly trigger asks for one improvement per hour. If an update is already in progress when it fires, hand the hourly update to a background agent and keep working on the current update.
+- Only one release goes to `main` at a time: whichever finishes first ships, and the other one rebases on it and bumps to the next version before its own suite run.
+
 ## How to release
 
 1. Bump `version` in `package.json` and push to `main`. Only a `package.json` change on `main` starts a release.

@@ -20,7 +20,7 @@ ok((P.parse('  ' + FEDEX + ' ') || {}).carrier === 'fedex', 'spaces around a lin
 ok((P.parse('1Z999AA10123456784') || {}).link === '', 'a plain number still works, with no link')
 ok(P.parse('https://example.com/blog/2024/123456789') === null && P.parse('hello') === null && P.parse('') === null, 'other links and words are not parcels')
 
-setTimeout(() => { console.log('TIMEOUT'); app.exit(1) }, 150000)
+const guard = setTimeout(() => { console.log('TIMEOUT'); app.exit(1) }, 150000)
 app.whenReady().then(async () => {
   await wait(3500)
   const w = L.windows[0], ex = s => w.ui.webContents.executeJavaScript(s)
@@ -73,5 +73,6 @@ app.whenReady().then(async () => {
   ok(P.list().some(p => p.number === '1Z12345E0205271688' && p.carrier === 'ups'), 'and Start tracking saves it')
 
   ok(!errors.length, 'no errors in the browser chrome' + (errors.length ? ': ' + errors.slice(0, 3).join(' | ') : ''))
-  console.log(fails ? `${fails} FAILED` : 'ALL PASSED'); app.exit(fails ? 1 : 0)
+  // the result is settled here: a slow shutdown (parcel checks still loading carrier pages) must not change it
+  clearTimeout(guard); console.log(fails ? `${fails} FAILED` : 'ALL PASSED'); app.exit(fails ? 1 : 0); setTimeout(() => process.exit(fails ? 1 : 0), 3000)
 })

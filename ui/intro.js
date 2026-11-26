@@ -30,6 +30,7 @@
       { icon: 'sparkle', text: 'The AI panel, find bar and sidebar glide without making the page redraw on every frame' },
       { icon: 'play', text: 'Lumen AI warms up and reads the page the moment you open it, and Fast answers without a pause to think' },
       { icon: 'sparkle', text: 'Click the tab you are on and its page glides back to the top' },
+      { icon: 'play', text: 'Signing in to Google and YouTube works: Lumen looks exactly like Chrome on Google\'s sign-in page' },
     ],
   }
 

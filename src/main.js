@@ -156,6 +156,12 @@ function setupSession(ses, { incognito = false } = {}) {
     if (googleCompat() && isGoogleSignIn(d.url)) {
       h['User-Agent'] = firefoxUA()
       for (const k of Object.keys(h)) if (/^sec-ch-ua/i.test(k)) delete h[k]
+    } else if (isGoogleSignIn(d.url)) {
+      // 4.2: Chrome mode lists Google Chrome among its brands, the way Chrome does (the page sees the same list)
+      for (const k of Object.keys(h)) {
+        if (/^sec-ch-ua$/i.test(k) && !/Google Chrome/.test(h[k])) { const m = /"Chromium";v="(\d+)"/.exec(h[k]); if (m) h[k] += `, "Google Chrome";v="${m[1]}"` }
+        if (/^sec-ch-ua-full-version-list$/i.test(k) && !/Google Chrome/.test(h[k])) { const m = /"Chromium";v="([\d.]+)"/.exec(h[k]); if (m) h[k] += `, "Google Chrome";v="${m[1]}"` }
+      }
     }
     if (D.settings.get('doNotTrack')) { h['Sec-GPC'] = '1'; h['DNT'] = '1' }
     cb({ requestHeaders: h })
@@ -1427,7 +1433,7 @@ async function googleBlockCheck(w, t) {
   const blocked = /\/signin\/rejected/.test(wc.getURL()) || await wc.executeJavaScriptInIsolatedWorld(1024, [{ code: `/(browser or app may not be secure|this browser or app may not be secure|try using a different browser)/i.test((document.body && document.body.innerText || '').slice(0, 4000))` }]).catch(() => false)
   if (!blocked) return
   log('google sign-in blocked, mode', D.settings.get('googleSignInMode') || 'chrome')
-  if (googleRetried) { w.send('toast', 'Google is still blocking this sign-in. Try the other mode in Settings, Privacy.'); return }
+  if (googleRetried) { setSetting('googleSignInMode', 'chrome'); w.send('toast', 'Google is still blocking this sign-in. Reload the page to try again.'); googleRetried = false; return }
   googleRetried = true
   setSetting('googleSignInMode', googleCompat() ? 'chrome' : 'firefox')
   let cont = ''; try { cont = new URL(wc.getURL()).searchParams.get('continue') || '' } catch {}

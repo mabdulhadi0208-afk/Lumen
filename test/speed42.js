@@ -105,6 +105,16 @@ app.whenReady().then(async () => {
   ok(firstSnap > 400, 'the command bar does not take a fresh page picture while it opens (first one at ' + firstSnap + ' ms)')
   await ex(`closeCmd(true); true`)
 
+  // ---- Google sign-in looks like Chrome all the way down (Electron leaves window.chrome empty and says only Chromium)
+  L.D.settings.set({ googleSignInMode: 'chrome' })
+  const hdr = []; w.ses.webRequest.onSendHeaders({ urls: ['https://accounts.google.com/*'] }, d => hdr.push(d.requestHeaders['sec-ch-ua'] || ''))
+  const g = w.createTab('https://accounts.google.com/ServiceLogin', { active: true }); await wait(6000)
+  const gi = await g.view.webContents.executeJavaScript(`(async () => ({ keys: Object.keys(window.chrome || {}).join(), csi: typeof (window.chrome && chrome.csi && chrome.csi()), brands: navigator.userAgentData.brands.map(b => b.brand).join('|'), full: (await navigator.userAgentData.getHighEntropyValues(['fullVersionList'])).fullVersionList.map(b => b.brand).join('|'), nat: String(chrome.app && chrome.app.getDetails) }))()`).catch(e => ({ err: e.message }))
+  ok(/app/.test(gi.keys) && /csi/.test(gi.keys) && /loadTimes/.test(gi.keys) && gi.csi === 'object' && /native code/.test(gi.nat), 'Google sign-in: window.chrome has app, csi and loadTimes like real Chrome (' + gi.keys + ')')
+  ok(/Google Chrome/.test(gi.brands) && /Google Chrome/.test(gi.full) && hdr.filter(Boolean).length && hdr.filter(Boolean).every(x => /"Google Chrome"/.test(x)), 'Google sign-in: page and headers both list Google Chrome (' + gi.brands + ')')
+  const other = w.createTab(`http://127.0.0.1:${site.address().port}/a`, { active: true }); await wait(1500)
+  ok(!(await other.view.webContents.executeJavaScript(`navigator.userAgentData ? navigator.userAgentData.brands.some(b => b.brand === 'Google Chrome') : false`)), 'other sites see Lumen as it is (no change outside Google sign-in)')
+
   console.log(fails ? `SPEED42 ${fails} FAILED` : 'SPEED42 ALL PASS'); fs.appendFileSync(LOG, fails ? `${fails} FAILED\n` : 'ALL PASS\n')
   mock.close(); site.close(); app.exit(fails ? 1 : 0)
 })

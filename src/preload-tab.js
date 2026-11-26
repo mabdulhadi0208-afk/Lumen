@@ -36,7 +36,7 @@ if (location.protocol === 'lumen:') {
       }
     }
   } catch {}
-  // ------------------------------------------------------------ Google sign-in: look like Firefox, which Google allows
+  // ------------------------------------------------------------ Google sign-in: look exactly like Chrome (or, as a fallback, Firefox)
   if (location.hostname === 'accounts.google.com') {
     try {
       const ua = ipcRenderer.sendSync('lumen:auth-ua')
@@ -49,6 +49,50 @@ if (location.protocol === 'lumen:') {
           try { delete window.chrome } catch {}
         },
         args: [ua],
+      })
+      // 4.2: Chrome mode (the default) looks like Chrome all the way down: Electron leaves window.chrome empty and
+      // calls itself only "Chromium", which Google's sign-in reads as an embedded browser. Real Chrome has chrome.app,
+      // chrome.csi and chrome.loadTimes on every page and lists "Google Chrome" among its brands (the request headers
+      // say the same, from the main process).
+      else contextBridge.executeInMainWorld({
+        func: () => {
+          const nat = f => { try { Object.defineProperty(f, 'toString', { value: () => `function ${f.name || ''}() { [native code] }`, configurable: true }) } catch {} return f }
+          const c = window.chrome || {}
+          if (!c.app) c.app = {
+            isInstalled: false,
+            InstallState: { DISABLED: 'disabled', INSTALLED: 'installed', NOT_INSTALLED: 'not_installed' },
+            RunningState: { CANNOT_RUN: 'cannot_run', READY_TO_RUN: 'ready_to_run', RUNNING: 'running' },
+            getDetails: nat(function getDetails() { return null }), getIsInstalled: nat(function getIsInstalled() { return false }),
+            installState: nat(function installState(cb) { if (typeof cb === 'function') setTimeout(() => cb('not_installed'), 0) }),
+            runningState: nat(function runningState() { return 'cannot_run' }),
+          }
+          if (!c.csi) c.csi = nat(function csi() { const t = performance.timing; return { startE: t.navigationStart, onloadT: t.loadEventEnd || Date.now(), pageT: performance.now(), tran: 15 } })
+          if (!c.loadTimes) c.loadTimes = nat(function loadTimes() {
+            const t = performance.timing, n = (performance.getEntriesByType('navigation')[0] || {})
+            return { requestTime: t.navigationStart / 1000, startLoadTime: t.navigationStart / 1000, commitLoadTime: t.responseStart / 1000, finishDocumentLoadTime: t.domContentLoadedEventEnd / 1000, finishLoadTime: t.loadEventEnd / 1000, firstPaintTime: t.responseStart / 1000, firstPaintAfterLoadTime: 0, navigationType: 'Other', wasFetchedViaSpdy: n.nextHopProtocol === 'h2', wasNpnNegotiated: n.nextHopProtocol === 'h2', npnNegotiatedProtocol: n.nextHopProtocol || 'unknown', wasAlternateProtocolAvailable: false, connectionInfo: n.nextHopProtocol || 'http/1.1' }
+          })
+          if (!window.chrome) Object.defineProperty(window, 'chrome', { value: c, writable: true, configurable: true, enumerable: true })
+          // brands: what Chromium reports, plus Google Chrome at the same version (the headers carry the same list)
+          const U = window.NavigatorUAData && NavigatorUAData.prototype, ud = navigator.userAgentData
+          if (U && ud && !ud.brands.some(b => b.brand === 'Google Chrome')) {
+            const cr = ud.brands.find(b => b.brand === 'Chromium'), BR = cr ? [...ud.brands.map(b => ({ ...b })), { brand: 'Google Chrome', version: cr.version }] : null
+            if (BR) {
+              const get = Object.getOwnPropertyDescriptor(U, 'brands')
+              Object.defineProperty(U, 'brands', { get: nat(function brands() { return BR.map(b => ({ ...b })) }), configurable: true, enumerable: get ? get.enumerable : true })
+              const hev = U.getHighEntropyValues
+              U.getHighEntropyValues = nat(function getHighEntropyValues(h) {
+                return hev.call(this, h).then(v => {
+                  v.brands = BR.map(b => ({ ...b }))
+                  if (v.fullVersionList) { const fc = v.fullVersionList.find(b => b.brand === 'Chromium'); if (fc && !v.fullVersionList.some(b => b.brand === 'Google Chrome')) v.fullVersionList = [...v.fullVersionList, { brand: 'Google Chrome', version: fc.version }] }
+                  return v
+                })
+              })
+              const tj = U.toJSON
+              if (tj) U.toJSON = nat(function toJSON() { const o = tj.call(this); o.brands = BR.map(b => ({ ...b })); return o })
+            }
+          }
+        },
+        args: [],
       })
     } catch {}
   }

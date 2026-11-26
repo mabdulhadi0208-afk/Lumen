@@ -28,14 +28,20 @@ function setAgentMode(m) {
   modeEl.querySelectorAll('button').forEach(b => { const on = b.dataset.m === agentMode; b.classList.toggle('on', on); b.setAttribute('aria-selected', on) })
   panel.classList.toggle('agentmode', agentMode === 'do')
   placeAgInd()
-  aiQ.placeholder = agentMode === 'do' ? 'Tell Claude what to do in this tab' : (aiSt.web ? 'Ask about this page' : 'Ask Lumen AI anything')
+  paintCtx()
   aiQ.focus()
 }
 modeEl.addEventListener('click', e => { const b = e.target.closest('button[data-m]'); if (b) setAgentMode(b.dataset.m) })
 new ResizeObserver(() => placeAgInd(true)).observe(modeEl)
 // keep the placeholder right when the panel repaints its context
 const _paintCtx = paintCtx
-paintCtx = function () { _paintCtx(); if (agentMode === 'do') aiQ.placeholder = 'Tell Claude what to do in this tab' }
+// in Do it for me the header says so, and the tier chip shows the model the task really runs on (Smart, or Best)
+paintCtx = function () {
+  _paintCtx()
+  const tierEl = $('#ai-tier')
+  if (agentMode === 'do') { aiQ.placeholder = 'Tell Claude what to do in this tab'; $('#ai-title').textContent = 'Do it for me'; tierEl.textContent = aiSt.tier === 'best' ? (aiSt.tierName || 'Best') : 'Smart' }
+  else tierEl.textContent = aiSt.tierName || 'Fast'
+}
 
 // ---------------------------------------------------------------- running a task
 function agentEl(m) {

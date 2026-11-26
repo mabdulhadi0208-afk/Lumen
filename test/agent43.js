@@ -74,6 +74,7 @@ app.whenReady().then(async () => {
   ok(await ex(`!!document.querySelector('#aipanel .ag-mode button[data-m="do"]')`), 'the AI panel has an Ask / Do it for me switch')
   await ex(`document.querySelector('#aipanel .ag-mode button[data-m="do"]').click(); true`); await wait(500)
   ok(await ex(`document.getElementById('aipanel').classList.contains('agentmode') && /Tell Claude what to do/.test(document.getElementById('ai-q').placeholder)`), 'Do it for me changes the box to a task')
+  ok(await ex(`document.getElementById('ai-title').textContent === 'Do it for me' && document.getElementById('ai-tier').textContent === 'Smart'`), 'the header says Do it for me and shows the model it runs on (Smart, not Fast)')
 
   // ---- a task, start to end
   await ex(`(() => { const q = document.getElementById('ai-q'); q.value = 'Upload ${VIDEO.replace(/\\/g, '/')} with the title Lumen 4.3 and publish it'; document.getElementById('ai-form').requestSubmit() })()`)
@@ -126,6 +127,7 @@ app.whenReady().then(async () => {
   // ---- Ask still asks
   await ex(`document.querySelector('#aipanel .ag-mode button[data-m="ask"]').click(); true`); await wait(300)
   ok(!(await ex(`document.getElementById('aipanel').classList.contains('agentmode')`)), 'Ask goes back to questions')
+  ok(await ex(`document.getElementById('ai-title').textContent !== 'Do it for me' && document.getElementById('ai-tier').textContent === 'Fast'`), 'and the header goes back too')
 
   console.log(fails ? `AGENT43 ${fails} FAILED` : 'AGENT43 ALL PASS'); fs.appendFileSync(LOG, fails ? `${fails} FAILED\n` : 'ALL PASS\n')
   mock.close(); site.close(); app.exit(fails ? 1 : 0)

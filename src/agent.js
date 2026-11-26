@@ -352,7 +352,22 @@ async function start(w, req) {
     const tt = w.tabs.get(r.tabId); if (tt && tt.view) fx(r, tt.view.webContents, 'off()')
   }
 }
+// 4.4.1: a quick look at the page for the starter tasks in Do it for me (a cookie banner, a form, a search box, a video).
+// Read-only, in Claude's own world, and only when the panel asks.
+const HINTS_JS = `(() => {
+  const vis = el => { const r = el.getBoundingClientRect(); if (r.width < 4 || r.height < 4 || r.bottom < 0 || r.top > innerHeight * 2.5) return false; const s = getComputedStyle(el); return s.visibility !== 'hidden' && s.display !== 'none' && +s.opacity > .05 }
+  const fields = [...document.querySelectorAll('input:not([type]),input[type=text],input[type=email],input[type=tel],input[type=number],input[type=date],textarea,select')].filter(vis)
+  const search = [...document.querySelectorAll('input[type=search],input[name=q],input[name=query],input[name=search],[role=search] input,input[placeholder*="earch" i]')].some(vis)
+  const cookie = [...document.querySelectorAll('button,a,[role=button]')].some(b => vis(b) && /^(accept|agree|allow|reject|decline|got it|ok)( all| cookies| and close)?$|cookie/i.test((b.innerText || b.getAttribute('aria-label') || '').trim().slice(0, 40)))
+  const video = [...document.querySelectorAll('video')].some(vis)
+  return { fields: fields.length - (search ? 1 : 0), search, cookie, video }
+})()`
+async function hints(w) {
+  const t = w.tabs.get(w.activeId), wc = t && t.view && !t.view.webContents.isDestroyed() ? t.view.webContents : null
+  if (!wc || !/^https?:/.test(wc.getURL())) return { web: false }
+  try { return { web: true, ...(await wc.executeJavaScriptInIsolatedWorld(WORLD, [{ code: HINTS_JS }])) } } catch { return { web: true } }
+}
 function stop(id) { const r = runs.get(id); if (r) r.ctl.abort() }
 function tabClosed(tabId) { for (const r of runs.values()) if (r.tabId === tabId) r.ctl.abort() }
 
-module.exports = { init, start, stop, reply, tabClosed, TOOLS, SYSTEM, READ_JS, __runs: runs }
+module.exports = { init, start, stop, reply, tabClosed, hints, TOOLS, SYSTEM, READ_JS, __runs: runs }

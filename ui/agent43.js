@@ -31,7 +31,7 @@ function setAgentMode(m) {
   paintCtx()
   aiQ.focus()
 }
-modeEl.addEventListener('click', e => { const b = e.target.closest('button[data-m]'); if (b) setAgentMode(b.dataset.m) })
+modeEl.addEventListener('click', e => { const b = e.target.closest('button[data-m]'); if (b && b.dataset.m !== agentMode) { setAgentMode(b.dataset.m); agWelcomeSwap() } })
 new ResizeObserver(() => placeAgInd(true)).observe(modeEl)
 // keep the placeholder right when the panel repaints its context
 const _paintCtx = paintCtx
@@ -137,3 +137,36 @@ $('#ai-form').addEventListener('submit', e => {
 // a conversation drawn again (tab switch) shows its agent runs as they are
 const _msgEl = msgEl
 msgEl = function (m) { return m.role === 'agent' ? m.el : _msgEl(m) }
+
+// ---------------------------------------------------------------- 4.4.1: starter tasks
+// An empty chat in Do it for me offers a few one-tap tasks that fit the page: close a cookie popup, fill in a form,
+// search the site, play the video. A task that ends with a full stop runs at once; one without fills the box for you
+// to finish (the same chips as Ask, handled by ai41.js).
+const _welcomeEl = welcomeEl
+welcomeEl = function () { return agentMode === 'do' ? agWelcome() : _welcomeEl() }
+const AG_BASE_WEB = [['chat:Find the contact or support page.', 'info', 'Find the contact page'], ['chat:Scroll through this page and find ', 'search', 'Find something on the page']]
+const AG_BASE_NEW = [['chat:Go to ', 'globe', 'Go to a site and do something'], ['chat:Search the web for ', 'search', 'Search the web for me']]
+function agChips(list) { return list.slice(0, 4).map(([k, i, t], n) => `<button class="a4-sug ag-sug" data-run="${esc(k)}" style="--d:${n * 45}ms"><span>${aiIcon(i)}</span>${esc(t)}</button>`).join('') }
+function agWelcome() {
+  const el = document.createElement('div'); el.className = 'a4-welcome ag-welcome'
+  const web = !!aiSt.web
+  el.innerHTML = `<div class="a4-w-eye">Claude in Lumen</div><div class="a4-w-t">What should I do?</div>
+    <div class="a4-sugs">${agChips(web ? AG_BASE_WEB : AG_BASE_NEW)}</div>
+    <div class="a4-tips"><span>Asks before anything that cannot be undone</span><span>Never types your passwords</span></div>`
+  if (web) api.do('agentHints').then(h => {
+    if (!h || !el.isConnected) return
+    const list = []
+    if (h.cookie) list.push(['chat:Close the cookie popup on this page.', 'shield', 'Close the cookie popup'])
+    if (h.fields >= 2) list.push(['chat:Fill in the form on this page with ', 'file', 'Fill in this form'])
+    if (h.search) list.push(['chat:Search this site for ', 'search', 'Search this site'])
+    if (h.video) list.push(['chat:Play the video on this page.', 'play', 'Play the video'])
+    if (!list.length) return
+    const box = el.querySelector('.a4-sugs'); box.innerHTML = agChips([...list, ...AG_BASE_WEB])
+  }).catch(() => {})
+  return el
+}
+// switching modes on an empty chat swaps the welcome (Ask's ideas for Do it for me's, and back)
+function agWelcomeSwap() {
+  const c = convs.get(S.activeId)
+  if (aiOpen && (!c || !c.msgs.length)) showConv(true)
+}

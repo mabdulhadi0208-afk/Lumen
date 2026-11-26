@@ -467,6 +467,14 @@
   @property --a44{syntax:'<angle>';inherits:false;initial-value:0deg}
   @keyframes edge44{0%{opacity:0;--a44:0deg}15%{opacity:1}85%{opacity:1}100%{opacity:0;--a44:360deg}}
 
+  /* 4.4.1: the icon breathes in. As the card lands, two soft halos of light bloom out from the app icon on the poster,
+     one after the other, and fade (an ::after ring and a box-shadow pulse; transform and opacity only) */
+  .poster .ic::after{content:"";position:absolute;inset:-6px;border-radius:26px;pointer-events:none;border:1.5px solid rgba(255,255,255,.85);
+    box-shadow:0 0 18px rgba(255,255,255,.55),inset 0 0 12px rgba(255,255,255,.35);opacity:0;animation:halo441 1.4s .35s cubic-bezier(.16,1,.3,1) both}
+  .poster .ic img{animation:breathe441 1.1s .3s cubic-bezier(.3,1.5,.5,1) both}
+  @keyframes halo441{0%{opacity:.95;transform:scale(.85)}60%{opacity:.35}100%{opacity:0;transform:scale(1.7)}}
+  @keyframes breathe441{0%{transform:scale(1)}35%{transform:scale(1.09)}100%{transform:scale(1)}}
+
   @media (prefers-reduced-motion:reduce){*,*::before,*::after{animation:none !important;transition:none !important}}
 </style></head><body>
 <svg class="defs" aria-hidden="true"><defs id="defs"><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" style="stop-color:var(--accent)"/><stop offset=".55" style="stop-color:var(--a2)"/><stop offset="1" style="stop-color:var(--a3)"/></linearGradient></defs></svg>

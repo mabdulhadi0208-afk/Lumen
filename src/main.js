@@ -1831,6 +1831,7 @@ ipcMain.handle('ui', async (e, action, ...a) => {
       case 'autoGroup': return autoGroupWindow(w)
       case 'agentStart': Agent.start(w, { ...(a[0] || {}), still: D.settings.get('motion') === 'off' }); return true
       case 'agentStop': Agent.stop(String(a[0] || '')); return true
+      case 'agentHints': return Agent.hints(w)
       case 'agentReply': Agent.reply(String(a[0] || ''), String(a[1] || ''), a[2] || {}); return true
       case 'aiAsk': case 'aiStop': case 'aiStatus': case 'aiCite': case 'aiPlan': case 'aiAct': case 'aiReplace': case 'aiCopy': case 'aiForget': return AIHost.ui(w, action, a)
       case 'ungroupAll': return w.ungroup(null)

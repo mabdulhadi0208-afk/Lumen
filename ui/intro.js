@@ -23,12 +23,12 @@
 ;(function () {
   // ---- edit this list every release: it is the "New in Lumen" act of the film (only this version's changes)
   const WHATS_NEW = {
-    version: '4.4',
+    version: '4.4.1',
     items: [
-      { icon: 'sparkle', text: 'Watch Claude work: a glowing Claude cursor glides to every button and field it uses, right on the page' },
-      { icon: 'play', text: 'A small label says what it is doing, like Clicking or Typing, and every click sends out a ripple' },
-      { icon: 'sparkle', text: 'The tab gets a soft edge of light while Claude is working, and it fades away when the task is done' },
-      { icon: 'play', text: 'None of it gets in the way: your clicks and the page work exactly as before' },
+      { icon: 'sparkle', text: 'Do it for me now starts with ideas: one-tap tasks that fit the page you are on' },
+      { icon: 'play', text: 'It spots a cookie popup, a form, a search box or a video, and offers to deal with it' },
+      { icon: 'sparkle', text: 'Tasks that need details fill the box for you to finish; the rest run with one tap' },
+      { icon: 'play', text: 'Switching between Ask and Do it for me swaps the ideas to match' },
     ],
   }
 
@@ -1241,6 +1241,18 @@
         b.animate(frames, { duration: 1300, delay: k * 34, easing: 'cubic-bezier(.45,.05,.35,1)', fill: 'both' }).finished.then(() => b.remove(), () => b.remove())
       }
     }, 1120)
+    // 4.4.1: ideas rise. As the title settles, three small glass pills float up past it on staggered springs and
+    // dissolve into the light, like the starter tasks waiting in Do it for me (transform and opacity only)
+    setTimeout(() => {
+      if (skip || still || !logo.offsetParent) return
+      const host = logo.offsetParent, cx = logo.offsetLeft + logo.offsetWidth / 2, cy = logo.offsetTop + logo.offsetHeight
+      ;[[-150, 64, 0], [0, 88, 140], [150, 70, 280]].forEach(([dx, w, d]) => {
+        const p = document.createElement('i')
+        p.style.cssText = `position:absolute;left:${cx + dx - w / 2}px;top:${cy + 30}px;width:${w}px;height:20px;border-radius:999px;pointer-events:none;mix-blend-mode:screen;background:linear-gradient(135deg,color-mix(in srgb,var(--hi) 55%,transparent),color-mix(in srgb,var(--hi3) 40%,transparent));box-shadow:inset 0 1px 0 rgba(255,255,255,.6),0 0 18px color-mix(in srgb,var(--hi) 45%,transparent)`
+        host.appendChild(p)
+        p.animate([{ opacity: 0, transform: 'translateY(30px) scale(.8)' }, { opacity: .9, transform: 'translateY(-10px) scale(1.04)', offset: .35 }, { opacity: .6, transform: 'translateY(-70px) scale(1)', offset: .7 }, { opacity: 0, transform: 'translateY(-130px) scale(.9)' }], { duration: 1500, delay: d, easing: 'cubic-bezier(.3,1.2,.5,1)', fill: 'both' }).finished.then(() => p.remove(), () => p.remove())
+      })
+    }, 1500)
     // 4.1.6: a ripple of light rolls out from under the title as it settles, like a stone dropped in still water
     setTimeout(() => {
       if (skip || still || !logo.offsetParent) return

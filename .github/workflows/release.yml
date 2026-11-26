@@ -191,7 +191,7 @@ jobs:
           sleep 15
           kill -0 $P2 2>/dev/null && echo "still running 15s after the update" || { echo "app QUIT after updating"; cat $L/update.log $L/lumen.log; exit 1; }
           [ "$(grep -c "boot $V" $L/lumen.log)" -ge 2 ] && echo "booted twice, version $V" || { echo "expected two boots"; cat $L/lumen.log; exit 1; }
-          grep -i "UNCAUGHT\|UNHANDLED" $L/lumen.log && { echo "errors in log"; exit 1; } || echo "no errors in log"
+          grep -i "UNCAUGHT\|UNHANDLED" $L/lumen.log && { echo "errors in log"; echo "----- lumen.log"; cat $L/lumen.log; echo "----- update.log"; cat $L/update.log; exit 1; } || echo "no errors in log"
           echo "----- lumen.log"; cat $L/lumen.log; echo "----- update.log"; cat $L/update.log
           kill -TERM $P2; sleep 4
           for f in dist/Lumen-mac-arm64.dmg dist/Lumen-mac-arm64.zip dist/Lumen-mac-x64.dmg dist/Lumen-mac-x64.zip; do s=$(stat -f%z "$f"); [ "$s" -gt 60000000 ] && echo "$f $s bytes" || { echo "$f too small ($s)"; exit 1; }; done

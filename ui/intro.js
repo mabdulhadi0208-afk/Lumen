@@ -1210,7 +1210,7 @@
       if (skip || still || !v4.offsetParent) return
       const host = v4.offsetParent, tx = v4.offsetLeft + v4.offsetWidth * .78, ty = v4.offsetTop + v4.offsetHeight * .62
       const cur = document.createElement('i')
-      cur.style.cssText = `position:absolute;left:${tx}px;top:${ty}px;width:34px;height:34px;pointer-events:none;z-index:5;filter:drop-shadow(0 0 10px color-mix(in srgb,var(--hi) 80%,#fff)) drop-shadow(0 0 22px var(--hi));background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M5 3l14 7.2-6.2 1.6L10 18z' fill='white'/%3E%3C/svg%3E") center/contain no-repeat`
+      cur.style.cssText = `position:absolute;left:${tx - 10}px;top:${ty - 10}px;width:50px;height:50px;pointer-events:none;z-index:5;will-change:transform,opacity;background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='-8 -8 40 40'%3E%3Cdefs%3E%3Cfilter id='g' x='-60%25' y='-60%25' width='220%25' height='220%25'%3E%3CfeGaussianBlur stdDeviation='3.2'/%3E%3C/filter%3E%3C/defs%3E%3Cpath d='M5 3l14 7.2-6.2 1.6L10 18z' fill='%23cfe0ff' filter='url(%23g)'/%3E%3Cpath d='M5 3l14 7.2-6.2 1.6L10 18z' fill='white'/%3E%3C/svg%3E") center/contain no-repeat`
       host.appendChild(cur)
       cur.animate([{ opacity: 0, transform: 'translate(240px,180px) rotate(-14deg) scale(1.3)' }, { opacity: 1, offset: .2 }, { transform: 'translate(0,0) rotate(0) scale(1)', offset: .62 }, { transform: 'scale(.78)', offset: .7 }, { opacity: 1, transform: 'scale(1)', offset: .8 }, { opacity: 0, transform: 'translate(8px,6px) scale(1)' }], { duration: 1500, easing: 'cubic-bezier(.34,1.25,.5,1)' }).finished.then(() => cur.remove(), () => cur.remove())
       setTimeout(() => {

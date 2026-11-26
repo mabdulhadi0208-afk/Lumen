@@ -451,10 +451,10 @@
 
   /* 4.3: Claude in Lumen. As the card lands, a cursor of light glides in across the poster, taps once beside the
      version number, and a ring of light spreads from the tap and is gone (transform and opacity only, drawn once) */
-  .tap43{position:absolute;left:58%;top:52%;width:22px;height:22px;z-index:3;pointer-events:none;opacity:0;
-    background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M5 3l14 7.2-6.2 1.6L10 18z' fill='white' stroke='rgba(0,0,0,.35)' stroke-width='1.2' stroke-linejoin='round'/%3E%3C/svg%3E") center/contain no-repeat;
-    filter:drop-shadow(0 0 6px rgba(255,255,255,.85)) drop-shadow(0 4px 10px rgba(0,0,0,.25));animation:tap43 1.7s .7s cubic-bezier(.34,1.3,.5,1) both}
-  .tap43::after{content:"";position:absolute;left:-14px;top:-14px;width:28px;height:28px;border-radius:50%;border:2px solid rgba(255,255,255,.9);box-shadow:0 0 14px rgba(255,255,255,.6);opacity:0;animation:ring43 .9s 1.45s cubic-bezier(.16,1,.3,1) both}
+  .tap43{position:absolute;left:58%;top:52%;width:30px;height:30px;margin:-4px 0 0 -4px;z-index:3;pointer-events:none;opacity:0;
+    background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='-6 -6 36 36'%3E%3Cdefs%3E%3Cfilter id='g' x='-50%25' y='-50%25' width='200%25' height='200%25'%3E%3CfeGaussianBlur stdDeviation='2.2'/%3E%3C/filter%3E%3C/defs%3E%3Cpath d='M5 3l14 7.2-6.2 1.6L10 18z' fill='white' opacity='.85' filter='url(%23g)'/%3E%3Cpath d='M5 3l14 7.2-6.2 1.6L10 18z' fill='white' stroke='rgba(0,0,0,.35)' stroke-width='1.2' stroke-linejoin='round'/%3E%3C/svg%3E") center/contain no-repeat;
+    will-change:transform,opacity;animation:tap43 1.7s .7s cubic-bezier(.34,1.3,.5,1) both}
+  .tap43::after{content:"";position:absolute;left:-10px;top:-10px;width:28px;height:28px;border-radius:50%;border:2px solid rgba(255,255,255,.9);box-shadow:0 0 14px rgba(255,255,255,.6);opacity:0;animation:ring43 .9s 1.45s cubic-bezier(.16,1,.3,1) both}
   @keyframes tap43{0%{opacity:0;transform:translate(90px,70px) rotate(-8deg)}30%{opacity:1}55%{transform:translate(0,0) rotate(0)}62%{transform:scale(.8)}70%{transform:scale(1)}88%{opacity:1}100%{opacity:0;transform:translate(6px,4px)}}
   @keyframes ring43{0%{opacity:.95;transform:scale(.3)}100%{opacity:0;transform:scale(2.6)}}
 

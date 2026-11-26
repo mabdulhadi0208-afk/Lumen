@@ -501,7 +501,7 @@ function bindTab(v, id) {
   el.addEventListener('pointerdown', e => {
     if (e.button === 1) { e.preventDefault(); return }
     if (e.button !== 0 || e.target.closest('.x, .audio, .add, .rl')) return
-    drag = { id, active: false, start: coord(e), startPos: LAYOUT.pos.get(id) || 0, index: v.index }
+    drag = { id, active: false, start: coord(e), startPos: LAYOUT.pos.get(id) || 0, index: v.index, wasActive: S.activeId === id && e.detail < 2 }
     el.setPointerCapture(e.pointerId)
     // press squashes the tab a little
     v.g.to({ s: 0.97 })
@@ -545,6 +545,9 @@ function bindTab(v, id) {
       S.tabs = rest
       renderTabs()
       api.do('move', id, pinnedCount + d.index)
+    } else if (e.type === 'pointerup' && d.wasActive) {
+      // 4.1.6: a click on the tab you are already on sends its page back to the top, and the tab hops up once
+      Promise.resolve(api.do('scrollTop', id)).then(moved => { if (!moved) return; v.q.to(0, { velocity: -2.6 }); el.classList.remove('totop'); void el.offsetWidth; el.classList.add('totop') }, () => {})
     } else if (e.type === 'pointerup') { localActivate(id); api.do('activate', id) }
   }
   el.addEventListener('pointerup', end)

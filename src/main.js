@@ -1331,6 +1331,25 @@ function separateAppsCheck() {
 // If Google still says "This browser or app may not be secure", switch to the other sign-in mode once and start the
 // sign-in again, so it just works on the second try. The mode that worked is kept.
 let googleRetried = false
+// scrolls the page's main scroller back to the top: the document, or the scrolled box under the middle of the window
+// (web apps like Gmail scroll a box, not the page). An ease-out glide, no overshoot; instant with Motion Off.
+// A wheel or a key press stops it. Resolves true if there was anything to scroll.
+const SCROLL_TOP = `(() => {
+  const still = __STILL__ || matchMedia('(prefers-reduced-motion: reduce)').matches
+  const canScroll = el => { if (!el || el.scrollTop <= 0) return false; const o = getComputedStyle(el).overflowY; return el === document.scrollingElement || o === 'auto' || o === 'scroll' || o === 'overlay' }
+  let el = document.scrollingElement && document.scrollingElement.scrollTop > 0 ? document.scrollingElement : null
+  if (!el) { let n = document.elementFromPoint(innerWidth / 2, innerHeight / 2); while (n && !canScroll(n)) n = n.parentElement; el = n }
+  if (!el) for (const n of document.querySelectorAll('main, [role=main], div, section')) { if (n.scrollTop > 0 && n.clientHeight > innerHeight * .4 && canScroll(n)) { el = n; break } }
+  if (!el) return false
+  const from = el.scrollTop
+  if (still) { el.scrollTop = 0; return true }
+  const ms = Math.min(720, 320 + Math.sqrt(from) * 6), t0 = performance.now(); let stop = false
+  const halt = () => { stop = true }
+  addEventListener('wheel', halt, { once: true, passive: true }); addEventListener('keydown', halt, { once: true }); addEventListener('touchstart', halt, { once: true, passive: true })
+  const ease = k => 1 - Math.pow(1 - k, 4)
+  const step = now => { if (stop) return; const k = Math.min(1, (now - t0) / ms); el.scrollTop = from * (1 - ease(k)); if (k < 1) requestAnimationFrame(step); else { removeEventListener('wheel', halt); removeEventListener('keydown', halt); removeEventListener('touchstart', halt) } }
+  requestAnimationFrame(step)
+  return true })()`
 // remembers the sharpest icon the page offers, so Home can show the site's real logo instead of a letter.
 // Read in an isolated world; never in private windows. Touch icons are full-bleed squares, the rest sit on white.
 const ICON_SCAN = `(() => { const out = []
@@ -1746,6 +1765,8 @@ ipcMain.handle('ui', async (e, action, ...a) => {
       case 'prompt': { const fn = pendingPrompts.get(a[0]); pendingPrompts.delete(a[0]); if (fn) fn(a[1]); return }
       case 'bookmark': { if (!t) return; if (D.isBookmarked(t.url)) D.removeBookmark(t.url); else D.addBookmark(t.url, t.title); w.pushState(); return }
       case 'pin': { const x = w.tabs.get(a[0]); if (x) { x.pinned = !x.pinned; const others = w.order.filter(i => i !== x.id); const pinnedCount = others.filter(i => w.tabs.get(i).pinned).length; w.moveTab(x.id, x.pinned ? pinnedCount : pinnedCount) } return }
+      // click the tab you are already on: the page glides back to the top (its main scroller, even inside web apps)
+      case 'scrollTop': { const x = w.tabs.get(a[0]); if (!x || !x.view || x.view.webContents.isDestroyed()) return false; try { return !!(await x.view.webContents.executeJavaScriptInIsolatedWorld(1014, [{ code: SCROLL_TOP.replace('__STILL__', D.settings.get('motion') === 'off' ? 'true' : 'false') }])) } catch { return false } }
       case 'mute': { const x = w.tabs.get(a[0]); if (x && x.view) { x.muted = !x.muted; x.view.webContents.setAudioMuted(x.muted); w.pushState() } return }
       case 'split': { if (a[0] && a[0] !== w.activeId) { w.splitId = a[0]; w.layout(); w.pushState() } return }
       case 'unsplit': w.splitId = null; w.layout(); w.pushState(); return

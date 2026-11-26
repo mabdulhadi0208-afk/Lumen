@@ -23,11 +23,10 @@
 ;(function () {
   // ---- edit this list every release: it is the "New in Lumen" act of the film (only this version's changes)
   const WHATS_NEW = {
-    version: '4.1.5',
+    version: '4.1.6',
     items: [
-      { icon: 'sparkle', text: 'Bookmarks, History, Read later and Passwords show every site with its real logo' },
-      { icon: 'play', text: 'Add shortcut and Add bookmark preview the real logo as you type' },
-      { icon: 'sparkle', text: 'Big sites like YouTube now get their sharpest logo on Home too' },
+      { icon: 'sparkle', text: 'Click the tab you are on and its page glides back to the top, even in web apps like Gmail' },
+      { icon: 'play', text: 'The tab flicks up with a streak of light as it goes' },
     ],
   }
 
@@ -1190,6 +1189,17 @@
       host.appendChild(st)
       st.animate([{ opacity: 0, transform: 'scaleX(.05) scaleY(.6)' }, { opacity: 1, transform: 'scaleX(1) scaleY(1.4)', offset: .3 }, { opacity: 0, transform: 'scaleX(1.25) scaleY(.4)' }], { duration: 1100, easing: 'cubic-bezier(.16,1,.3,1)' }).finished.then(() => st.remove(), () => st.remove())
     }, 1040)
+    // 4.1.6: a ripple of light rolls out from under the title as it settles, like a stone dropped in still water
+    setTimeout(() => {
+      if (skip || still || !logo.offsetParent) return
+      const host = logo.offsetParent, cx = logo.offsetLeft + logo.offsetWidth / 2, cy = logo.offsetTop + logo.offsetHeight * .92
+      ;[0, 1].forEach(i => {
+        const r = document.createElement('i')
+        r.style.cssText = `position:absolute;left:${cx - 60}px;top:${cy - 9}px;width:120px;height:18px;border-radius:50%;pointer-events:none;mix-blend-mode:screen;border:1.5px solid color-mix(in srgb,var(--hi) 75%,#fff);box-shadow:0 0 18px color-mix(in srgb,var(--hi) 55%,transparent)`
+        host.appendChild(r)
+        r.animate([{ opacity: 0, transform: 'scale(.3)' }, { opacity: .85, transform: 'scale(1.6)', offset: .25 }, { opacity: 0, transform: `scale(${5.5 + i * 1.5})` }], { duration: 1500 + i * 250, delay: i * 180, easing: 'cubic-bezier(.16,1,.3,1)' }).finished.then(() => r.remove(), () => r.remove())
+      })
+    }, 1700)
     // 4.1.4: two sparks of light race out from the middle of the rule as it draws, and flare where it ends
     setTimeout(() => {
       const rule = s.querySelector('.rule'); if (skip || still || !rule || !rule.offsetParent) return

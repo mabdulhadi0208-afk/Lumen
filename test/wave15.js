@@ -86,6 +86,8 @@ app.whenReady().then(async () => {
   await nq(`document.querySelector('.pdialog').requestSubmit()`); await wait(1500)
   ok(P.list().some(x => x.number === 'RR123456789SA' && x.name === 'Books' && x.carrier === 'saudipost'), 'added from the new tab page')
   await nq(`document.querySelector('#pc .pcard[data-pid]').click()`); await wait(1800)
+  // the carrier's site is real: its address only shows once it starts answering, which can take a while
+  for (let i = 0; i < 40 && !/48250|splonline|17track/.test(nt.view.webContents.getURL()); i++) await wait(250)
   ok(/48250|splonline|17track/.test(nt.view.webContents.getURL()), 'clicking a parcel opens its order page: ' + nt.view.webContents.getURL())
 
   // ---- parcels page

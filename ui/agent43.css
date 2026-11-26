@@ -9,6 +9,17 @@
 #aipanel .ag-ind { position: absolute; left: 3px; top: 3px; bottom: 3px; width: 0; border-radius: 999px; background: var(--pkg);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, .45), 0 6px 18px -6px color-mix(in srgb, var(--pk) 70%, transparent); will-change: transform, width; }
 #aipanel.nokey .ag-mode { display: none; }
+/* 4.4.5: the keycap toast that springs up over the switch when Opt Cmd A flips the mode */
+#aipanel .ag-hint { position: absolute; left: 50%; bottom: calc(100% + 8px); z-index: 3; display: flex; align-items: center; gap: 8px; padding: 6px 8px 6px 12px;
+  border-radius: 999px; white-space: nowrap; pointer-events: none; opacity: 0; transform: translate(-50%, 6px) scale(.9);
+  background: color-mix(in srgb, var(--bg, #fff) 82%, transparent); backdrop-filter: blur(18px) saturate(1.6);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .5), 0 0 0 1px color-mix(in srgb, var(--fg) 8%, transparent), 0 12px 30px -10px color-mix(in srgb, var(--pk) 55%, transparent);
+  font: 750 12px/1 var(--font); color: var(--fg); transition: opacity .22s, transform .5s cubic-bezier(.3, 1.45, .5, 1); }
+#aipanel .ag-hint.show { opacity: 1; transform: translate(-50%, 0) scale(1); }
+#aipanel .ag-hint b { background: var(--pkg); -webkit-background-clip: text; background-clip: text; color: transparent; }
+#aipanel .ag-hint .keys, #aipanel .ag-tipkey { display: inline-flex; align-items: center; gap: 3px; }
+#aipanel .ag-hint kbd { font: 750 10px/1 var(--font); padding: 3px 6px; border-radius: 6px; color: var(--fg2);
+  background: color-mix(in srgb, var(--fg) 7%, transparent); box-shadow: inset 0 -1px 0 color-mix(in srgb, var(--fg) 14%, transparent); }
 #aipanel.agentmode .ai-input:focus-within { box-shadow: inset 0 1px 0 rgba(255, 255, 255, .8), 0 0 0 4px color-mix(in srgb, var(--vi) 18%, transparent), 0 0 26px color-mix(in srgb, var(--vi) 30%, transparent); }
 
 /* a task run */

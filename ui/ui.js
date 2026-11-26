@@ -654,6 +654,7 @@ const COMMANDS = [
   { t: 'Clear Data for This Site', k: ['clear', 'cookies', 'site data', 'sign out'], i: 'trash', run: () => api.do('clearSiteData') },
   { t: 'Tab Overview', s: () => `${K.sh} ${K.cmd} O`, k: ['overview', 'all tabs', 'grid', 'expose', 'tabs'], i: 'tabs', run: () => setTimeout(openTabGrid, 80) },
   { t: 'Lumen AI', s: () => `${K.sh} ${K.cmd} A`, k: ['ai', 'ask', 'chat', 'assistant', 'claude'], i: 'bolt', run: () => openAI() },
+  { t: 'Do It for Me', s: () => `${K.opt} ${K.cmd} A`, k: ['do it for me', 'agent', 'claude', 'task', 'automate', 'ask mode'], i: 'sparkle', run: () => setTimeout(() => agentSwitchMode('do'), 80) },
   { t: 'Summarize Page', k: ['summarize', 'summary', 'tldr', 'ai'], i: 'book', run: () => { openAI(); aiRun('summarize') } },
   { t: 'Sort Tabs into Groups', s: () => `${K.opt} ${K.cmd} G`, k: ['group', 'sort tabs', 'organize', 'tidy'], i: 'tabs', run: () => api.do('autoGroup') },
   { t: 'Ungroup All Tabs', k: ['ungroup', 'remove groups'], i: 'tabs', run: () => api.do('ungroupAll') },
@@ -1104,7 +1105,7 @@ function openShortcuts() {
     ['Tabs', [['New tab', `${K.cmd} T`], ['Close tab', `${K.cmd} W`], ['Reopen closed tab', `${K.sh} ${K.cmd} T`], ['Next / previous tab', `Ctrl Tab`], ['Go to tab 1 to 8', `${K.cmd} 1-8`], ['Pin or unpin', 'Double-click tab']]],
     ['Navigate', [['Command bar', `${K.cmd} K`], ['Edit address', `${K.cmd} L`], ['Back / forward', `${K.cmd} [  ]`], ['Peek a link', 'Shift click'], ['Swipe back / forward', 'Two fingers']]],
     ['Page', [['Find', `${K.cmd} F`], ['Translate', `${K.opt} ${K.cmd} T`], ['Reader mode', `${K.sh} ${K.cmd} E`], ['Save to Read later', `${K.sh} ${K.cmd} D`], ['Picture in picture', `${K.sh} ${K.cmd} P`], ['Video speed', 'Shift  >  <'], ['Screenshot', `${K.sh} ${K.cmd} 2`], ['Zoom', `${K.cmd} +  -  0`]]],
-    ['Lumen', [['Split view', `${K.sh} ${K.cmd} \\`], ['Toggle sidebar', `${K.sh} ${K.cmd} S`], ['Focus mode', `${K.sh} ${K.cmd} F`], ['Tabs on top / side', `${K.opt} ${K.cmd} S`], ['Copy clean link', `${K.sh} ${K.cmd} C`], ['Private window', `${K.sh} ${K.cmd} N`], ['This sheet', `${K.cmd} /`]]],
+    ['Lumen', [['Split view', `${K.sh} ${K.cmd} \\`], ['Toggle sidebar', `${K.sh} ${K.cmd} S`], ['Focus mode', `${K.sh} ${K.cmd} F`], ['Tabs on top / side', `${K.opt} ${K.cmd} S`], ['Lumen AI', `${K.sh} ${K.cmd} A`], ['AI: Ask / Do it for me', `${K.opt} ${K.cmd} A`], ['Copy clean link', `${K.sh} ${K.cmd} C`], ['Private window', `${K.sh} ${K.cmd} N`], ['This sheet', `${K.cmd} /`]]],
   ]
   // every key is its own keycap; gestures (clicks, swipes) get one soft chip
   const keys = k => /click|finger/i.test(k) ? `<kbd class="gesture">${esc(k)}</kbd>` : `<span class="keys">${k.split(/\s+/).filter(Boolean).map(x => `<kbd>${esc(x)}</kbd>`).join('')}</span>`
@@ -1422,6 +1423,7 @@ api.on('command', c => {
   if (c === 'qr') { openQR(); return }
   if (c === 'tabgrid') { tgOpen ? closeTabGrid() : openTabGrid(); return }
   if (c === 'ai') { toggleAI(); return }
+  if (c === 'aimode') { if (typeof agentSwitchMode === 'function') agentSwitchMode(); return }
   if (c === 'newtab') api.do('newTab')
   else if (c === 'palette') openCmd('newtab')
   else if (c === 'menu') openMainMenu()

@@ -2399,6 +2399,7 @@ function buildMenu() {
       { label: 'Bookmarks Bar', accelerator: 'CmdOrCtrl+Shift+B', click: () => setSetting('bookmarksBar', D.settings.get('bookmarksBar') === false) },
       { label: 'Tab Overview', accelerator: 'CmdOrCtrl+Shift+O', click: focused(w => w.send('command', 'tabgrid')) },
       { label: 'Lumen AI', accelerator: 'CmdOrCtrl+Shift+A', click: focused(w => w.send('command', 'ai')) },
+      { label: 'Switch Ask / Do it for Me', accelerator: 'CmdOrCtrl+Alt+A', click: focused(w => w.send('command', 'aimode')) },
       { label: 'Sort Tabs into Groups', accelerator: 'CmdOrCtrl+Alt+G', click: focused(w => autoGroupWindow(w)) },
       { label: 'Reader Mode', accelerator: 'CmdOrCtrl+Shift+E', click: focused((w, t) => activeWc(w, t) && readerMode(activeWc(w, t))) },
       { label: 'Picture in Picture', accelerator: 'CmdOrCtrl+Shift+P', click: focused(w => w.send('command', 'pip')) },

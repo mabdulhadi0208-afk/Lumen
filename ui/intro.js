@@ -23,11 +23,11 @@
 ;(function () {
   // ---- edit this list every release: it is the "New in Lumen" act of the film (only this version's changes)
   const WHATS_NEW = {
-    version: '4.4.2',
+    version: '4.4.3',
     items: [
-      { icon: 'sparkle', text: 'Run again: when Claude finishes a task, do the same thing again with one tap' },
-      { icon: 'play', text: 'Edit task puts the task back in the box, so you can change a detail and send it off' },
-      { icon: 'sparkle', text: 'Both buttons spring in under every finished task in Do it for me' },
+      { icon: 'sparkle', text: 'Passkeys tell you what is going on: when a site asks for one Lumen does not have, you can use your password or open the page in Safari' },
+      { icon: 'play', text: 'A passkey macOS will not let Lumen unlock no longer breaks the sign-in: Lumen says which one and how to fix it' },
+      { icon: 'sparkle', text: 'Passkeys made in Lumen are tested on a real passkey site, from saving one to signing in with it' },
     ],
   }
 
@@ -1267,6 +1267,15 @@
       svg.querySelectorAll('circle').forEach(c => c.animate([{ strokeDashoffset: L }, { strokeDashoffset: 0 }], { duration: 900, easing: 'cubic-bezier(.45,.05,.25,1)', fill: 'forwards' }))
       svg.animate([{ opacity: 0, transform: 'rotate(-20deg) scale(.92)' }, { opacity: 1, transform: 'none', offset: .25 }, { opacity: 1, offset: .7 }, { opacity: 0, transform: 'rotate(8deg) scale(1.06)' }], { duration: 1500, easing: 'ease-out' }).finished.then(() => svg.remove(), () => svg.remove())
     }, 1900)
+    // 4.4.3: the key turns. A thin bar of light slides through the version number at an angle, like light catching a key,
+    // leaving it a touch brighter (a clone of the number masked to a moving stripe; transform and opacity only)
+    setTimeout(() => {
+      if (skip || still || !v4.offsetParent) return
+      const host = v4.offsetParent, gl = v4.cloneNode(true)
+      gl.style.cssText = `position:absolute;left:${v4.offsetLeft}px;top:${v4.offsetTop}px;margin:0;pointer-events:none;mix-blend-mode:screen;color:#fff;-webkit-text-fill-color:#fff;-webkit-mask:linear-gradient(105deg,transparent 40%,#000 48%,#000 52%,transparent 60%) 0 0/300% 100% no-repeat`
+      host.appendChild(gl)
+      gl.animate([{ WebkitMaskPosition: '100% 0', opacity: 0 }, { opacity: .95, offset: .2 }, { opacity: .95, offset: .8 }, { WebkitMaskPosition: '0% 0', opacity: 0 }], { duration: 1100, easing: 'cubic-bezier(.45,.05,.35,1)' }).finished.then(() => gl.remove(), () => gl.remove())
+    }, 2300)
     // 4.1.6: a ripple of light rolls out from under the title as it settles, like a stone dropped in still water
     setTimeout(() => {
       if (skip || still || !logo.offsetParent) return

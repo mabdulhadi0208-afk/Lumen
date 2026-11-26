@@ -23,11 +23,10 @@
 ;(function () {
   // ---- edit this list every release: it is the "New in Lumen" act of the film (only this version's changes)
   const WHATS_NEW = {
-    version: '4.4.6',
+    version: '4.4.7',
     items: [
-      { icon: 'box', text: 'Shop support in Parcels: orders from Shopify stores are saved from the thank-you and order status pages, under the store\'s own name' },
-      { icon: 'sparkle', text: 'The tracking number and the right carrier come straight from the Track your order link, for every carrier Lumen knows' },
-      { icon: 'play', text: 'Shop orders wear a small Shop tag in Parcels, and you can search them by store name' },
+      { icon: 'sparkle', text: 'Page titles in Settings never break in the middle of a word any more: long ones like Appearance ease down to fit the banner' },
+      { icon: 'play', text: 'Titles of several words wrap neatly between words, at every window size, and wide windows keep the big title' },
     ],
   }
 
@@ -1301,6 +1300,17 @@
         key.animate([{ opacity: 0, transform: 'translateY(-40px) scale(.8)' }, { opacity: 1, transform: 'translateY(4px) scale(1.04)', offset: .35 }, { opacity: 1, transform: 'none', offset: .5 }, { opacity: 1, transform: 'translateY(5px) scale(.94,.9)', offset: .62 }, { opacity: 1, transform: 'none', offset: .75 }, { opacity: 0, transform: 'translateY(-6px)' }], { duration: 1700, delay: n * 90, easing: 'cubic-bezier(.3,1.3,.5,1)', fill: 'both' }).finished.then(() => key.remove(), () => key.remove())
       })
     }, 3000)
+    // 4.4.7: the title fits. A thin bracket of light opens out from the middle of the title to both of its edges on a
+    // spring, holds for a beat to show it is a perfect fit, and fades (transform and opacity only)
+    setTimeout(() => {
+      if (skip || still || !logo.offsetParent) return
+      const host = logo.offsetParent, L0 = logo.offsetLeft, W0 = logo.offsetWidth, y = logo.offsetTop - 12
+      const bar = document.createElement('i')
+      bar.style.cssText = `position:absolute;left:${L0}px;top:${y}px;width:${W0}px;height:2px;border-radius:2px;pointer-events:none;mix-blend-mode:screen;background:linear-gradient(90deg,#fff,color-mix(in srgb,var(--hi) 70%,#fff) 20%,transparent 50%,color-mix(in srgb,var(--hi3) 70%,#fff) 80%,#fff);box-shadow:0 0 14px color-mix(in srgb,var(--hi) 60%,transparent)`
+      ;[0, 1].forEach(e => { const c = document.createElement('i'); c.style.cssText = `position:absolute;${e ? 'right' : 'left'}:-1px;top:-5px;width:2px;height:12px;border-radius:2px;background:#fff`; bar.appendChild(c) })
+      host.appendChild(bar)
+      bar.animate([{ opacity: 0, transform: 'scaleX(0)' }, { opacity: 1, transform: 'scaleX(1.03)', offset: .3 }, { opacity: 1, transform: 'none', offset: .42 }, { opacity: 1, transform: 'none', offset: .75 }, { opacity: 0, transform: 'translateY(-6px)' }], { duration: 1800, easing: 'cubic-bezier(.3,1.3,.5,1)', fill: 'both' }).finished.then(() => bar.remove(), () => bar.remove())
+    }, 2500)
     // 4.4.6: the parcel. A small glass parcel drops in under the title on a spring, lands with a squash, and a
     // ribbon of light ties itself across it before it lifts away (transform and opacity only)
     setTimeout(() => {

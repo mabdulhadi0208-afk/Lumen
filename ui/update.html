@@ -458,6 +458,15 @@
   @keyframes tap43{0%{opacity:0;transform:translate(90px,70px) rotate(-8deg)}30%{opacity:1}55%{transform:translate(0,0) rotate(0)}62%{transform:scale(.8)}70%{transform:scale(1)}88%{opacity:1}100%{opacity:0;transform:translate(6px,4px)}}
   @keyframes ring43{0%{opacity:.95;transform:scale(.3)}100%{opacity:0;transform:scale(2.6)}}
 
+  /* 4.4: the edge lights up. As the card lands, a line of light traces once around the poster's rim and fades, the
+     same edge of light a tab gets while Claude works (a masked conic gradient, rotation only, drawn once) */
+  .edge44{position:absolute;inset:0;z-index:3;pointer-events:none;border-radius:inherit;padding:3px;opacity:0;
+    background:conic-gradient(from var(--a44,0deg),transparent 0 58%,rgba(255,200,240,.5) 70%,#fff 80%,rgba(255,200,240,.5) 88%,transparent 96%);
+    -webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask-composite:exclude;
+    animation:edge44 1.5s .5s cubic-bezier(.45,.05,.35,1) both}
+  @property --a44{syntax:'<angle>';inherits:false;initial-value:0deg}
+  @keyframes edge44{0%{opacity:0;--a44:0deg}15%{opacity:1}85%{opacity:1}100%{opacity:0;--a44:360deg}}
+
   @media (prefers-reduced-motion:reduce){*,*::before,*::after{animation:none !important;transition:none !important}}
 </style></head><body>
 <svg class="defs" aria-hidden="true"><defs id="defs"><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" style="stop-color:var(--accent)"/><stop offset=".55" style="stop-color:var(--a2)"/><stop offset="1" style="stop-color:var(--a3)"/></linearGradient></defs></svg>
@@ -467,7 +476,7 @@
   <i class="pool"></i><div class="wm" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9.5"/><path d="M12 7v9m-4-4 4 4 4-4"/><path d="M4.5 12a7.5 7.5 0 0 1 4-6.6" opacity=".5"/></svg></div>
   <div class="poster">
     <div class="plb"></div><svg class="porb" viewBox="0 0 200 200" aria-hidden="true"><circle cx="100" cy="100" r="96"/><circle cx="100" cy="100" r="74"/><circle cx="100" cy="100" r="52"/><circle cx="100" cy="100" r="30"/></svg><i class="pglow"></i><span class="pvt">Software update</span>
-    <i class="tap43" aria-hidden="true"></i>
+    <i class="tap43" aria-hidden="true"></i><i class="edge44" aria-hidden="true"></i>
     <div class="pin">
       <div class="ic"><img id="icon" src="../pages/icon-default.png" alt=""><svg class="ring" viewBox="0 0 64 64"><rect class="bgc" x="2" y="2" width="60" height="60" rx="21"/><rect class="fg" id="arc" x="2" y="2" width="60" height="60" rx="21" pathLength="226"/></svg><span class="badge"><svg viewBox="0 0 16 16"><path d="m3.5 8.5 3 3 6-7"/></svg></span></div>
       <div class="art" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9.5"/><path d="M12 7v9m-4-4 4 4 4-4"/><path d="M4.5 12a7.5 7.5 0 0 1 4-6.6" opacity=".5"/></svg></div>

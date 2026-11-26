@@ -135,11 +135,90 @@ async function setFiles(wc, ref, file) {
 }
 
 // one tool call: returns tool_result content (a string, or blocks for a screenshot)
+// 4.4: what Claude is doing, drawn on the page itself. While a task runs the tab gets a soft breathing edge of light,
+// and a glowing Claude cursor glides on a spring to every control it uses, with a small label ("Clicking", "Typing")
+// and a ripple on each click. It lives in a closed shadow root in Claude's own world: the page cannot style it,
+// it never takes a click (pointer-events: none), and it is not part of the page text Claude reads.
+const FX_JS = still => `(() => {
+  if (window.__lumenAgentFX) return true
+  const STILL = ${still ? 'true' : 'false'} || matchMedia('(prefers-reduced-motion: reduce)').matches
+  const host = document.createElement('lumen-agent-fx'); host.id = 'lumen-agent-fx'
+  host.style.cssText = 'all:initial;position:fixed;inset:0;z-index:2147483647;pointer-events:none;display:block'
+  const root = host.attachShadow({ mode: 'closed' })
+  root.innerHTML = '<style>' +
+    ':host{all:initial}*{box-sizing:border-box}' +
+    '.edge{position:fixed;inset:0;border-radius:0;opacity:0;transition:opacity .5s;box-shadow:inset 0 0 0 2px rgba(255,79,184,.55),inset 0 0 28px rgba(192,60,240,.35),inset 0 0 80px rgba(124,92,255,.18)}' +
+    '.on .edge{opacity:1}' +
+    '.on:not(.still) .edge{animation:br 2.4s ease-in-out infinite}' +
+    '@keyframes br{50%{box-shadow:inset 0 0 0 2px rgba(255,79,184,.8),inset 0 0 40px rgba(192,60,240,.5),inset 0 0 110px rgba(124,92,255,.26)}}' +
+    '.cur{position:fixed;left:0;top:0;width:0;height:0;opacity:0;transition:opacity .3s;will-change:transform}' +
+    '.cur.show{opacity:1}' +
+    '.cur svg{position:absolute;left:-3px;top:-2px;width:26px;height:26px;overflow:visible}' +
+    '.tag{position:absolute;left:20px;top:20px;padding:5px 10px 5px 8px;border-radius:999px;font:700 12px/1 -apple-system,system-ui,sans-serif;color:#fff;white-space:nowrap;letter-spacing:.01em;' +
+    'background:linear-gradient(135deg,#ff4fb8,#a855f7 55%,#6d5dfc);box-shadow:0 6px 18px -6px rgba(168,85,247,.8),inset 0 1px 0 rgba(255,255,255,.45);display:flex;align-items:center;gap:6px}' +
+    '.tag i{width:7px;height:7px;border-radius:50%;background:#fff;box-shadow:0 0 8px #fff}' +
+    '.on:not(.still) .tag i{animation:dot 1s ease-in-out infinite}@keyframes dot{50%{opacity:.35}}' +
+    '.ring{position:fixed;border-radius:12px;pointer-events:none;box-shadow:0 0 0 2px rgba(255,79,184,.9),0 0 0 6px rgba(192,60,240,.22),0 0 24px rgba(192,60,240,.45);transition:opacity .35s}' +
+    '.rip{position:fixed;width:44px;height:44px;margin:-22px 0 0 -22px;border-radius:50%;border:2px solid rgba(255,255,255,.95);box-shadow:0 0 16px rgba(255,79,184,.8),inset 0 0 10px rgba(192,60,240,.6)}' +
+    '</style><div class="w"><div class="edge"></div><div class="cur"><svg viewBox="0 0 24 24"><defs><filter id="g" x="-80%" y="-80%" width="260%" height="260%"><feGaussianBlur stdDeviation="2.4"/></filter>' +
+    '<linearGradient id="c" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ff4fb8"/><stop offset="1" stop-color="#7c5cff"/></linearGradient></defs>' +
+    '<path d="M4 2.5l15 7.7-6.6 1.7-3.3 6.4z" fill="#ff4fb8" opacity=".75" filter="url(#g)"/><path d="M4 2.5l15 7.7-6.6 1.7-3.3 6.4z" fill="url(#c)" stroke="#fff" stroke-width="1.6" stroke-linejoin="round"/></svg>' +
+    '<span class="tag"><i></i><b></b></span></div></div>'
+  ;(document.body || document.documentElement).appendChild(host)
+  const w = root.querySelector('.w'), cur = root.querySelector('.cur'), tag = root.querySelector('.tag b')
+  if (STILL) w.classList.add('still')
+  // the cursor rides a lightly damped spring: lively, a small overshoot, no wobble
+  let x = innerWidth * .62, y = innerHeight * .7, vx = 0, vy = 0, tx = x, ty = y, raf = 0, last = 0
+  const paint = () => { cur.style.transform = 'translate3d(' + x.toFixed(1) + 'px,' + y.toFixed(1) + 'px,0)' }
+  const step = t => {
+    const dt = Math.min(.032, last ? (t - last) / 1000 : .016); last = t
+    const k = 170, c = 19
+    vx += ((tx - x) * k - vx * c) * dt; vy += ((ty - y) * k - vy * c) * dt; x += vx * dt; y += vy * dt
+    paint()
+    if (Math.abs(tx - x) + Math.abs(ty - y) + Math.abs(vx) + Math.abs(vy) > .4) raf = requestAnimationFrame(step); else { x = tx; y = ty; paint(); raf = 0; last = 0 }
+  }
+  let ring = null
+  const fx = window.__lumenAgentFX = {
+    on() { w.classList.add('on') },
+    off() { w.classList.remove('on'); cur.classList.remove('show'); if (ring) ring.style.opacity = 0; setTimeout(() => { if (!w.classList.contains('on')) { host.remove(); delete window.__lumenAgentFX } }, 450) },
+    point(px, py, label, rect) {
+      w.classList.add('on'); tag.textContent = label || ''
+      tx = px; ty = py
+      if (!cur.classList.contains('show')) { x = px + 60; y = py + 50; cur.classList.add('show') }
+      if (STILL) { x = tx; y = ty; paint() } else if (!raf) raf = requestAnimationFrame(step)
+      if (ring) { const o = ring; o.style.opacity = 0; setTimeout(() => o.remove(), 400); ring = null }
+      if (rect && rect.w > 0) {
+        ring = document.createElement('div'); ring.className = 'ring'
+        ring.style.cssText = 'left:' + (rect.x - 4) + 'px;top:' + (rect.y - 4) + 'px;width:' + (rect.w + 8) + 'px;height:' + (rect.h + 8) + 'px'
+        w.appendChild(ring)
+        if (!STILL) ring.animate([{ opacity: 0, transform: 'scale(1.08)' }, { opacity: 1, transform: 'none' }], { duration: 380, easing: 'cubic-bezier(.3,1.4,.5,1)' })
+      }
+      return true
+    },
+    tap(px, py) {
+      if (STILL) return true
+      const r = document.createElement('div'); r.className = 'rip'; r.style.left = px + 'px'; r.style.top = py + 'px'; w.appendChild(r)
+      r.animate([{ opacity: 1, transform: 'scale(.3)' }, { opacity: 0, transform: 'scale(1.9)' }], { duration: 620, easing: 'cubic-bezier(.16,1,.3,1)' }).finished.then(() => r.remove(), () => r.remove())
+      cur.animate([{ transform: cur.style.transform + ' scale(1)' }, { transform: cur.style.transform + ' scale(.82)' }, { transform: cur.style.transform + ' scale(1)' }], { duration: 260, easing: 'cubic-bezier(.3,1.6,.5,1)' })
+      return true
+    },
+  }
+  paint()
+  return true
+})()`
+// draw it (again after a navigation), then run one of its calls; never lets a drawing problem stop the task
+async function fx(r, wc, call) {
+  if (!wc || wc.isDestroyed()) return
+  try { await wc.executeJavaScriptInIsolatedWorld(WORLD, [{ code: FX_JS(r.still) + `;(window.__lumenAgentFX && window.__lumenAgentFX.${call})` }]) } catch {}
+}
+const elRect = ref => `(() => { const el = (window.__lumenAgentRefs || [])[${ref | 0} - 1]; if (!el) return null; const r = el.getBoundingClientRect(); return { x: r.left, y: r.top, w: r.width, h: r.height } })()`
+
 async function runTool(r, name, input) {
   const t = r.w.tabs.get(r.tabId)
   const wc = t && t.view && !t.view.webContents.isDestroyed() ? t.view.webContents : null
   if (!wc) throw new Error('The tab was closed.')
   const iso = code => wc.executeJavaScriptInIsolatedWorld(WORLD, [{ code }])
+  fx(r, wc, 'on()')   // the edge of light comes back on a page Claude just went to
   switch (name) {
     case 'read_page': {
       const p = await iso(READ_JS)
@@ -150,6 +229,9 @@ async function runTool(r, name, input) {
       if (!b) throw new Error(`Control ${input.ref} is gone. Read the page again.`)
       await wait(120)
       const b2 = await iso(`(() => { const el = (window.__lumenAgentRefs || [])[${input.ref | 0} - 1]; if (!el) return null; const r = el.getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + r.height / 2 } })()`) || b
+      await fx(r, wc, `point(${b2.x}, ${b2.y}, 'Clicking', ${JSON.stringify(await iso(elRect(input.ref)).catch(() => null))})`)
+      if (!r.still) await wait(380)   // let the cursor arrive before the click lands
+      await fx(r, wc, `tap(${b2.x}, ${b2.y})`)
       await clickAt(wc, b2.x, b2.y)
       await settle(wc)
       return 'Clicked.'
@@ -158,7 +240,8 @@ async function runTool(r, name, input) {
       const b = await iso(refRect(input.ref | 0))
       if (!b) throw new Error(`Control ${input.ref} is gone. Read the page again.`)
       if (b.pw) throw new Error('That is a password field. Use ask_user so the user types it.')
-      await wait(100)
+      await fx(r, wc, `point(${b.x}, ${b.y}, 'Typing', ${JSON.stringify(await iso(elRect(input.ref)).catch(() => null))})`)
+      await wait(r.still ? 100 : 380)
       await clickAt(wc, b.x, b.y); await wait(120)
       if (input.clear) { await iso(`(() => { const el = (window.__lumenAgentRefs || [])[${input.ref | 0} - 1]; if (el && 'select' in el && el.value !== undefined) el.select(); else document.execCommand('selectAll') })()`); press(wc, 'Backspace'); await wait(60) }
       wc.insertText(String(input.text || ''))
@@ -225,7 +308,7 @@ const LABEL = {
 async function start(w, req) {
   const id = String(req.id || ''); if (!id) return
   const t = w.tabs.get(req.tabId)
-  const r = { id, w, tabId: req.tabId, task: String(req.task || '').slice(0, 4000), ctl: new AbortController(), waits: new Map(), qseq: 0, steps: 0 }
+  const r = { id, w, tabId: req.tabId, task: String(req.task || '').slice(0, 4000), ctl: new AbortController(), waits: new Map(), qseq: 0, steps: 0, still: !!req.still }
   r.send = m => w.send('agent', { id, ...m })
   runs.set(id, r)
   const messages = [{ role: 'user', content: `My task: ${r.task}\n\nThe tab is on ${t && t.view ? t.view.webContents.getURL() : 'a new tab'}.` }]
@@ -233,6 +316,7 @@ async function start(w, req) {
     if (!t) throw new Error('The tab was closed.')
     if (!t.view) w.makeView(t)
     AI.warm()
+    fx(r, t.view.webContents, 'on()')
     for (let turn = 0; turn < MAX_TURNS; turn++) {
       r.send({ thinking: true })
       const res = await AI.agentTurn({ system: SYSTEM, tools: TOOLS, messages }, r.ctl.signal)
@@ -263,7 +347,10 @@ async function start(w, req) {
   } catch (e) {
     if (e.name === 'AbortError') r.send({ done: true, stopped: true })
     else r.send({ error: e.message || String(e), kind: e.kind || 'other' })
-  } finally { runs.delete(id) }
+  } finally {
+    runs.delete(id)
+    const tt = w.tabs.get(r.tabId); if (tt && tt.view) fx(r, tt.view.webContents, 'off()')
+  }
 }
 function stop(id) { const r = runs.get(id); if (r) r.ctl.abort() }
 function tabClosed(tabId) { for (const r of runs.values()) if (r.tabId === tabId) r.ctl.abort() }

@@ -23,13 +23,12 @@
 ;(function () {
   // ---- edit this list every release: it is the "New in Lumen" act of the film (only this version's changes)
   const WHATS_NEW = {
-    version: '4.3',
+    version: '4.4',
     items: [
-      { icon: 'sparkle', text: 'Claude in Lumen: switch the AI panel to Do it for me, say what you want, and Claude does it in the tab' },
-      { icon: 'play', text: 'It reads the page, clicks, types, scrolls, fills in forms and uploads files, with every step shown live' },
-      { icon: 'sparkle', text: 'It asks before anything that cannot be undone, like sending, buying, posting or deleting' },
-      { icon: 'play', text: 'It never types passwords or card numbers, and only uploads files you named' },
-      { icon: 'sparkle', text: 'Stop it any time with the send button, or answer its questions right in the panel' },
+      { icon: 'sparkle', text: 'Watch Claude work: a glowing Claude cursor glides to every button and field it uses, right on the page' },
+      { icon: 'play', text: 'A small label says what it is doing, like Clicking or Typing, and every click sends out a ripple' },
+      { icon: 'sparkle', text: 'The tab gets a soft edge of light while Claude is working, and it fades away when the task is done' },
+      { icon: 'play', text: 'None of it gets in the way: your clicks and the page work exactly as before' },
     ],
   }
 
@@ -1225,6 +1224,23 @@
         })
       }, 1500 * .66)
     }, 1500)
+    // 4.4: the frame lights up. As the number lands, a bead of light races once around the whole edge of the screen,
+    // leaving a soft trail, the same edge of light a tab gets while Claude works (transform and opacity only)
+    setTimeout(() => {
+      if (skip || still) return
+      const W = innerWidth, H = innerHeight, P = 2 * (W + H), at = d => d < W ? [d, 0] : d < W + H ? [W, d - W] : d < 2 * W + H ? [W - (d - W - H), H] : [0, H - (d - 2 * W - H)]
+      const frame = document.createElement('i')
+      frame.style.cssText = 'position:fixed;inset:0;pointer-events:none;z-index:6;box-shadow:inset 0 0 0 1.5px color-mix(in srgb,var(--hi) 55%,transparent),inset 0 0 40px color-mix(in srgb,var(--hi) 25%,transparent);opacity:0'
+      root.appendChild(frame)
+      frame.animate([{ opacity: 0 }, { opacity: 1, offset: .25 }, { opacity: .8, offset: .7 }, { opacity: 0 }], { duration: 1500, easing: 'ease-out' }).finished.then(() => frame.remove(), () => frame.remove())
+      for (let k = 0; k < 5; k++) {
+        const b = document.createElement('i'), sz = 16 - k * 2.5
+        b.style.cssText = `position:fixed;left:${-sz / 2}px;top:${-sz / 2}px;width:${sz}px;height:${sz}px;border-radius:50%;pointer-events:none;z-index:7;mix-blend-mode:screen;background:radial-gradient(circle,#fff,color-mix(in srgb,var(--hi) 80%,transparent) 45%,transparent 70%);opacity:${1 - k * .17}`
+        root.appendChild(b)
+        const frames = []; for (let j = 0; j <= 24; j++) { const [x, y] = at(Math.min(P - 1, j / 24 * P)); frames.push({ transform: `translate(${x}px,${y}px)` }) }
+        b.animate(frames, { duration: 1300, delay: k * 34, easing: 'cubic-bezier(.45,.05,.35,1)', fill: 'both' }).finished.then(() => b.remove(), () => b.remove())
+      }
+    }, 1120)
     // 4.1.6: a ripple of light rolls out from under the title as it settles, like a stone dropped in still water
     setTimeout(() => {
       if (skip || still || !logo.offsetParent) return

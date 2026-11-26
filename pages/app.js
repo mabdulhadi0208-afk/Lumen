@@ -759,7 +759,7 @@ async function parcelsPage(m) {
       .sort((a, b) => (RANK[a.status] - RANK[b.status]) || (b.added - a.added))
     const act = f.filter(p => p.status !== 'delivered'), done = f.filter(p => p.status === 'delivered')
     const row = p => { const arr = ARRIVE(p); return `<div class="row prow ${PSTAT[p.status] ? PSTAT[p.status][1] : ''}" data-id="${esc(p.id)}"><span class="pc-ico">${ICONS.box}</span>
-      <div class="grow"><div class="t"><span class="pname" data-act="edit" title="Edit">${esc(p.name || p.carrierName || 'Parcel')}</span>${arr ? `<span class="eta">${esc(arr)}</span>` : ''}</div>
+      <div class="grow"><div class="t"><span class="pname" data-act="edit" title="Edit">${esc(p.name || p.carrierName || 'Parcel')}</span>${p.via === 'shop' ? `<span class="pvia" title="Saved from a Shop order page">${ICONS.bag || ICONS.box}Shop</span>` : ''}${arr ? `<span class="eta">${esc(arr)}</span>` : ''}</div>
       <div class="d">${esc(p.statusText || '')}${p.number ? `  ·  ${esc(p.carrierName)} <span class="pnum" data-act="copy" title="Copy">${esc(p.number)}</span>` : ''}${p.orderNo ? '  ·  Order ' + esc(p.orderNo) : ''}${p.shop ? '  ·  ' + esc(p.shop) : ''}${p.checked ? '  ·  checked ' + pAgo(p.checked) : ''}</div>
       <div class="psteps">${['Placed', 'On the way', 'Out for delivery', 'Delivered'].map((l, i) => `<div class="ps ${i <= (PSTEP[p.status] || 0) ? 'on' : ''}"><s></s><em>${l}</em></div>`).join('')}</div></div>
       <button class="btn sm primary" data-act="open">${p.url ? 'Open order' : 'Track'}</button>

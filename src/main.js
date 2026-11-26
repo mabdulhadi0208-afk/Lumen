@@ -1499,9 +1499,14 @@ async function parcelPage(w, t) {
     if (!r) return
     const shop = new URL(url).host.replace(/^www\./, '')
     const before = Parcels.list().length
-    const p = Parcels.add({ url, orderNo: r.orderNo, number: r.tracking[0] || '', shop, name: 'Order from ' + Parcels.shopName(shop), source: 'auto' })
-    for (const n of r.tracking.slice(1)) Parcels.add({ number: n, url, shop, name: p ? p.name : '', source: 'auto' })
-    if (p) { Parcels.setStatus(p, Parcels.statusOf(r.text) || { status: p.status, text: p.statusText }, r.text); if (Parcels.list().length > before) w.send('parcel-saved', { id: p.id, name: p.name }) }
+    // a tracking link on the page beats a number in the text: it also says which carrier
+    const found = [], seen = new Set()
+    for (const h of r.links || []) { const f = Parcels.fromLink(h); if (f && !seen.has(f.number)) { seen.add(f.number); found.push(f) } }
+    for (const n of r.tracking || []) { const c = Parcels.clean(n); if (!seen.has(c)) { seen.add(c); found.push({ number: c, carrier: '' }) } }
+    const via = r.shopify ? 'shop' : '', name = 'Order from ' + (r.store || Parcels.shopName(shop))
+    const p = Parcels.add({ url, orderNo: r.orderNo, number: found[0] ? found[0].number : '', carrier: found[0] ? found[0].carrier : '', shop, name, source: 'auto', via })
+    for (const f of found.slice(1, 3)) Parcels.add({ number: f.number, carrier: f.carrier, url, shop, name: p ? p.name : name, source: 'auto', via })
+    if (p) { Parcels.setStatus(p, Parcels.statusOf(r.text) || { status: p.status, text: p.statusText }, r.text); if (Parcels.list().length > before) w.send('parcel-saved', { id: p.id, name: p.name, shop: !!via }) }
   } catch (e) { log('parcel scan failed', e.message) }
 }
 // background check: open each parcel's page out of sight, read the status, close it

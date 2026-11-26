@@ -23,11 +23,11 @@
 ;(function () {
   // ---- edit this list every release: it is the "New in Lumen" act of the film (only this version's changes)
   const WHATS_NEW = {
-    version: '4.4.5',
+    version: '4.4.6',
     items: [
-      { icon: 'sparkle', text: 'New shortcut: Option Command A flips the AI panel between Ask and Do it for me (Alt Ctrl A on Windows)' },
-      { icon: 'play', text: 'With the panel closed it opens straight into Do it for me, and a small keycap toast shows which mode you are in' },
-      { icon: 'sparkle', text: 'Find it in the menu bar, the command bar and the keyboard shortcuts sheet; switching never interrupts a running task' },
+      { icon: 'box', text: 'Shop support in Parcels: orders from Shopify stores are saved from the thank-you and order status pages, under the store\'s own name' },
+      { icon: 'sparkle', text: 'The tracking number and the right carrier come straight from the Track your order link, for every carrier Lumen knows' },
+      { icon: 'play', text: 'Shop orders wear a small Shop tag in Parcels, and you can search them by store name' },
     ],
   }
 
@@ -1301,6 +1301,19 @@
         key.animate([{ opacity: 0, transform: 'translateY(-40px) scale(.8)' }, { opacity: 1, transform: 'translateY(4px) scale(1.04)', offset: .35 }, { opacity: 1, transform: 'none', offset: .5 }, { opacity: 1, transform: 'translateY(5px) scale(.94,.9)', offset: .62 }, { opacity: 1, transform: 'none', offset: .75 }, { opacity: 0, transform: 'translateY(-6px)' }], { duration: 1700, delay: n * 90, easing: 'cubic-bezier(.3,1.3,.5,1)', fill: 'both' }).finished.then(() => key.remove(), () => key.remove())
       })
     }, 3000)
+    // 4.4.6: the parcel. A small glass parcel drops in under the title on a spring, lands with a squash, and a
+    // ribbon of light ties itself across it before it lifts away (transform and opacity only)
+    setTimeout(() => {
+      if (skip || still || !logo.offsetParent) return
+      const host = logo.offsetParent, x = logo.offsetLeft + logo.offsetWidth / 2 - 22, y = logo.offsetTop + logo.offsetHeight + 14
+      const box = document.createElement('i')
+      box.style.cssText = `position:absolute;left:${x}px;top:${y}px;width:44px;height:38px;border-radius:9px;pointer-events:none;background:linear-gradient(180deg,rgba(255,255,255,.24),rgba(255,255,255,.07));box-shadow:inset 0 1px 0 rgba(255,255,255,.55),inset 0 -3px 0 rgba(0,0,0,.22),0 0 26px color-mix(in srgb,var(--hi) 45%,transparent)`
+      const rib = document.createElement('i')
+      rib.style.cssText = 'position:absolute;left:19px;top:0;width:6px;height:100%;border-radius:3px;background:linear-gradient(180deg,#fff,color-mix(in srgb,var(--hi3) 70%,#fff));transform-origin:top;box-shadow:0 0 10px color-mix(in srgb,var(--hi3) 60%,transparent)'
+      box.appendChild(rib); host.appendChild(box)
+      rib.animate([{ transform: 'scaleY(0)' }, { transform: 'scaleY(1.06)', offset: .7 }, { transform: 'none' }], { duration: 600, delay: 650, easing: 'cubic-bezier(.3,1.3,.5,1)', fill: 'both' })
+      box.animate([{ opacity: 0, transform: 'translateY(-46px) scale(.8)' }, { opacity: 1, transform: 'translateY(3px) scale(1.06,.9)', offset: .3 }, { opacity: 1, transform: 'none', offset: .45 }, { opacity: 1, transform: 'none', offset: .8 }, { opacity: 0, transform: 'translateY(-14px) scale(.9)' }], { duration: 2000, easing: 'cubic-bezier(.3,1.3,.5,1)', fill: 'both' }).finished.then(() => box.remove(), () => box.remove())
+    }, 3300)
     // 4.1.6: a ripple of light rolls out from under the title as it settles, like a stone dropped in still water
     setTimeout(() => {
       if (skip || still || !logo.offsetParent) return

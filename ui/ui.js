@@ -1407,7 +1407,7 @@ api.on('download-started', () => { const b = $('#btn-downloads'); b.classList.ad
 api.on('prompt', p => addPrompt(p))
 api.on('toast', m => toast(m))
 api.on('yt-stuck', h => toast(`Video still stuck on ${h || 'this site'}?`, { label: 'Pause ad blocker here', run: () => api.do('siteAdblock', false) }))
-api.on('parcel-saved', p => toast(/^(Tracking|Already)/.test(p.name || '') ? p.name : 'Order saved to Parcels', { label: 'View', run: () => api.do('openPage', 'parcels') }))
+api.on('parcel-saved', p => toast(/^(Tracking|Already)/.test(p.name || '') ? p.name : p.shop ? 'Shop order saved to Parcels' : 'Order saved to Parcels', { label: 'View', run: () => api.do('openPage', 'parcels') }))
 api.on('focus-mode', on => document.body.classList.toggle('focusmode', !!on))
 api.on('hover-url', u => {
   const h = $('#hoverurl')

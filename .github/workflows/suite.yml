@@ -34,17 +34,19 @@ jobs:
       - name: System libraries for Electron under a virtual display
         run: sudo apt-get update -qq && sudo apt-get install -y -qq xvfb libnss3 libgbm1 libasound2t64 libgtk-3-0 libxss1 >/dev/null
       - run: npm ci --no-audit --no-fund
+      - name: Folders the tests write screenshots and logs to
+        run: mkdir -p /tmp/lumen-shots
       - name: Run ${{ matrix.test }}
         run: |
           set +e
           # a flaky timing check gets one more try; a real failure fails both
           for try in 1 2; do
             timeout -k 5 400 xvfb-run -a npx electron test/${{ matrix.test }}.js --no-sandbox > out.txt 2>&1; rc=$?
-            fails=$(grep -c '^FAIL ' out.txt); errs=0
-            if [ "${{ matrix.test }}" = sweep ]; then grep -q 'NO ERRORS' out.txt || errs=1; fi
-            grep -E '^(PASS|FAIL|SKIP) ' out.txt | tail -200
+            fails=$(grep -ac '^FAIL ' out.txt); errs=0
+            if [ "${{ matrix.test }}" = sweep ]; then grep -aq 'NO ERRORS' out.txt || errs=1; fi
+            grep -aE '^(PASS|FAIL|SKIP) ' out.txt | tail -200
             if [ "$rc" = 0 ] && [ "$fails" = 0 ] && [ "$errs" = 0 ]; then echo "PASSED on try $try"; [ "$try" = 2 ] && echo "::warning::${{ matrix.test }} passed only on its second try"; exit 0; fi
-            echo "try $try: exit $rc, $fails FAIL lines"; grep -E '^FAIL |^unhandled|Error' out.txt | head -20
+            echo "try $try: exit $rc, $fails FAIL lines"; grep -aE '^FAIL |^unhandled|Error' out.txt | head -20
           done
           tail -60 out.txt; exit 1
       - if: always()

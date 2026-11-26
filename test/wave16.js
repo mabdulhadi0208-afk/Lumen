@@ -57,7 +57,8 @@ app.whenReady().then(async () => {
 
   // ---- ETA from the carrier page
   const p0 = P.list()[0]; P.update(p0.id, { url: U('track/1') })
-  await L.__checkParcels(true); await wait(400)
+  // a check already running (the real carrier page of the parcel above, on a real network) makes a forced one return at once: try until ours ran
+  for (let i = 0; i < 12 && P.list()[0].eta !== 'Friday, November 28'; i++) { await L.__checkParcels(true); await wait(i ? 2500 : 400) }
   ok(P.list()[0].eta === 'Friday, November 28' && P.list()[0].status === 'transit', 'background check reads the arrival date: ' + P.list()[0].eta)
 
   // ---- menu: real icon, no empty count bubbles

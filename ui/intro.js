@@ -23,14 +23,13 @@
 ;(function () {
   // ---- edit this list every release: it is the "New in Lumen" act of the film (only this version's changes)
   const WHATS_NEW = {
-    version: '4.2',
+    version: '4.3',
     items: [
-      { icon: 'sparkle', text: 'Settings, History, Bookmarks, Downloads and Passwords are preloaded and open at once' },
-      { icon: 'play', text: 'Settings sections switch in place, instantly, with no reload' },
-      { icon: 'sparkle', text: 'The AI panel, find bar and sidebar glide without making the page redraw on every frame' },
-      { icon: 'play', text: 'Lumen AI warms up and reads the page the moment you open it, and Fast answers without a pause to think' },
-      { icon: 'sparkle', text: 'Click the tab you are on and its page glides back to the top' },
-      { icon: 'play', text: 'Signing in to Google and YouTube works: Lumen looks exactly like Chrome on Google\'s sign-in page' },
+      { icon: 'sparkle', text: 'Claude in Lumen: switch the AI panel to Do it for me, say what you want, and Claude does it in the tab' },
+      { icon: 'play', text: 'It reads the page, clicks, types, scrolls, fills in forms and uploads files, with every step shown live' },
+      { icon: 'sparkle', text: 'It asks before anything that cannot be undone, like sending, buying, posting or deleting' },
+      { icon: 'play', text: 'It never types passwords or card numbers, and only uploads files you named' },
+      { icon: 'sparkle', text: 'Stop it any time with the send button, or answer its questions right in the panel' },
     ],
   }
 
@@ -1205,6 +1204,27 @@
         st.animate([{ opacity: 0, transform: `rotate(${a}rad) translateX(10px) scaleX(.2)` }, { opacity: .9, transform: `rotate(${a}rad) translateX(${40 + len * .2}px) scaleX(1)`, offset: .35 }, { opacity: 0, transform: `rotate(${a}rad) translateX(${160 + len}px) scaleX(.5)` }], { duration: 900 + (i % 4) * 80, easing: 'cubic-bezier(.16,1,.3,1)' }).finished.then(() => st.remove(), () => st.remove())
       }
     }, 1060)
+    // 4.3: Claude in Lumen. A cursor of light flies in from the corner of the frame, taps the number, and the tap
+    // sends a ring of light through it (the number gives under the tap on a spring)
+    setTimeout(() => {
+      if (skip || still || !v4.offsetParent) return
+      const host = v4.offsetParent, tx = v4.offsetLeft + v4.offsetWidth * .78, ty = v4.offsetTop + v4.offsetHeight * .62
+      const cur = document.createElement('i')
+      cur.style.cssText = `position:absolute;left:${tx}px;top:${ty}px;width:34px;height:34px;pointer-events:none;z-index:5;filter:drop-shadow(0 0 10px color-mix(in srgb,var(--hi) 80%,#fff)) drop-shadow(0 0 22px var(--hi));background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M5 3l14 7.2-6.2 1.6L10 18z' fill='white'/%3E%3C/svg%3E") center/contain no-repeat`
+      host.appendChild(cur)
+      cur.animate([{ opacity: 0, transform: 'translate(240px,180px) rotate(-14deg) scale(1.3)' }, { opacity: 1, offset: .2 }, { transform: 'translate(0,0) rotate(0) scale(1)', offset: .62 }, { transform: 'scale(.78)', offset: .7 }, { opacity: 1, transform: 'scale(1)', offset: .8 }, { opacity: 0, transform: 'translate(8px,6px) scale(1)' }], { duration: 1500, easing: 'cubic-bezier(.34,1.25,.5,1)' }).finished.then(() => cur.remove(), () => cur.remove())
+      setTimeout(() => {
+        if (skip || !v4.offsetParent) return
+        SFX.hit && SFX.hit(1)
+        v4.animate([{ transform: 'none' }, { transform: 'scale(.97) translateY(2px)', offset: .3 }, { transform: 'none' }], { duration: 520, easing: 'cubic-bezier(.3,1.6,.5,1)', composite: 'add' })
+        ;[0, 1, 2].forEach(k => {
+          const r = document.createElement('i')
+          r.style.cssText = `position:absolute;left:${tx - 30}px;top:${ty - 30}px;width:60px;height:60px;border-radius:50%;pointer-events:none;mix-blend-mode:screen;border:${2 - k * .5}px solid color-mix(in srgb,var(--hi) 70%,#fff);box-shadow:0 0 20px color-mix(in srgb,var(--hi) 60%,transparent)`
+          host.appendChild(r)
+          r.animate([{ opacity: .95, transform: 'scale(.2)' }, { opacity: 0, transform: `scale(${4 + k * 2.4})` }], { duration: 1000 + k * 260, delay: k * 110, easing: 'cubic-bezier(.16,1,.3,1)' }).finished.then(() => r.remove(), () => r.remove())
+        })
+      }, 1500 * .66)
+    }, 1500)
     // 4.1.6: a ripple of light rolls out from under the title as it settles, like a stone dropped in still water
     setTimeout(() => {
       if (skip || still || !logo.offsetParent) return

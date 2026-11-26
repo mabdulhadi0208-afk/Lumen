@@ -523,6 +523,13 @@ function fromLink(href) {
   return null
 }
 
+
+// what you pasted, typed or right-clicked: a tracking number, or a carrier's tracking link -> { number, carrier, link }
+function parse(s) {
+  s = String(s || '').trim()
+  if (/^https?:\/\//i.test(s) && s.length < 2000) { const f = fromLink(s); return f ? { ...f, link: s } : null }
+  return s.length < 40 && looksLikeTracking(s) ? { number: clean(s), carrier: detect(s), link: '' } : null
+}
 const looksLikeTracking = s => { const n = clean(s); return n.length >= 9 && n.length <= 34 && /\d{6,}/.test(n) && /^[A-Z0-9]+$/.test(n) && (detect(n) !== 'other' || /^[A-Z]{2,4}\d{8,}[A-Z]{0,2}$/.test(n)) }
 
 const trackURL = p => (CARRIERS[p.carrier] || CARRIERS.other).url(encodeURIComponent(p.number))
@@ -623,4 +630,4 @@ function shopName(host) {
 // a link you typed in always comes first, then the carrier you picked (or that the number belongs to)
 const openURL = p => p.url || (p.number ? trackURL(p) : '')
 
-module.exports = { fromLink, etaOf, shopName, store, LIST, looksLikeTracking, CARRIERS, detect, trackURL, carrierName, statusOf, ORDER_SCAN, list, active, add, update, remove, setStatus, prune, openURL, clean }
+module.exports = { parse, fromLink, etaOf, shopName, store, LIST, looksLikeTracking, CARRIERS, detect, trackURL, carrierName, statusOf, ORDER_SCAN, list, active, add, update, remove, setStatus, prune, openURL, clean }

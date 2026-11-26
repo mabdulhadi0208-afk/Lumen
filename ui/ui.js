@@ -749,7 +749,7 @@ function buildResults(q, data) {
     else out.push({ sec: '', icon: ICONS.search, title: qq, sub: '  ' + eng, key: 'Search', go: () => go(qq) })
   }
   if (data.calc !== undefined && data.calc !== null) out.unshift({ sec: '', icon: ICONS.bolt, title: '= ' + data.calc.toLocaleString('en-US', { maximumFractionDigits: 10 }), sub: '  Press Enter to copy', key: 'Copy', go: () => { api.do('copyText', String(data.calc)); closeCmd(true); toast('Copied ' + data.calc) } })
-  if (data.parcel) out.unshift({ sec: '', icon: ICONS.box, title: 'Track parcel ' + data.parcel.number, sub: '  ' + data.parcel.carrier, key: 'Track', go: () => { closeCmd(true); api.do('trackNumber', data.parcel.number) } })
+  if (data.parcel) out.unshift({ sec: '', icon: ICONS.box, title: 'Track parcel ' + data.parcel.number, sub: '  ' + data.parcel.carrier + (data.parcel.link ? '  ·  from the link' : ''), key: 'Track', go: () => { closeCmd(true); api.do('trackNumber', data.parcel.input || data.parcel.number) } })
   if (data.conv) out.unshift({ sec: '', icon: ICONS.bolt, title: data.conv.text, sub: '  Press Enter to copy', key: 'Copy', go: () => { api.do('copyText', String(data.conv.value)); closeCmd(true); toast('Copied ' + data.conv.value) } })
   if (data.shortcut) out.unshift({ sec: '', icon: ICONS.search, title: data.shortcut.query, sub: '  Search ' + data.shortcut.name, key: 'Search', go: () => go(qq) })
   if (qq && typeof aiCmdRows === 'function') aiCmdRows(qq, out)

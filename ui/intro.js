@@ -23,10 +23,11 @@
 ;(function () {
   // ---- edit this list every release: it is the "New in Lumen" act of the film (only this version's changes)
   const WHATS_NEW = {
-    version: '4.4.7',
+    version: '4.4.8',
     items: [
-      { icon: 'sparkle', text: 'Page titles in Settings never break in the middle of a word any more: long ones like Appearance ease down to fit the banner' },
-      { icon: 'play', text: 'Titles of several words wrap neatly between words, at every window size, and wide windows keep the big title' },
+      { icon: 'box', text: 'Tracking links work everywhere: right-click a carrier\'s tracking link on any page and pick Track Parcel' },
+      { icon: 'sparkle', text: 'Paste a tracking link in the command bar, or copy one before Track a parcel, and Lumen takes out the number and the right carrier' },
+      { icon: 'play', text: 'Paste a link into the tracking number box and it turns into the number, with a note saying which carrier it found' },
     ],
   }
 
@@ -1300,6 +1301,18 @@
         key.animate([{ opacity: 0, transform: 'translateY(-40px) scale(.8)' }, { opacity: 1, transform: 'translateY(4px) scale(1.04)', offset: .35 }, { opacity: 1, transform: 'none', offset: .5 }, { opacity: 1, transform: 'translateY(5px) scale(.94,.9)', offset: .62 }, { opacity: 1, transform: 'none', offset: .75 }, { opacity: 0, transform: 'translateY(-6px)' }], { duration: 1700, delay: n * 90, easing: 'cubic-bezier(.3,1.3,.5,1)', fill: 'both' }).finished.then(() => key.remove(), () => key.remove())
       })
     }, 3000)
+    // 4.4.8: the link. A short chain link of light swings in beside the title on a spring, its two loops close
+    // together with a soft click, and it fades as one (transform and opacity only)
+    setTimeout(() => {
+      if (skip || still || !logo.offsetParent) return
+      const host = logo.offsetParent, x = logo.offsetLeft - 70, y = logo.offsetTop + logo.offsetHeight * .4
+      ;[0, 1].forEach(n => {
+        const loop = document.createElement('i')
+        loop.style.cssText = `position:absolute;left:${x + n * 22}px;top:${y}px;width:34px;height:20px;border-radius:10px;pointer-events:none;mix-blend-mode:screen;border:2.5px solid color-mix(in srgb,${n ? 'var(--hi3)' : 'var(--hi)'} 75%,#fff);box-shadow:0 0 16px color-mix(in srgb,var(--hi) 50%,transparent)`
+        host.appendChild(loop)
+        loop.animate([{ opacity: 0, transform: `translateX(${n ? 26 : -26}px) rotate(${n ? 25 : -25}deg)` }, { opacity: 1, transform: `translateX(${n ? -3 : 3}px) rotate(0)`, offset: .4 }, { opacity: 1, transform: 'none', offset: .55 }, { opacity: 1, transform: 'none', offset: .8 }, { opacity: 0, transform: 'translateY(-8px) scale(.9)' }], { duration: 1700, delay: n * 60, easing: 'cubic-bezier(.3,1.3,.5,1)', fill: 'both' }).finished.then(() => loop.remove(), () => loop.remove())
+      })
+    }, 2900)
     // 4.4.7: the title fits. A thin bracket of light opens out from the middle of the title to both of its edges on a
     // spring, holds for a beat to show it is a perfect fit, and fades (transform and opacity only)
     setTimeout(() => {

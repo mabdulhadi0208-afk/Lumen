@@ -723,7 +723,7 @@ async function addParcelDialog(done, edit) {
   const opts = q => regions.map(r => { const cs = carriers.filter(c => c.region === r && (!q || c.name.toLowerCase().includes(q))); return cs.length ? `<optgroup label="${esc(r)}">${cs.map(c => `<option value="${c.id}">${esc(c.name)}</option>`).join('')}</optgroup>` : '' }).join('')
   const d = document.createElement('div'); d.className = 'dialog-wrap'
   d.innerHTML = `<form class="dialog pdialog"><div class="pd-ico">${ICONS.box}</div><h3>${edit ? 'Edit parcel' : 'Track a parcel'}</h3><p class="sub">${edit ? 'Change the name, carrier or when you expect it.' : 'It stays here until it is delivered. Lumen checks on it for you.'}</p>
-    ${clip ? `<button type="button" class="pd-clip" id="pclip">${ICONS.link || ''}<span>Use <b>${esc(clip.number)}</b> from your clipboard</span></button>` : ''}
+    ${clip ? `<button type="button" class="pd-clip" id="pclip">${ICONS.link || ''}<span>Use <b>${esc(clip.number)}</b> from ${clip.link ? 'the link you copied' : 'your clipboard'}</span></button>` : ''}
     <label><span>Tracking number${edit && !edit.number ? ' <span class="opt">optional for saved orders</span>' : ''}</span><input id="pn" ${edit && !edit.number ? '' : 'required'} placeholder="1Z999AA10123456784" spellcheck="false" autocomplete="off" value="${esc(edit ? edit.number || '' : '')}"></label>
     <div class="pd-row"><label>Name<input id="pname" placeholder="New headphones" autocomplete="off" value="${esc(edit ? edit.name || '' : '')}"></label>
     <label>Expected<input id="pexp" type="date" value="${esc(edit ? edit.expected || '' : '')}"></label></div>
@@ -736,9 +736,19 @@ async function addParcelDialog(done, edit) {
   if (edit && edit.carrier) car.value = edit.carrier
   pn.focus()
   const detect = async () => { const v = pn.value.trim(); if (v.length < 8) { $('#pdet').textContent = ''; return } const c = await L.invoke('parcelDetect', v); const n = (carriers.find(x => x.id === c) || {}).name; $('#pdet').textContent = car.value ? '' : c === 'other' ? 'Carrier not recognized yet. Pick it below, or paste the tracking link.' : 'Looks like ' + n + '. Opens on ' + n + '.' }
-  pn.oninput = detect; car.onchange = detect
+  // a carrier's tracking link pasted into the number box: take the number, carrier and link out of it
+  const fromLink = async () => {
+    const v = pn.value.trim(); if (!/^https?:\/\//i.test(v)) return false
+    const f = await L.invoke('parcelParse', v)
+    if (!f) { $('#pdet').textContent = v.length < 30 ? '' : 'No tracking number in that link. Paste the number, or put the link below.'; return true }
+    pn.value = f.number; car.value = f.carrier || ''; const u = $('#purl'); if (u && !u.value) u.value = f.link
+    const n = (carriers.find(x => x.id === f.carrier) || {}).name || 'the carrier'
+    $('#pdet').innerHTML = `<span class="pd-link">${ICONS.link || ''}Got it from the link: ${esc(n)}</span>`
+    return true
+  }
+  pn.oninput = async () => { if (!(await fromLink())) detect() }; car.onchange = detect
   d.querySelector('#pcq').oninput = e => { const keep = car.value; const q = e.target.value.trim().toLowerCase(); car.innerHTML = `<option value="">Detect for me</option>${opts(q)}<option value="other">Any carrier (17track)</option>`; if (keep && [...car.options].some(o => o.value === keep)) car.value = keep; else if (q && car.options.length > 1) car.selectedIndex = 1; detect() }
-  if (clip) d.querySelector('#pclip').onclick = () => { pn.value = clip.number; d.querySelector('#pclip').remove(); detect(); d.querySelector('#pname').focus() }
+  if (clip) d.querySelector('#pclip').onclick = () => { pn.value = clip.number; if (clip.link) { car.value = clip.carrier || ''; if (!$('#purl').value) $('#purl').value = clip.link } d.querySelector('#pclip').remove(); detect(); d.querySelector('#pname').focus() }
   d.querySelector('#pcancel').onclick = () => d.remove()
   d.onclick = e => { if (e.target === d) d.remove() }
   d.onkeydown = e => { if (e.key === 'Escape') d.remove() }

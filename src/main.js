@@ -2135,7 +2135,21 @@ function passkeyAsk(e) {
       }
       return (await verifyUser(`sign in to ${rp} as ${accounts[i]}`)) ? i : -1
     },
-    async none(rp) { if (w) w.send('toast', `No Lumen passkey for ${rp}`) },
+    // 4.4.3: say plainly why there is no passkey and offer a way through: your password, or (on a Mac) the site in Safari,
+    // where passkeys saved in iCloud Keychain and on your iPhone live. Lumen cannot use those yet.
+    async none(rp) {
+      if (!isMac) { if (w) w.send('toast', `No Lumen passkey for ${rp}`); return }
+      const url = (() => { try { return e.sender.getURL() } catch { return '' } })()
+      const r = await novaDialog(w, { type: 'question', buttons: ['Use my password', 'Open in Safari', 'Cancel'], defaultId: 0, cancelId: 2, kind: 'passkey', icon: 'key', title: 'Passkey',
+        message: `No passkey for ${rp} is saved in Lumen`,
+        detail: 'Passkeys saved in Safari, iCloud Keychain or on your iPhone cannot be used in Lumen yet. Sign in with your password here, or open this page in Safari to use that passkey. Once you are signed in, you can add a passkey in this site\'s security settings while in Lumen, and it will work here every time.' })
+      if (r.response === 1 && /^https:/.test(url)) require('child_process').execFile('open', ['-a', 'Safari', url], () => {})
+    },
+    async locked(rp, user) {
+      await novaDialog(w, { type: 'warning', buttons: ['OK'], defaultId: 0, kind: 'passkey', icon: 'key', title: 'Passkey',
+        message: `Lumen could not unlock your passkey for ${rp}`,
+        detail: `macOS did not let this version of Lumen open the key it saved${user ? ' for ' + user : ''}. This can happen after an update. Sign in with your password, then remove the old passkey in Settings, Passwords and add a new one on the site.` })
+    },
     // on Windows, a site with no Lumen passkey goes to Windows Hello (phones, security keys, Windows passkeys)
     fallback: () => process.platform === 'win32',
   }

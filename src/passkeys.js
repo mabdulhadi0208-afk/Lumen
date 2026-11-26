@@ -85,7 +85,11 @@ async function get(origin, req, ask) {
   const i = await ask.choose({ rp, accounts: list.map(p => p.userName || p.displayName || 'Account') })
   if (i < 0 || !list[i]) return { error: 'NotAllowedError', message: 'The request was cancelled.' }
   const pk = list[i]
-  const key = crypto.createPrivateKey(D.dec(pk.privateKey))
+  // 4.4.3: a key the system keychain will not open any more (after an update macOS can refuse the new build the old
+  // build's key) used to crash the sign-in with a vague error. Now Lumen says what happened and what to do.
+  const pem = D.dec(pk.privateKey)
+  let key = null; try { key = pem ? crypto.createPrivateKey(pem) : null } catch {}
+  if (!key) { if (ask.locked) await ask.locked(rp, pk.userName || pk.displayName || ''); return { error: 'NotAllowedError', message: 'Lumen could not unlock this passkey.' } }
   const ad = authData(rp, null)
   const cd = clientData('webauthn.get', req.challenge, origin)
   const sig = crypto.sign('sha256', Buffer.concat([ad, sha256(cd)]), key)

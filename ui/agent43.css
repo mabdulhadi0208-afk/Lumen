@@ -60,3 +60,14 @@
 @keyframes agPop { from { transform: scale(.2); opacity: 0; } 60% { transform: scale(1.2); opacity: 1; } to { transform: none; opacity: 1; } }
 @media (prefers-reduced-motion: reduce) { #aipanel .ag-step .ag-ic, #aipanel .ag-step .ag-s, #aipanel .ag-orb svg { animation: none !important; } }
 body[data-motion="off"] #aipanel .ag-step .ag-ic, body[data-motion="off"] #aipanel .ag-step .ag-s { animation: none !important; }
+
+/* 4.4.2: Run again and Edit task under a finished run */
+#aipanel .ag-again { display: flex; gap: 6px; margin: 10px 0 0 30px; }
+#aipanel .ag-ab { display: inline-flex; align-items: center; gap: 6px; height: 30px; padding: 0 12px; border: 0; border-radius: 999px; cursor: default;
+  font: 750 12px/1 var(--font); color: var(--fg); background: color-mix(in srgb, var(--fg) 7%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--fg) 8%, transparent); transition: transform .4s var(--spring, cubic-bezier(.34,1.56,.64,1)), background .2s; }
+#aipanel .ag-ab svg { width: 13px; height: 13px; }
+#aipanel .ag-ab:hover { transform: translateY(-1px); background: color-mix(in srgb, var(--fg) 11%, transparent); }
+#aipanel .ag-ab:active { transform: scale(.95); transition-duration: .08s; }
+#aipanel .ag-ab.primary { color: #fff; background: var(--pkg); box-shadow: inset 0 1px 0 rgba(255, 255, 255, .45), 0 6px 16px -6px color-mix(in srgb, var(--pk) 75%, transparent); }
+#aipanel .ag-ab.primary:hover { filter: brightness(1.06); }

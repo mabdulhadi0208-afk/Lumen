@@ -23,12 +23,11 @@
 ;(function () {
   // ---- edit this list every release: it is the "New in Lumen" act of the film (only this version's changes)
   const WHATS_NEW = {
-    version: '4.4.1',
+    version: '4.4.2',
     items: [
-      { icon: 'sparkle', text: 'Do it for me now starts with ideas: one-tap tasks that fit the page you are on' },
-      { icon: 'play', text: 'It spots a cookie popup, a form, a search box or a video, and offers to deal with it' },
-      { icon: 'sparkle', text: 'Tasks that need details fill the box for you to finish; the rest run with one tap' },
-      { icon: 'play', text: 'Switching between Ask and Do it for me swaps the ideas to match' },
+      { icon: 'sparkle', text: 'Run again: when Claude finishes a task, do the same thing again with one tap' },
+      { icon: 'play', text: 'Edit task puts the task back in the box, so you can change a detail and send it off' },
+      { icon: 'sparkle', text: 'Both buttons spring in under every finished task in Do it for me' },
     ],
   }
 
@@ -1253,6 +1252,21 @@
         p.animate([{ opacity: 0, transform: 'translateY(30px) scale(.8)' }, { opacity: .9, transform: 'translateY(-10px) scale(1.04)', offset: .35 }, { opacity: .6, transform: 'translateY(-70px) scale(1)', offset: .7 }, { opacity: 0, transform: 'translateY(-130px) scale(.9)' }], { duration: 1500, delay: d, easing: 'cubic-bezier(.3,1.2,.5,1)', fill: 'both' }).finished.then(() => p.remove(), () => p.remove())
       })
     }, 1500)
+    // 4.4.2: run it back. A ring of light draws itself around the version number like a Run again arrow, its arrowhead
+    // riding the tip, then lets go (an SVG stroke drawing on; stroke-dashoffset and opacity only)
+    setTimeout(() => {
+      if (skip || still || !v4.offsetParent) return
+      const host = v4.offsetParent, r = Math.max(v4.offsetWidth, v4.offsetHeight) * .72, cx = v4.offsetLeft + v4.offsetWidth / 2, cy = v4.offsetTop + v4.offsetHeight / 2
+      const NS = 'http://www.w3.org/2000/svg', svg = document.createElementNS(NS, 'svg')
+      svg.setAttribute('viewBox', `${-r - 12} ${-r - 12} ${2 * r + 24} ${2 * r + 24}`)
+      svg.style.cssText = `position:absolute;left:${cx - r - 12}px;top:${cy - r - 12}px;width:${2 * r + 24}px;height:${2 * r + 24}px;pointer-events:none;overflow:visible;mix-blend-mode:screen`
+      const L = 2 * Math.PI * r * .86
+      const arc = (w, o) => `<circle r="${r}" fill="none" stroke="color-mix(in srgb,var(--hi) 85%,#fff)" stroke-opacity="${o}" stroke-width="${w}" stroke-linecap="round" stroke-dasharray="${L} ${2 * Math.PI * r}" stroke-dashoffset="${L}" transform="rotate(-80)"/>`
+      svg.innerHTML = arc(9, .22) + arc(2.5, 1)   // a wide faint stroke under a thin bright one: a glow with no filter
+      host.appendChild(svg)
+      svg.querySelectorAll('circle').forEach(c => c.animate([{ strokeDashoffset: L }, { strokeDashoffset: 0 }], { duration: 900, easing: 'cubic-bezier(.45,.05,.25,1)', fill: 'forwards' }))
+      svg.animate([{ opacity: 0, transform: 'rotate(-20deg) scale(.92)' }, { opacity: 1, transform: 'none', offset: .25 }, { opacity: 1, offset: .7 }, { opacity: 0, transform: 'rotate(8deg) scale(1.06)' }], { duration: 1500, easing: 'ease-out' }).finished.then(() => svg.remove(), () => svg.remove())
+    }, 1900)
     // 4.1.6: a ripple of light rolls out from under the title as it settles, like a stone dropped in still water
     setTimeout(() => {
       if (skip || still || !logo.offsetParent) return

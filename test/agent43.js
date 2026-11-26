@@ -119,6 +119,11 @@ app.whenReady().then(async () => {
   ok(pub && pub.title === 'Lumen 4.3' && pub.file === 'lumen-agent43-film.mp4' && pub.trusted === true, 'it clicked Publish with real input: ' + JSON.stringify(pub))
   const steps = await ex(`[...document.querySelectorAll('#aipanel .ag-step')].map(s => s.dataset.state + ':' + s.querySelector('.ag-l').textContent)`)
   ok(steps.length >= 8 && steps.includes('ok:Reading the page') && steps.some(s => /^err:Typing/.test(s)) && steps.some(s => /^ok:Clicking/.test(s)), 'every step is shown live: ' + steps.join(' | '))
+  // 4.4.2: a finished run offers Run again and Edit task
+  ok(await ex(`(() => { const a = document.querySelector('#aipanel .ai-msg.agent[data-state="done"] .ag-again'); return !!a && /Run again/.test(a.textContent) && /Edit task/.test(a.textContent) })()`), 'a finished run offers Run again and Edit task')
+  await ex(`document.querySelector('#aipanel .ai-msg.agent[data-state="done"] .ag-again [data-g="edit"]').click(); true`); await wait(200)
+  ok(await ex(`/^Upload .* with the title Lumen 4\.3 and publish it$/.test(document.getElementById('ai-q').value)`), 'Edit task puts the task back in the box')
+  await ex(`document.getElementById('ai-q').value = ''; true`)
   ok(await ex(`[...document.querySelectorAll('#aipanel .ag-say')].map(x => x.textContent).join(' ')`).then(t => /Reading the page first.*Done: uploaded and published/.test(t)), "Claude's notes show between the steps")
   try { fs.writeFileSync('/tmp/lumen-agent43.png', (await ui.capturePage()).toPNG()) } catch {}
 

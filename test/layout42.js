@@ -64,7 +64,7 @@ app.whenReady().then(async () => {
   R = await rects()
   ok(R.clock.r <= R.greet.l && R.tile.r <= R.hi.l + .5, `Classic at 1440: the clock is left of the greeting (clock ${R.clock.r | 0} <= greet ${R.greet.l | 0})`)
   ok(!spills(R) && noOverlap(R), 'Classic at 1440: nothing spills or overlaps')
-  ok(await pg(`(() => { const t = document.getElementById('cktile').getBoundingClientRect(), d = getComputedStyle(document.getElementById('cktile'), '::before'); return Math.abs(parseFloat(d.left) + parseFloat(d.width) - t.width) < 1.5 })()`), 'Classic: the hairline divider sits between the clock and the words')
+  ok(await pg(`(() => { const el = document.getElementById('cktile'), d = getComputedStyle(el, '::before'); return Math.abs(parseFloat(d.left) + parseFloat(d.width) - el.offsetWidth) < 1.5 })()`), 'Classic: the hairline divider sits between the clock and the words')
   const lookClassic = await pg(LOOK)
   const a = JSON.parse(lookModern), b = JSON.parse(lookClassic), diff = []
   const cmp = (x, y, path) => { if (x && typeof x === 'object') { for (const k of new Set([...Object.keys(x), ...Object.keys(y || {})])) cmp(x[k], (y || {})[k], path + '.' + k) } else if (x !== y) diff.push(`${path}: ${x} != ${y}`) }

@@ -33,6 +33,32 @@ function setAgentMode(m) {
 }
 modeEl.addEventListener('click', e => { const b = e.target.closest('button[data-m]'); if (b && b.dataset.m !== agentMode) { setAgentMode(b.dataset.m); agWelcomeSwap() } })
 new ResizeObserver(() => placeAgInd(true)).observe(modeEl)
+// 4.4.5: Opt Cmd A (Alt Ctrl A on Windows) flips between Ask and Do it for me from anywhere. With the panel closed
+// it opens straight into Do it for me. The switch squishes on a spring and a small keycap toast says where you are.
+const AG_KEY = typeof K !== 'undefined' ? `${K.opt} ${K.cmd} A` : 'Opt Cmd A'
+// a Nova tooltip with keycaps on each side of the switch (Tips turns the title into data-tip)
+modeEl.querySelectorAll('button').forEach(b => { b.title = (b.dataset.m === 'do' ? 'Let Claude do it in this tab' : 'Ask about this page') + ' (Opt+Cmd+A)' })
+function agentSwitchMode(want) {
+  const wasOpen = aiOpen
+  const target = want === 'do' || want === 'ask' ? want : !wasOpen ? 'do' : agentMode === 'do' ? 'ask' : 'do'
+  if (!wasOpen) openAI()
+  if (panel.classList.contains('nokey')) return
+  const changed = target !== agentMode
+  if (changed) { setAgentMode(target); agWelcomeSwap() } else aiQ.focus()
+  if (!STILL_AG()) {
+    requestAnimationFrame(() => { if (Jelly.kick) Jelly.kick(modeEl, 0.45, 0) })
+    const b = modeEl.querySelector('button.on'); if (b && changed) b.animate([{ transform: 'scale(.9)' }, { transform: 'scale(1.06)', offset: .55 }, { transform: 'none' }], { duration: 520, easing: 'cubic-bezier(.3,1.4,.5,1)' })
+  }
+  agModeHint(target)
+}
+let agHintT = null
+function agModeHint(m) {
+  let h = modeEl.querySelector('.ag-hint')
+  if (!h) { h = document.createElement('div'); h.className = 'ag-hint'; h.setAttribute('aria-live', 'polite'); modeEl.appendChild(h) }
+  h.innerHTML = `<b>${m === 'do' ? 'Do it for me' : 'Ask'}</b><span class="keys">${AG_KEY.split(' ').map(k => `<kbd>${esc(k)}</kbd>`).join('')}</span>`
+  h.classList.remove('show'); void h.offsetWidth; h.classList.add('show')
+  clearTimeout(agHintT); agHintT = setTimeout(() => h.classList.remove('show'), 1600)
+}
 // keep the placeholder right when the panel repaints its context
 const _paintCtx = paintCtx
 // in Do it for me the header says so, and the tier chip shows the model the task really runs on (Smart, or Best)
@@ -167,7 +193,7 @@ function agWelcome() {
   const web = !!aiSt.web
   el.innerHTML = `<div class="a4-w-eye">Claude in Lumen</div><div class="a4-w-t">What should I do?</div>
     <div class="a4-sugs">${agChips(web ? AG_BASE_WEB : AG_BASE_NEW)}</div>
-    <div class="a4-tips"><span>Asks before anything that cannot be undone</span><span>Never types your passwords</span></div>`
+    <div class="a4-tips"><span>Asks before anything that cannot be undone</span><span>Never types your passwords</span><span class="ag-tipkey">${AG_KEY.split(' ').map(k => `<kbd>${esc(k)}</kbd>`).join('')} back to Ask</span></div>`
   if (web) api.do('agentHints').then(h => {
     if (!h || !el.isConnected) return
     const list = []

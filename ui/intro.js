@@ -23,10 +23,11 @@
 ;(function () {
   // ---- edit this list every release: it is the "New in Lumen" act of the film (only this version's changes)
   const WHATS_NEW = {
-    version: '4.4.4',
+    version: '4.4.5',
     items: [
-      { icon: 'sparkle', text: 'The intro plays again after every update: patch releases like 4.4.1 to 4.4.3 used to skip it' },
-      { icon: 'play', text: 'Each update now shows exactly what changed in it, once, right after Lumen restarts' },
+      { icon: 'sparkle', text: 'New shortcut: Option Command A flips the AI panel between Ask and Do it for me (Alt Ctrl A on Windows)' },
+      { icon: 'play', text: 'With the panel closed it opens straight into Do it for me, and a small keycap toast shows which mode you are in' },
+      { icon: 'sparkle', text: 'Find it in the menu bar, the command bar and the keyboard shortcuts sheet; switching never interrupts a running task' },
     ],
   }
 
@@ -1287,6 +1288,19 @@
         st.animate([{ opacity: 0, transform: 'scale(.2) rotate(-30deg)' }, { opacity: 1, transform: 'scale(1.15) rotate(0)', offset: .4 }, { opacity: 0, transform: 'scale(.6) rotate(25deg)' }], { duration: 1000, delay: d, easing: 'cubic-bezier(.3,1.3,.5,1)', fill: 'both' }).finished.then(() => st.remove(), () => st.remove())
       })
     }, 2700)
+    // 4.4.5: the shortcut. Two glass keycaps, Option and Command, drop in beside the title on springs and press down
+    // together with a soft click of light, like the new Ask / Do it for me shortcut (transform and opacity only)
+    setTimeout(() => {
+      if (skip || still || !logo.offsetParent) return
+      const host = logo.offsetParent, x0 = logo.offsetLeft + logo.offsetWidth + 18, y0 = logo.offsetTop + logo.offsetHeight * .35
+      ;['\u2325', '\u2318'].forEach((k, n) => {
+        const key = document.createElement('i')
+        key.textContent = k
+        key.style.cssText = `position:absolute;left:${x0 + n * 52}px;top:${y0}px;width:44px;height:44px;border-radius:12px;display:grid;place-items:center;pointer-events:none;font:600 22px/1 -apple-system,system-ui,sans-serif;font-style:normal;color:#fff;background:linear-gradient(180deg,rgba(255,255,255,.22),rgba(255,255,255,.06));box-shadow:inset 0 1px 0 rgba(255,255,255,.55),inset 0 -3px 0 rgba(0,0,0,.25),0 0 22px color-mix(in srgb,var(--hi) 45%,transparent)`
+        host.appendChild(key)
+        key.animate([{ opacity: 0, transform: 'translateY(-40px) scale(.8)' }, { opacity: 1, transform: 'translateY(4px) scale(1.04)', offset: .35 }, { opacity: 1, transform: 'none', offset: .5 }, { opacity: 1, transform: 'translateY(5px) scale(.94,.9)', offset: .62 }, { opacity: 1, transform: 'none', offset: .75 }, { opacity: 0, transform: 'translateY(-6px)' }], { duration: 1700, delay: n * 90, easing: 'cubic-bezier(.3,1.3,.5,1)', fill: 'both' }).finished.then(() => key.remove(), () => key.remove())
+      })
+    }, 3000)
     // 4.1.6: a ripple of light rolls out from under the title as it settles, like a stone dropped in still water
     setTimeout(() => {
       if (skip || still || !logo.offsetParent) return

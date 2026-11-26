@@ -449,6 +449,15 @@
     animation:speed42 1.1s .45s cubic-bezier(.2,.8,.2,1) both}
   @keyframes speed42{0%{opacity:0;transform:translateX(-60%)}25%{opacity:1}100%{opacity:0;transform:translateX(60%)}}
 
+  /* 4.3: Claude in Lumen. As the card lands, a cursor of light glides in across the poster, taps once beside the
+     version number, and a ring of light spreads from the tap and is gone (transform and opacity only, drawn once) */
+  .tap43{position:absolute;left:58%;top:52%;width:30px;height:30px;margin:-4px 0 0 -4px;z-index:3;pointer-events:none;opacity:0;
+    background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='-6 -6 36 36'%3E%3Cdefs%3E%3Cfilter id='g' x='-50%25' y='-50%25' width='200%25' height='200%25'%3E%3CfeGaussianBlur stdDeviation='2.2'/%3E%3C/filter%3E%3C/defs%3E%3Cpath d='M5 3l14 7.2-6.2 1.6L10 18z' fill='white' opacity='.85' filter='url(%23g)'/%3E%3Cpath d='M5 3l14 7.2-6.2 1.6L10 18z' fill='white' stroke='rgba(0,0,0,.35)' stroke-width='1.2' stroke-linejoin='round'/%3E%3C/svg%3E") center/contain no-repeat;
+    will-change:transform,opacity;animation:tap43 1.7s .7s cubic-bezier(.34,1.3,.5,1) both}
+  .tap43::after{content:"";position:absolute;left:-10px;top:-10px;width:28px;height:28px;border-radius:50%;border:2px solid rgba(255,255,255,.9);box-shadow:0 0 14px rgba(255,255,255,.6);opacity:0;animation:ring43 .9s 1.45s cubic-bezier(.16,1,.3,1) both}
+  @keyframes tap43{0%{opacity:0;transform:translate(90px,70px) rotate(-8deg)}30%{opacity:1}55%{transform:translate(0,0) rotate(0)}62%{transform:scale(.8)}70%{transform:scale(1)}88%{opacity:1}100%{opacity:0;transform:translate(6px,4px)}}
+  @keyframes ring43{0%{opacity:.95;transform:scale(.3)}100%{opacity:0;transform:scale(2.6)}}
+
   @media (prefers-reduced-motion:reduce){*,*::before,*::after{animation:none !important;transition:none !important}}
 </style></head><body>
 <svg class="defs" aria-hidden="true"><defs id="defs"><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" style="stop-color:var(--accent)"/><stop offset=".55" style="stop-color:var(--a2)"/><stop offset="1" style="stop-color:var(--a3)"/></linearGradient></defs></svg>
@@ -458,6 +467,7 @@
   <i class="pool"></i><div class="wm" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9.5"/><path d="M12 7v9m-4-4 4 4 4-4"/><path d="M4.5 12a7.5 7.5 0 0 1 4-6.6" opacity=".5"/></svg></div>
   <div class="poster">
     <div class="plb"></div><svg class="porb" viewBox="0 0 200 200" aria-hidden="true"><circle cx="100" cy="100" r="96"/><circle cx="100" cy="100" r="74"/><circle cx="100" cy="100" r="52"/><circle cx="100" cy="100" r="30"/></svg><i class="pglow"></i><span class="pvt">Software update</span>
+    <i class="tap43" aria-hidden="true"></i>
     <div class="pin">
       <div class="ic"><img id="icon" src="../pages/icon-default.png" alt=""><svg class="ring" viewBox="0 0 64 64"><rect class="bgc" x="2" y="2" width="60" height="60" rx="21"/><rect class="fg" id="arc" x="2" y="2" width="60" height="60" rx="21" pathLength="226"/></svg><span class="badge"><svg viewBox="0 0 16 16"><path d="m3.5 8.5 3 3 6-7"/></svg></span></div>
       <div class="art" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9.5"/><path d="M12 7v9m-4-4 4 4 4-4"/><path d="M4.5 12a7.5 7.5 0 0 1 4-6.6" opacity=".5"/></svg></div>

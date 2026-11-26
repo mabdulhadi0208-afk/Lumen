@@ -4,6 +4,8 @@ fs.rmSync('/tmp/lumen-upd', { recursive: true, force: true }); app.setPath('user
 const SHOTS = '/tmp/lumen-shots'; fs.mkdirSync(SHOTS, { recursive: true })
 let fails = 0; const LOG = m => { console.log(m); try { fs.appendFileSync('/tmp/lumen-updatecard.log', m + '\n') } catch {} }; const ok = (c, m) => { LOG((c ? 'PASS ' : 'FAIL ') + m); if (!c) fails++ }
 const wait = ms => new Promise(r => setTimeout(r, ms))
+// screenshots are only for looking at later: a hidden window can stop making frames on a slow machine, so never wait on one for long
+const shot = (w, f) => Promise.race([w.webContents.capturePage().then(i => fs.writeFileSync(f, i.toPNG())), wait(5000)]).catch(() => {})
 const NOTES = ['Parcels open on the carrier you pick or the link you type', 'Google sign-in no longer says the browser may not be secure', 'A friendlier intro with a guided tour', 'The update card shows what is new and checks every download', 'Removed the Undo popup after closing a tab']
 const BASE = { current: '1.16.2', latest: 'v1.17.0', size: 127e6, lastCheck: Date.now(), notes: NOTES, appIcon: 'default' }
 const STATES = {
@@ -29,11 +31,11 @@ app.whenReady().then(async () => {
         w.webContents.send('update:state', { ...cur, status: 'ready', verified: true }); await wait(250)
         const fx = await w.webContents.executeJavaScript(`({ dots: document.querySelectorAll('#fx b').length, now: document.getElementById('card').classList.contains('ready-now'), btn: document.getElementById('go').textContent })`)
         ok(fx.dots > 10 && fx.now && /Restart now/.test(fx.btn), `${theme}: finishing the download sets off the burst (${fx.dots} sparks)`)
-        fs.writeFileSync(`${SHOTS}/upd-${theme}-burst.png`, (await w.webContents.capturePage()).toPNG())
+        await shot(w, `${SHOTS}/upd-${theme}-burst.png`)
         await wait(1800); ok(await w.webContents.executeJavaScript(`document.querySelectorAll('#fx b').length === 0`), `${theme}: and cleans up after itself`)
       }
       if (st === 'ready') ok(/Restart now/.test(r.btn) && await w.webContents.executeJavaScript(`getComputedStyle(document.querySelector('.chip.ok')).display !== 'none'`), `${theme}: ready offers Restart now and shows Verified`)
-      fs.writeFileSync(`${SHOTS}/upd-${theme}-${st}.png`, (await w.webContents.capturePage()).toPNG())
+      await shot(w, `${SHOTS}/upd-${theme}-${st}.png`)
       w.destroy()
     }
   }

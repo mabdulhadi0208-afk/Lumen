@@ -1,0 +1,69 @@
+name: Suite
+
+# The full test suite from CLAUDE.md, every test on its own machine at the same time (about 10 minutes instead of
+# an hour one after another, and no flakes from tests fighting over one box).
+# Runs on demand for any commit (Actions, Suite, Run workflow, or the API with a sha), and on a push to the work
+# branch whose commit message contains [suite].
+on:
+  workflow_dispatch:
+    inputs:
+      sha:
+        description: Commit to test (empty = the branch you run it on)
+        required: false
+  push:
+    branches: ['claude/**']
+
+concurrency:
+  group: suite-${{ github.event.inputs.sha || github.sha }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    if: github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.message, '[suite]')
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        test: [adallow, addbtn, batch12, dark, dark2, polish, qol3, sweep, trcard, trcard2, v17, v20, readlater, wave13, wave14, wave15, wave16, gsignin, updatecard, wave19, ytfix, passkeys2, novamenus, inpage, home40, noapps, sweep41, motion40, ai41, layout42, logos43, totop44, speed42, agent43]
+    steps:
+      - uses: actions/checkout@v4
+        with: { ref: '${{ github.event.inputs.sha || github.sha }}' }
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm }
+      - name: System libraries for Electron under a virtual display
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq xvfb libnss3 libgbm1 libasound2t64 libgtk-3-0 libxss1 >/dev/null
+      - run: npm ci --no-audit --no-fund
+      - name: Folders the tests write screenshots and logs to
+        run: mkdir -p /tmp/lumen-shots
+      - name: Run ${{ matrix.test }}
+        run: |
+          set +e
+          # a flaky timing check gets one more try; a real failure fails both
+          for try in 1 2; do
+            timeout -k 5 400 xvfb-run -a npx electron test/${{ matrix.test }}.js --no-sandbox > out.txt 2>&1; rc=$?
+            fails=$(grep -ac '^FAIL ' out.txt); errs=0
+            if [ "${{ matrix.test }}" = sweep ]; then grep -aq 'NO ERRORS' out.txt || errs=1; fi
+            grep -aE '^(PASS|FAIL|SKIP) ' out.txt | tail -200
+            if [ "$rc" = 0 ] && [ "$fails" = 0 ] && [ "$errs" = 0 ]; then echo "PASSED on try $try"; [ "$try" = 2 ] && echo "::warning::${{ matrix.test }} passed only on its second try"; exit 0; fi
+            echo "try $try: exit $rc, $fails FAIL lines"; grep -aE '^FAIL |^unhandled|Error' out.txt | head -20
+          done
+          tail -60 out.txt; exit 1
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: log-${{ matrix.test }}
+          path: |
+            out.txt
+            /tmp/lumen-*.log
+          if-no-files-found: ignore
+          retention-days: 7
+
+  result:
+    if: always() && (github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.message, '[suite]'))
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - run: |
+          echo "suite: ${{ needs.test.result }}"
+          [ "${{ needs.test.result }}" = success ]

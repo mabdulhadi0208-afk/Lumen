@@ -141,6 +141,20 @@ function warm() {
   net.fetch(MODELS_URL() + '?limit=1', { headers: headers() }).then(r => r.arrayBuffer()).catch(() => { warmAt = 0 })
 }
 
+// 4.3: one turn of Claude in Lumen (the agent): a tool-using request on Smart (Sonnet) or Best (Opus), never Fast.
+// Returns the parsed message; the caller appends its content unchanged (thinking blocks included) to the history.
+async function agentTurn({ system, tools, messages, maxTokens = 8000 }, signal) {
+  if (!ready()) throw aiError('nokey', MESSAGES.nokey)
+  const t = tier() === 'best' ? 'best' : 'smart'
+  const body = { model: MODELS[t], max_tokens: maxTokens, system, tools, messages, output_config: { effort: t === 'best' ? 'medium' : 'low' }, cache_control: { type: 'ephemeral' }, fallbacks: 'default' }
+  const res = await post(body, signal, true)
+  const text = await res.text()
+  if (!res.ok) throw errFor(res.status, text, res.headers)
+  const j = JSON.parse(text)
+  if (j.stop_reason === 'refusal' && !(j.content || []).some(c => c.type === 'tool_use')) throw aiError('refusal', MESSAGES.refusal)
+  return j
+}
+
 // Checks a key without spending anything: listing models is free. { ok, kind, message }
 async function validate(k) {
   k = String(k || '').trim()
@@ -195,4 +209,4 @@ Reply as: {"groups":[{"name":"Work","color":"green","ids":[1,2]}]}` }],
   })).filter(g => g.ids.length >= 2)
 }
 
-module.exports = { ready, setKey, warm, stream, once, validate, groupTabs, docBlock, SYSTEM, SYSTEM_TOOL, MODELS, TIER_NAMES, tier, model, aiError, MESSAGES }
+module.exports = { ready, setKey, warm, agentTurn, stream, once, validate, groupTabs, docBlock, SYSTEM, SYSTEM_TOOL, MODELS, TIER_NAMES, tier, model, aiError, MESSAGES }

@@ -297,7 +297,7 @@ async function replace(w, { tabId, text }) {
 async function ui(w, action, a) {
   switch (action) {
     case 'aiAsk': ask(w, a[0] || {}); return true
-    case 'aiStop': stop(a[0]); return true
+    case 'aiStop': stop(a[0]); try { require('./agent').stop(String(a[0] || '')) } catch {} return true
     case 'aiStatus': {
       const t = w.active(), wc = viewOf(t)
       const url = wc ? wc.getURL() : (t && t.url) || ''

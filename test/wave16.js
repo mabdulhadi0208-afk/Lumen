@@ -36,8 +36,11 @@ app.whenReady().then(async () => {
   const errors = []; w.ui.webContents.on('console-message', e => { if (e.level === 'error' || e.level === 3) errors.push(e.message) })
 
   // ---- the tour is in the film
+  // the film runs on its own clock: on a slow machine it can be a beat behind, so give the tour a few seconds to come up
   await wait(12500)
-  ok(await ex(`!!document.querySelector('#intro .mw') && /\\d\\d  \\/  \\d\\d/.test(document.querySelector('#intro .tourcap .n').textContent)`), 'the intro tours the features with live demos')
+  const TOUR = `!!document.querySelector('#intro .mw') && !!document.querySelector('#intro .tourcap .n') && /\\d\\d  \\/  \\d\\d/.test(document.querySelector('#intro .tourcap .n').textContent)`
+  let toured = false; for (let i = 0; i < 24 && !(toured = await ex(TOUR)); i++) await wait(250)
+  ok(toured, 'the intro tours the features with live demos')
   await ex(`document.querySelector('#intro .skip').click()`); await wait(2500)
   await ex(`document.querySelector('#intro .go').click()`); await wait(1500)
   ok(await ex(`!document.getElementById('intro')`), 'intro done')
@@ -57,7 +60,8 @@ app.whenReady().then(async () => {
 
   // ---- ETA from the carrier page
   const p0 = P.list()[0]; P.update(p0.id, { url: U('track/1') })
-  await L.__checkParcels(true); await wait(400)
+  // a check already running (the real carrier page of the parcel above, on a real network) makes a forced one return at once: try until ours ran
+  for (let i = 0; i < 12 && P.list()[0].eta !== 'Friday, November 28'; i++) { await L.__checkParcels(true); await wait(i ? 2500 : 400) }
   ok(P.list()[0].eta === 'Friday, November 28' && P.list()[0].status === 'transit', 'background check reads the arrival date: ' + P.list()[0].eta)
 
   // ---- menu: real icon, no empty count bubbles

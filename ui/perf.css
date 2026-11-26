@@ -9,3 +9,8 @@ input, textarea, [contenteditable] { caret-animation: manual; }
    bob repainted the toolbar on every frame for as long as an update waited, which can be days. They play for the
    first 15 to 25 seconds after it appears, then the pill rests in its lit state. */
 .update, .update::after, .update .up-orb svg { animation-iteration-count: 6; }
+
+/* 4.2: the dimmed backdrop behind the command bar, popovers and the tab grid fades on a spring that sets its opacity
+   from script, and Chromium only gives a layer of its own to elements it knows will animate. Without one, every frame
+   of the fade repainted the whole window. With one, the fade is a single number the GPU changes. */
+.scrim, .tg-scrim { will-change: opacity; }

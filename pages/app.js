@@ -79,7 +79,7 @@ function novaConfirm({ title, text, ok = 'OK', cancel = 'Cancel', danger = false
 
 let S = {}, ENGINES = {}, VERSION = '', PLATFORM = ''
 const page = location.host
-const sub = location.pathname.replace(/^\/+|\/+$/g, '')
+let sub = location.pathname.replace(/^\/+|\/+$/g, '')
 
 function applyLook(s) {
   document.documentElement.style.setProperty('--accent', s.accent || '#5b8cff')
@@ -124,18 +124,58 @@ function stagger(main) {
 function shell(active) {
   CUR_SECTION = active
   document.body.style.setProperty('--sec', SEC_HUE[active] || 'var(--accent)')
-  root.innerHTML = `<div class="shell"><nav class="nav"><div class="navhead"><img class="navlogo" src="lumen://assets/icon-${esc(S.appIcon || 'default')}.png" alt=""><h1>Lumen</h1></div><div class="navsearch">${ICONS.search}<input type="search" id="setq" placeholder="Search settings" spellcheck="false" autocomplete="off"><kbd>/</kbd></div>${SECTIONS.map(([id, label, icon]) => `${NAV_GROUPS[id] ? `<div class="navgrp">${NAV_GROUPS[id]}</div>` : ''}<a title="${label}" href="${id === 'history' || id === 'bookmarks' || id === 'readlater' || id === 'downloads' || id === 'passwords' || id === 'extensions' || id === 'parcels' ? 'lumen://' + id : 'lumen://settings/' + id}" class="${id === active ? 'on' : ''}" style="--ic:${SEC_HUE[id] || 'var(--accent)'}">${ICONS[icon]}${label}</a>`).join('')}<div class="navfoot"><b>Lumen ${esc(VERSION || '')}</b></div></nav><main class="main rise" id="main"></main></div>`
+  // 4.2: switching section inside Settings keeps the sidebar (no reload, no flash): only the page beside it is new
+  const keep = root.querySelector('.shell > .nav')
+  if (keep && page === 'settings') {
+    keep.querySelectorAll('a[data-sec]').forEach(a => a.classList.toggle('on', a.dataset.sec === active))
+    const old = $('#main'), m = document.createElement('main'); m.className = 'main rise'; m.id = 'main'
+    old.replaceWith(m)
+    document.title = active === 'general' ? 'Settings' : (SECTIONS.find(s => s[0] === active) || [, 'Settings'])[1]
+    stagger(m); hashGlow()
+    return m
+  }
+  root.innerHTML = `<div class="shell"><nav class="nav"><div class="navhead"><img class="navlogo" src="lumen://assets/icon-${esc(S.appIcon || 'default')}.png" alt=""><h1>Lumen</h1></div><div class="navsearch">${ICONS.search}<input type="search" id="setq" placeholder="Search settings" spellcheck="false" autocomplete="off"><kbd>/</kbd></div>${SECTIONS.map(([id, label, icon]) => `${NAV_GROUPS[id] ? `<div class="navgrp">${NAV_GROUPS[id]}</div>` : ''}<a data-sec="${id}" title="${label}" href="${id === 'history' || id === 'bookmarks' || id === 'readlater' || id === 'downloads' || id === 'passwords' || id === 'extensions' || id === 'parcels' ? 'lumen://' + id : 'lumen://settings/' + id}" class="${id === active ? 'on' : ''}" style="--ic:${SEC_HUE[id] || 'var(--accent)'}">${ICONS[icon]}${label}</a>`).join('')}<div class="navfoot"><b>Lumen ${esc(VERSION || '')}</b></div></nav><main class="main rise" id="main"></main></div>`
   document.title = active === 'general' ? 'Settings' : (SECTIONS.find(s => s[0] === active) || [, 'Settings'])[1]
   bindSettingsSearch(active)
-  stagger($('#main'))
-  // arriving from a search result: scroll to that setting and make it glow
+  stagger($('#main')); hashGlow()
+  return $('#main')
+}
+// arriving from a search result: scroll to that setting and make it glow
+function hashGlow() {
   if (location.hash.length > 1) setTimeout(() => {
     const want = decodeURIComponent(location.hash.slice(1)).toLowerCase()
     const r = [...document.querySelectorAll('#main .row')].find(x => (x.querySelector('.t') || {}).textContent?.trim().toLowerCase() === want)
     if (r) { r.scrollIntoView({ block: 'center', behavior: 'smooth' }); r.classList.add('flash'); setTimeout(() => r.classList.remove('flash'), 2400) }
   }, 350)
-  return $('#main')
 }
+// 4.2: Settings sections open in place, instantly: the address changes (Back and Forward work) but nothing reloads.
+// Pages that live on their own address (History, Bookmarks and so on) still load as pages.
+const SETTINGS_PAGES = () => ({ apps: appsPage, general, appearance, ai: aiPage, privacy, passwords, sync, import: importPage, extensions: extensionsPage, about,
+  history: historyPage, bookmarks: bookmarksPage, readlater: readLaterPage, downloads: downloadsPage, parcels: parcelsPage })
+// the library pages have their own addresses (lumen://history and so on) but inside Settings they open in place too
+const LIB_HOSTS = ['history', 'bookmarks', 'readlater', 'downloads', 'passwords', 'extensions', 'parcels']
+function goSection(href, push = true) {
+  if (page !== 'settings') return false
+  let u; try { u = new URL(href, location.href) } catch { return false }
+  if (u.protocol !== 'lumen:') return false
+  if (u.host !== 'settings') { if (!LIB_HOSTS.includes(u.host)) return false; u = new URL('lumen://settings/' + u.host + u.hash) }
+  const s = u.pathname.replace(/^\/+|\/+$/g, '') || 'general', fn = SETTINGS_PAGES()[s]
+  if (!fn) return false
+  if (push === 'replace') history.replaceState(null, '', u.href)
+  else if (push && u.href !== location.href) history.pushState(null, '', u.href)
+  sub = s
+  const q = $('#setq'); if (q && q.value) q.value = ''
+  scrollTo(0, 0)
+  fn(shell(s))
+  return true
+}
+window.__lumenGo = (href, replace) => goSection(href, replace ? 'replace' : true)
+document.addEventListener('click', e => {
+  if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return
+  const a = e.target.closest && e.target.closest('a[href^="lumen://"]'); if (!a) return
+  if (goSection(a.getAttribute('href'))) e.preventDefault()
+})
+addEventListener('popstate', () => { if (page !== 'settings') return; const s = location.pathname.replace(/^\/+|\/+$/g, '') || 'general'; if (s === sub && s === 'history') return; goSection(location.href, false) })
 // ---- settings search: every row of every settings page, found by its name or description
 let SET_INDEX = null
 async function settingsIndex() {
@@ -154,7 +194,7 @@ function bindSettingsSearch(active) {
   let saved = null
   q.oninput = async () => {
     const v = q.value.trim().toLowerCase(), m = $('#main')
-    if (v.length < 2) { if (saved !== null) { m.innerHTML = ''; saved = null; const r = location.href; location.replace(r.split('#')[0]) } return }
+    if (v.length < 2) { if (saved !== null) { saved = null; const r = location.href.split('#')[0]; if (!goSection(r, false)) { m.innerHTML = ''; location.replace(r) } } return }
     if (saved === null) saved = true
     const idx = await settingsIndex()
     if (q.value.trim().toLowerCase() !== v) return
@@ -171,7 +211,7 @@ function bindSettingsSearch(active) {
       if (!hits.length) return; e.preventDefault()
       const n = (at + (e.key === 'ArrowDown' ? 1 : -1) + hits.length) % hits.length
       hits.forEach((a, i) => a.classList.toggle('act', i === n)); hits[n].scrollIntoView({ block: 'nearest' })
-    } else if (e.key === 'Enter') { const a = hits[Math.max(0, at)]; if (a) location.href = a.href } else if (e.key === 'Escape') { q.value = ''; q.oninput() }
+    } else if (e.key === 'Enter') { const a = hits[Math.max(0, at)]; if (a && !goSection(a.href)) location.href = a.href } else if (e.key === 'Escape') { q.value = ''; q.oninput() }
   }
 }
 const sw = (key, on) => `<label class="switch"><input type="checkbox" data-set="${key}" ${on ? 'checked' : ''}><span></span></label>`
@@ -600,8 +640,8 @@ function bindLibTabs(m) {
   $('#hseg').onclick = e => {
     const b = e.target.closest('[data-go]'); if (!b) return
     const g = b.dataset.go
-    if (g === 'readlater') { location.href = 'lumen://readlater'; return }
-    if (page !== 'history') { location.href = 'lumen://history' + (g === 'history' ? '' : '#' + g); return }
+    if (g === 'readlater') { if (!goSection('lumen://settings/readlater')) location.href = 'lumen://readlater'; return }
+    if (page !== 'history' && !(page === 'settings' && sub === 'history')) { if (!goSection('lumen://settings/history' + (g === 'history' ? '' : '#' + g))) location.href = 'lumen://history' + (g === 'history' ? '' : '#' + g); return }
     if (g === 'history') history.replaceState(null, '', location.pathname); else location.hash = g
     historyPage(m)
   }
@@ -1176,8 +1216,8 @@ new MutationObserver(decorate).observe(root, { childList: true, subtree: true })
     passwords: () => passwords(shell('passwords')), extensions: () => extensionsPage(shell('extensions')), about: () => about(shell('about')),
     settings: () => {
       const s = sub || 'general'
-      const fn = { apps: appsPage, general, appearance, ai: aiPage, privacy, passwords, sync, import: importPage, extensions: extensionsPage, about, history: historyPage, bookmarks: bookmarksPage, downloads: downloadsPage }[s] || general
-      fn(shell(s in { apps: 1, general: 1, appearance: 1, ai: 1, privacy: 1, passwords: 1, sync: 1, import: 1, extensions: 1, about: 1 } ? s : 'general'))
+      const fn = SETTINGS_PAGES()[s] || general
+      fn(shell(s in { apps: 1, general: 1, appearance: 1, ai: 1, privacy: 1, passwords: 1, sync: 1, import: 1, extensions: 1, about: 1, history: 1, bookmarks: 1, readlater: 1, downloads: 1, parcels: 1 } ? s : 'general'))
     },
   }
   ;(routes[page] || routes.newtab)()

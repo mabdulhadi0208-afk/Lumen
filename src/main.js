@@ -24,7 +24,7 @@ const ICON = path.join(ROOT, 'build', 'icon.png')
 app.setName('Lumen')
 app.commandLine.appendSwitch('enable-smooth-scrolling')
 protocol.registerSchemesAsPrivileged([
-  { scheme: 'lumen', privileges: { standard: true, secure: true, supportFetchAPI: true, corsEnabled: true, stream: true } },
+  { scheme: 'lumen', privileges: { standard: true, secure: true, supportFetchAPI: true, corsEnabled: true, stream: true, codeCache: true } },
 ])
 
 // Clean, plain-Chrome user agent so sites (and Google sign-in) treat Lumen like Chrome.
@@ -332,18 +332,24 @@ async function setupExtensions() {
 
 // ---------------------------------------------------------------- internal pages (lumen://)
 const PAGES = ['newtab', 'settings', 'history', 'downloads', 'bookmarks', 'passwords', 'extensions', 'error', 'crashed', 'about', 'parcels', 'readlater']
+const INTERNAL_CACHE = new Map()
+// 4.2: what the preloaded Settings page can become in place: any Settings section, and the library pages
+const SET_SPARE_URL = /^lumen:\/\/(settings\/?(general|appearance|apps|ai|privacy|sync|import|about|passwords|extensions|history|bookmarks|readlater|downloads|parcels)?\/?|history|bookmarks|readlater|downloads|passwords|extensions|parcels)\/?(#[\w-]*)?$/
 async function serveInternal(req) {
   const u = new URL(req.url)
   let file
-  if (u.host === 'assets' && u.pathname === '/themes.js') return new Response(await fs.promises.readFile(path.join(ROOT, 'ui', 'themes.js')), { headers: { 'content-type': 'text/javascript; charset=utf-8' } })
-  if (u.host === 'assets' && u.pathname === '/jelly.js') return new Response(await fs.promises.readFile(path.join(ROOT, 'ui', 'jelly.js')), { headers: { 'content-type': 'text/javascript; charset=utf-8' } })
-  if (u.host === 'assets' && u.pathname === '/icons.js') return new Response(await fs.promises.readFile(path.join(ROOT, 'ui', 'icons.js')), { headers: { 'content-type': 'text/javascript; charset=utf-8' } })
+  if (u.host === 'assets' && u.pathname === '/themes.js') { const f = path.join(ROOT, 'ui', 'themes.js'); let b = INTERNAL_CACHE.get(f); if (!b) INTERNAL_CACHE.set(f, b = await fs.promises.readFile(f)); return new Response(b, { headers: { 'content-type': 'text/javascript; charset=utf-8' } }) }
+  if (u.host === 'assets' && u.pathname === '/jelly.js') { const f = path.join(ROOT, 'ui', 'jelly.js'); let b = INTERNAL_CACHE.get(f); if (!b) INTERNAL_CACHE.set(f, b = await fs.promises.readFile(f)); return new Response(b, { headers: { 'content-type': 'text/javascript; charset=utf-8' } }) }
+  if (u.host === 'assets' && u.pathname === '/icons.js') { const f = path.join(ROOT, 'ui', 'icons.js'); let b = INTERNAL_CACHE.get(f); if (!b) INTERNAL_CACHE.set(f, b = await fs.promises.readFile(f)); return new Response(b, { headers: { 'content-type': 'text/javascript; charset=utf-8' } }) }
   if (u.host === 'assets') file = path.join(ROOT, 'pages', path.normalize(u.pathname).replace(/^(\.\.[/\\])+/, ''))
   else if (PAGES.includes(u.host)) file = path.join(ROOT, 'pages', 'app.html')
   else file = path.join(ROOT, 'pages', 'app.html')
   if (!file.startsWith(path.join(ROOT, 'pages'))) return new Response('Not found', { status: 404 })
   try {
-    const body = await fs.promises.readFile(file)
+    // 4.2: Lumen's own files are read once and kept in memory (they never change while Lumen runs), so a page asks
+    // the disk for nothing when it opens
+    let body = INTERNAL_CACHE.get(file)
+    if (!body) { body = await fs.promises.readFile(file); if (body.length < 4e6) INTERNAL_CACHE.set(file, body) }
     const ext = path.extname(file)
     const type = { '.html': 'text/html', '.css': 'text/css', '.js': 'text/javascript', '.svg': 'image/svg+xml', '.png': 'image/png', '.woff2': 'font/woff2' }[ext] || 'application/octet-stream'
     const headers = { 'content-type': type + (ext === '.html' || ext === '.css' || ext === '.js' ? '; charset=utf-8' : '') }
@@ -546,7 +552,7 @@ class BrowserWin {
     this.win.on('closed', () => {
       if (this.peek && !this.peek.webContents.isDestroyed()) this.peek.webContents.close()   // a peeked video must not keep playing
       for (const t of this.tabs.values()) this.destroyView(t)
-      this.dropSpare()
+      this.dropSpare(); this.dropSetSpare(); clearTimeout(this._setT)
       if (!this.ui.webContents.isDestroyed()) this.ui.webContents.close()
       windows.splice(windows.indexOf(this), 1)
       saveSession()
@@ -555,7 +561,7 @@ class BrowserWin {
     // restored tabs' and bookmarks' favicons come over the network and held the window back for seconds. Until the
     // chrome paints, the window shows its Nova background, as designed.
     let shown = false
-    const ready = () => { if (shown || this.win.isDestroyed()) return; shown = true; this.win.show(); this.pushState(); setTimeout(() => Nova.prewarm(this), 1500); setTimeout(() => this.warmSpare(), 2600) }
+    const ready = () => { if (shown || this.win.isDestroyed()) return; shown = true; this.win.show(); this.pushState(); setTimeout(() => Nova.prewarm(this), 1500); setTimeout(() => this.warmSpare(), 2600); this._setT = setTimeout(() => this.warmSetSpare(), 7000) }
     this.ui.webContents.once('dom-ready', ready)
     this.ui.webContents.once('did-finish-load', ready)
     this.ui.webContents.on('did-start-loading', () => { this._lastState = null; this._hover = undefined })
@@ -572,7 +578,7 @@ class BrowserWin {
 
   createTab(url = 'lumen://newtab', { active = true, pinned = false, index = null, title = '', favicon = '', asleep = false, openerId = null } = {}) {
     // a New Tab takes the preloaded one when it is ready: the page is already drawn, so it shows at once
-    const sp = url === 'lumen://newtab' && !asleep ? this.takeSpare() : null
+    const sp = url === 'lumen://newtab' && !asleep ? this.takeSpare() : !asleep && SET_SPARE_URL.test(url) ? this.takeSetSpare() : null
     const t = sp || { url, title: title || '', favicon, loading: false, audible: false, muted: false, asleep: false, crashed: false, view: null, zoom: 0, canBack: false, canForward: false }
     Object.assign(t, { id: ++tabSeq, pinned, lastActive: Date.now(), opener: openerId })
     if (sp) { delete t.spare; if (title) t.title = title }
@@ -588,7 +594,8 @@ class BrowserWin {
       } else idx = this.order.length
     }
     this.order.splice(idx, 0, t.id)
-    if (sp) this.adoptSpare(t)
+    if (sp && sp.setSpare) this.adoptSetSpare(t, url)
+    else if (sp) this.adoptSpare(t)
     else if (asleep && !active) { t.asleep = true }
     else this.makeView(t)
     if (active) this.activate(t.id)
@@ -658,6 +665,43 @@ class BrowserWin {
     })
     // the next one is made once this one is on screen and things are quiet
     this._spareT = setTimeout(() => this.warmSpare(), 2500)
+  }
+  // ---- 4.2: a preloaded Settings page too, so Cmd , opens it at once. Made a while after the New Tab one, when Lumen
+  // is quiet; it renders afresh from the current settings the moment it is taken, so it is never out of date.
+  warmSetSpare() {
+    clearTimeout(this._setT); this._setT = null
+    if (this.win.isDestroyed() || this.setSpare || this.incognito || process.env.LUMEN_NO_SPARE === '1') return
+    const t = { id: 0, spare: true, setSpare: true, url: 'lumen://settings/', title: 'Settings', favicon: '', pinned: false, loading: false, audible: false, muted: false, asleep: false, crashed: false, lastActive: 0, view: null, zoom: 0, canBack: false, canForward: false, opener: null }
+    this.setSpare = t; t.readyAt = 0
+    this.makeView(t)
+    t.view.setBounds({ x: 0, y: 0, width: Math.max(1, this.rect.width), height: Math.max(1, this.rect.height) })
+    const wc = t.view.webContents
+    wc.once('render-process-gone', () => { if (this.setSpare === t) this.dropSetSpare() })
+    wc.once('did-finish-load', () => {
+      const check = (n = 0) => wc.isDestroyed() || this.setSpare !== t ? 0 : wc.executeJavaScript(`!!(document.querySelector('.shell .nav') && document.querySelector('#main') && typeof window.__lumenGo === 'function')`, true).then(ok => { if (ok) { t.readyAt = Date.now(); setAway(wc, true) } else if (n < 50) setTimeout(() => check(n + 1), 120) }).catch(() => {})
+      check()
+    })
+  }
+  takeSetSpare() {
+    const t = this.setSpare
+    if (!t || !t.readyAt || !t.view || t.view.webContents.isDestroyed() || t.crashed || t.loading) return null
+    this.setSpare = null
+    setImmediate(() => setAway(t.view && t.view.webContents, !this.win.isFocused()))
+    return t
+  }
+  adoptSetSpare(t, url) {
+    const wc = t.view.webContents
+    delete t.setSpare
+    try { this.win.contentView.addChildView(t.view) } catch {}
+    t.adopted = true
+    // fresh settings, drawn in place (the sidebar stays, the page beside it springs in like any section switch)
+    wc.executeJavaScript(`(async () => { try { const i = await lumen.invoke('settings'); if (i && i.settings) { S = i.settings; applyLook(S) } } catch {} window.__lumenGo(${JSON.stringify(url || 'lumen://settings/general')}, true); return true })()`, true).catch(() => {})
+    // the next one is made a few seconds later, so History right after Settings is instant too
+    this._setT = setTimeout(() => this.warmSetSpare(), 3500)
+  }
+  dropSetSpare() {
+    const t = this.setSpare; this.setSpare = null
+    if (t && t.view) { try { this.win.contentView.removeChildView(t.view) } catch {} try { if (!t.view.webContents.isDestroyed()) t.view.webContents.close({ waitForBeforeUnload: false }) } catch {} t.view = null }
   }
   dropSpare() {
     const t = this.spare; this.spare = null
@@ -1757,6 +1801,9 @@ ipcMain.handle('ui', async (e, action, ...a) => {
       case 'stop': return wc && wc.stop()
       case 'layout': w.rect = a[0]; return w.layout()
       case 'overlay': return w.setOverlay(!!a[0], !!a[1])
+      // the last picture taken of the tab, without taking a new one; null while none is ready (encoding a waiting one
+      // is the slow part, so that waits too)
+      case 'tabThumbCached': { const x = w.tabs.get(a[0]); return x && !x.thumbImg && x.thumb && (x.thumbUrl === undefined || x.thumbUrl === (x.view && !x.view.webContents.isDestroyed() ? x.view.webContents.getURL() : x.url)) ? x.thumb : null }
       case 'tabThumb': { const x = w.tabs.get(a[0]); if (!x) return null; if (x.id === w.activeId || x.id === w.splitId) await snapTab(x); return thumbOf(x) }
       case 'suggest': return suggest(w, a[0], a[1])
       case 'suggestWeb': return webSuggest(w, a[0])
@@ -1826,7 +1873,8 @@ ipcMain.handle('ui', async (e, action, ...a) => {
       case 'readLaterRemove': return D.removeReadLater(String(a[0] || ''))
       case 'menuInfo': return { parcels: Parcels.active().length, readLater: readLaterList(6), readLaterCount: D.readLater.get().length, saved: !!t && D.isReadLater(t.view ? t.view.webContents.getURL() : t.url), sessions: (D.settings.get('savedSessions') || []).map(s => ({ id: s.id, name: s.name, count: s.tabs.length })), closed: closedTabs.slice(-5).reverse().map(c => ({ title: c.title || c.url, url: c.url })), version: app.getVersion(), update: Updater.getState(), zoom: t ? Math.round(Math.pow(1.2, t.zoom || 0) * 100) : 100, incognito: w.incognito, tabLayout: D.settings.get('tabLayout'), fullscreen: w.win.isFullScreen(), passkeys: Passkeys.list().length, passwords: D.listPasswords().length }
       case 'zoom': return t && w.zoom(t.id, a[0])
-      case 'openPage': return w.createTab('lumen://' + a[0])
+      // a Settings section goes to the open Settings tab (switched in place) when there is one
+      case 'openPage': { const pg = String(a[0] || ''); if (/^settings(\/|$)/.test(pg)) { openSettings(w, pg.replace(/^settings\/?/, '')); return } return w.createTab('lumen://' + pg) }
       case 'reader': return wc && readerMode(wc)
       case 'pip': return wc && wc.executeJavaScript(`(()=>{const v=[...document.querySelectorAll('video')].sort((a,b)=>b.clientWidth*b.clientHeight-a.clientWidth*a.clientHeight)[0];if(!v)return false;document.pictureInPictureElement?document.exitPictureInPicture():v.requestPictureInPicture();return true})()`, true).catch(() => false)
       case 'screenshot': return wc && screenshot(wc)
@@ -1939,7 +1987,8 @@ function appMenuPopup(w) {
 function openSettings(w, sub = '') {
   const url = 'lumen://settings/' + sub
   const ex = w.order.map(i => w.tabs.get(i)).find(t => (t.url || '').startsWith('lumen://settings'))
-  if (ex) { w.activate(ex.id); if (sub && ex.view) ex.view.webContents.loadURL(url) } else w.createTab(url)
+  // an open Settings tab switches section in place (no reload); only an old page without the in-place switch reloads
+  if (ex) { w.activate(ex.id); if (sub && ex.view) ex.view.webContents.executeJavaScript(`!!(window.__lumenGo && window.__lumenGo(${JSON.stringify(url)}))`, true).then(ok => { if (!ok) ex.view.webContents.loadURL(url) }, () => ex.view.webContents.loadURL(url)) } else w.createTab(url)
 }
 function downloadAction(id, what) {
   if (what === 'clear') { for (let i = downloads.length - 1; i >= 0; i--) if (downloads[i].state !== 'progressing') downloads.splice(i, 1); broadcast('downloads', listDownloads()); return }
@@ -2380,12 +2429,12 @@ async function snapTab(t) {
     const img = await Promise.race([t.view.webContents.capturePage(), new Promise(r => { tm = setTimeout(() => r(null), 1500) })]).finally(() => clearTimeout(tm))
     // the picture is kept as taken and encoded later, when nothing is happening (or right away when someone asks for
     // it): shrinking and encoding it took 10 to 40 ms of the main process on every tab switch
-    if (img && !img.isEmpty()) { t.thumbImg = img; thumbQueue.add(t); thumbSoon() }
+    if (img && !img.isEmpty()) { t.thumbImg = img; try { t.thumbImgUrl = t.view.webContents.getURL() } catch {} thumbQueue.add(t); thumbSoon() }
   } catch {}
 }
 // JPEG: several times quicker to encode than PNG on the main process, and a fraction of the size over IPC
 function thumbOf(t) {
-  if (t && t.thumbImg) { const img = t.thumbImg; t.thumbImg = null; thumbQueue.delete(t); try { t.thumb = 'data:image/jpeg;base64,' + img.resize({ width: 480, quality: 'good' }).toJPEG(84).toString('base64') } catch {} }
+  if (t && t.thumbImg) { const img = t.thumbImg; t.thumbImg = null; thumbQueue.delete(t); t.thumbUrl = t.thumbImgUrl; try { t.thumb = 'data:image/jpeg;base64,' + img.resize({ width: 480, quality: 'good' }).toJPEG(84).toString('base64') } catch {} }
   return (t && t.thumb) || null
 }
 const thumbQueue = new Set()

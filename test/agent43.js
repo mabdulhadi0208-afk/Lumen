@@ -81,6 +81,11 @@ app.whenReady().then(async () => {
   let card = null
   for (let i = 0; i < 80 && !card; i++) { await wait(150); card = await ex(`(() => { const c = document.querySelector('#aipanel .ag-card.confirm:not(.gone)'); return c ? c.querySelector('p').textContent : null })()`) }
   ok(card && /Upload lumen-agent43-film\.mp4/.test(card), 'it asks before uploading a file (' + card + ')')
+  // 4.4: what Claude is doing shows on the page itself, and never gets in the way of a click
+  const fxs = await pg(`(() => { const h = document.getElementById('lumen-agent-fx'); if (!h) return null; const cs = getComputedStyle(h); return { pe: cs.pointerEvents, pos: cs.position, z: cs.zIndex, open: !!h.shadowRoot } })()`)
+  ok(fxs && fxs.pe === 'none' && fxs.pos === 'fixed' && fxs.open === false, 'the page shows Claude working (an edge of light and its cursor) without taking clicks: ' + JSON.stringify(fxs))
+  ok(await pg(`!/Clicking|Typing/.test(document.body.innerText)`), 'and none of it is part of the page text')
+  try { fs.writeFileSync('/tmp/lumen-agent44-page.png', (await t.view.webContents.capturePage()).toPNG()) } catch {}
   ok(!(await pg(`window.published`)), 'nothing published yet')
   ok(await pg(`document.getElementById('title').value`) === 'Lumen 4.3', 'it typed the title into the page')
   ok(await pg(`document.getElementById('pw').value`) === '', 'it refused to type into the password field')
@@ -101,6 +106,8 @@ app.whenReady().then(async () => {
   let done = false
   for (let i = 0; i < 80 && !done; i++) { await wait(150); done = await ex(`document.querySelector('#aipanel .ai-msg.agent').dataset.state === 'done'`) }
   ok(done, 'the run finishes')
+  await wait(700)
+  ok(await pg(`!document.getElementById('lumen-agent-fx')`), 'the light and the cursor leave the page when the task is done')
   const pub = await pg(`window.published`)
   ok(pub && pub.title === 'Lumen 4.3' && pub.file === 'lumen-agent43-film.mp4' && pub.trusted === true, 'it clicked Publish with real input: ' + JSON.stringify(pub))
   const steps = await ex(`[...document.querySelectorAll('#aipanel .ag-step')].map(s => s.dataset.state + ':' + s.querySelector('.ag-l').textContent)`)

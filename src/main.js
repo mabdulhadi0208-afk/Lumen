@@ -671,7 +671,7 @@ class BrowserWin {
   warmSetSpare() {
     clearTimeout(this._setT); this._setT = null
     if (this.win.isDestroyed() || this.setSpare || this.incognito || process.env.LUMEN_NO_SPARE === '1') return
-    const t = { id: 0, spare: true, setSpare: true, url: 'lumen://settings/', title: 'Settings', favicon: '', pinned: false, loading: false, audible: false, muted: false, asleep: false, crashed: false, lastActive: 0, view: null, zoom: 0, canBack: false, canForward: false, opener: null }
+    const t = { id: 0, spare: true, setSpare: true, url: 'lumen://settings/?spare=1', title: 'Settings', favicon: '', pinned: false, loading: false, audible: false, muted: false, asleep: false, crashed: false, lastActive: 0, view: null, zoom: 0, canBack: false, canForward: false, opener: null }
     this.setSpare = t; t.readyAt = 0
     this.makeView(t)
     t.view.setBounds({ x: 0, y: 0, width: Math.max(1, this.rect.width), height: Math.max(1, this.rect.height) })
@@ -692,6 +692,7 @@ class BrowserWin {
   adoptSetSpare(t, url) {
     const wc = t.view.webContents
     delete t.setSpare
+    t.url = url || 'lumen://settings/general'   // never the preload's own address (a restored session would reopen it empty)
     try { this.win.contentView.addChildView(t.view) } catch {}
     t.adopted = true
     // fresh settings, drawn in place (the sidebar stays, the page beside it springs in like any section switch)

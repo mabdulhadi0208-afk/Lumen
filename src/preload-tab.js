@@ -553,7 +553,8 @@ if (location.protocol === 'lumen:') {
     addEventListener('mousedown', e => { if (cur && !e.composedPath().includes(cur.host)) close() }, true)
     addEventListener('keydown', e => { if (cur) close(e.key !== 'Escape') }, true)
     addEventListener('scroll', () => { if (cur) close(true) }, { capture: true, passive: true })
-    addEventListener('resize', () => { if (cur) close(true) })
+    // 4.2: the page was resized (a panel opened or closed beside it): the bubble comes back at the selection's new place
+    addEventListener('resize', () => { if (!cur) return; close(true); clearTimeout(pending); pending = setTimeout(show, 90) })
     addEventListener('blur', () => { if (cur) close(true) })
     // for tests: this lives in the preload's own world, which pages cannot see
     globalThis.__lumenAISel = { shown: () => !!cur, actions: () => (cur ? cur.acts.slice() : []), press: a => { if (cur) press(a, cur.text) }, open: () => { if (cur) cur.open() }, mini: () => !!(cur && cur.bub.classList.contains('mini')), rect: () => (cur ? cur.bub.getBoundingClientRect().toJSON() : null) }

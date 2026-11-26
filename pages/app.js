@@ -1215,6 +1215,9 @@ new MutationObserver(decorate).observe(root, { childList: true, subtree: true })
     history: () => historyPage(shell('history')), readlater: () => readLaterPage(shell('readlater')), bookmarks: () => bookmarksPage(shell('bookmarks')), downloads: () => downloadsPage(shell('downloads')),
     passwords: () => passwords(shell('passwords')), extensions: () => extensionsPage(shell('extensions')), about: () => about(shell('about')),
     settings: () => {
+      // 4.2: the preloaded Settings page loads everything but the section itself, which is drawn (with its entrance)
+      // the moment the page is taken, from the settings as they are then
+      if (new URLSearchParams(location.search).has('spare')) { shell('general'); return }
       const s = sub || 'general'
       const fn = SETTINGS_PAGES()[s] || general
       fn(shell(s in { apps: 1, general: 1, appearance: 1, ai: 1, privacy: 1, passwords: 1, sync: 1, import: 1, extensions: 1, about: 1, history: 1, bookmarks: 1, readlater: 1, downloads: 1, parcels: 1 } ? s : 'general'))

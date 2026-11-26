@@ -438,6 +438,17 @@
   .poster::after{content:"";position:absolute;inset:-30% -60%;pointer-events:none;z-index:2;background:linear-gradient(115deg,transparent 42%,rgba(255,255,255,.32) 50%,transparent 58%);transform:translateX(-70%);animation:sheen415 1.6s .55s cubic-bezier(.45,0,.2,1) both}
   @keyframes sheen415{to{transform:translateX(70%)}}
 
+  /* 4.1.6: the version number floats up a hair and settles once the card has landed, like it caught a breath */
+  .bignum{animation:numjelly 1.25s .2s cubic-bezier(.2,.9,.3,1) both,split411 1s .2s cubic-bezier(.2,.9,.3,1) both,lift416 1.6s 1.3s cubic-bezier(.34,1.56,.64,1) both}
+  @keyframes lift416{0%{translate:0 0}35%{translate:0 -4px}100%{translate:0 0}}
+
+  /* 4.2: speed lines. As the card lands, three thin streaks of light race across the poster behind the version
+     number, one after another, and are gone (transform and opacity only, drawn once) */
+  .poster::before{content:"";position:absolute;left:-40%;right:-40%;top:38%;height:46px;pointer-events:none;z-index:1;opacity:0;
+    background:linear-gradient(90deg,transparent 30%,rgba(255,255,255,.55) 48%,transparent 52%) 0 0/100% 2px no-repeat,linear-gradient(90deg,transparent 40%,rgba(255,255,255,.4) 55%,transparent 60%) 0 22px/100% 1.5px no-repeat,linear-gradient(90deg,transparent 35%,rgba(255,255,255,.5) 50%,transparent 56%) 0 44px/100% 2px no-repeat;
+    animation:speed42 1.1s .45s cubic-bezier(.2,.8,.2,1) both}
+  @keyframes speed42{0%{opacity:0;transform:translateX(-60%)}25%{opacity:1}100%{opacity:0;transform:translateX(60%)}}
+
   @media (prefers-reduced-motion:reduce){*,*::before,*::after{animation:none !important;transition:none !important}}
 </style></head><body>
 <svg class="defs" aria-hidden="true"><defs id="defs"><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" style="stop-color:var(--accent)"/><stop offset=".55" style="stop-color:var(--a2)"/><stop offset="1" style="stop-color:var(--a3)"/></linearGradient></defs></svg>

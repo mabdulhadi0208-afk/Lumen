@@ -45,7 +45,7 @@ function errFor(status, body, h) {
   if (status === 401 || status === 403 || type === 'authentication_error' || type === 'permission_error') return aiError('badkey', MESSAGES.badkey)
   if (status === 429) { const ra = Math.max(1, Math.min(600, parseInt(h && h.get && h.get('retry-after'), 10) || 20)); return aiError('rate', MESSAGES.rate, { retryAfter: ra }) }
   if (status === 529 || status === 503 || status === 500 || type === 'overloaded_error') return aiError('overloaded', MESSAGES.overloaded)
-  if (status === 413 || /prompt is too long|too many tokens|context/i.test(msg)) return aiError('toolong', MESSAGES.toolong)
+  if (status === 413 || /prompt is too long|too many tokens|context (window|length)/i.test(msg)) return aiError('toolong', MESSAGES.toolong)
   if (status === 402 || type === 'billing_error') return aiError('other', 'Your Anthropic account is out of credit. Add credit at console.anthropic.com, then try again.')
   return aiError('other', `The AI request failed (${status})${msg ? ': ' + msg : ''}`)
 }
@@ -61,6 +61,9 @@ async function post(body, signal, withFallback) {
 
 function requestBody({ system, messages, maxTokens }, streaming) {
   const t = tier(), body = { model: MODELS[t], max_tokens: maxTokens, system, messages, output_config: { effort: EFFORT[t] } }
+  // 4.2: Fast answers without thinking first, so the first words arrive almost at once (Haiku 5.5 thinks by default;
+  // turning it off is accepted at effort high and below). Smart and Best keep thinking, for better answers.
+  if (t === 'fast') body.thinking = { type: 'disabled' }
   if (streaming) body.stream = true
   // the conversation so far is cached too, so a follow-up only pays for the new question
   body.cache_control = { type: 'ephemeral' }
@@ -129,6 +132,15 @@ async function once({ system, messages, maxTokens = 4000 }, signal) {
   return (j.content || []).filter(c => c.type === 'text').map(c => c.text).join('')
 }
 
+// 4.2: opens the connection to the AI service ahead of the first question (DNS, TLS and HTTP/2 set up while the panel
+// is still sliding in), so asking does not wait on it. Listing one model is free; at most once every two minutes.
+let warmAt = 0
+function warm() {
+  if (!ready() || Date.now() - warmAt < 120000) return
+  warmAt = Date.now()
+  net.fetch(MODELS_URL() + '?limit=1', { headers: headers() }).then(r => r.arrayBuffer()).catch(() => { warmAt = 0 })
+}
+
 // Checks a key without spending anything: listing models is free. { ok, kind, message }
 async function validate(k) {
   k = String(k || '').trim()
@@ -183,4 +195,4 @@ Reply as: {"groups":[{"name":"Work","color":"green","ids":[1,2]}]}` }],
   })).filter(g => g.ids.length >= 2)
 }
 
-module.exports = { ready, setKey, stream, once, validate, groupTabs, docBlock, SYSTEM, SYSTEM_TOOL, MODELS, TIER_NAMES, tier, model, aiError, MESSAGES }
+module.exports = { ready, setKey, warm, stream, once, validate, groupTabs, docBlock, SYSTEM, SYSTEM_TOOL, MODELS, TIER_NAMES, tier, model, aiError, MESSAGES }

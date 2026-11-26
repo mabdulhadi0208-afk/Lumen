@@ -94,9 +94,24 @@ function doLayout() {
   const barTop = TOP ? Math.round(barH.value) : GUT
   const top = Math.round(barTop + findH.value)
   const aiw = Math.max(0, aiW.value)
-  const rect = { x: left, y: top, width: Math.max(80, W - left - GUT - aiw), height: Math.max(80, H - top - GUT) }
+  const live = { x: left, y: top, width: Math.max(80, W - left - GUT - aiw), height: Math.max(80, H - top - GUT) }
   const ap = $('#aipanel')
-  Object.assign(ap.style, { top: top + 'px', height: rect.height + 'px', width: (AI_W - GUT) + 'px', transform: `translateX(${AI_W - aiw}px)`, opacity: Math.min(1, aiw / (AI_W * 0.6)), visibility: aiw < 2 ? 'hidden' : 'visible' })
+  Object.assign(ap.style, { top: top + 'px', height: live.height + 'px', width: (AI_W - GUT) + 'px', transform: `translateX(${AI_W - aiw}px)`, opacity: Math.min(1, aiw / (AI_W * 0.6)), visibility: aiw < 2 ? 'hidden' : 'visible' })
+  // 4.2: the web page is resized at most twice per animation, never on every frame (a site re-laying itself out 60
+  // times a second is what made opening the AI panel, the find bar or the sidebar stutter on heavy pages). While the
+  // chrome animates, the page takes the space both the current and the final layout leave it: it gives room up at
+  // once (the panel then slides into the space) and only grows when the animation has finished.
+  const moving = [sideX, barH, findH, aiW].some(sp => sp.value !== sp.target)
+  let rect = live
+  if (moving) {
+    const tl = TOP ? GUT : Math.round(GUT + sideX.target), tt = Math.round((TOP ? Math.round(barH.target) : GUT) + findH.target)
+    const tg = { x: tl, y: tt, width: Math.max(80, W - tl - GUT - Math.max(0, aiW.target)), height: Math.max(80, H - tt - GUT) }
+    // the page as it is now, cut down to what the final layout gives it: shrinking happens at once (and a spring
+    // overshooting its target never makes the page follow it), growing waits until the animation is over
+    const p = pageRect || live
+    const x = Math.max(p.x, tg.x), y = Math.max(p.y, tg.y), r = Math.min(p.x + p.width, tg.x + tg.width), b = Math.min(p.y + p.height, tg.y + tg.height)
+    rect = { x, y, width: Math.max(80, r - x), height: Math.max(80, b - y) }
+  }
   const ds = document.documentElement.style
   { const lb = $('#loadbar'); lb.style.left = (rect.x + 12) + 'px'; lb.style.width = Math.max(0, rect.width - 24) + 'px'; lb.style.top = (rect.y - 5) + 'px' }
   ds.setProperty('--cx', rect.x + 'px'); ds.setProperty('--cy', rect.y + 'px'); ds.setProperty('--cw', rect.width + 'px'); ds.setProperty('--ch', rect.height + 'px')
@@ -501,7 +516,7 @@ function bindTab(v, id) {
   el.addEventListener('pointerdown', e => {
     if (e.button === 1) { e.preventDefault(); return }
     if (e.button !== 0 || e.target.closest('.x, .audio, .add, .rl')) return
-    drag = { id, active: false, start: coord(e), startPos: LAYOUT.pos.get(id) || 0, index: v.index }
+    drag = { id, active: false, start: coord(e), startPos: LAYOUT.pos.get(id) || 0, index: v.index, wasActive: S.activeId === id && e.detail < 2 }
     el.setPointerCapture(e.pointerId)
     // press squashes the tab a little
     v.g.to({ s: 0.97 })
@@ -545,6 +560,9 @@ function bindTab(v, id) {
       S.tabs = rest
       renderTabs()
       api.do('move', id, pinnedCount + d.index)
+    } else if (e.type === 'pointerup' && d.wasActive) {
+      // 4.1.6: a click on the tab you are already on sends its page back to the top, and the tab hops up once
+      Promise.resolve(api.do('scrollTop', id)).then(moved => { if (!moved) return; v.q.to(0, { velocity: -2.6 }); el.classList.remove('totop'); void el.offsetWidth; el.classList.add('totop') }, () => {})
     } else if (e.type === 'pointerup') { localActivate(id); api.do('activate', id) }
   }
   el.addEventListener('pointerup', end)
@@ -933,10 +951,13 @@ function novaStagger(els, { step = 40, max = 10, y = 8, delay = 30 } = {}) {
 let pageRect = null
 function glassUnder(el) {
   if (!window.Glass || !Glass.enabled() || S.splitId || !S.activeId || !pageRect) return
-  const rect = { ...pageRect }, want = overlayOpen
-  Promise.resolve(api.do('tabThumb', S.activeId)).then(src => {
-    if (src && overlayOpen === want && el.classList.contains('show')) Glass.under(el, rect, src)
-  }).catch(() => {})
+  const rect = { ...pageRect }, want = overlayOpen, tab = S.activeId
+  const apply = src => { if (src && overlayOpen === want && el.classList.contains('show') && S.activeId === tab) Glass.under(el, rect, src) }
+  // 4.2: taking a fresh picture of the page (a GPU readback, a resize and a JPEG) cost 10 to 40 ms right in the middle of
+  // the opening spring. The glass uses the last picture of this tab at once, and the fresh one is taken once the
+  // surface has settled, so the open itself never waits on it.
+  Promise.resolve(api.do('tabThumbCached', tab)).then(apply).catch(() => {})
+  setTimeout(() => { if (overlayOpen === want && el.classList.contains('show')) Promise.resolve(api.do('tabThumb', tab)).then(apply).catch(() => {}) }, 560)
 }
 
 // hero banner bits: two drifting colour blobs and a big faint outline icon behind a header

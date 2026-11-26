@@ -29,7 +29,26 @@ const PAGE_TEXT_JS = `(() => {
 })()`
 const viewOf = t => (t && t.view && !t.view.webContents.isDestroyed() ? t.view.webContents : null)
 const isWeb = u => /^https?:|^file:/.test(u || '')
+// 4.2: the page is read as soon as the panel opens (or Ask Lumen is picked), not after the question is sent, so the
+// answer starts sooner. A pre-read is used if it is under a minute old and the tab is still on the same address.
+const preRead = new Map()   // tabId -> { at, url, p: Promise }
+function prefetch(t) {
+  const wc = viewOf(t); if (!wc) return
+  const url = wc.getURL(); if (!isWeb(url)) return
+  const have = preRead.get(t.id)
+  if (have && have.url === url && Date.now() - have.at < 20000) return
+  preRead.set(t.id, { at: Date.now(), url, p: readTabNow(t, 60000) })
+  if (preRead.size > 20) preRead.delete(preRead.keys().next().value)
+}
 async function readTab(t, limit = 60000) {
+  const wc = viewOf(t), pre = t && preRead.get(t.id)
+  if (pre && wc && pre.url === wc.getURL() && Date.now() - pre.at < 60000 && limit >= 60000) {
+    preRead.delete(t.id)
+    try { const p = await pre.p; if (p && p.text) { try { p.sel = String(await wc.executeJavaScriptInIsolatedWorld(1018, [{ code: 'String(getSelection()||"").slice(0,6000)' }]) || '') } catch {} return p } } catch {}
+  }
+  return readTabNow(t, limit)
+}
+async function readTabNow(t, limit = 60000) {
   const wc = viewOf(t)
   if (!wc) return { title: t ? t.title || '' : '', url: t ? t.url || '' : '', text: '', sel: '', asleep: true }
   const url = wc.getURL()
@@ -134,6 +153,7 @@ async function ask(w, req) {
 function stop(id) { const r = runs.get(id); if (r) r.ctl.abort() }
 // a tab that closes takes its unfinished answers with it
 function tabClosed(w, tabId) {
+  preRead.delete(tabId)
   for (const [id, r] of runs) if (r.w === w && r.tabId === tabId) r.ctl.abort()
 }
 
@@ -282,12 +302,14 @@ async function ui(w, action, a) {
       const t = w.active(), wc = viewOf(t)
       const url = wc ? wc.getURL() : (t && t.url) || ''
       const st = { ready: AI.ready(), tier: AI.tier(), tierName: AI.TIER_NAMES[AI.tier()], tabId: t ? t.id : null, title: wc ? wc.getTitle() : (t && t.title) || '', url, web: isWeb(url), tabs: w.order.length, sel: '' }
+      // the panel is opening: warm the connection and read the page now, so the first question goes out at once
+      if (st.ready) { AI.warm(); if (st.web && !(a[0] && a[0].noPre)) prefetch(t) }
       // the selection is only read when the panel asks for it (Explain), never on a timer
       if (a[0] && a[0].sel && wc && st.web) { try { st.sel = String(await wc.executeJavaScriptInIsolatedWorld(1018, [{ code: 'String(getSelection()||"").slice(0,6000)' }]) || '') } catch {} }
       return st
     }
     case 'aiCite': return cite(w, a[0] || {})
-    case 'aiPlan': return plan(w, a[0] || {})
+    case 'aiPlan': AI.warm(); return plan(w, a[0] || {})
     case 'aiAct': return act(w, a[0])
     case 'aiReplace': return replace(w, a[0] || {})
     case 'aiCopy': clipboard.writeText(String(a[0] || '')); return true

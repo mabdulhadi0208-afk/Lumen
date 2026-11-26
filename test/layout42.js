@@ -41,7 +41,7 @@ app.whenReady().then(async () => {
   const pg = s => t.view.webContents.executeJavaScript(s)
   const shot = async name => { const img = await t.view.webContents.capturePage(); const f = `${SHOTS}/layout42-${name}.png`; fs.writeFileSync(f, img.toPNG()); console.log('shot ' + f) }
   const rects = () => pg(`JSON.stringify((() => { const r = e => { const b = e.getBoundingClientRect(); return { l: b.left, r: b.right, t: b.top, b: b.bottom } }; return { clock: r(document.getElementById('clockwrap') || document.getElementById('clock')), greet: r(document.getElementById('greet')), hi: r(document.querySelector('.hm-hi')), tile: r(document.getElementById('cktile')), hero: r(document.getElementById('hero')), chips: [...document.querySelectorAll('.hm-act')].filter(e => e.offsetParent).map(r) } })())`).then(JSON.parse)
-  const settled = async () => { for (let i = 0; i < 30 && await pg(`!!(document.getElementById('cktile').style.translate || document.querySelector('.hm-hi').style.translate || document.getElementById('hero').classList.contains('enter'))`); i++) await wait(200) }
+  const settled = async () => { for (let i = 0; i < 30 && await pg(`(() => { const els = [document.getElementById('cktile'), document.querySelector('.hm-hi'), document.getElementById('greet'), document.getElementById('clockwrap') || document.getElementById('clock')].filter(Boolean); return els.some(e => e.style.translate || e.style.scale || e.style.transform || e.getAnimations().some(a => a.playState === 'running' && a.effect && isFinite(a.effect.getComputedTiming().endTime))) || document.getElementById('hero').classList.contains('enter') })()`); i++) await wait(200) }
   const noOverlap = R => (R.clock.r <= R.hi.l + .5 || R.hi.r <= R.clock.l + .5 || R.clock.b <= R.hi.t + .5 || R.hi.b <= R.clock.t + .5)
   const spills = R => [R.clock, R.greet, R.hi, R.tile, ...R.chips].some(r => r.l < R.hero.l - .5 || r.r > R.hero.r + .5)
 
@@ -64,7 +64,7 @@ app.whenReady().then(async () => {
   R = await rects()
   ok(R.clock.r <= R.greet.l && R.tile.r <= R.hi.l + .5, `Classic at 1440: the clock is left of the greeting (clock ${R.clock.r | 0} <= greet ${R.greet.l | 0})`)
   ok(!spills(R) && noOverlap(R), 'Classic at 1440: nothing spills or overlaps')
-  ok(await pg(`(() => { const t = document.getElementById('cktile').getBoundingClientRect(), d = getComputedStyle(document.getElementById('cktile'), '::before'); return Math.abs(parseFloat(d.left) + parseFloat(d.width) - t.width) < 1.5 })()`), 'Classic: the hairline divider sits between the clock and the words')
+  ok(await pg(`(() => { const el = document.getElementById('cktile'), d = getComputedStyle(el, '::before'); return Math.abs(parseFloat(d.left) + parseFloat(d.width) - el.offsetWidth) < 1.5 })()`), 'Classic: the hairline divider sits between the clock and the words')
   const lookClassic = await pg(LOOK)
   const a = JSON.parse(lookModern), b = JSON.parse(lookClassic), diff = []
   const cmp = (x, y, path) => { if (x && typeof x === 'object') { for (const k of new Set([...Object.keys(x), ...Object.keys(y || {})])) cmp(x[k], (y || {})[k], path + '.' + k) } else if (x !== y) diff.push(`${path}: ${x} != ${y}`) }

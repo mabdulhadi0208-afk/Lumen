@@ -198,7 +198,8 @@ async function main() {
   if (!STRIPS_ONLY) {
     // the sections arrive one after another: read the animations as the page comes in
     const t = w.createTab('lumen://settings/general', { active: true }), wc = t.view.webContents
-    await new Promise(r => wc.once('dom-ready', r))
+    // 4.2: Settings may come from the preloaded page, already loaded (it redraws its section when taken)
+    if (wc.isLoading() || !wc.getURL()) await new Promise(r => wc.once('dom-ready', r))
     const stag = await wc.executeJavaScript(`new Promise(res => { const f = () => { const m = document.getElementById('main'); if (!m || m.children.length < 4) return setTimeout(f, 10); requestAnimationFrame(() => res([...m.children].map(c => { const a = c.getAnimations().find(a => a.effect && a.effect.getTiming); return a ? a.effect.getTiming().delay : null }))) }; f() })`)
     const ds = stag.filter(x => x != null)
     ok(ds.length >= 4 && new Set(ds).size >= 3 && ds.every((d, i) => i === 0 || d >= ds[i - 1]), `Settings sections stagger in (delays ${ds.slice(0, 8).join(', ')} ms)`)
@@ -213,7 +214,8 @@ async function main() {
     // a section change: the next section comes in with the hero spring and the stagger
     const navTo = await center(wc, '.nav a[href$="appearance"]')
     wc.sendInputEvent({ type: 'mouseDown', x: navTo.x, y: navTo.y, button: 'left', clickCount: 1 }); wc.sendInputEvent({ type: 'mouseUp', x: navTo.x, y: navTo.y, button: 'left', clickCount: 1 })
-    await new Promise(r => wc.once('dom-ready', r))
+    // 4.2: the section switches in place (no page load)
+    await wait(20)
     const hero = nums(await sample(wc, `(() => { const h = document.querySelector('.hero'); if (!h) return null; return +(parseFloat(getComputedStyle(h).translate.split(' ')[1]) || 0).toFixed(2) })()`, 500))
     ok(distinct(hero) >= 4, `a new section springs in (hero rises over ${distinct(hero)} frames)`)
     await wait(2500)

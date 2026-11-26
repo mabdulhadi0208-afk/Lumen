@@ -23,11 +23,14 @@
 ;(function () {
   // ---- edit this list every release: it is the "New in Lumen" act of the film (only this version's changes)
   const WHATS_NEW = {
-    version: '4.1.5',
+    version: '4.2',
     items: [
-      { icon: 'sparkle', text: 'Bookmarks, History, Read later and Passwords show every site with its real logo' },
-      { icon: 'play', text: 'Add shortcut and Add bookmark preview the real logo as you type' },
-      { icon: 'sparkle', text: 'Big sites like YouTube now get their sharpest logo on Home too' },
+      { icon: 'sparkle', text: 'Settings, History, Bookmarks, Downloads and Passwords are preloaded and open at once' },
+      { icon: 'play', text: 'Settings sections switch in place, instantly, with no reload' },
+      { icon: 'sparkle', text: 'The AI panel, find bar and sidebar glide without making the page redraw on every frame' },
+      { icon: 'play', text: 'Lumen AI warms up and reads the page the moment you open it, and Fast answers without a pause to think' },
+      { icon: 'sparkle', text: 'Click the tab you are on and its page glides back to the top' },
+      { icon: 'play', text: 'Signing in to Google and YouTube works: Lumen looks exactly like Chrome on Google\'s sign-in page' },
     ],
   }
 
@@ -1190,6 +1193,29 @@
       host.appendChild(st)
       st.animate([{ opacity: 0, transform: 'scaleX(.05) scaleY(.6)' }, { opacity: 1, transform: 'scaleX(1) scaleY(1.4)', offset: .3 }, { opacity: 0, transform: 'scaleX(1.25) scaleY(.4)' }], { duration: 1100, easing: 'cubic-bezier(.16,1,.3,1)' }).finished.then(() => st.remove(), () => st.remove())
     }, 1040)
+    // 4.2: speed. As the number lands, streaks of light shoot out from it in every direction, like the jump to warp
+    setTimeout(() => {
+      if (skip || still || !v4.offsetParent) return
+      const host = v4.offsetParent, cx = v4.offsetLeft + v4.offsetWidth / 2, cy = v4.offsetTop + v4.offsetHeight * .5
+      for (let i = 0; i < 14; i++) {
+        const a = (i / 14) * Math.PI * 2 + (i % 2) * .18, len = 90 + (i % 3) * 50
+        const st = document.createElement('i')
+        st.style.cssText = `position:absolute;left:${cx}px;top:${cy - 1}px;width:${len}px;height:2px;border-radius:2px;pointer-events:none;mix-blend-mode:screen;transform-origin:0 50%;background:linear-gradient(90deg,transparent,${i % 3 ? 'var(--hi)' : '#fff'});transform:rotate(${a}rad)`
+        host.appendChild(st)
+        st.animate([{ opacity: 0, transform: `rotate(${a}rad) translateX(10px) scaleX(.2)` }, { opacity: .9, transform: `rotate(${a}rad) translateX(${40 + len * .2}px) scaleX(1)`, offset: .35 }, { opacity: 0, transform: `rotate(${a}rad) translateX(${160 + len}px) scaleX(.5)` }], { duration: 900 + (i % 4) * 80, easing: 'cubic-bezier(.16,1,.3,1)' }).finished.then(() => st.remove(), () => st.remove())
+      }
+    }, 1060)
+    // 4.1.6: a ripple of light rolls out from under the title as it settles, like a stone dropped in still water
+    setTimeout(() => {
+      if (skip || still || !logo.offsetParent) return
+      const host = logo.offsetParent, cx = logo.offsetLeft + logo.offsetWidth / 2, cy = logo.offsetTop + logo.offsetHeight * .92
+      ;[0, 1].forEach(i => {
+        const r = document.createElement('i')
+        r.style.cssText = `position:absolute;left:${cx - 60}px;top:${cy - 9}px;width:120px;height:18px;border-radius:50%;pointer-events:none;mix-blend-mode:screen;border:1.5px solid color-mix(in srgb,var(--hi) 75%,#fff);box-shadow:0 0 18px color-mix(in srgb,var(--hi) 55%,transparent)`
+        host.appendChild(r)
+        r.animate([{ opacity: 0, transform: 'scale(.3)' }, { opacity: .85, transform: 'scale(1.6)', offset: .25 }, { opacity: 0, transform: `scale(${5.5 + i * 1.5})` }], { duration: 1500 + i * 250, delay: i * 180, easing: 'cubic-bezier(.16,1,.3,1)' }).finished.then(() => r.remove(), () => r.remove())
+      })
+    }, 1700)
     // 4.1.4: two sparks of light race out from the middle of the rule as it draws, and flare where it ends
     setTimeout(() => {
       const rule = s.querySelector('.rule'); if (skip || still || !rule || !rule.offsetParent) return

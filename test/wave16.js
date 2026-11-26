@@ -108,7 +108,8 @@ app.whenReady().then(async () => {
   ok(await er.view.webContents.executeJavaScript(`document.querySelector('.err').classList.contains('k-offline') && !!document.querySelector('.errwait')`), 'offline error explains it will reload by itself')
   fs.writeFileSync(`${SHOTS}/w16-offline.png`, (await er.view.webContents.capturePage()).toPNG())
   const dl = w.createTab('lumen://downloads', { active: true }); await wait(1600)
-  ok(await dl.view.webContents.executeJavaScript(`getComputedStyle(document.querySelector('.empty'), '::before').backgroundImage.includes('svg')`), 'empty states have an icon, not a blank box')
+  // the list may already hold a file (on some networks a carrier link above downloads its page): then every row has its file-type icon
+  ok(await dl.view.webContents.executeJavaScript(`(() => { const e = document.querySelector('.empty'); if (e) return getComputedStyle(e, '::before').backgroundImage.includes('svg'); const r = [...document.querySelectorAll('.dlrow')]; return r.length > 0 && r.every(x => !!x.querySelector('.ftype svg')) })()`), 'empty states have an icon, not a blank box (and files have their type icon)')
 
   ok(!errors.length, 'no UI errors ' + errors.join(' | '))
   LOG(fails ? 'FAILED ' + fails : 'ALL PASS'); app.exit(fails ? 1 : 0)

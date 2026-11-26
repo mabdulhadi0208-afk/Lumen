@@ -996,7 +996,7 @@ class BrowserWin {
     if (!this.incognito && url && url !== 'lumen://newtab/') closedTabs.push({ url, title: t.title, index: this.order.indexOf(id), pinned: t.pinned })
     if (closedTabs.length > 30) closedTabs.shift()
     if (/^https?:/.test(url || '')) spareChanged()
-    AIHost.tabClosed(this, id)
+    AIHost.tabClosed(this, id); Agent.tabClosed(id)
     const idx = this.order.indexOf(id)
     this.order.splice(idx, 1)
     this.tabs.delete(id)
@@ -1597,6 +1597,7 @@ const readLaterList = n => D.readLater.get().slice(0, n).map(x => ({ url: x.url,
 
 // ---------------------------------------------------------------- Lumen AI (src/ai-host.js)
 const AIHost = require('./ai-host')
+const Agent = require('./agent')   // 4.3: Claude in Lumen
 AIHost.init({ winForWc, log })
 
 // ---------------------------------------------------------------- app icon
@@ -1828,6 +1829,9 @@ ipcMain.handle('ui', async (e, action, ...a) => {
       case 'appMenu': return Menu.getApplicationMenu() && appMenuPopup(w)
       case 'print': return wc && printPage(w, wc)
       case 'autoGroup': return autoGroupWindow(w)
+      case 'agentStart': Agent.start(w, a[0] || {}); return true
+      case 'agentStop': Agent.stop(String(a[0] || '')); return true
+      case 'agentReply': Agent.reply(String(a[0] || ''), String(a[1] || ''), a[2] || {}); return true
       case 'aiAsk': case 'aiStop': case 'aiStatus': case 'aiCite': case 'aiPlan': case 'aiAct': case 'aiReplace': case 'aiCopy': case 'aiForget': return AIHost.ui(w, action, a)
       case 'ungroupAll': return w.ungroup(null)
       case 'groupToggle': { const g = w.groups.get(a[0]); if (g) w.setGroup(a[0], { collapsed: !g.collapsed }); return }

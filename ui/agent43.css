@@ -1,0 +1,62 @@
+/* Claude in Lumen (4.3): the Ask / Do it for me switch, the live step timeline and the cards that ask you.
+   Nova glass and the Lumen AI pinks; the switch's pill rides on a spring, steps spring in, a running step breathes. */
+#aipanel .ag-mode { position: relative; flex: none; display: flex; gap: 2px; margin: 0 4px 8px; padding: 3px; border-radius: 999px;
+  background: color-mix(in srgb, var(--fg) 6%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--fg) 7%, transparent); }
+#aipanel .ag-mode button { position: relative; z-index: 1; flex: 1; display: flex; align-items: center; justify-content: center; gap: 6px; height: 30px; border: 0; border-radius: 999px;
+  background: none; color: var(--fg2); font: 750 12px/1 var(--font); cursor: default; transition: color .2s; }
+#aipanel .ag-mode button svg { width: 14px; height: 14px; }
+#aipanel .ag-mode button.on { color: #fff; }
+#aipanel .ag-ind { position: absolute; left: 3px; top: 3px; bottom: 3px; width: 0; border-radius: 999px; background: var(--pkg);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .45), 0 6px 18px -6px color-mix(in srgb, var(--pk) 70%, transparent); will-change: transform, width; }
+#aipanel.nokey .ag-mode { display: none; }
+#aipanel.agentmode .ai-input:focus-within { box-shadow: inset 0 1px 0 rgba(255, 255, 255, .8), 0 0 0 4px color-mix(in srgb, var(--vi) 18%, transparent), 0 0 26px color-mix(in srgb, var(--vi) 30%, transparent); }
+
+/* a task run */
+#aipanel .ai-msg.agent { padding: 12px 12px 10px; border-radius: 18px; background: linear-gradient(160deg, color-mix(in srgb, var(--pk) 9%, var(--glass2, rgba(255,255,255,.6))), color-mix(in srgb, var(--vi) 7%, var(--glass2, rgba(255,255,255,.6))));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .55), inset 0 0 0 1px color-mix(in srgb, var(--pk) 14%, transparent), 0 10px 28px -14px color-mix(in srgb, var(--vi) 50%, transparent); }
+#aipanel .ag-head { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; font: 800 12.5px/1 var(--font); color: var(--fg); }
+#aipanel .ag-head em { margin-left: auto; font: 700 11px/1 var(--font); font-style: normal; color: var(--fg3); padding: 4px 8px; border-radius: 999px; background: color-mix(in srgb, var(--fg) 6%, transparent); }
+#aipanel .ai-msg.agent:not([data-state]) .ag-head em { color: var(--pk); background: color-mix(in srgb, var(--pk) 12%, transparent); }
+#aipanel .ai-msg.agent[data-state="done"] .ag-head em { color: #0f9d68; background: color-mix(in srgb, #10b981 14%, transparent); }
+#aipanel .ai-msg.agent[data-state="error"] .ag-head em { color: #e5484d; background: color-mix(in srgb, #e5484d 12%, transparent); }
+#aipanel .ag-orb { width: 22px; height: 22px; border-radius: 8px; display: grid; place-items: center; color: #fff; background: var(--pkg); box-shadow: 0 4px 12px -4px color-mix(in srgb, var(--pk) 80%, transparent); }
+#aipanel .ag-orb svg { width: 12px; height: 12px; }
+#aipanel .ai-msg.agent:not([data-state]) .ag-orb svg { animation: a4think 1.4s cubic-bezier(.4, 0, .3, 1) infinite; }
+
+#aipanel .ag-flow { list-style: none; margin: 0; padding: 0 0 0 4px; display: flex; flex-direction: column; gap: 4px; position: relative; }
+#aipanel .ag-flow::before { content: ""; position: absolute; left: 14px; top: 6px; bottom: 6px; width: 2px; border-radius: 2px; background: linear-gradient(var(--pk), var(--vi)); opacity: .22; }
+#aipanel .ag-step { position: relative; display: flex; align-items: center; gap: 9px; min-height: 28px; font: 600 12.5px/1.3 var(--font); color: var(--fg2); }
+#aipanel .ag-ic { position: relative; z-index: 1; flex: none; width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; color: var(--pk);
+  background: var(--bg-solid, #fff); box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--pk) 40%, transparent); }
+#aipanel .ag-ic svg { width: 12px; height: 12px; }
+#aipanel .ag-l { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#aipanel .ag-s { flex: none; width: 14px; height: 14px; border-radius: 50%; }
+#aipanel .ag-step[data-state="run"] { color: var(--fg); }
+#aipanel .ag-step[data-state="run"] .ag-ic { box-shadow: inset 0 0 0 1.5px var(--pk), 0 0 0 4px color-mix(in srgb, var(--pk) 14%, transparent); animation: agBreathe 1.2s ease-in-out infinite; }
+#aipanel .ag-step[data-state="run"] .ag-s { border: 2px solid color-mix(in srgb, var(--pk) 30%, transparent); border-top-color: var(--pk); animation: spin .8s linear infinite; }
+#aipanel .ag-step[data-state="ok"] .ag-s { background: #10b981 url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M4 8.5l2.5 2.5L12 5.5' fill='none' stroke='white' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center/10px no-repeat; animation: agPop .45s cubic-bezier(.3, 1.6, .5, 1) both; }
+#aipanel .ag-step[data-state="err"] { color: var(--fg3); }
+#aipanel .ag-step[data-state="err"] .ag-s { background: #f59e0b; }
+#aipanel .ag-say { margin: 2px 0 4px 34px; font: 500 13px/1.45 var(--font); color: var(--fg); }
+#aipanel .ag-err { margin: 4px 0 0 34px; font: 600 12.5px/1.4 var(--font); color: #e5484d; }
+#aipanel .ag-think { margin-left: 34px; height: 20px; display: flex; align-items: center; }
+
+/* Claude needs you */
+#aipanel .ag-card { margin: 6px 0 6px 30px; padding: 11px 12px; border-radius: 16px; background: var(--bg-solid, #fff);
+  box-shadow: 0 0 0 1.5px color-mix(in srgb, var(--pk) 45%, transparent), 0 12px 30px -12px color-mix(in srgb, var(--pk) 55%, transparent); transition: opacity .25s, transform .4s var(--spring, cubic-bezier(.34,1.56,.64,1)); }
+#aipanel .ag-card.confirm { box-shadow: 0 0 0 1.5px color-mix(in srgb, #f59e0b 60%, transparent), 0 12px 30px -12px color-mix(in srgb, #f59e0b 55%, transparent); }
+#aipanel .ag-ct { display: flex; align-items: center; gap: 8px; font: 800 12.5px/1 var(--font); }
+#aipanel .ag-ci { width: 22px; height: 22px; border-radius: 8px; display: grid; place-items: center; color: #fff; background: var(--pkg); }
+#aipanel .ag-card.confirm .ag-ci { background: linear-gradient(135deg, #fbbf24, #f97316); }
+#aipanel .ag-ci svg { width: 12px; height: 12px; }
+#aipanel .ag-card p { margin: 8px 0 10px; font: 600 13px/1.45 var(--font); color: var(--fg); }
+#aipanel .ag-card textarea { width: 100%; resize: none; margin: 0 0 8px; padding: 8px 10px; border-radius: 10px; border: 0; font: 500 13px/1.4 var(--font); color: var(--fg); background: color-mix(in srgb, var(--fg) 6%, transparent); outline: none; }
+#aipanel .ag-cb { display: flex; gap: 6px; }
+#aipanel .ag-cb .btn { height: 30px; padding: 0 14px; font-size: 12.5px; }
+#aipanel .ag-card.gone { opacity: .55; pointer-events: none; transform: scale(.98); }
+#aipanel .ag-card.gone .ag-cb, #aipanel .ag-card.gone textarea { display: none; }
+
+@keyframes agBreathe { 50% { transform: scale(1.08); } }
+@keyframes agPop { from { transform: scale(.2); opacity: 0; } 60% { transform: scale(1.2); opacity: 1; } to { transform: none; opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { #aipanel .ag-step .ag-ic, #aipanel .ag-step .ag-s, #aipanel .ag-orb svg { animation: none !important; } }
+body[data-motion="off"] #aipanel .ag-step .ag-ic, body[data-motion="off"] #aipanel .ag-step .ag-s { animation: none !important; }

@@ -531,6 +531,22 @@ for (const st of [D.bookmarks, D.readLater, D.archive, D.highlights, D.historySt
   D.settings.onChange(d => { const n = sig(d); if (n !== last) { last = n; spareChanged() } })
 }
 const closedTabs = []
+// 4.4.17: Recently Closed survives a restart: the list is kept in closed.json (never private windows, which are
+// never in it), and Clear history clears it the same way
+let closedStore = null
+const closedOk = c => c && typeof c === 'object' && (c.win ? Array.isArray(c.win.tabs) && c.win.tabs.length : c.batch ? Array.isArray(c.batch) && c.batch.length : typeof c.url === 'string' && /^(https?|file|lumen):/.test(c.url))
+app.whenReady().then(() => {
+  try {
+    closedStore = new WStore('closed', [])
+    // the last window closed when Lumen quit comes back with the session, so it is not also listed as closed
+    const sig = tabs => (tabs || []).map(t => t.url).join('\n')
+    const restored = new Set(((D.session.get() || {}).windows || []).map(x => sig(x.tabs)))
+    const saved = closedStore.get().filter(closedOk).filter(c => !(c.win && restored.has(sig(c.win.tabs)))).slice(-30)
+    closedTabs.unshift(...saved)
+    if (saved.length) refreshClosedMenu()
+  } catch (e) { log('closed list load failed', e.message) }
+})
+const saveClosed = () => { try { if (closedStore) closedStore.replace(closedTabs.slice(-30)) } catch {} }
 // history changes go to the chrome's own copy (it searches history as you type without asking): batched, and a
 // big batch becomes "reload it"
 let histOps = [], histT = null
@@ -1052,7 +1068,7 @@ class BrowserWin {
     const t = this.tabs.get(id)
     if (!t) return
     const url = t.view ? t.view.webContents.getURL() : t.url
-    if (!this.incognito && url && url !== 'lumen://newtab/') (closingBatch || closedTabs).push({ url, title: t.title, index: this.order.indexOf(id), pinned: t.pinned })
+    if (!this.incognito && url && url !== 'lumen://newtab/') (closingBatch || closedTabs).push({ url, title: t.title, index: this.order.indexOf(id), pinned: t.pinned, at: Date.now() })
     if (!closingBatch && closedTabs.length > 30) closedTabs.shift()
     if (!closingBatch) refreshClosedMenu()
     if (/^https?:/.test(url || '')) spareChanged()
@@ -2060,7 +2076,7 @@ function reopenEntry(w, c) {
 }
 // the menu bar is built once; rebuild it a moment after the closed list changes so Recently Closed stays current
 let closedMenuT = null
-function refreshClosedMenu() { clearTimeout(closedMenuT); closedMenuT = setTimeout(() => { try { buildMenu() } catch (e) { log('menu rebuild failed', e.message) } }, 150) }
+function refreshClosedMenu() { saveClosed(); clearTimeout(closedMenuT); closedMenuT = setTimeout(() => { try { buildMenu() } catch (e) { log('menu rebuild failed', e.message) } }, 150) }
 function reopenAt(w, i) { const k = closedTabs.length - 1 - (+i || 0); if (k < 0 || k >= closedTabs.length) return 0; const c = closedTabs.splice(k, 1)[0]; refreshClosedMenu(); return reopenEntry(w, c) }
 function reopenClosed(w) {
   const c = closedTabs.pop(); refreshClosedMenu()
@@ -2079,7 +2095,7 @@ function closeMany(w, ids, what = 'tabs') {
   closingBatch = []
   try { for (const id of ids) w.closeTab(id) } finally {
     const got = closingBatch; closingBatch = null
-    if (got.length > 1) closedTabs.push({ batch: got }); else closedTabs.push(...got)
+    if (got.length > 1) closedTabs.push({ batch: got, at: Date.now() }); else closedTabs.push(...got)
     while (closedTabs.length > 30) closedTabs.shift()
     refreshClosedMenu()
   }
@@ -2400,6 +2416,7 @@ ipcMain.handle('lumen', async (e, action, ...a) => {
       case 'deleteHistoryHost': return D.deleteHistoryHost(a[0])
       case 'clearHistory': {
         D.clearHistory(a[0] || 0)
+        { const since = a[0] ? Date.now() - a[0] : 0, keep = closedTabs.filter(c => since && (c.at || 0) < since); closedTabs.length = 0; closedTabs.push(...keep); refreshClosedMenu() }
         if (a[1]) await mainSession.clearStorageData()
         if (a[2]) await mainSession.clearCache()
         return true
@@ -2915,6 +2932,7 @@ let quitting = false
 function flushAll() {
   saveSessionNow()
   for (const s of [D.settings, D.bookmarks, D.passwords, D.permissions, D.session, D.readLater, D.archive, D.highlights, Parcels.store, Passkeys.store]) s.flush()
+  try { if (closedStore) { saveClosed(); closedStore.flush() } } catch {}
   D.historyStore.replace([...D.historyMap.values()].sort((a, b) => b.t - a.t)); D.historyStore.flush()
 }
 app.on('before-quit', () => {

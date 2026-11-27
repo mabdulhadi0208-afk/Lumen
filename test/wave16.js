@@ -37,9 +37,9 @@ app.whenReady().then(async () => {
 
   // ---- the tour is in the film
   // the film runs on its own clock: on a slow machine it can be a beat behind, so give the tour a few seconds to come up
-  await wait(12500)
+  await wait(6000)
   const TOUR = `!!document.querySelector('#intro .mw') && !!document.querySelector('#intro .tourcap .n') && /\\d\\d  \\/  \\d\\d/.test(document.querySelector('#intro .tourcap .n').textContent)`
-  let toured = false; for (let i = 0; i < 24 && !(toured = await ex(TOUR)); i++) await wait(250)
+  let toured = false; for (let i = 0; i < 120 && !(toured = await ex(TOUR)); i++) await wait(250)   // watch from 6 s to 36 s
   ok(toured, 'the intro tours the features with live demos')
   await ex(`document.querySelector('#intro .skip').click()`); await wait(2500)
   await ex(`document.querySelector('#intro .go').click()`); await wait(1500)

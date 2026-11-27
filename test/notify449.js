@@ -48,6 +48,10 @@ app.whenReady().then(async () => {
   ok(!!pt && w.tabs.size === tabs0 + 1 && w.activeId === pt.id, 'clicking the notification opens Parcels in a new tab, in front')
   const px = s => pt.view.webContents.executeJavaScript(s)
   ok(await until(() => px(`(document.querySelector('.prow.pfocus') || {}).dataset?.id === ${JSON.stringify(a.id)}`), 4000), 'the parcel it was about lights up')
+  // 4.4.10: the glow is drawn inside the row, so the list card cannot clip it
+  await wait(350)
+  ok(await px(`(() => { const r = document.querySelector('.prow.pfocus'); const cs = getComputedStyle(r); return /inset/.test(cs.boxShadow) && cs.boxShadow !== 'none' && cs.backgroundColor !== 'rgba(0, 0, 0, 0)' })()`), 'the glow is an inset ring with a wash, so it shows on every side')
+  try { fs.mkdirSync('/tmp/lumen-shots', { recursive: true }); fs.writeFileSync('/tmp/lumen-shots/notify449-glow.png', (await pt.view.webContents.capturePage()).toPNG()) } catch {}
   ok(await until(() => px(`location.hash === ''`), 3000), 'and the address is tidied afterwards')
   await until(() => px(`!document.querySelector('.prow.pfocus')`), 4000)
   try { fs.mkdirSync('/tmp/lumen-shots', { recursive: true }); await wait(200); fs.writeFileSync('/tmp/lumen-shots/notify449.png', (await pt.view.webContents.capturePage()).toPNG()) } catch {}

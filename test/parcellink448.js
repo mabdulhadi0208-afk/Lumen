@@ -74,5 +74,8 @@ app.whenReady().then(async () => {
 
   ok(!errors.length, 'no errors in the browser chrome' + (errors.length ? ': ' + errors.slice(0, 3).join(' | ') : ''))
   // the result is settled here: a slow shutdown (parcel checks still loading carrier pages) must not change it
-  clearTimeout(guard); console.log(fails ? `${fails} FAILED` : 'ALL PASSED'); app.exit(fails ? 1 : 0); setTimeout(() => process.exit(fails ? 1 : 0), 3000)
+  // the hidden windows that check parcels in the background may still be loading carrier sites: close them first
+  for (const b of require('electron').BrowserWindow.getAllWindows()) if (!b.isVisible() && !b.isDestroyed()) b.destroy()
+  await wait(800)
+  clearTimeout(guard); console.log(fails ? `${fails} FAILED` : 'ALL PASSED'); app.exit(fails ? 1 : 0)
 })

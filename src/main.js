@@ -526,7 +526,7 @@ function uniquePath(dir, name) {
   return p
 }
 function onDownload(e, item, wc) {
-  const d = { id: ++dlSeq, name: item.getFilename(), url: item.getURL(), received: 0, total: item.getTotalBytes(), state: 'progressing', path: '', started: Date.now(), paused: false }
+  const d = { id: ++dlSeq, name: item.getFilename(), url: item.getURL(), received: 0, total: item.getTotalBytes(), state: 'progressing', path: '', started: Date.now(), paused: false, speed: 0 }
   if (!D.settings.get('askWhereToSave')) {
     const p = uniquePath(app.getPath('downloads'), item.getFilename())
     item.setSavePath(p); d.path = p; d.name = path.basename(p)
@@ -538,10 +538,14 @@ function onDownload(e, item, wc) {
   item.on('updated', (ev, state) => {
     d.received = item.getReceivedBytes(); d.total = item.getTotalBytes(); d.state = state === 'interrupted' ? 'interrupted' : 'progressing'
     d.paused = item.isPaused(); if (!d.path) { d.path = item.getSavePath(); d.name = path.basename(d.path) || d.name }
+    // 4.4.22: the speed, smoothed over the last second or so, for the Downloads page (speed and time left)
+    const now = Date.now(), dt = now - (d._t || d.started)
+    if (d.paused || d.state !== 'progressing') { d.speed = 0; d._t = now; d._r = d.received }
+    else if (dt >= 400) { const v = Math.max(0, (d.received - (d._r || 0)) * 1000 / dt); d.speed = d.speed ? Math.round(d.speed * .55 + v * .45) : Math.round(v); d._t = now; d._r = d.received }
     pushSoon()
   })
   item.once('done', (ev, state) => {
-    d.state = state; d.received = item.getReceivedBytes(); d.path = item.getSavePath(); d.name = path.basename(d.path) || d.name
+    d.state = state; d.received = item.getReceivedBytes(); d.path = item.getSavePath(); d.name = path.basename(d.path) || d.name; d.speed = 0; d.ended = Date.now()
     dlExists.delete(d.path)
     delete d._item
     if (state === 'completed' && isMac) app.dock && app.dock.downloadFinished(d.path)
@@ -563,7 +567,7 @@ function fileExists(p) {
   dlExists.set(p, { at: now, v }); if (dlExists.size > 300) dlExists.delete(dlExists.keys().next().value)
   return v
 }
-const listDownloads = () => downloads.slice(0, 100).map(({ _item, ...d }) => ({ ...d, exists: d.state === 'progressing' ? false : fileExists(d.path) }))
+const listDownloads = () => downloads.slice(0, 100).map(({ _item, _t, _r, ...d }) => ({ ...d, exists: d.state === 'progressing' ? false : fileExists(d.path) }))
 
 // ---------------------------------------------------------------- windows & tabs
 const windows = []
@@ -3067,4 +3071,4 @@ app.whenReady().then(async () => {
   powerMonitor.on('resume', () => Sync.syncNow().catch(() => {}))
 })
 
-module.exports = { __clips: clips, __clipWatch: clipWatch, __copyAllLinks: copyAllLinks, __pasteTarget: pasteTarget, __closedList: closedList, __reopenAt: reopenAt, __refreshClosedMenu: () => refreshClosedMenu(), __closedTabs: closedTabs, __reopenClosedWindow: reopenClosedWindow, __closeMany: closeMany, __reopenClosed: reopenClosed, __tabMenu: (w, id) => tabMenu(w, id), __copyPageLink: copyPageLink, __cleanLink: cleanLink, __setParcelNote: f => { parcelNote = f }, __showParcels: showParcels, __parcelState: () => ({ busy: parcelBusy, win: !!(parcelWin && !parcelWin.isDestroyed()) }), windows, createWindow, D, __suggest: suggest, allowSites, toggleSiteAdblock, __refreshAdblock: refreshAdblock, __adblockAge: adblockAge, __hl_add: addHighlight, __hl_recolor: recolorHighlight, __addToNTP: addToNTP, __checkParcels: checkParcels, __separateApps: { check: separateAppsCheck, had: hadBuiltInApps, LINKS: SEPARATE_APPS }, __nova: Nova, __novaDialog: novaDialog, __tabMenu: tabMenu, __readerMode: readerMode, __appMenu: appMenuPopup, __confirmQuit: confirmQuit, __printFailed: printFailed, __dockTemplate: dockTemplate, __jumpTasks: jumpTasks, __handleArgs: handleArgs, __recentSites: recentSites }
+module.exports = { __downloads: () => listDownloads(), __clips: clips, __clipWatch: clipWatch, __copyAllLinks: copyAllLinks, __pasteTarget: pasteTarget, __closedList: closedList, __reopenAt: reopenAt, __refreshClosedMenu: () => refreshClosedMenu(), __closedTabs: closedTabs, __reopenClosedWindow: reopenClosedWindow, __closeMany: closeMany, __reopenClosed: reopenClosed, __tabMenu: (w, id) => tabMenu(w, id), __copyPageLink: copyPageLink, __cleanLink: cleanLink, __setParcelNote: f => { parcelNote = f }, __showParcels: showParcels, __parcelState: () => ({ busy: parcelBusy, win: !!(parcelWin && !parcelWin.isDestroyed()) }), windows, createWindow, D, __suggest: suggest, allowSites, toggleSiteAdblock, __refreshAdblock: refreshAdblock, __adblockAge: adblockAge, __hl_add: addHighlight, __hl_recolor: recolorHighlight, __addToNTP: addToNTP, __checkParcels: checkParcels, __separateApps: { check: separateAppsCheck, had: hadBuiltInApps, LINKS: SEPARATE_APPS }, __nova: Nova, __novaDialog: novaDialog, __tabMenu: tabMenu, __readerMode: readerMode, __appMenu: appMenuPopup, __confirmQuit: confirmQuit, __printFailed: printFailed, __dockTemplate: dockTemplate, __jumpTasks: jumpTasks, __handleArgs: handleArgs, __recentSites: recentSites }

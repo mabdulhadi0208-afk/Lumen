@@ -23,11 +23,11 @@
 ;(function () {
   // ---- edit this list every release: it is the "New in Lumen" act of the film (only this version's changes)
   const WHATS_NEW = {
-    version: '4.4.21',
+    version: '4.4.22',
     items: [
-      { icon: 'copy', text: 'Clipboard history: press Option V or Option C for a glass list of what you copied lately, newest first' },
-      { icon: 'sparkle', text: 'Click a copy, press Enter or a number key to paste it into the page; Shift Enter only copies, Delete forgets one' },
-      { icon: 'shield', text: 'Kept in memory only and never on disk; private windows and passwords from Lumen are never kept, and you can pause it' },
+      { icon: 'download', text: 'Downloads, made over: what is downloading now sits in a lit card with its speed and the time left' },
+      { icon: 'search', text: 'Filter downloads by kind (Documents, Images, Media, Archives, Apps) and search them by name or site' },
+      { icon: 'check', text: 'A check springs onto each file as it finishes; copy any download link, and double click a file to open it' },
     ],
   }
 
@@ -1301,6 +1301,21 @@
         key.animate([{ opacity: 0, transform: 'translateY(-40px) scale(.8)' }, { opacity: 1, transform: 'translateY(4px) scale(1.04)', offset: .35 }, { opacity: 1, transform: 'none', offset: .5 }, { opacity: 1, transform: 'translateY(5px) scale(.94,.9)', offset: .62 }, { opacity: 1, transform: 'none', offset: .75 }, { opacity: 0, transform: 'translateY(-6px)' }], { duration: 1700, delay: n * 90, easing: 'cubic-bezier(.3,1.3,.5,1)', fill: 'both' }).finished.then(() => key.remove(), () => key.remove())
       })
     }, 3000)
+    // 4.4.22: the download. A drop of light falls into a small glass tray beside the title, a bar of light fills it
+    // with a spring, and a check pops on top as the file lands (transform and opacity only)
+    setTimeout(() => {
+      if (skip || still || !logo.offsetParent) return
+      const host = logo.offsetParent, x = logo.offsetLeft + logo.offsetWidth + 34, y = logo.offsetTop + logo.offsetHeight * .62
+      const el = (css, kf, o) => { const n = document.createElement('i'); n.style.cssText = 'position:absolute;pointer-events:none;' + css; host.appendChild(n); n.animate(kf, { easing: 'cubic-bezier(.3,1.3,.5,1)', fill: 'both', ...o }).finished.then(() => n.remove(), () => n.remove()); return n }
+      el(`left:${x + 19}px;top:${y - 70}px;width:10px;height:22px;border-radius:6px;background:linear-gradient(180deg,transparent,#fff);box-shadow:0 0 16px var(--hi)`,
+        [{ opacity: 0, transform: 'translateY(-30px) scaleY(1.6)' }, { opacity: 1, transform: 'translateY(30px) scaleY(1.2)', offset: .45 }, { opacity: 0, transform: 'translateY(56px) scaleY(.4)' }], { duration: 900 })
+      el(`left:${x}px;top:${y}px;width:48px;height:16px;border-radius:6px 6px 10px 10px;background:linear-gradient(180deg,rgba(255,255,255,.08),rgba(255,255,255,.2));box-shadow:inset 0 0 0 1.5px color-mix(in srgb,var(--hi) 70%,#fff),0 0 18px color-mix(in srgb,var(--hi) 40%,transparent)`,
+        [{ opacity: 0, transform: 'scale(.6)' }, { opacity: 1, transform: 'none', offset: .2 }, { opacity: 1, transform: 'none', offset: .8 }, { opacity: 0, transform: 'translateY(6px)' }], { duration: 2200 })
+      el(`left:${x + 4}px;top:${y + 5}px;width:40px;height:6px;border-radius:3px;transform-origin:0 50%;background:var(--nova);box-shadow:0 0 10px var(--hi)`,
+        [{ opacity: 0, transform: 'scaleX(0)' }, { opacity: 1, transform: 'scaleX(0)', offset: .25 }, { opacity: 1, transform: 'scaleX(1)', offset: .6 }, { opacity: 1, transform: 'scaleX(1)', offset: .82 }, { opacity: 0, transform: 'scaleX(1)' }], { duration: 2200 })
+      el(`left:${x + 34}px;top:${y - 18}px;width:22px;height:22px;border-radius:50%;background:linear-gradient(135deg,#34c78a,#1fa96f);box-shadow:0 0 0 2px rgba(255,255,255,.7),0 0 18px rgba(52,199,138,.7)`,
+        [{ opacity: 0, transform: 'scale(0) rotate(-40deg)' }, { opacity: 0, transform: 'scale(0) rotate(-40deg)', offset: .55 }, { opacity: 1, transform: 'scale(1.15)', offset: .68 }, { opacity: 1, transform: 'none', offset: .82 }, { opacity: 0, transform: 'scale(.8)' }], { duration: 2200 })
+    }, 5300)
     // 4.4.21: the clipboard. Three small cards of light stack up beside the title, one on top of the other with a
     // spring, then the top one slides off as if pasted, and the rest fade (transform and opacity only)
     setTimeout(() => {

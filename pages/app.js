@@ -656,6 +656,8 @@ function weekBars(all) {
   return `<span class="wk" aria-hidden="true">${n.map((v, i) => `<i style="--v:${(v / mx).toFixed(3)};--d:${i}" class="${i === 6 ? 'now' : ''}"><em>${new Date(day0 - (6 - i) * 864e5).toLocaleDateString([], { weekday: 'narrow' })}</em></i>`).join('')}</span>`
 }
 function topHosts(list, n) { const c = new Map(); for (const h of list) { const k = hostOf(h.url); if (k) c.set(k, (c.get(k) || 0) + (h.visits || 1)) } return [...c].sort((a, b) => b[1] - a[1]).slice(0, n).map(x => x[0]) }
+// 4.4.22: one time formatter for every row (toLocaleTimeString made a new one for each of up to 500 rows)
+const HTIME = new Intl.DateTimeFormat([], { hour: 'numeric', minute: '2-digit' })
 async function historyPage(m) {
   if (location.hash === '#archive') return archivePage(m)
   if (location.hash === '#highlights') return highlightsPage(m)
@@ -679,7 +681,7 @@ async function historyPage(m) {
       if (!same) { let k = n + 1; while (k < list.length && hostOf(list[k].url) === host && dayLabel(list[k].t) === lab) k++; run = k - n >= 3 ? { id: 'g' + n, start: n, more: k - n - 1 } : null }
       const fold = !!run && same
       if (fold && n === run.start + 1) html += `<button class="hmore" data-g="${run.id}">${fav(h.url)}<span>${run.more} more from ${esc(host.replace(/^www\./, ''))}</span>${ICONS.arrowRight}</button>`
-      html += `<div class="row ${fold ? 'hfold' : ''}" ${fold ? `data-g="${run.id}"` : ''} data-url="${esc(h.url)}"><span class="htime">${new Date(h.t).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}</span>${fav(h.url)}<div class="grow"><div class="t" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(h.title || h.url)}</div><div class="d">${esc(hostOf(h.url))}</div></div>${h.visits > 1 ? `<span class="hvisits">${h.visits} visits</span>` : ''}<button class="ib hov" data-forget title="Forget everything from ${esc(hostOf(h.url))}">${ICONS.trash || ICONS.close}</button><button class="ib" data-del title="Remove">${ICONS.close}</button></div>`
+      html += `<div class="row ${fold ? 'hfold' : ''}" ${fold ? `data-g="${run.id}"` : ''} data-url="${esc(h.url)}"><span class="htime">${HTIME.format(h.t)}</span>${fav(h.url)}<div class="grow"><div class="t" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(h.title || h.url)}</div><div class="d">${esc(hostOf(h.url))}</div></div>${h.visits > 1 ? `<span class="hvisits">${h.visits} visits</span>` : ''}<button class="ib hov" data-forget title="Forget everything from ${esc(hostOf(h.url))}">${ICONS.trash || ICONS.close}</button><button class="ib" data-del title="Remove">${ICONS.close}</button></div>`
       n++
     }
     $('#out').innerHTML = html + '</div>'
@@ -983,35 +985,87 @@ async function bookmarksPage(m) {
 function fmtBytes(n) { if (!n) return '0 B'; const u = ['B', 'KB', 'MB', 'GB']; let i = 0; while (n >= 1024 && i < 3) { n /= 1024; i++ } return n.toFixed(i ? 1 : 0) + ' ' + u[i] }
 const FKIND = [[/\.pdf$/i, 'PDF', '#e5484d', 'file'], [/\.(png|jpe?g|gif|webp|heic|svg|avif|bmp)$/i, 'IMG', '#12b886', 'camera'], [/\.(zip|rar|7z|gz|tgz|bz2|xz|tar)$/i, 'ZIP', '#e8a02c', 'box'], [/\.(mp4|mov|mkv|webm|avi|m4v)$/i, 'VIDEO', '#845ef7', 'play'], [/\.(mp3|wav|m4a|flac|aac|ogg)$/i, 'AUDIO', '#e5487d', 'speaker'], [/\.(docx?|pages|rtf|txt|md|odt)$/i, 'DOC', '#3b82f6', 'file'], [/\.(xlsx?|csv|numbers|ods)$/i, 'SHEET', '#16a34a', 'layers'], [/\.(pptx?|key|odp)$/i, 'SLIDES', '#f0763b', 'layers'], [/\.(dmg|pkg|exe|msi|deb|appimage|rpm)$/i, 'APP', '#64748b', 'download']]
 const fkind = n => FKIND.find(k => k[0].test(n || '')) || [null, (String(n).split('.').pop() || 'FILE').slice(0, 5).toUpperCase(), '#7c86a2', 'file']
+// 4.4.22: Downloads, made over. A spotlight on what is downloading now (live speed and time left), the files sorted
+// into In progress, Finished and Stopped, kind filters with counts (Documents, Images, Media, Archives, Apps), a search
+// over names and sites, a check that springs onto a file the moment it finishes, and Copy download link. Finished
+// files open on a double click. While something downloads only the numbers of its row change; the list is drawn
+// again only when its shape changes (a file is added, finishes, stops or is removed).
+const DL_KINDS = [['all', 'All', 'download'], ['docs', 'Documents', 'file', /^(PDF|DOC|SHEET|SLIDES)$/], ['images', 'Images', 'camera', /^IMG$/], ['media', 'Media', 'play', /^(VIDEO|AUDIO)$/], ['archives', 'Archives', 'box', /^ZIP$/], ['apps', 'Apps', 'layers', /^APP$/]]
+const dlKindOf = d => { const k = fkind(d.name)[1]; const f = DL_KINDS.find(x => x[3] && x[3].test(k)); return f ? f[0] : 'other' }
+const fmtRate = n => n > 0 ? fmtBytes(n) + '/s' : ''
+const fmtLeft = s => !isFinite(s) || s <= 0 ? '' : s < 60 ? Math.max(1, Math.round(s)) + ' s left' : s < 3600 ? Math.round(s / 60) + ' min left' : Math.round(s / 360) / 10 + ' hr left'
+function dlLive(d) {
+  const pct = d.total ? Math.min(100, Math.round(d.received / d.total * 100)) : 0
+  const bits = [`${fmtBytes(d.received)} of ${d.total ? fmtBytes(d.total) : 'unknown'}`]
+  if (d.paused) bits.push('Paused')
+  else { if (d.speed > 0) bits.push(fmtRate(d.speed)); if (d.total && d.speed > 0) { const l = fmtLeft((d.total - d.received) / d.speed); if (l) bits.push(l) } }
+  return { pct, text: bits.map(esc).join('  ·  ') + (d.total ? `  ·  <span class="dlpct">${pct}%</span>` : '') }
+}
+function dlRow(d, i) {
+  const k = fkind(d.name), live = d.state === 'progressing', ok = d.state === 'completed' && d.exists, site = esc(hostOf(d.url).replace(/^www\./, ''))
+  const lv = live ? dlLive(d) : null
+  const status = live ? lv.text : d.state === 'completed' ? (d.exists ? `${fmtBytes(d.total || d.received)}  ·  ${site}  ·  ${shortAgo(d.ended || d.started)}` : 'Moved or deleted') : d.state === 'cancelled' ? `Cancelled  ·  ${site}` : `Failed  ·  ${site}`
+  return `<div class="row dlrow ${live ? 'live' : ok ? 'ok' : 'off'}${d.paused ? ' paused' : ''}" data-id="${d.id}" style="--i:${i}"><span class="ftype ${live ? 'busy' : ok ? 'done' : 'bad'}" style="--fc:${k[2]}">${ICONS[k[3]] || ''}${esc(k[1])}<i class="dlok" aria-hidden="true">${ICONS.check}</i></span>`
+    + `<div class="grow"><div class="t dlname" title="${esc(d.name)}">${esc(d.name)}</div><div class="d">${status}</div>${live ? `<div class="bar dlbar"><i style="transform:scaleX(${(lv.pct / 100).toFixed(3)})"></i></div>` : ''}</div>`
+    + `<span class="dlacts">${ok ? `<button class="btn sm primary" data-a="open">${ICONS.file}Open</button><button class="ib" data-a="show" title="Show in folder" aria-label="Show in folder">${ICONS.folder}</button>` : ''}`
+    + (live ? `<button class="btn sm" data-a="pause">${d.paused ? 'Resume' : 'Pause'}</button><button class="btn sm danger" data-a="cancel">Cancel</button>` : '')
+    + (d.state === 'interrupted' || d.state === 'cancelled' ? `<button class="btn sm" data-a="retry">${ICONS.reload}Try again</button>` : '')
+    + `<button class="ib" data-a="copylink" title="Copy download link" aria-label="Copy download link">${ICONS.link}</button><button class="ib" data-a="remove" title="Remove from list" aria-label="Remove from list">${ICONS.close}</button></span></div>`
+}
 async function downloadsPage(m) {
-  m.innerHTML = `<h2>Downloads</h2><p class="lead">Files you downloaded since Lumen started.</p><div id="dlglance"></div><div class="toolbar"><div style="flex:1"></div><button class="btn" id="clr">${ICONS.trash || ''}Clear list</button></div><div class="card list" id="out"></div>`
-  let last = '', lastG = '', timer = 0
+  m.innerHTML = `<h2>Downloads</h2><p class="lead">Files you downloaded since Lumen started.</p><div id="dlglance"></div><div class="toolbar dltools"><input type="search" id="dlq" class="lg" placeholder="Search downloads by name or site" aria-label="Search downloads"><button class="btn" id="clr">${ICONS.trash || ''}Clear list</button></div><div id="dlkinds"></div><div id="out"></div>`
+  let lastG = '', lastK = '', shape = '', timer = 0, kind = 'all', q = '', list = [], seen = null
+  const shown = () => list.filter(d => (kind === 'all' || dlKindOf(d) === kind) && (!q || (d.name + ' ' + hostOf(d.url)).toLowerCase().includes(q)))
+  const paint = () => {
+    const busy = list.filter(d => d.state === 'progressing'), total = list.filter(d => d.state === 'completed').reduce((s, d) => s + (d.total || d.received || 0), 0)
+    const rate = busy.reduce((s, d) => s + (d.paused ? 0 : d.speed || 0), 0)
+    const g = glance([[String(list.length), list.length === 1 ? 'File' : 'Files', 'download', 0], [fmtBytes(total), 'Downloaded', 'box', 70], [String(busy.length), busy.length ? (rate > 0 ? fmtRate(rate) + ' right now' : 'Downloading now') : 'All done', 'reload', 150, busy.length ? 'dlbusy' : 'good']])
+    if (g !== lastG) { lastG = g; $('#dlglance').innerHTML = g }
+    // the kind filters: only kinds you have, each with its count (drawn again only when a count changes)
+    const counts = {}; for (const d of list) { const k = dlKindOf(d); counts[k] = (counts[k] || 0) + 1 }
+    if (kind !== 'all' && !counts[kind]) kind = 'all'
+    const kinds = DL_KINDS.filter(([k]) => k === 'all' || counts[k])
+    const kh = list.length ? `<div class="seg big dlseg" role="group" aria-label="Show">${kinds.map(([k, l, ic]) => `<button data-k="${k}" class="${k === kind ? 'on' : ''}" aria-pressed="${k === kind}">${ICONS[ic] || ''}${l}<em>${k === 'all' ? list.length : counts[k]}</em></button>`).join('')}</div>` : ''
+    const kkey = kinds.map(([k]) => k + (counts[k] || list.length)).join() + '|' + kind
+    if (kkey !== lastK) { lastK = kkey; $('#dlkinds').innerHTML = kh }
+    const vis = shown()
+    const sh = kind + '|' + q + '|' + vis.map(d => `${d.id}:${d.state}:${d.paused ? 1 : 0}:${d.exists ? 1 : 0}`).join(',')
+    if (sh === shape) {
+      // same rows: only the live numbers move (the bar is a transform, the text a small swap)
+      for (const d of vis) if (d.state === 'progressing') {
+        const r = document.querySelector(`.dlrow[data-id="${d.id}"]`); if (!r) continue
+        const lv = dlLive(d), b = r.querySelector('.dlbar i'), t = r.querySelector('.d')
+        if (b) b.style.transform = `scaleX(${(lv.pct / 100).toFixed(3)})`
+        if (t && t.innerHTML !== lv.text) t.innerHTML = lv.text
+      }
+      return
+    }
+    shape = sh
+    const groups = [['live', 'In progress', vis.filter(d => d.state === 'progressing')], ['done', 'Finished', vis.filter(d => d.state === 'completed')], ['off', 'Stopped', vis.filter(d => d.state !== 'progressing' && d.state !== 'completed')]]
+    let i = 0
+    const html = groups.filter(g => g[2].length).map(([k, l, rows]) => `<div class="daylabel dlgroup ${k}">${l} <b>${rows.length}</b></div><div class="card list dllist ${k}">${rows.map(d => dlRow(d, i++)).join('')}</div>`).join('')
+    $('#out').innerHTML = html || (list.length ? `<div class="empty">No downloads match${q ? ` "${esc(q)}"` : ''}</div>` : '<div class="empty dlempty">No downloads yet. Files you download show up here, with their speed while they come in.</div>')
+    // a file that just finished gets its check with a spring (not on the first draw)
+    if (seen) $$('.dlrow.ok').forEach(r => { if (seen.get(+r.dataset.id) === 'progressing') r.classList.add('landed') })
+    seen = new Map(list.map(d => [d.id, d.state]))
+  }
   const draw = async () => {
     clearTimeout(timer)
     if (!document.getElementById('out')) return
-    const list = await L.invoke('downloads')
-    const busy = list.filter(d => d.state === 'progressing').length, total = list.filter(d => d.state === 'completed').reduce((s, d) => s + (d.total || d.received || 0), 0)
-    const g = glance([[String(list.length), list.length === 1 ? 'File' : 'Files', 'download', 0], [fmtBytes(total), 'Downloaded', 'box', 70], [String(busy), busy === 1 ? 'Downloading now' : 'Downloading now', 'reload', 150, busy ? '' : 'good']])
-    if (g !== lastG) { lastG = g; $('#dlglance').innerHTML = g }
-    const html = list.length ? list.map(d => {
-      const pct = d.total ? Math.round(d.received / d.total * 100) : 0, k = fkind(d.name), live = d.state === 'progressing', ok = d.state === 'completed' && d.exists
-      const status = live ? `${fmtBytes(d.received)} of ${d.total ? fmtBytes(d.total) : 'unknown'}${d.paused ? ', paused' : ''}` : d.state === 'completed' ? (d.exists ? fmtBytes(d.total || d.received) + '  ·  ' + esc(hostOf(d.url)) : 'Moved or deleted') : d.state === 'cancelled' ? 'Cancelled' : 'Failed'
-      return `<div class="row dlrow" data-id="${d.id}"><span class="ftype ${live ? 'busy' : ok ? '' : 'bad'}" style="--fc:${k[2]}">${ICONS[k[3]] || ''}${esc(k[1])}</span><div class="grow"><div class="t" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(d.name)}</div><div class="d">${status}${live && d.total ? `  ·  <span class="dlpct">${pct}%</span>` : ''}</div>${live ? `<div class="bar"><i style="width:${pct}%"></i></div>` : ''}</div>
-        ${ok ? '<button class="btn sm primary" data-a="open">Open</button><button class="btn sm" data-a="show">Show in folder</button>' : ''}
-        ${live ? `<button class="btn sm" data-a="pause">${d.paused ? 'Resume' : 'Pause'}</button><button class="btn sm danger" data-a="cancel">Cancel</button>` : ''}
-        ${d.state === 'interrupted' || d.state === 'cancelled' ? '<button class="btn sm" data-a="retry">Retry</button>' : ''}
-        <button class="ib" data-a="remove" title="Remove from list">${ICONS.close}</button></div>`
-    }).join('') : '<div class="empty">No downloads yet</div>'
-    // only touch the page when something changed, so nothing redraws at idle
-    if (html !== last) {
-      const bars = list.length && last && list.every(d => document.querySelector(`.dlrow[data-id="${d.id}"]`)) && html.replace(/width:\d+%|\d+(\.\d)? [KMG]?B of|\d+%/g, '') === last.replace(/width:\d+%|\d+(\.\d)? [KMG]?B of|\d+%/g, '')
-      if (bars) list.forEach(d => { const r = document.querySelector(`.dlrow[data-id="${d.id}"]`), b = r.querySelector('.bar i'), pct = d.total ? Math.round(d.received / d.total * 100) : 0; if (b) b.style.width = pct + '%'; const t = r.querySelector('.d'); if (t) t.innerHTML = `${fmtBytes(d.received)} of ${d.total ? fmtBytes(d.total) : 'unknown'}${d.paused ? ', paused' : ''}${d.total ? `  ·  <span class="dlpct">${pct}%</span>` : ''}` })
-      else $('#out').innerHTML = html
-      last = html
-    }
-    timer = setTimeout(draw, busy ? 1000 : 4000)
+    list = await L.invoke('downloads')
+    paint()
+    timer = setTimeout(draw, list.some(d => d.state === 'progressing') ? 1000 : 4000)
   }
-  $('#out').onclick = async e => { const b = e.target.closest('[data-a]'); if (!b) return; await L.invoke('download', +b.closest('[data-id]').dataset.id, b.dataset.a); draw() }
+  $('#dlkinds').onclick = e => { const b = e.target.closest('[data-k]'); if (!b) return; kind = b.dataset.k; $$('#dlkinds [data-k]').forEach(x => { x.classList.toggle('on', x === b); x.setAttribute('aria-pressed', x === b) }); lastK = lastK.replace(/\|[^|]*$/, '|' + kind); paint() }
+  let qt; $('#dlq').oninput = e => { clearTimeout(qt); qt = setTimeout(() => { q = e.target.value.trim().toLowerCase(); paint() }, 80) }
+  $('#out').onclick = async e => {
+    const b = e.target.closest('[data-a]'); if (!b) return
+    const id = +b.closest('[data-id]').dataset.id, d = list.find(x => x.id === id)
+    if (b.dataset.a === 'copylink') { if (d) { await navigator.clipboard.writeText(d.url); flash('Download link copied') } return }
+    if (b.dataset.a === 'remove') { b.closest('.dlrow').classList.add('gone'); await new Promise(res => setTimeout(res, 220)) }
+    await L.invoke('download', id, b.dataset.a); draw()
+  }
+  $('#out').ondblclick = e => { const r = e.target.closest('.dlrow.ok'); if (r && !e.target.closest('button')) L.invoke('download', +r.dataset.id, 'open') }
   $('#clr').onclick = async () => { await L.invoke('download', -1, 'clear'); draw() }
   draw()
 }

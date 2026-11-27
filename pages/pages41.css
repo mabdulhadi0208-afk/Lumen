@@ -413,3 +413,57 @@ body[data-motion="off"] img.fav.lgx { animation: none; }
 .main .hero .hero-tx, .err .hero .hero-tx { container-type: inline-size; }
 .main .hero h2, .err .hero h1 { font-size: min(clamp(52px, 6.2vw, 96px), 16cqi); overflow-wrap: break-word; text-wrap: balance; hyphens: manual; }
 @media (max-width: 1040px) { .main .hero h2, .err .hero h1 { font-size: min(clamp(38px, 5.2vw, 56px), 16cqi); } }
+
+/* ---------------------------------------------------------------- 4.4.22: Downloads, made over
+   Kind filters with counts on a glass rail, In progress / Finished / Stopped groups, a lit spotlight card for what
+   is downloading now (live speed and time left, the bar grows as a transform), a green check that springs onto a file
+   the moment it lands, quieter icon actions that wake on hover, and rows that rise in one after another. */
+.dltools { margin-bottom: 16px; }
+.dlseg { display: flex; flex-wrap: wrap; width: max-content; max-width: 100%; }
+.dlseg button { display: inline-flex; align-items: center; gap: 8px; }
+.dlseg button svg { width: 15px; height: 15px; flex: none; }
+.dlseg em { min-width: 20px; height: 20px; padding: 0 6px; border-radius: 999px; display: inline-grid; place-items: center; font: 750 11px/1 var(--display); font-style: normal; font-variant-numeric: tabular-nums;
+  background: var(--hover); color: var(--fg2); box-shadow: var(--rim); transition: background .2s, color .2s; }
+.dlseg button.on em { background: rgba(255,255,255,.26); color: var(--on-accent, #fff); box-shadow: inset 0 1px 0 rgba(255,255,255,.35); }
+.dlgroup.live::before { background: var(--nova); }
+.dlgroup.done::before { background: linear-gradient(135deg, #34c78a, #1fa96f); box-shadow: 0 0 0 3px rgba(52,199,138,.16), 0 0 10px rgba(52,199,138,.5); }
+.dlgroup.off::before { background: #8a90a2; box-shadow: 0 0 0 3px rgba(138,144,162,.16); }
+.dlgroup.done b { background: linear-gradient(135deg, #34c78a, #1fa96f); box-shadow: 0 3px 10px rgba(52,199,138,.35); }
+.dlgroup.off b { background: #8a90a2; box-shadow: none; }
+.dllist { overflow: hidden; }
+.dllist.live { position: relative; background: linear-gradient(120deg, color-mix(in srgb, var(--accent) 14%, var(--card, var(--glass))), var(--card, var(--glass)) 46%, color-mix(in srgb, var(--accent3) 10%, var(--card, var(--glass))));
+  box-shadow: inset 0 0 0 1.5px var(--a30), 0 0 0 5px var(--a12), 0 22px 54px color-mix(in srgb, var(--accent) 26%, transparent), var(--shadow); }
+.dllist.live .row { min-height: 92px; padding-top: 16px; padding-bottom: 16px; }
+.dllist.live .dlname { font-size: 16.5px; }
+.dllist.live .d { font-variant-numeric: tabular-nums; }
+.dlrow { gap: 16px; animation: dlrise .55s var(--spring) both; animation-delay: calc(min(var(--i, 0), 12) * 45ms); }
+@keyframes dlrise { from { opacity: 0; transform: translateY(12px) scale(.985); } to { opacity: 1; transform: none; } }
+.dlrow.gone { transition: transform .22s var(--ease), opacity .2s; transform: translateX(18px) scale(.97); opacity: 0; }
+.dlname { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.dlrow.ok { cursor: default; }
+.dlrow.off .t { color: var(--fg2); }
+.dlacts { display: flex; align-items: center; gap: 8px; flex: none; }
+.dlacts .btn svg { width: 14px; height: 14px; margin-right: 6px; }
+.dlacts .ib { opacity: .45; }
+.dlrow:hover .dlacts .ib, .dlacts .ib:focus-visible { opacity: 1; }
+.dlacts .ib[data-a="remove"]:hover { background: rgba(229,72,77,.12); color: var(--red); box-shadow: inset 0 0 0 1px rgba(229,72,77,.25); }
+.dlbar { max-width: 520px; height: 9px; }
+.dllist.live .dlbar { max-width: none; height: 10px; margin-top: 12px; }
+.dlbar i { width: 100%; transform-origin: 0 50%; transition: transform .7s var(--spring); }
+.dlbar i::after { display: none; }
+.dlrow.paused .dlbar i { background: linear-gradient(180deg, rgba(255,255,255,.35), transparent 60%), #9aa0b2; box-shadow: none; }
+.dlrow.paused .dlbar i::after { animation: none; }
+.ftype.busy::after { content: ''; position: absolute; inset: -5px; border-radius: 14px 20px 14px 14px; box-shadow: 0 0 0 2px var(--a50); opacity: 0; animation: dlping 1.8s ease-out 4; }
+@keyframes dlping { 0% { opacity: .9; transform: scale(.94); } 100% { opacity: 0; transform: scale(1.18); } }
+.ftype .dlok { position: absolute; left: -7px; top: -6px; width: 20px; height: 20px; border-radius: 50%; display: none; place-items: center; color: #fff;
+  background: linear-gradient(180deg, rgba(255,255,255,.35), transparent 60%), linear-gradient(135deg, #34c78a, #1fa96f); box-shadow: 0 0 0 2.5px var(--bg, #fff), 0 4px 10px rgba(31,169,111,.45); }
+.ftype .dlok svg { position: static; width: 12px; height: 12px; margin: 0; }
+.ftype.done .dlok { display: grid; }
+.dlrow.landed .ftype { animation: dlland .8s var(--spring) both; }
+.dlrow.landed .dlok { animation: dlcheck .7s .15s cubic-bezier(.3,1.5,.5,1) both; }
+@keyframes dlland { 0% { transform: scale(.9) translateY(4px); } 45% { transform: scale(1.06) translateY(-2px); } 100% { transform: none; } }
+@keyframes dlcheck { 0% { transform: scale(0) rotate(-30deg); opacity: 0; } 100% { transform: none; opacity: 1; } }
+.gl.dlbusy .gl-ic { animation: dlping 1.8s ease-out 2; }
+@media (prefers-reduced-motion: reduce) { .dlrow, .dlrow.landed .ftype, .dlrow.landed .dlok, .ftype.busy::after { animation: none !important; } .dlbar i { transition: none; } }
+/* 4.4.22 lag fix: History rows below the fold are not laid out or painted until you scroll near them */
+#out > .tl > .row { content-visibility: auto; contain-intrinsic-size: auto 60px; }

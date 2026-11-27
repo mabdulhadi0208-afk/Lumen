@@ -758,6 +758,7 @@ function buildResults(q, data) {
   const lq = qq.toLowerCase()
   const cmds = lq ? COMMANDS.map(c => [c, cmdScore(c, lq)]).filter(x => x[1] > 0).sort((a, b) => b[1] - a[1]).slice(0, 4).map(x => x[0]) : []
   for (const c of cmds) out.push({ sec: 'Actions', icon: ICONS[c.i], title: c.t, sub: '', key: c.s ? c.s() : 'Run', go: () => { closeCmd(true); c.run() } })
+  for (const c of (data.closed || [])) out.push({ sec: 'Recently closed', icon: c.kind === 'tab' ? favHTML({ url: c.url, favicon: '' }) : ICONS.tabs, title: c.title, sub: c.kind === 'tab' ? hostOf(c.url) : '', key: 'Reopen', go: () => { closeCmd(true); api.do('reopenAt', c.i) } })
   for (const t of (data.tabs || [])) out.push({ sec: 'Open tabs', icon: favHTML(t), title: titleOf(t), sub: hostOf(t.url), key: 'Switch', go: () => { closeCmd(true); api.do('switchTab', t.id, t.win) } })
   const seenUrls = new Set()
   for (const b of (data.bookmarks || [])) { seenUrls.add(b.url); out.push({ sec: 'Bookmarks', icon: ICONS.starFill, title: b.title || b.url, sub: hostOf(b.url), key: '', go: () => go(b.url) }) }
@@ -884,7 +885,7 @@ function refresh(q) {
   // search engine's suggestions follow after a short pause in typing
   Promise.resolve(api.do('suggest', typed, { local: true })).then(full => {
     if (my !== suggestSeq || overlayOpen !== 'cmd' || !full || (typeof aiCmdBusy === 'function' && aiCmdBusy())) return
-    const extra = full.calc != null || full.conv || full.parcel || full.shortcut
+    const extra = full.calc != null || full.conv || full.parcel || full.shortcut || (full.closed && full.closed.length)
     const same = loc && !extra && sameList(loc.tabs, full.tabs, 'id') && sameList(loc.history, full.history, 'url') && sameList(loc.bookmarks, full.bookmarks, 'url')
     const webPending = full.webPending
     if (!same) {

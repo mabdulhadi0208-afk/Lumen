@@ -1872,6 +1872,11 @@ async function suggest(w, text, opts) {
     if (match(t.url, t.title) && !t.url.startsWith('lumen://newtab')) out.tabs.push({ id: t.id, win: windows.indexOf(ww), title: t.title, url: t.url, favicon: t.favicon })
   }
   out.tabs = out.tabs.slice(0, 3)
+  // 4.4.19: what you closed is searchable too: a tab, a batch or a window matches by any of its pages (not in private windows)
+  if (!(w && w.incognito) && s.length >= 2) {
+    const pages = c => c.win ? c.win.tabs : c.batch ? c.batch : [c]
+    out.closed = closedList(30).filter(x => pages(closedTabs[closedTabs.length - 1 - x.i]).some(p => match(p.url, p.title))).slice(0, 3)   // i counts from the newest
+  }
   out.bookmarks = D.liveBookmarks().filter(b => match(b.url, b.title)).slice(0, 3)
   const hist = D.listHistory(q, 40)
   hist.sort((a, b) => {

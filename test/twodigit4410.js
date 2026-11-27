@@ -46,15 +46,15 @@ app.whenReady().then(async () => {
     nativeTheme.themeSource = theme
     cur = { current: '4.4.9', latest, size: 127e6, lastCheck: Date.now(), notes: NOTES, appIcon: 'default', status, accent: '#5b8cff', ...extra }
     const w = new BrowserWindow({ width: 600, height: 272 + 5 * 26, show: false, transparent: true, frame: false, webPreferences: { preload: path.join(__dirname, '../src/preload-update.js'), contextIsolation: true, sandbox: true } })
-    await w.loadFile(path.join(__dirname, '../ui/update.html')); await wait(1200)
+    await w.loadFile(path.join(__dirname, '../ui/update.html')); await wait(1200); await w.webContents.executeJavaScript('document.fonts.ready.then(() => 1)'); await wait(250)
     const r = await w.webContents.executeJavaScript(`(() => { const b = document.getElementById('title'), c = document.getElementById('card').getBoundingClientRect(), r = b.getBoundingClientRect()
-      return { text: b.textContent, fits: b.scrollWidth <= b.clientWidth + 1, inside: r.right <= c.right + 1, size: parseFloat(getComputedStyle(b).fontSize) } })()`)
+      return { text: b.textContent, fits: b.scrollWidth <= b.clientWidth, inside: r.right <= c.right + 1, size: parseFloat(getComputedStyle(b).fontSize) } })()`)
     w.destroy(); return r
   }
   for (const theme of ['light', 'dark']) {
-    for (const [st, extra] of [['downloading', { progress: 40, bytes: 50e6, speed: 6e6, eta: 12 }], ['available', {}], ['ready', { verified: true }]]) {
-      const r = await card(theme, 'v4.4.10', st, extra)
-      ok(/4\.4\.10/.test(r.text) && r.fits && r.inside, `${theme} ${st}: "${r.text}" fits on one line (${r.size}px)`)
+    for (const V of ['v4.4.10', 'v4.4.12', 'v4.4.88']) for (const [st, extra] of [['downloading', { progress: 40, bytes: 50e6, speed: 6e6, eta: 12 }], ['available', {}], ['ready', { verified: true }]]) {
+      const r = await card(theme, V, st, extra)
+      ok(r.text.includes(V.slice(1)) && r.fits && r.inside, `${theme} ${st}: "${r.text}" fits on one line (${r.size}px)`)
     }
     const long = await card(theme, 'v12.10.10', 'downloading', { progress: 40, bytes: 50e6, speed: 6e6, eta: 12 })
     ok(long.fits && long.size >= 17, `${theme}: even "${long.text}" fits (${long.size}px)`)

@@ -611,6 +611,7 @@ class BrowserWin {
         const last = closedTabs[closedTabs.length - 1]
         if (st.tabs.length === 1 && last && !last.batch && !last.win && last.url === st.tabs[0].url) closedTabs.pop()   // its last tab was just closed: keep one entry
         closedTabs.push({ win: st, at: Date.now() }); while (closedTabs.length > 30) closedTabs.shift()
+        refreshClosedMenu()
       } catch {}
     })
     this.win.on('closed', () => {
@@ -1053,6 +1054,7 @@ class BrowserWin {
     const url = t.view ? t.view.webContents.getURL() : t.url
     if (!this.incognito && url && url !== 'lumen://newtab/') (closingBatch || closedTabs).push({ url, title: t.title, index: this.order.indexOf(id), pinned: t.pinned })
     if (!closingBatch && closedTabs.length > 30) closedTabs.shift()
+    if (!closingBatch) refreshClosedMenu()
     if (/^https?:/.test(url || '')) spareChanged()
     AIHost.tabClosed(this, id); Agent.tabClosed(id)
     const idx = this.order.indexOf(id)
@@ -1960,7 +1962,7 @@ ipcMain.handle('ui', async (e, action, ...a) => {
       case 'translate': return t && translateTab(w, t)
       case 'fullscreen': return w.win.setFullScreen(!w.win.isFullScreen())
       case 'savePage': return wc && savePage(wc)
-      case 'reopenAt': { const i = closedTabs.length - 1 - a[0]; const c = closedTabs.splice(i, 1)[0]; if (c) w.createTab(c.url, { pinned: c.pinned }); return }
+      case 'reopenAt': return reopenAt(w, a[0])
       case 'closeDuplicates': { const urlOf = x => samePage(x.view ? x.view.webContents.getURL() : x.url); const seen = new Set(t ? [urlOf(t)] : []), dup = []; for (const id of [...w.order]) { if (id === w.activeId) continue; const x = w.tabs.get(id); const u = urlOf(x); if (seen.has(u) && !x.pinned) dup.push(id); else seen.add(u) } if (!dup.length) { w.send('toast', 'No duplicate tabs'); return 0 } return closeMany(w, dup, 'duplicates') }
       case 'closeOthers': return closeMany(w, w.order.filter(id => id !== w.activeId && !w.tabs.get(id).pinned))
       case 'muteOthers': { for (const x of w.tabs.values()) if (x.id !== w.activeId && x.view) { x.muted = true; x.view.webContents.setAudioMuted(true) } w.pushState(); return }
@@ -1975,7 +1977,7 @@ ipcMain.handle('ui', async (e, action, ...a) => {
       case 'archiveNow': return archiveIdleTabs()
       case 'readLaterOpen': { const url = String(a[0] || ''); if (!D.isReadLater(url)) return; D.removeReadLater(url); w.createTab(url, { active: true }); return }
       case 'readLaterRemove': return D.removeReadLater(String(a[0] || ''))
-      case 'menuInfo': return { parcels: Parcels.active().length, readLater: readLaterList(6), readLaterCount: D.readLater.get().length, saved: !!t && D.isReadLater(t.view ? t.view.webContents.getURL() : t.url), sessions: (D.settings.get('savedSessions') || []).map(s => ({ id: s.id, name: s.name, count: s.tabs.length })), closed: closedTabs.slice(-5).reverse().map(c => ({ title: c.title || c.url, url: c.url })), version: app.getVersion(), update: Updater.getState(), zoom: t ? Math.round(Math.pow(1.2, t.zoom || 0) * 100) : 100, incognito: w.incognito, tabLayout: D.settings.get('tabLayout'), fullscreen: w.win.isFullScreen(), passkeys: Passkeys.list().length, passwords: D.listPasswords().length }
+      case 'menuInfo': return { parcels: Parcels.active().length, readLater: readLaterList(6), readLaterCount: D.readLater.get().length, saved: !!t && D.isReadLater(t.view ? t.view.webContents.getURL() : t.url), sessions: (D.settings.get('savedSessions') || []).map(s => ({ id: s.id, name: s.name, count: s.tabs.length })), closed: closedList(5), version: app.getVersion(), update: Updater.getState(), zoom: t ? Math.round(Math.pow(1.2, t.zoom || 0) * 100) : 100, incognito: w.incognito, tabLayout: D.settings.get('tabLayout'), fullscreen: w.win.isFullScreen(), passkeys: Passkeys.list().length, passwords: D.listPasswords().length }
       case 'zoom': return t && w.zoom(t.id, a[0])
       // a Settings section goes to the open Settings tab (switched in place) when there is one
       case 'openPage': { const pg = String(a[0] || ''); if (/^settings(\/|$)/.test(pg)) { openSettings(w, pg.replace(/^settings\/?/, '')); return } return w.createTab('lumen://' + pg) }
@@ -2037,11 +2039,31 @@ function reopenWindow(st) {
 }
 // Reopen Closed Window: the most recent window you closed, even if tabs were closed after it
 function reopenClosedWindow() {
-  for (let i = closedTabs.length - 1; i >= 0; i--) if (closedTabs[i].win) { const [c] = closedTabs.splice(i, 1); reopenWindow(c.win); return c.win.tabs.length }
+  for (let i = closedTabs.length - 1; i >= 0; i--) if (closedTabs[i].win) { const [c] = closedTabs.splice(i, 1); refreshClosedMenu(); reopenWindow(c.win); return c.win.tabs.length }
   return 0
 }
+// 4.4.16: what a closed entry is called in the lists: a tab, a batch of tabs, or a whole window
+function closedLabel(c) {
+  if (c.win) { const n = c.win.tabs.length, a = c.win.tabs[c.win.active] || c.win.tabs[0] || {}; return { kind: 'window', n, title: `Window with ${n} tab${n === 1 ? '' : 's'}: ${a.title || a.url || ''}`, url: a.url || '' } }
+  if (c.batch) { const n = c.batch.length, a = c.batch[0] || {}; return { kind: 'batch', n, title: `${n} tabs: ${a.title || a.url || ''}`, url: a.url || '' } }
+  return { kind: 'tab', n: 1, title: c.title || c.url, url: c.url }
+}
+// the newest closed things first, as the lists show them (i counts from the newest)
+const closedList = (max, tabsOnly) => closedTabs.map((c, k) => ({ c, k })).reverse().filter(x => !tabsOnly || (!x.c.win && !x.c.batch)).slice(0, max).map(x => ({ ...closedLabel(x.c), i: closedTabs.length - 1 - x.k }))
+// reopen one entry, whatever it is, taken out of the list
+function reopenEntry(w, c) {
+  if (!c) return 0
+  if (c.win) { reopenWindow(c.win); return c.win.tabs.length }
+  if (!w || !w.win || w.win.isDestroyed()) { createWindow({ urls: c.batch ? c.batch.map(e => e.url) : [c.url] }); return c.batch ? c.batch.length : 1 }
+  if (c.batch) { for (const e of c.batch.slice().reverse()) w.createTab(e.url, { index: Math.min(e.index, w.order.length), pinned: e.pinned, active: false }); w.send('toast', `Reopened ${c.batch.length} tabs`); return c.batch.length }
+  w.createTab(c.url, { index: Math.min(c.index ?? w.order.length, w.order.length), pinned: c.pinned }); return 1
+}
+// the menu bar is built once; rebuild it a moment after the closed list changes so Recently Closed stays current
+let closedMenuT = null
+function refreshClosedMenu() { clearTimeout(closedMenuT); closedMenuT = setTimeout(() => { try { buildMenu() } catch (e) { log('menu rebuild failed', e.message) } }, 150) }
+function reopenAt(w, i) { const k = closedTabs.length - 1 - (+i || 0); if (k < 0 || k >= closedTabs.length) return 0; const c = closedTabs.splice(k, 1)[0]; refreshClosedMenu(); return reopenEntry(w, c) }
 function reopenClosed(w) {
-  const c = closedTabs.pop()
+  const c = closedTabs.pop(); refreshClosedMenu()
   if (!c) return 0
   if (c.win) { reopenWindow(c.win); return c.win.tabs.length }
   if (!w || !w.win || w.win.isDestroyed()) { createWindow({ urls: c.batch ? c.batch.map(e => e.url) : [c.url] }); return c.batch ? c.batch.length : 1 }
@@ -2059,6 +2081,7 @@ function closeMany(w, ids, what = 'tabs') {
     const got = closingBatch; closingBatch = null
     if (got.length > 1) closedTabs.push({ batch: got }); else closedTabs.push(...got)
     while (closedTabs.length > 30) closedTabs.shift()
+    refreshClosedMenu()
   }
   if (ids.length > 1) w.send('tabs-closed', { n: ids.length, what }); else w.send('toast', what === 'duplicates' ? 'Closed 1 duplicate tab' : 'Closed 1 tab')
   return ids.length
@@ -2333,7 +2356,7 @@ ipcMain.handle('lumen', async (e, action, ...a) => {
       case 'topSites': return D.topSites(8)
       case 'siteIcons': return w && w.incognito ? {} : D.iconsFor(a[0])
       case 'stats': return { blocked: blockedTotal, since: D.settings.get('statsSince') || 0 }
-      case 'home': { const week = blockedWeek(); return { private: !!(w && w.incognito), today: week[6].n, week, total: blockedTotal, adblock: !!D.settings.get('adblock'), closed: w && w.incognito ? [] : closedTabs.slice(-6).reverse().map(c => ({ url: c.url, title: c.title || '' })) } }
+      case 'home': { const week = blockedWeek(); return { private: !!(w && w.incognito), today: week[6].n, week, total: blockedTotal, adblock: !!D.settings.get('adblock'), closed: w && w.incognito ? [] : closedList(6, true).map(c => ({ url: c.url, title: c.title || '' })) } }
       case 'suggest': return suggest(w || { incognito: false }, String(a[0] || '').slice(0, 300), a[1])
       case 'suggestWeb': return webSuggest(w || { incognito: false }, String(a[0] || '').slice(0, 300))
       case 'weather': return weatherFor(a[0])
@@ -2549,6 +2572,8 @@ function buildMenu() {
       { label: 'Forward', accelerator: 'CmdOrCtrl+]', click: focused((w, t) => activeWc(w, t) && activeWc(w, t).navigationHistory.goForward()) },
       { label: 'Back ', accelerator: 'CmdOrCtrl+Left', visible: false, click: focused((w, t) => activeWc(w, t) && activeWc(w, t).navigationHistory.goBack()) },
       { label: 'Forward ', accelerator: 'CmdOrCtrl+Right', visible: false, click: focused((w, t) => activeWc(w, t) && activeWc(w, t).navigationHistory.goForward()) },
+      { type: 'separator' },
+      { label: 'Recently Closed', id: 'recentlyClosed', submenu: (() => { const l = closedList(10); return l.length ? [...l.map(c => ({ label: (c.title || c.url || 'Tab').slice(0, 70), click: () => reopenAt(lastFocused(), c.i) })), { type: 'separator' }, { label: 'Reopen Last Closed Window', enabled: closedTabs.some(c => c.win), click: () => reopenClosedWindow() }] : [{ label: 'Nothing closed yet', enabled: false }] })() },
       { type: 'separator' },
       { label: 'Show All History', accelerator: 'CmdOrCtrl+Y', click: focused(w => w.createTab('lumen://history')) },
       { label: 'Downloads', accelerator: 'CmdOrCtrl+Shift+J', click: focused(w => w.createTab('lumen://downloads')) },
@@ -2960,4 +2985,4 @@ app.whenReady().then(async () => {
   powerMonitor.on('resume', () => Sync.syncNow().catch(() => {}))
 })
 
-module.exports = { __closedTabs: closedTabs, __reopenClosedWindow: reopenClosedWindow, __closeMany: closeMany, __reopenClosed: reopenClosed, __tabMenu: (w, id) => tabMenu(w, id), __copyPageLink: copyPageLink, __cleanLink: cleanLink, __setParcelNote: f => { parcelNote = f }, __showParcels: showParcels, __parcelState: () => ({ busy: parcelBusy, win: !!(parcelWin && !parcelWin.isDestroyed()) }), windows, createWindow, D, __suggest: suggest, allowSites, toggleSiteAdblock, __refreshAdblock: refreshAdblock, __adblockAge: adblockAge, __hl_add: addHighlight, __hl_recolor: recolorHighlight, __addToNTP: addToNTP, __checkParcels: checkParcels, __separateApps: { check: separateAppsCheck, had: hadBuiltInApps, LINKS: SEPARATE_APPS }, __nova: Nova, __novaDialog: novaDialog, __tabMenu: tabMenu, __readerMode: readerMode, __appMenu: appMenuPopup, __confirmQuit: confirmQuit, __printFailed: printFailed, __dockTemplate: dockTemplate, __jumpTasks: jumpTasks, __handleArgs: handleArgs, __recentSites: recentSites }
+module.exports = { __closedList: closedList, __reopenAt: reopenAt, __refreshClosedMenu: () => refreshClosedMenu(), __closedTabs: closedTabs, __reopenClosedWindow: reopenClosedWindow, __closeMany: closeMany, __reopenClosed: reopenClosed, __tabMenu: (w, id) => tabMenu(w, id), __copyPageLink: copyPageLink, __cleanLink: cleanLink, __setParcelNote: f => { parcelNote = f }, __showParcels: showParcels, __parcelState: () => ({ busy: parcelBusy, win: !!(parcelWin && !parcelWin.isDestroyed()) }), windows, createWindow, D, __suggest: suggest, allowSites, toggleSiteAdblock, __refreshAdblock: refreshAdblock, __adblockAge: adblockAge, __hl_add: addHighlight, __hl_recolor: recolorHighlight, __addToNTP: addToNTP, __checkParcels: checkParcels, __separateApps: { check: separateAppsCheck, had: hadBuiltInApps, LINKS: SEPARATE_APPS }, __nova: Nova, __novaDialog: novaDialog, __tabMenu: tabMenu, __readerMode: readerMode, __appMenu: appMenuPopup, __confirmQuit: confirmQuit, __printFailed: printFailed, __dockTemplate: dockTemplate, __jumpTasks: jumpTasks, __handleArgs: handleArgs, __recentSites: recentSites }

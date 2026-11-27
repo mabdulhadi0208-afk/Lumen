@@ -2220,3 +2220,7 @@ body.compact.toplayout #plusdock > .newtab { width: 26px; height: 26px; border-r
 @keyframes totopTrail416 { 0% { opacity: 0; transform: translateY(6px) scaleY(.3); } 35% { opacity: .9; transform: translateY(-4px) scaleY(1); } 100% { opacity: 0; transform: translateY(-14px) scaleY(.4); } }
 body[data-motion="off"] .tab.totop .icon, body[data-motion="off"] .tab.totop .icon::after { animation: none; }
 @media (prefers-reduced-motion: reduce) { .tab.totop .icon, .tab.totop .icon::after { animation: none; } }
+
+/* 4.4.16: a closed batch of tabs or a whole window in Recently closed: a small tabs glyph in the accent, not a site icon */
+.mm-kind { display: inline-grid; place-items: center; width: 16px; height: 16px; color: var(--accent); }
+.mm-kind svg { width: 15px; height: 15px; }

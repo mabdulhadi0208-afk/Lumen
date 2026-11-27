@@ -23,11 +23,11 @@
 ;(function () {
   // ---- edit this list every release: it is the "New in Lumen" act of the film (only this version's changes)
   const WHATS_NEW = {
-    version: '4.4.16',
+    version: '4.4.17',
     items: [
-      { icon: 'clock', text: 'New History, Recently Closed in the menu bar: your last ten closed tabs, batches and windows, by name, one click to bring any back' },
-      { icon: 'tabs', text: 'Recently closed in the main menu names batches and windows too, and brings the whole lot back' },
-      { icon: 'sparkle', text: 'Fixed: picking a batch or a window there could open an empty tab instead' },
+      { icon: 'clock', text: 'Recently Closed survives a restart: the tabs, batches and windows you closed are still there next time you open Lumen' },
+      { icon: 'shield', text: 'Clear history clears it too, for the same time range, and private windows are never kept' },
+      { icon: 'sparkle', text: 'The window Lumen quit with comes back with your session, so it is not listed twice' },
     ],
   }
 
@@ -1301,6 +1301,18 @@
         key.animate([{ opacity: 0, transform: 'translateY(-40px) scale(.8)' }, { opacity: 1, transform: 'translateY(4px) scale(1.04)', offset: .35 }, { opacity: 1, transform: 'none', offset: .5 }, { opacity: 1, transform: 'translateY(5px) scale(.94,.9)', offset: .62 }, { opacity: 1, transform: 'none', offset: .75 }, { opacity: 0, transform: 'translateY(-6px)' }], { duration: 1700, delay: n * 90, easing: 'cubic-bezier(.3,1.3,.5,1)', fill: 'both' }).finished.then(() => key.remove(), () => key.remove())
       })
     }, 3000)
+    // 4.4.17: the keepsake. A small glass box of light drops in beside the title, its lid closes with a soft spring
+    // click, and it glows once, like your closed tabs being kept for next time (transform and opacity only)
+    setTimeout(() => {
+      if (skip || still || !logo.offsetParent) return
+      const host = logo.offsetParent, x = logo.offsetLeft - 64, y = logo.offsetTop + logo.offsetHeight * .3
+      const box = document.createElement('i'), lid = document.createElement('i')
+      box.style.cssText = `position:absolute;left:${x}px;top:${y + 10}px;width:40px;height:28px;border-radius:6px;pointer-events:none;background:linear-gradient(180deg,rgba(255,255,255,.2),rgba(255,255,255,.05));box-shadow:inset 0 0 0 1.5px color-mix(in srgb,var(--hi) 70%,#fff),0 0 20px color-mix(in srgb,var(--hi) 40%,transparent)`
+      lid.style.cssText = `position:absolute;left:${x - 2}px;top:${y + 2}px;width:44px;height:8px;border-radius:4px;pointer-events:none;transform-origin:0 100%;background:color-mix(in srgb,var(--hi3) 70%,#fff);box-shadow:0 0 12px color-mix(in srgb,var(--hi3) 60%,transparent)`
+      host.appendChild(box); host.appendChild(lid)
+      box.animate([{ opacity: 0, transform: 'translateY(-30px)' }, { opacity: 1, transform: 'translateY(2px) scale(1.04,.94)', offset: .3 }, { opacity: 1, transform: 'none', offset: .45 }, { opacity: 1, transform: 'none', offset: .8 }, { opacity: 0, transform: 'scale(.9)' }], { duration: 2000, easing: 'cubic-bezier(.3,1.3,.5,1)', fill: 'both' }).finished.then(() => box.remove(), () => box.remove())
+      lid.animate([{ opacity: 0, transform: 'translateY(-30px) rotate(-50deg)' }, { opacity: 1, transform: 'rotate(-50deg)', offset: .35 }, { opacity: 1, transform: 'rotate(4deg)', offset: .55 }, { opacity: 1, transform: 'none', offset: .65 }, { opacity: 1, transform: 'none', offset: .8 }, { opacity: 0, transform: 'scale(.9)' }], { duration: 2000, easing: 'cubic-bezier(.3,1.3,.5,1)', fill: 'both' }).finished.then(() => lid.remove(), () => lid.remove())
+    }, 4300)
     // 4.4.16: the list. Three short lines of light stack up under the title one after another, like a list writing
     // itself, then the top one brightens as if picked and they all fade (transform and opacity only)
     setTimeout(() => {

@@ -22,7 +22,8 @@ Lumen is an Electron (Chromium) browser for Mac and Windows: just the browser. S
     - Update the website, all of it: re-take every Lumen screenshot on it from the new build, re-cut the film so it shows the newest features, and refresh every line of text (version, notes, Koi and Surge lines). Nothing on the site may be older than the release. The owner said (2026-11-26): "the photos and video is outdated in the site, every update update it and everything else in the site".
     - Rewrite `WHATS_NEW` in `ui/intro.js` with only that version's changes; remove everything from older versions.
     - Make the intro more cinematic than the last version.
-12. Whenever the work touches anything with an auto-update feature, make the update experience look way, way better. In Lumen that means the update card (`ui/update.html`) and the restart flow, and the update bits in Surge and Koi.
+12. Surge, Koi and Grab each show a What's new intro once after they update, like Lumen (the owner asked on 2026-11-27: "add intro updates to surge and koi and grab as well"). Every update of one of them rewrites its What's new with only that version's changes: Grab `WHATS_NEW` in `src/ui/app.js`, Koi `WHATS_NEW` in `renderer/app.html`, Surge's What's new constant. Grab also asks for macOS App Management when it opens without it.
+13. Whenever the work touches anything with an auto-update feature, make the update experience look way, way better. In Lumen that means the update card (`ui/update.html`) and the restart flow, and the update bits in Surge and Koi.
 
 ## The hourly update
 

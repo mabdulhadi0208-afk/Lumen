@@ -23,11 +23,10 @@
 ;(function () {
   // ---- edit this list every release: it is the "New in Lumen" act of the film (only this version's changes)
   const WHATS_NEW = {
-    version: '4.4.9',
+    version: '4.4.10',
     items: [
-      { icon: 'box', text: 'Parcel news takes you to the parcel: click the notification and Parcels opens with that parcel lit up' },
-      { icon: 'sparkle', text: 'The toast for it has a View button too, and it reuses the Parcels tab you already have open' },
-      { icon: 'play', text: 'Quitting while Lumen checks a parcel in the background is instant and clean now' },
+      { icon: 'box', text: 'The parcel you open from a notification now glows all the way round, from inside its row, instead of showing a thin line' },
+      { icon: 'sparkle', text: 'Its icon gives a little spring nod, so your eye lands on it straight away' },
     ],
   }
 
@@ -1301,6 +1300,15 @@
         key.animate([{ opacity: 0, transform: 'translateY(-40px) scale(.8)' }, { opacity: 1, transform: 'translateY(4px) scale(1.04)', offset: .35 }, { opacity: 1, transform: 'none', offset: .5 }, { opacity: 1, transform: 'translateY(5px) scale(.94,.9)', offset: .62 }, { opacity: 1, transform: 'none', offset: .75 }, { opacity: 0, transform: 'translateY(-6px)' }], { duration: 1700, delay: n * 90, easing: 'cubic-bezier(.3,1.3,.5,1)', fill: 'both' }).finished.then(() => key.remove(), () => key.remove())
       })
     }, 3000)
+    // 4.4.10: the glow. A soft rounded frame of light fades up just inside the edges of the title, breathes once and
+    // fades, like the parcel glow in Parcels (opacity and transform only)
+    setTimeout(() => {
+      if (skip || still || !logo.offsetParent) return
+      const host = logo.offsetParent, f = document.createElement('i')
+      f.style.cssText = `position:absolute;left:${logo.offsetLeft - 18}px;top:${logo.offsetTop - 10}px;width:${logo.offsetWidth + 36}px;height:${logo.offsetHeight + 20}px;border-radius:22px;pointer-events:none;mix-blend-mode:screen;box-shadow:inset 0 0 0 2px color-mix(in srgb,var(--hi) 70%,#fff),inset 0 0 34px color-mix(in srgb,var(--hi) 35%,transparent)`
+      host.appendChild(f)
+      f.animate([{ opacity: 0, transform: 'scale(1.06)' }, { opacity: 1, transform: 'none', offset: .3 }, { opacity: .6, transform: 'scale(1.01)', offset: .6 }, { opacity: 0, transform: 'none' }], { duration: 1800, easing: 'cubic-bezier(.3,1.3,.5,1)', fill: 'both' }).finished.then(() => f.remove(), () => f.remove())
+    }, 3400)
     // 4.4.9: the ping. A small bell of light swings in above the title, rings twice on a spring with a ripple at
     // each ring, and drops away (transform and opacity only)
     setTimeout(() => {

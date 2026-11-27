@@ -27,6 +27,7 @@
     items: [
       { icon: 'box', text: 'The parcel you open from a notification now glows all the way round, from inside its row, instead of showing a thin line' },
       { icon: 'sparkle', text: 'Its icon gives a little spring nod, so your eye lands on it straight away' },
+      { icon: 'play', text: 'Two-digit versions fit everywhere: the update card title and this film ease down in size instead of cutting the number off' },
     ],
   }
 
@@ -1664,6 +1665,11 @@
     const s = scene(`<div class="new nw4"><div class="lh"><span class="eyebrow chrome">New in Lumen ${V}</span><div class="bigv">${V}</div><h1>Faster, smarter, smoother.</h1><p class="lede">${items.length} things to try first, all of them already waiting in your browser.</p></div>
       <div class="bento">${items.map((it, i) => `<div class="it glass sweep${i === 0 ? ' hero' : ''}${i === items.length - 1 && items.length % 2 === 0 ? ' last' : ''}" style="--sd:${1.3 + i * .08}s"><div class="k">${ICONS[it.icon] || ''}</div><span>${esc(it.text)}</span><b class="no2">${String(i + 1).padStart(2, '0')}</b><i class="wmk">${ICONS[it.icon] || ''}</i></div>`).join('')}</div></div>`, 'flat')
     lensAll(s)
+    // 4.4.10: a long version (4.4.10) eases down in size to fit its column, so the note cards never cover it
+    // (measured on the text itself, before its entrance transform starts)
+    { const bv = s.querySelector('.bigv'), lh = s.querySelector('.lh'), rg = document.createRange(); rg.selectNodeContents(bv)
+      const room = lh.clientWidth * 0.98; let px = parseFloat(getComputedStyle(bv).fontSize) || 0
+      while (room > 0 && rg.getBoundingClientRect().width > room && px > 60) { px -= 4; bv.style.fontSize = px + 'px' } }
     anim(s.querySelector('.eyebrow'), [{ opacity: 0, transform: 'translateY(-10px)', letterSpacing: '.6em' }, { opacity: 1, transform: 'none', letterSpacing: '.24em' }], { duration: 1100 })
     anim(s.querySelector('.bigv'), [{ opacity: 0, transform: 'translateX(-40px) scale(1.5)' }, { opacity: 1, transform: 'scale(.98)', offset: .5 }, { opacity: 1, transform: 'none' }], { duration: 1100, delay: 120, easing: 'cubic-bezier(.16,1,.3,1)' })
     setTimeout(() => { if (!skip) { SFX.count(3); pop(.16, 4) } }, 260)

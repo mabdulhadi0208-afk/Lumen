@@ -573,6 +573,13 @@ const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;',
 const still = matchMedia('(prefers-reduced-motion: reduce)').matches
 let U = {}, notesKey = '', lastStatus = '', outT = 0, lastExit = null
 const card = $('#card')
+// 4.4.10: a long title (a two-digit version like 4.4.10) eases down in size until it fits, instead of being cut off
+function fitTitle() {
+  const b = $('#title'); b.style.fontSize = ''
+  if (!b.clientWidth) return
+  let px = parseFloat(getComputedStyle(b).fontSize)
+  while (b.scrollWidth > b.clientWidth + 1 && px > 17) { px -= 0.5; b.style.fontSize = px + 'px' }
+}
 // the glint follows the pointer while it is over the card, and otherwise stays put (no idle loop)
 function glint(x, y) { card.style.setProperty('--mx', (x * 100).toFixed(1) + '%'); card.style.setProperty('--my', (y * 100).toFixed(1) + '%') }
 
@@ -650,6 +657,7 @@ function paint(u) {
     uptodate: ['All set', `Lumen ${v(u.current)} is up to date`, 'You have the newest version'],
   }[u.status] || ['Software update', 'Update Lumen', '']
   $('#kick').textContent = T[0]; $('#title').textContent = T[1]; $('#sub').textContent = T[2]; $('#sub').title = T[2]
+  fitTitle()
   // progress: the ring around the icon, the light in the tube and the card's own edge
   const pct = u.status === 'downloading' ? (u.progress || 0) : ['verifying', 'unpacking', 'ready', 'uptodate'].includes(u.status) ? 100 : 0
   $('#arc').style.strokeDashoffset = String(226 - 226 * pct / 100)

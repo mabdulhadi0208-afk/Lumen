@@ -26,6 +26,10 @@ Lumen is an Electron (Chromium) browser for Mac and Windows: just the browser. S
 
 ## The hourly update
 
+- The owner said (2026-11-27): "EVERY HOUR LITERALLY EVERYTHING GETS A GLOW UP AND FIX ALL THE LAG AND UPDATE THE SITE". So every hourly update has three parts, not one:
+  1. A big, visible glow-up across the app, not only the new feature: pick screens, menus, pages and animations that have not been touched lately and level them up (docs/NOVA.md).
+  2. A lag pass: measure (test/speed42.js, test/perf*.js, startup, tab switching, typing in the command bar, scrolling) and fix the slowest thing found, with the before and after numbers in the release notes.
+  3. The whole website updated: every screenshot, the film when features changed, and every line of text.
 - The hourly trigger asks for one improvement per hour. If an update is already in progress when it fires, hand the hourly update to a background agent and keep working on the current update.
 - Only one release goes to `main` at a time: whichever finishes first ships, and the other one rebases on it and bumps to the next version before its own suite run.
 
@@ -40,7 +44,7 @@ Lumen is an Electron (Chromium) browser for Mac and Windows: just the browser. S
 
 - Run a test with `xvfb-run -a npx electron test/NAME.js --no-sandbox`. Each test prints PASS and FAIL lines; newer tests also write them to `/tmp/lumen-NAME.log`.
 - Before every release, run the full suite on a git worktree of the exact release commit, with `node_modules` symlinked in.
-- The suite: `adallow addbtn batch12 dark dark2 polish qol3 sweep trcard trcard2 v17 v20 readlater wave13 wave14 wave15 wave16 gsignin updatecard wave19 ytfix passkeys2 novamenus inpage home40 noapps sweep41 motion40 ai41 layout42 logos43 totop44 speed42 agent43 passkeys45 intro444 aimode445 shop446 heading447 parcellink448 notify449 twodigit4410 cleanlink4411 copylink4412 undoclose4414 reopenwin4415 closedlist4416 closedkeep4417 closedsearch4419 sharelinks4420`.
+- The suite: `adallow addbtn batch12 dark dark2 polish qol3 sweep trcard trcard2 v17 v20 readlater wave13 wave14 wave15 wave16 gsignin updatecard wave19 ytfix passkeys2 novamenus inpage home40 noapps sweep41 motion40 ai41 layout42 logos43 totop44 speed42 agent43 passkeys45 intro444 aimode445 shop446 heading447 parcellink448 notify449 twodigit4410 cleanlink4411 copylink4412 undoclose4414 reopenwin4415 closedlist4416 closedkeep4417 closedsearch4419 sharelinks4420 clipboard4421`.
   - `sweep` should print NO ERRORS.
   - `selftest.js` was already broken before these rules and is unrelated.
 

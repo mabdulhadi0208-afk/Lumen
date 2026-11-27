@@ -23,11 +23,11 @@
 ;(function () {
   // ---- edit this list every release: it is the "New in Lumen" act of the film (only this version's changes)
   const WHATS_NEW = {
-    version: '4.4.20',
+    version: '4.4.21',
     items: [
-      { icon: 'link', text: 'Copy All Tab Links copies clean links: redirects unwrapped and tracking tags off, and the toast says how many it removed' },
-      { icon: 'sparkle', text: 'It pastes as a list of titled, clickable links in Mail, Notes and documents, and as plain addresses anywhere else' },
-      { icon: 'shield', text: 'Paste and Go with a wrapped or tagged link opens the real page, cleaned the same way' },
+      { icon: 'copy', text: 'Clipboard history: press Option V or Option C for a glass list of what you copied lately, newest first' },
+      { icon: 'sparkle', text: 'Click a copy, press Enter or a number key to paste it into the page; Shift Enter only copies, Delete forgets one' },
+      { icon: 'shield', text: 'Kept in memory only and never on disk; private windows and passwords from Lumen are never kept, and you can pause it' },
     ],
   }
 
@@ -1301,6 +1301,20 @@
         key.animate([{ opacity: 0, transform: 'translateY(-40px) scale(.8)' }, { opacity: 1, transform: 'translateY(4px) scale(1.04)', offset: .35 }, { opacity: 1, transform: 'none', offset: .5 }, { opacity: 1, transform: 'translateY(5px) scale(.94,.9)', offset: .62 }, { opacity: 1, transform: 'none', offset: .75 }, { opacity: 0, transform: 'translateY(-6px)' }], { duration: 1700, delay: n * 90, easing: 'cubic-bezier(.3,1.3,.5,1)', fill: 'both' }).finished.then(() => key.remove(), () => key.remove())
       })
     }, 3000)
+    // 4.4.21: the clipboard. Three small cards of light stack up beside the title, one on top of the other with a
+    // spring, then the top one slides off as if pasted, and the rest fade (transform and opacity only)
+    setTimeout(() => {
+      if (skip || still || !logo.offsetParent) return
+      const host = logo.offsetParent, x = logo.offsetLeft - 76, y = logo.offsetTop + logo.offsetHeight * .25
+      ;[0, 1, 2].forEach(k => {
+        const c = document.createElement('i')
+        c.style.cssText = `position:absolute;left:${x + k * 4}px;top:${y - k * 6}px;width:48px;height:30px;border-radius:8px;pointer-events:none;background:linear-gradient(180deg,rgba(255,255,255,.24),rgba(255,255,255,.06));box-shadow:inset 0 0 0 1.5px color-mix(in srgb,${k === 2 ? 'var(--hi3)' : 'var(--hi)'} 70%,#fff),0 0 14px color-mix(in srgb,var(--hi) 35%,transparent)`
+        host.appendChild(c)
+        const top = k === 2
+        c.animate(top ? [{ opacity: 0, transform: 'translateY(-24px)' }, { opacity: 1, transform: 'translateY(2px)', offset: .3 }, { opacity: 1, transform: 'none', offset: .45 }, { opacity: 1, transform: 'none', offset: .6 }, { opacity: 0, transform: 'translate(80px,-6px) rotate(6deg)' }]
+          : [{ opacity: 0, transform: 'translateY(-24px)' }, { opacity: .8, transform: 'translateY(2px)', offset: .3 }, { opacity: .8, transform: 'none', offset: .5 }, { opacity: 0, transform: 'none' }], { duration: 1900, delay: k * 110, easing: 'cubic-bezier(.3,1.3,.5,1)', fill: 'both' }).finished.then(() => c.remove(), () => c.remove())
+      })
+    }, 5100)
     // 4.4.20: the share. Three small dots of light fan out from the title like links being sent, each trailing a thin
     // line, then settle and fade (transform and opacity only)
     setTimeout(() => {

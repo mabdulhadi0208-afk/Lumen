@@ -2224,3 +2224,32 @@ body[data-motion="off"] .tab.totop .icon, body[data-motion="off"] .tab.totop .ic
 /* 4.4.16: a closed batch of tabs or a whole window in Recently closed: a small tabs glyph in the accent, not a site icon */
 .mm-kind { display: inline-grid; place-items: center; width: 16px; height: 16px; color: var(--accent); }
 .mm-kind svg { width: 15px; height: 15px; }
+
+/* 4.4.21: clipboard history (Option V / Option C): a glass sheet of recent copies, each row springing in */
+#pop.clipz { width: min(520px, calc(100vw - 32px)); padding: 10px; }
+.clipz-head { display: flex; align-items: center; gap: 10px; padding: 6px 6px 10px; }
+.clipz-head .grow { min-width: 0; }
+.clipz-head b { display: block; font: 800 15px/1.2 var(--font); letter-spacing: -.01em; }
+.clipz-head small { display: block; font-size: 11.5px; color: var(--fg3); margin-top: 2px; }
+.clipz-ic { width: 34px; height: 34px; flex: none; display: grid; place-items: center; border-radius: 11px; color: #fff; background: linear-gradient(180deg, rgba(255,255,255,.3), transparent 55%), linear-gradient(135deg, var(--accent), color-mix(in srgb, var(--accent) 60%, #a855f7)); box-shadow: 0 6px 16px color-mix(in srgb, var(--accent) 40%, transparent), inset 0 1px 0 rgba(255,255,255,.5); }
+.clipz-ic svg { width: 18px; height: 18px; }
+.clipz-list { max-height: 360px; overflow-y: auto; border-radius: 16px; background: var(--well, color-mix(in srgb, var(--fg) 4%, transparent)); padding: 4px; }
+.clip { position: relative; display: flex; align-items: center; gap: 10px; padding: 9px 10px; border-radius: 12px; cursor: default; animation: clipin .55s var(--d, 0ms) cubic-bezier(.3,1.35,.5,1) both; transition: background .18s; }
+.clip + .clip { margin-top: 2px; }
+.clip.sel, .clip:hover { background: color-mix(in srgb, var(--accent) 13%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 22%, transparent); }
+.clip-ic { width: 28px; height: 28px; flex: none; display: grid; place-items: center; border-radius: 9px; color: var(--accent); background: color-mix(in srgb, var(--accent) 12%, transparent); }
+.clip-ic svg { width: 15px; height: 15px; }
+.clip-b { min-width: 0; flex: 1; display: flex; flex-direction: column; gap: 2px; }
+.clip-t { font: 600 13px/1.35 var(--font); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.clip-m { font-size: 11px; color: var(--fg3); }
+.clip-n { flex: none; font: 700 10.5px var(--font); min-width: 20px; height: 20px; display: grid; place-items: center; border-radius: 6px; color: var(--fg2); background: color-mix(in srgb, var(--fg) 7%, transparent); box-shadow: inset 0 -1px 0 color-mix(in srgb, var(--fg) 12%, transparent); }
+.clip-x { flex: none; width: 24px; height: 24px; border: 0; border-radius: 8px; display: grid; place-items: center; background: transparent; color: var(--fg3); opacity: 0; transition: opacity .15s, background .15s; }
+.clip:hover .clip-x, .clip.sel .clip-x { opacity: 1; }
+.clip-x:hover { background: color-mix(in srgb, var(--fg) 9%, transparent); }
+.clip-x svg { width: 12px; height: 12px; }
+.clipz-empty { display: flex; flex-direction: column; align-items: center; gap: 10px; padding: 26px 20px; text-align: center; font-size: 12.5px; color: var(--fg3); }
+.clipz-empty span { width: 40px; height: 40px; display: grid; place-items: center; border-radius: 13px; color: var(--accent); background: color-mix(in srgb, var(--accent) 12%, transparent); }
+.clipz-foot { display: flex; flex-wrap: wrap; gap: 12px; padding: 10px 6px 2px; font-size: 11px; color: var(--fg3); }
+.clipz-foot kbd { font: 700 10px var(--font); padding: 1px 5px; border-radius: 5px; margin-right: 3px; background: color-mix(in srgb, var(--fg) 7%, transparent); }
+@keyframes clipin { 0% { opacity: 0; transform: translateY(8px) scale(.97); } 60% { opacity: 1; transform: translateY(-1px) scale(1.01); } 100% { opacity: 1; transform: none; } }
+body[data-motion="off"] .clip { animation: none; }

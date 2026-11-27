@@ -601,11 +601,22 @@ class BrowserWin {
     this.win.on('leave-full-screen', () => { this.send('fullscreen', false); if (this.fullscreenTab) { this.fullscreenTab = false; this.layout() } })
     this.win.on('focus', () => { const t = this.active(); if (t && t.view && !this.overlay) t.view.webContents.focus(); if (t && t.view) setAway(t.view.webContents, false) })
     this.win.on('blur', () => { const t = this.active(); if (t && t.view) setAway(t.view.webContents, true) })
-    this.win.on('close', () => { saveSessionNow() })
+    this.win.on('close', () => {
+      saveSessionNow()
+      // 4.4.15: a closed window can come back, every tab in its place (Reopen Closed Tab, or Reopen Closed Window)
+      try {
+        if (quitting || this.incognito) return
+        const st = windowState(this), real = st.tabs.filter(t => t.url && !/^lumen:\/\/newtab/.test(t.url))
+        if (!real.length) return
+        const last = closedTabs[closedTabs.length - 1]
+        if (st.tabs.length === 1 && last && !last.batch && !last.win && last.url === st.tabs[0].url) closedTabs.pop()   // its last tab was just closed: keep one entry
+        closedTabs.push({ win: st, at: Date.now() }); while (closedTabs.length > 30) closedTabs.shift()
+      } catch {}
+    })
     this.win.on('closed', () => {
       if (this.peek && !this.peek.webContents.isDestroyed()) this.peek.webContents.close()   // a peeked video must not keep playing
       for (const t of this.tabs.values()) this.destroyView(t)
-      this.dropSpare(); this.dropSetSpare(); clearTimeout(this._setT)
+      this.dropSpare(); this.dropSetSpare(); clearTimeout(this._setT); clearTimeout(this._pst)
       if (!this.ui.webContents.isDestroyed()) this.ui.webContents.close()
       windows.splice(windows.indexOf(this), 1)
       saveSession()
@@ -1154,6 +1165,7 @@ class BrowserWin {
   // the chrome re-renders on every state it gets, so an update identical to the last one is not sent
   pushState() {
     clearTimeout(this._pst); this._pst = null
+    if (this.win.isDestroyed()) return   // a refresh queued just before the window closed
     const s = this.serialize(); let sig = null
     try { sig = JSON.stringify(s) } catch {}
     if (sig && sig === this._lastState) return
@@ -1167,7 +1179,7 @@ class BrowserWin {
   pushStateSoon(fast) {
     if (this._pst && (!fast || this._pstFast)) return
     clearTimeout(this._pst); this._pstFast = !!fast
-    this._pst = setTimeout(() => this.pushState(), fast ? 0 : 50)
+    this._pst = setTimeout(() => { try { this.pushState() } catch (e) { log('state push failed', e.message) } }, fast ? 0 : 50)
   }
 
   async contextMenu(t, p) {
@@ -1299,15 +1311,17 @@ function createWindow({ urls = null, incognito = false, restore = null, bounds }
 // ---------------------------------------------------------------- session save / restore
 let saveTimer
 function saveSession() { clearTimeout(saveTimer); saveTimer = setTimeout(saveSessionNow, 1000) }
+// one window as the session keeps it: where it was, its groups and its tabs (also used to reopen a closed window)
+const windowState = w => ({
+  bounds: w.win.getBounds(),
+  active: Math.max(0, w.order.indexOf(w.activeId)),
+  groups: [...w.groups.values()],
+  tabs: w.order.map(id => { const t = w.tabs.get(id); return { url: crashedOrigin((t.view && !t.view.webContents.isDestroyed() ? t.view.webContents.getURL() : t.url) || t.url), title: t.title, pinned: t.pinned, favicon: t.favicon, group: t.group || null } }),
+})
 function saveSessionNow() {
   clearTimeout(saveTimer)
   const data = {
-    windows: windows.filter(w => !w.incognito && !w.win.isDestroyed()).map(w => ({
-      bounds: w.win.getBounds(),
-      active: Math.max(0, w.order.indexOf(w.activeId)),
-      groups: [...w.groups.values()],
-      tabs: w.order.map(id => { const t = w.tabs.get(id); return { url: crashedOrigin((t.view && !t.view.webContents.isDestroyed() ? t.view.webContents.getURL() : t.url) || t.url), title: t.title, pinned: t.pinned, favicon: t.favicon, group: t.group || null } }),
-    })),
+    windows: windows.filter(w => !w.incognito && !w.win.isDestroyed()).map(windowState),
   }
   // once the last window has closed (the normal way to quit on Windows) keep the tabs it saved on close
   if (data.windows.length || (quitting && windows.length)) D.session.replace(data)
@@ -1969,6 +1983,7 @@ ipcMain.handle('ui', async (e, action, ...a) => {
       case 'pip': return wc && wc.executeJavaScript(`(()=>{const v=[...document.querySelectorAll('video')].sort((a,b)=>b.clientWidth*b.clientHeight-a.clientWidth*a.clientHeight)[0];if(!v)return false;document.pictureInPictureElement?document.exitPictureInPicture():v.requestPictureInPicture();return true})()`, true).catch(() => false)
       case 'screenshot': return wc && screenshot(wc)
       case 'reopen': return reopenClosed(w)
+      case 'reopenWindow': return reopenClosedWindow()
       case 'newWindow': return void createWindow({ incognito: !!a[0] })
       case 'download': return downloadAction(a[0], a[1])
       case 'setSetting': return setSetting(a[0], a[1])
@@ -2012,9 +2027,24 @@ function siteInfo(w) {
   return { url: t.url, host: origin ? new URL(origin).host : '', secure: /^https:/.test(t.url), forceDark: !!D.settings.get('forceDark'), darkOff: siteDarkOff(t.view ? t.view.webContents.getURL() : t.url), permissions: D.permissions.get()[origin] || {}, blocked: t.view ? (blockedByWc.get(t.view.webContents.id) || 0) : 0, adblock: !!D.settings.get('adblock'), adOff: adAllowed(t.view ? t.view.webContents.getURL() : t.url) }
 }
 
+function reopenWindow(st) {
+  const nw = createWindow({ restore: st, bounds: st.bounds })
+  try { nw.win.show(); nw.win.focus() } catch {}
+  // the new window's toolbar is still loading: say it once it can show it
+  const say = () => setTimeout(() => { if (!nw.win.isDestroyed()) nw.send('toast', `Reopened a window with ${st.tabs.length} tab${st.tabs.length === 1 ? '' : 's'}`) }, 600)
+  if (nw.ui.webContents.isLoading()) nw.ui.webContents.once('did-finish-load', say); else say()
+  return nw
+}
+// Reopen Closed Window: the most recent window you closed, even if tabs were closed after it
+function reopenClosedWindow() {
+  for (let i = closedTabs.length - 1; i >= 0; i--) if (closedTabs[i].win) { const [c] = closedTabs.splice(i, 1); reopenWindow(c.win); return c.win.tabs.length }
+  return 0
+}
 function reopenClosed(w) {
   const c = closedTabs.pop()
   if (!c) return 0
+  if (c.win) { reopenWindow(c.win); return c.win.tabs.length }
+  if (!w || !w.win || w.win.isDestroyed()) { createWindow({ urls: c.batch ? c.batch.map(e => e.url) : [c.url] }); return c.batch ? c.batch.length : 1 }
   // a batch comes back as it went: the last one closed first, each into the place it had, in the background
   if (c.batch) { for (const e of c.batch.slice().reverse()) w.createTab(e.url, { index: Math.min(e.index, w.order.length), pinned: e.pinned, active: false }); w.send('toast', `Reopened ${c.batch.length} tabs`); return c.batch.length }
   w.createTab(c.url, { index: Math.min(c.index, w.order.length), pinned: c.pinned }); return 1
@@ -2460,7 +2490,8 @@ function buildMenu() {
       { label: 'New Tab', accelerator: 'CmdOrCtrl+T', click: focused(w => w.createTab()) },
       { label: 'New Window', accelerator: 'CmdOrCtrl+N', click: () => createWindow({}) },
       { label: 'New Private Window', accelerator: 'CmdOrCtrl+Shift+N', click: () => createWindow({ incognito: true }) },
-      { label: 'Reopen Closed Tab', accelerator: 'CmdOrCtrl+Shift+T', click: focused(w => reopenClosed(w)) },
+      { label: 'Reopen Closed Tab', accelerator: 'CmdOrCtrl+Shift+T', click: () => reopenClosed(lastFocused()) },
+      { label: 'Reopen Closed Window', click: () => reopenClosedWindow() },
       { label: 'Open Location...', accelerator: 'CmdOrCtrl+L', click: focused(w => w.send('command', 'location')) },
       { type: 'separator' },
       { label: 'Close Tab', accelerator: 'CmdOrCtrl+W', click: focused((w, t) => t ? w.closeTab(t.id, { undo: true }) : w.win.close()) },
@@ -2929,4 +2960,4 @@ app.whenReady().then(async () => {
   powerMonitor.on('resume', () => Sync.syncNow().catch(() => {}))
 })
 
-module.exports = { __closeMany: closeMany, __reopenClosed: reopenClosed, __tabMenu: (w, id) => tabMenu(w, id), __copyPageLink: copyPageLink, __cleanLink: cleanLink, __setParcelNote: f => { parcelNote = f }, __showParcels: showParcels, __parcelState: () => ({ busy: parcelBusy, win: !!(parcelWin && !parcelWin.isDestroyed()) }), windows, createWindow, D, __suggest: suggest, allowSites, toggleSiteAdblock, __refreshAdblock: refreshAdblock, __adblockAge: adblockAge, __hl_add: addHighlight, __hl_recolor: recolorHighlight, __addToNTP: addToNTP, __checkParcels: checkParcels, __separateApps: { check: separateAppsCheck, had: hadBuiltInApps, LINKS: SEPARATE_APPS }, __nova: Nova, __novaDialog: novaDialog, __tabMenu: tabMenu, __readerMode: readerMode, __appMenu: appMenuPopup, __confirmQuit: confirmQuit, __printFailed: printFailed, __dockTemplate: dockTemplate, __jumpTasks: jumpTasks, __handleArgs: handleArgs, __recentSites: recentSites }
+module.exports = { __closedTabs: closedTabs, __reopenClosedWindow: reopenClosedWindow, __closeMany: closeMany, __reopenClosed: reopenClosed, __tabMenu: (w, id) => tabMenu(w, id), __copyPageLink: copyPageLink, __cleanLink: cleanLink, __setParcelNote: f => { parcelNote = f }, __showParcels: showParcels, __parcelState: () => ({ busy: parcelBusy, win: !!(parcelWin && !parcelWin.isDestroyed()) }), windows, createWindow, D, __suggest: suggest, allowSites, toggleSiteAdblock, __refreshAdblock: refreshAdblock, __adblockAge: adblockAge, __hl_add: addHighlight, __hl_recolor: recolorHighlight, __addToNTP: addToNTP, __checkParcels: checkParcels, __separateApps: { check: separateAppsCheck, had: hadBuiltInApps, LINKS: SEPARATE_APPS }, __nova: Nova, __novaDialog: novaDialog, __tabMenu: tabMenu, __readerMode: readerMode, __appMenu: appMenuPopup, __confirmQuit: confirmQuit, __printFailed: printFailed, __dockTemplate: dockTemplate, __jumpTasks: jumpTasks, __handleArgs: handleArgs, __recentSites: recentSites }

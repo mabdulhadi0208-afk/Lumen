@@ -26,6 +26,10 @@ Lumen is an Electron (Chromium) browser for Mac and Windows: just the browser. S
 
 ## The hourly update
 
+- The owner said (2026-11-27): "EVERY HOUR LITERALLY EVERYTHING GETS A GLOW UP AND FIX ALL THE LAG AND UPDATE THE SITE". So every hourly update has three parts, not one:
+  1. A big, visible glow-up across the app, not only the new feature: pick screens, menus, pages and animations that have not been touched lately and level them up (docs/NOVA.md).
+  2. A lag pass: measure (test/speed42.js, test/perf*.js, startup, tab switching, typing in the command bar, scrolling) and fix the slowest thing found, with the before and after numbers in the release notes.
+  3. The whole website updated: every screenshot, the film when features changed, and every line of text.
 - The hourly trigger asks for one improvement per hour. If an update is already in progress when it fires, hand the hourly update to a background agent and keep working on the current update.
 - Only one release goes to `main` at a time: whichever finishes first ships, and the other one rebases on it and bumps to the next version before its own suite run.
 

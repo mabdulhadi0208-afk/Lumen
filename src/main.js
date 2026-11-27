@@ -140,6 +140,20 @@ function cleanLink(u) {
   return { url: cleanURL(inner), removed, unwrapped }
 }
 const cleanNote = c => c.unwrapped && c.removed ? `Link copied, unwrapped and ${c.removed} tracker${c.removed === 1 ? '' : 's'} removed` : c.unwrapped ? 'Link copied, unwrapped to the real page' : c.removed ? `Link copied, ${c.removed} tracker${c.removed === 1 ? '' : 's'} removed` : 'Link copied'
+// 4.4.12: the page's link, cleaned like Copy Link (redirects unwrapped, trackers off). With title: Markdown as text
+// for plain editors, and a real titled link as HTML, so Mail, Notes and documents paste a clickable title.
+function copyPageLink(w, t, withTitle) {
+  const wc = t && t.view && !t.view.webContents.isDestroyed() ? t.view.webContents : null
+  const raw = wc ? wc.getURL() : t && t.url; if (!raw || !/^(https?|file):/.test(raw)) return false
+  const c = cleanLink(raw)
+  if (withTitle) {
+    const title = String((wc && wc.getTitle()) || t.title || c.url).trim() || c.url
+    const esc = x => x.replace(/[&<>"]/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[ch])
+    clipboard.write({ text: `[${title.replace(/[\[\]]/g, '')}](${c.url})`, html: `<a href="${esc(c.url)}">${esc(title)}</a>` })
+    w.send('toast', 'Link with title copied' + (c.unwrapped || c.removed ? ', ' + cleanNote(c).replace(/^Link copied, /, '') : ''))
+  } else { clipboard.writeText(c.url); w.send('toast', cleanNote(c)) }
+  return true
+}
 function upgradeURL(u) {
   if (!u) return u
   let out = D.settings.get('cleanLinks') ? cleanURL(u) : u
@@ -1941,6 +1955,7 @@ ipcMain.handle('ui', async (e, action, ...a) => {
       case 'parcelsAuto': setSetting('parcelsAuto', !!a[0]); return true
       case 'parcelsCount': return Parcels.active().length
       case 'trackNumber': return trackNumber(w, a[0])
+      case 'copyPageLink': return copyPageLink(w, w.active(), !!a[0])
       case 'showParcel': showParcels(String(a[0] || '')); return true
       case 'focusMode': return setFocusMode(w, a[0] === undefined ? !w.focusMode : a[0])
       case 'archiveNow': return archiveIdleTabs()
@@ -2446,8 +2461,8 @@ function buildMenu() {
       { label: 'Command Bar', accelerator: 'CmdOrCtrl+K', click: focused(w => w.send('command', 'palette')) },
       { label: 'Use Selection for Find', accelerator: 'CmdOrCtrl+E', click: focused(async (w, t) => { const wc = activeWc(w, t); if (!wc) return; const sel = await wc.executeJavaScript('String(getSelection()).slice(0, 200)', true).catch(() => ''); if (sel.trim()) w.send('command', { find: sel.trim() }) }) },
       { label: 'Paste and Go', accelerator: 'CmdOrCtrl+Shift+V', click: focused(async w => { const txt = String(await clipboard.readText() || '').trim().slice(0, 4000); const url = txt && toURL(txt); if (url) { const t = w.active(); if (t && t.view && (t.url || '').startsWith('lumen://newtab')) t.view.webContents.loadURL(url); else w.createTab(url, { active: true }) } }) },
-      { label: 'Copy Link as Markdown', accelerator: 'CmdOrCtrl+Alt+C', click: focused((w, t) => { const wc = activeWc(w, t); if (wc) { clipboard.writeText(`[${wc.getTitle().replace(/[\[\]]/g, '')}](${cleanURL(wc.getURL())})`); w.send('toast', 'Markdown link copied') } }) },
-      { label: 'Copy Clean Link', accelerator: 'CmdOrCtrl+Shift+C', click: focused((w, t) => { if (t) { clipboard.writeText(cleanURL(t.url)); w.send('toast', 'Clean link copied') } }) },
+      { label: 'Copy Link with Title', accelerator: 'CmdOrCtrl+Alt+C', click: focused((w, t) => copyPageLink(w, t, true)) },
+      { label: 'Copy Clean Link', accelerator: 'CmdOrCtrl+Shift+C', click: focused((w, t) => copyPageLink(w, t, false)) },
     ] },
     { label: 'View', submenu: [
       { label: 'Reload', accelerator: 'CmdOrCtrl+R', click: focused((w, t) => activeWc(w, t) && activeWc(w, t).reload()) },
@@ -2895,4 +2910,4 @@ app.whenReady().then(async () => {
   powerMonitor.on('resume', () => Sync.syncNow().catch(() => {}))
 })
 
-module.exports = { __cleanLink: cleanLink, __setParcelNote: f => { parcelNote = f }, __showParcels: showParcels, __parcelState: () => ({ busy: parcelBusy, win: !!(parcelWin && !parcelWin.isDestroyed()) }), windows, createWindow, D, __suggest: suggest, allowSites, toggleSiteAdblock, __refreshAdblock: refreshAdblock, __adblockAge: adblockAge, __hl_add: addHighlight, __hl_recolor: recolorHighlight, __addToNTP: addToNTP, __checkParcels: checkParcels, __separateApps: { check: separateAppsCheck, had: hadBuiltInApps, LINKS: SEPARATE_APPS }, __nova: Nova, __novaDialog: novaDialog, __tabMenu: tabMenu, __readerMode: readerMode, __appMenu: appMenuPopup, __confirmQuit: confirmQuit, __printFailed: printFailed, __dockTemplate: dockTemplate, __jumpTasks: jumpTasks, __handleArgs: handleArgs, __recentSites: recentSites }
+module.exports = { __copyPageLink: copyPageLink, __cleanLink: cleanLink, __setParcelNote: f => { parcelNote = f }, __showParcels: showParcels, __parcelState: () => ({ busy: parcelBusy, win: !!(parcelWin && !parcelWin.isDestroyed()) }), windows, createWindow, D, __suggest: suggest, allowSites, toggleSiteAdblock, __refreshAdblock: refreshAdblock, __adblockAge: adblockAge, __hl_add: addHighlight, __hl_recolor: recolorHighlight, __addToNTP: addToNTP, __checkParcels: checkParcels, __separateApps: { check: separateAppsCheck, had: hadBuiltInApps, LINKS: SEPARATE_APPS }, __nova: Nova, __novaDialog: novaDialog, __tabMenu: tabMenu, __readerMode: readerMode, __appMenu: appMenuPopup, __confirmQuit: confirmQuit, __printFailed: printFailed, __dockTemplate: dockTemplate, __jumpTasks: jumpTasks, __handleArgs: handleArgs, __recentSites: recentSites }

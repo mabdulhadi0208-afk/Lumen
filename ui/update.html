@@ -530,6 +530,11 @@
   .bar i::before{content:'';position:absolute;top:0;bottom:0;left:0;width:30%;border-radius:999px;pointer-events:none;background:linear-gradient(90deg,transparent,rgba(255,255,255,.7),transparent);opacity:0;animation:polish4411 1.3s 1.5s cubic-bezier(.45,.05,.3,1) both}
   @keyframes polish4411{0%{transform:none;opacity:0}20%{opacity:1}80%{opacity:1}100%{transform:translateX(233%);opacity:0}}
 
+  /* 4.4.12: the version pill lands. The new version's chip drops onto the row with a small spring squash a moment
+     after the card arrives, as if it had just been copied in (transform and opacity only, drawn once) */
+  .ver .chip.v{animation:land4412 .8s 1s cubic-bezier(.3,1.5,.5,1) both}
+  @keyframes land4412{0%{transform:translateY(-10px) scale(.9);opacity:0}55%{transform:translateY(1px) scale(1.06,.94);opacity:1}100%{transform:none;opacity:1}}
+
   @media (prefers-reduced-motion:reduce){*,*::before,*::after{animation:none !important;transition:none !important}}
 </style></head><body>
 <svg class="defs" aria-hidden="true"><defs id="defs"><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" style="stop-color:var(--accent)"/><stop offset=".55" style="stop-color:var(--a2)"/><stop offset="1" style="stop-color:var(--a3)"/></linearGradient></defs></svg>

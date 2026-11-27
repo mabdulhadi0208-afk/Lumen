@@ -43,12 +43,43 @@ function mergeLists(local, remote) {
   return [...map.values()]
 }
 
+// 4.4.23: a secret this copy of Lumen cannot open right now (say macOS kept the key from it after an update) is sent
+// as "locked", never as empty, and a locked or empty copy never replaces a real one. Before, one sync round could
+// wipe a passkey or password for good.
+function openAll(list, field) {
+  return list.map(p => {
+    if (p.deleted) return { ...p, [field]: '' }
+    const v = D.decOrNull(p[field])
+    return v == null ? { ...p, [field]: '', locked: true } : { ...p, [field]: v, locked: undefined }
+  })
+}
+function mergeSecrets(local, remote, field) {
+  const byId = new Map(local.map(p => [p.id, p]))
+  const rem = new Map((remote || []).map(p => [p.id, p]))
+  return mergeLists(local, remote).map(p => {
+    if (p.deleted || p[field]) return p
+    // the newest copy has no secret: take it from the other side
+    const other = [byId.get(p.id), rem.get(p.id)].find(x => x && x !== p && !x.deleted && x[field])
+    return other ? { ...p, [field]: other[field], locked: undefined } : p
+  })
+}
+// writes the merged list back, sealing secrets again; a secret nobody could open keeps its old sealed value
+function storeSecrets(store, merged, field) {
+  const raw = new Map(store.get().map(p => [p.id, p[field]]))
+  store.replace(merged.map(p => {
+    const { locked, ...q } = p
+    if (q[field]) return { ...q, [field]: D.enc(q[field]) }
+    const old = raw.get(p.id)
+    if (old && (!q.deleted || q.replacedAt)) return { ...q, [field]: old, ...(locked ? { locked: Date.now() } : {}) }
+    return { ...q, [field]: '' }
+  }))
+}
 function localSnapshot() {
   const s = D.settings.get()
   return {
     bookmarks: D.bookmarks.get(),
-    passwords: D.passwords.get().map(p => ({ ...p, password: p.deleted ? '' : D.dec(p.password) })),
-    passkeys: Passkeys.store.get().map(p => ({ ...p, privateKey: p.deleted ? '' : D.dec(p.privateKey) })),
+    passwords: openAll(D.passwords.get(), 'password'),
+    passkeys: openAll(Passkeys.store.get(), 'privateKey'),
     settings: Object.fromEntries(SYNC_SETTINGS.map(k => [k, s[k]])),
     settingsAt: s.settingsAt || 0,
     savedAt: Date.now(),
@@ -70,10 +101,8 @@ async function syncNow() {
   const local = localSnapshot()
   if (remote) {
     D.bookmarks.replace(mergeLists(local.bookmarks, remote.bookmarks))
-    const merged = mergeLists(local.passwords, remote.passwords)
-    D.passwords.replace(merged.map(p => ({ ...p, password: p.deleted ? '' : D.enc(p.password) })))
-    const pks = mergeLists(local.passkeys, remote.passkeys || [])
-    Passkeys.store.replace(pks.map(p => ({ ...p, privateKey: p.deleted ? '' : D.enc(p.privateKey) })))
+    storeSecrets(D.passwords, mergeSecrets(local.passwords, remote.passwords, 'password'), 'password')
+    storeSecrets(Passkeys.store, mergeSecrets(local.passkeys, remote.passkeys || [], 'privateKey'), 'privateKey')
     if ((remote.settingsAt || 0) > (local.settingsAt || 0)) D.settings.set({ ...remote.settings, settingsAt: remote.settingsAt })
   }
   const out = localSnapshot()
@@ -102,4 +131,4 @@ function start() {
   setTimeout(() => syncNow().catch(() => {}), 8000)
 }
 
-module.exports = { syncNow, enable, disable, status, start }
+module.exports = { _test: { openAll, mergeSecrets, storeSecrets }, syncNow, enable, disable, status, start }

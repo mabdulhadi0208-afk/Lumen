@@ -23,11 +23,11 @@
 ;(function () {
   // ---- edit this list every release: it is the "New in Lumen" act of the film (only this version's changes)
   const WHATS_NEW = {
-    version: '4.4.22',
+    version: '4.4.23',
     items: [
-      { icon: 'download', text: 'Downloads, made over: what is downloading now sits in a lit card with its speed and the time left' },
-      { icon: 'search', text: 'Filter downloads by kind (Documents, Images, Media, Archives, Apps) and search them by name or site' },
-      { icon: 'check', text: 'A check springs onto each file as it finishes; copy any download link, and double click a file to open it' },
+      { icon: 'key', text: 'Passkeys fixed: Sign in with a passkey now works in iframes, sign-in popups and pages that made their own frames' },
+      { icon: 'shield', text: 'Passkeys and passwords are never lost: a key Lumen cannot open is kept, and Always Allow plus Try again brings it back' },
+      { icon: 'check', text: 'More sites can save a passkey (RS256 and Ed25519 too), and a locked passkey offers Try again instead of a dead end' },
     ],
   }
 
@@ -1301,6 +1301,21 @@
         key.animate([{ opacity: 0, transform: 'translateY(-40px) scale(.8)' }, { opacity: 1, transform: 'translateY(4px) scale(1.04)', offset: .35 }, { opacity: 1, transform: 'none', offset: .5 }, { opacity: 1, transform: 'translateY(5px) scale(.94,.9)', offset: .62 }, { opacity: 1, transform: 'none', offset: .75 }, { opacity: 0, transform: 'translateY(-6px)' }], { duration: 1700, delay: n * 90, easing: 'cubic-bezier(.3,1.3,.5,1)', fill: 'both' }).finished.then(() => key.remove(), () => key.remove())
       })
     }, 3000)
+    // 4.4.23: the passkey. A key of light swings in beside the title on a spring, turns a quarter like a key in a
+    // lock, and a ring of light closes around it with a soft pulse, as the passkey signs in (transform and opacity
+    // only; touches timed after 2.7 s never show in the update cut, the title has gone by then)
+    setTimeout(() => {
+      if (skip || still || !logo.offsetParent) return
+      const host = logo.offsetParent, x = logo.offsetLeft - 70, y = logo.offsetTop + logo.offsetHeight * .5 - 26
+      const el = (css, kf, o) => { const n = document.createElement('i'); n.style.cssText = 'position:absolute;pointer-events:none;' + css; host.appendChild(n); n.animate(kf, { easing: 'cubic-bezier(.3,1.3,.5,1)', fill: 'both', ...o }).finished.then(() => n.remove(), () => n.remove()); return n }
+      const key = el(`left:${x}px;top:${y}px;width:52px;height:52px;color:#fff;filter:drop-shadow(0 0 10px var(--hi))`,
+        [{ opacity: 0, transform: 'translateX(-46px) rotate(-70deg) scale(.7)' }, { opacity: 1, transform: 'translateX(4px) rotate(6deg) scale(1.06)', offset: .3 }, { opacity: 1, transform: 'none', offset: .42 }, { opacity: 1, transform: 'rotate(90deg)', offset: .62 }, { opacity: 1, transform: 'rotate(90deg) scale(.96)', offset: .82 }, { opacity: 0, transform: 'rotate(90deg) scale(.7)' }], { duration: 1300 })
+      key.innerHTML = (window.ICONS && ICONS.key || '').replace('<svg', '<svg width="52" height="52"')
+      el(`left:${x - 12}px;top:${y - 12}px;width:76px;height:76px;border-radius:50%;box-shadow:inset 0 0 0 2px color-mix(in srgb,var(--hi) 75%,#fff),0 0 22px color-mix(in srgb,var(--hi) 45%,transparent)`,
+        [{ opacity: 0, transform: 'scale(1.7)' }, { opacity: 0, transform: 'scale(1.7)', offset: .5 }, { opacity: 1, transform: 'scale(1)', offset: .66 }, { opacity: 1, transform: 'scale(1)', offset: .82 }, { opacity: 0, transform: 'scale(1.25)' }], { duration: 1300 })
+      el(`left:${x - 30}px;top:${y - 30}px;width:112px;height:112px;border-radius:50%;background:radial-gradient(circle,color-mix(in srgb,var(--hi) 45%,transparent),transparent 65%);mix-blend-mode:screen`,
+        [{ opacity: 0, transform: 'scale(.4)' }, { opacity: 0, transform: 'scale(.4)', offset: .62 }, { opacity: .9, transform: 'scale(1.1)', offset: .74 }, { opacity: 0, transform: 'scale(1.6)' }], { duration: 1300, easing: 'cubic-bezier(.2,.8,.3,1)' })
+    }, 1500)
     // 4.4.22: the download. A drop of light falls into a small glass tray above the title, a bar of light fills it
     // with a spring, and a check pops on top as the file lands, while the title still holds (transform and
     // opacity only; touches timed after 2.7 s never show in the update cut, the title has gone by then)

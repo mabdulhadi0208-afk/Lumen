@@ -376,4 +376,6 @@ function state(host) {
   }
 }
 
-module.exports = { configure, prewarm, popupMenu, closeMenu, novaDialog, restack, state, keycaps, toast }
+// the page that asked gave up (a passkey request it aborted): close its open question as if Cancel was chosen
+function closeDialog(host) { const n = host && host._nova; if (n && n.dialogState) n.dialogState.finish(null) }
+module.exports = { configure, prewarm, popupMenu, closeMenu, novaDialog, closeDialog, restack, state, keycaps, toast }

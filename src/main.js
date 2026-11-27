@@ -863,7 +863,7 @@ class BrowserWin {
 
   makeView(t) {
     const view = new WebContentsView({
-      webPreferences: { session: this.ses, sandbox: true, contextIsolation: true, plugins: true, spellcheck: true, scrollBounce: false, autoplayPolicy: 'no-user-gesture-required' },
+      webPreferences: { session: this.ses, sandbox: true, contextIsolation: true, nodeIntegrationInSubFrames: true, plugins: true, spellcheck: true, scrollBounce: false, autoplayPolicy: 'no-user-gesture-required' },
     })
     view.setBorderRadius(this.fullscreenTab ? 0 : 10)
     view.setBackgroundColor(tabBg(t.url, this.incognito))
@@ -951,7 +951,7 @@ class BrowserWin {
     wc.setWindowOpenHandler(d => {
       if (d.url.startsWith('lumen://') && !wc.getURL().startsWith('lumen://')) return { action: 'deny' }
       if (d.disposition === 'new-window' && d.features) {
-        return { action: 'allow', overrideBrowserWindowOptions: { width: 520, height: 680, autoHideMenuBar: true, backgroundColor: winBg(this.incognito), webPreferences: { session: this.ses } } }
+        return { action: 'allow', overrideBrowserWindowOptions: { width: 520, height: 680, autoHideMenuBar: true, backgroundColor: winBg(this.incognito), webPreferences: { session: this.ses, sandbox: true, contextIsolation: true, nodeIntegrationInSubFrames: true } } }
       }
       const bg = d.disposition === 'background-tab' || (D.settings.get('linksBackground') && d.disposition === 'foreground-tab')
       this.createTab(d.url, { active: !bg, openerId: t.id })
@@ -1077,7 +1077,7 @@ class BrowserWin {
   }
   openPeek(url) {
     this.closePeek()
-    const v = new WebContentsView({ webPreferences: { session: this.ses, sandbox: true, contextIsolation: true, plugins: true } })
+    const v = new WebContentsView({ webPreferences: { session: this.ses, sandbox: true, contextIsolation: true, nodeIntegrationInSubFrames: true, plugins: true } })
     v.setBorderRadius(14)
     v.setBackgroundColor(tabBg(url, this.incognito))
     this.peek = v
@@ -2327,59 +2327,97 @@ ipcMain.handle('lumen:qol', e => {
 ipcMain.on('lumen:auth-ua', e => { e.returnValue = googleCompat() && isGoogleSignIn(e.senderFrame && e.senderFrame.url) ? firefoxUA() : '' })
 
 // ---------------------------------------------------------------- passkeys
-function passkeyFrame(e) {
+// 4.4.23: the frame's origin comes from the frame itself (about:blank frames inherit their parent's), and a
+// cross-origin iframe may use passkeys when the page allowed it (allow="publickey-credentials-get"), like Chrome.
+function pkFrameOrigin(f) {
+  try { if (f.origin && f.origin !== 'null') return f.origin } catch {}
+  try { const o = new URL(f.url).origin; return o === 'null' ? null : o } catch { return null }
+}
+function passkeyFrame(e, policy, kind) {
   const f = e.senderFrame
   if (!f) return null
-  let origin; try { origin = new URL(f.url).origin } catch { return null }
-  // only the top page, or a same-origin frame, may use passkeys
-  try { if (f.top && f.top !== f && new URL(f.top.url).origin !== origin) return null } catch { return null }
-  return origin
+  const origin = pkFrameOrigin(f); if (!origin) return null
+  let top = origin
+  try { if (f.top && f.top !== f) top = pkFrameOrigin(f.top) } catch { return null }
+  if (!top) return null
+  if (top !== origin && !(policy && policy[kind === 'create' ? 'create' : 'get'] === true)) return null
+  return { origin, top }
 }
+const pkKey = e => { const f = e.senderFrame; return f ? `${e.sender.id}:${f.processId}:${f.routingId}` : String(e.sender.id) }
 async function verifyUser(reason) {
   if (isMac && systemPreferences.canPromptTouchID && systemPreferences.canPromptTouchID()) {
     try { await systemPreferences.promptTouchID(reason); return true } catch { return false }
   }
   return true
 }
+// where to ask: the Lumen window of the tab, or (4.4.23) the sign-in popup itself, so the question is never hidden
+// behind the popup the person is looking at
+const pkHosts = new WeakMap()
+function pkHost(e) {
+  const w = winForWc(e.sender.id)
+  if (w) return w
+  try {
+    const bw = BrowserWindow.fromWebContents(e.sender)
+    if (bw && !bw.isDestroyed()) { let h = pkHosts.get(bw); if (!h) { h = { win: bw, popup: true }; pkHosts.set(bw, h) } return h }
+  } catch {}
+  return lastFocused()
+}
+const pkAsking = new Map()   // frame key -> the open question's host, so the page can cancel it
+function pkDialog(e, opts) {
+  const h = pkHost(e)
+  const p = h && h.popup ? Nova.novaDialog(h, opts) : novaDialog(h, opts)
+  pkAsking.set(pkKey(e), h)
+  return p.finally(() => { if (pkAsking.get(pkKey(e)) === h) pkAsking.delete(pkKey(e)) })
+}
+const touchID = () => isMac && systemPreferences.canPromptTouchID && systemPreferences.canPromptTouchID()
 function passkeyAsk(e) {
-  const w = winForWc(e.sender.id) || lastFocused()
+  const w = pkHost(e)
+  const focusSignIn = () => { try { (e.senderFrame || e.sender).executeJavaScript(`(() => { const f = document.querySelector('input[type=password]:not([disabled]), input[autocomplete~=username], input[type=email], input[name*=user i], input[name*=login i]'); if (f) { f.focus(); f.scrollIntoView({ block: 'center' }) } return !!f })()`).catch(() => {}) } catch {} }
   return {
     async create({ rp, user }) {
       if (w && w.incognito) {
-        const r = await novaDialog(w, { type: 'question', buttons: ['Save passkey', 'Cancel'], defaultId: 0, cancelId: 1, kind: 'passkey', icon: 'key', title: 'Passkey', message: `Save a passkey for ${rp}?`, detail: 'You are in a private window. The passkey is still saved in Lumen.' })
+        const r = await pkDialog(e, { type: 'question', buttons: ['Save passkey', 'Cancel'], defaultId: 0, cancelId: 1, kind: 'passkey', icon: 'key', title: 'Passkey', message: `Save a passkey for ${rp}?`, detail: 'You are in a private window. The passkey is still saved in Lumen.' })
         if (r.response !== 0) return false
-      } else if (!(isMac && systemPreferences.canPromptTouchID && systemPreferences.canPromptTouchID())) {
-        const r = await novaDialog(w, { type: 'question', buttons: ['Save passkey', 'Cancel'], defaultId: 0, cancelId: 1, kind: 'passkey', icon: 'key', title: 'Passkey', message: `Save a passkey for ${rp}?`, detail: `Account: ${user || 'this account'}. Lumen keeps it with your passwords and syncs it if Sync is on.` })
+      } else if (!touchID()) {
+        const r = await pkDialog(e, { type: 'question', buttons: ['Save passkey', 'Cancel'], defaultId: 0, cancelId: 1, kind: 'passkey', icon: 'key', title: 'Passkey', message: `Save a passkey for ${rp}?`, detail: `Account: ${user || 'this account'}. Lumen keeps it with your passwords and syncs it if Sync is on.` })
         return r.response === 0
       }
       return verifyUser(`save a passkey for ${user || 'your account'} on ${rp}`)
     },
+    async exists(rp, user) {
+      await pkDialog(e, { type: 'info', buttons: ['OK'], defaultId: 0, kind: 'passkey', icon: 'key', title: 'Passkey', message: `You already have a passkey for ${rp}`, detail: `Lumen already keeps a passkey for ${user || 'this account'} on this site, so there is nothing new to save. Use it to sign in.` })
+    },
     async choose({ rp, accounts }) {
       let i = 0
       if (accounts.length > 1) {
-        const r = await novaDialog(w, { type: 'question', buttons: [...accounts.slice(0, 6), 'Cancel'], defaultId: 0, cancelId: Math.min(accounts.length, 6), list: true, kind: 'passkey-choose', icon: 'key', title: 'Passkey', message: `Sign in to ${rp} with a passkey`, detail: 'Choose an account.' })
+        const r = await pkDialog(e, { type: 'question', buttons: [...accounts.slice(0, 6), 'Cancel'], defaultId: 0, cancelId: Math.min(accounts.length, 6), list: true, kind: 'passkey-choose', icon: 'key', title: 'Passkey', message: `Sign in to ${rp} with a passkey`, detail: 'Choose an account.' })
         if (r.response >= Math.min(accounts.length, 6)) return -1
         i = r.response
-      } else if (!(isMac && systemPreferences.canPromptTouchID && systemPreferences.canPromptTouchID())) {
-        const r = await novaDialog(w, { type: 'question', buttons: ['Sign in', 'Cancel'], defaultId: 0, cancelId: 1, kind: 'passkey', icon: 'key', title: 'Passkey', message: `Sign in to ${rp} as ${accounts[0]}?`, detail: 'Using a passkey saved in Lumen.' })
+      } else if (!touchID()) {
+        const r = await pkDialog(e, { type: 'question', buttons: ['Sign in', 'Cancel'], defaultId: 0, cancelId: 1, kind: 'passkey', icon: 'key', title: 'Passkey', message: `Sign in to ${rp} as ${accounts[0]}?`, detail: 'Using a passkey saved in Lumen.' })
         return r.response === 0 ? 0 : -1
       }
       return (await verifyUser(`sign in to ${rp} as ${accounts[i]}`)) ? i : -1
     },
-    // 4.4.3: say plainly why there is no passkey and offer a way through: your password, or (on a Mac) the site in Safari,
-    // where passkeys saved in iCloud Keychain and on your iPhone live. Lumen cannot use those yet.
+    // say plainly why there is no passkey and offer a way through: your password, or (on a Mac) the site in Safari,
+    // where passkeys saved in iCloud Keychain and on your iPhone live
     async none(rp) {
-      if (!isMac) { if (w) w.send('toast', `No Lumen passkey for ${rp}`); return }
+      if (!isMac) { if (w && w.send) w.send('toast', `No Lumen passkey for ${rp}`); focusSignIn(); return null }
       const url = (() => { try { return e.sender.getURL() } catch { return '' } })()
-      const r = await novaDialog(w, { type: 'question', buttons: ['Use my password', 'Open in Safari', 'Cancel'], defaultId: 0, cancelId: 2, kind: 'passkey', icon: 'key', title: 'Passkey',
+      const r = await pkDialog(e, { type: 'question', buttons: ['Use my password', 'Open in Safari', 'Cancel'], defaultId: 0, cancelId: 2, kind: 'passkey', icon: 'key', title: 'Passkey',
         message: `No passkey for ${rp} is saved in Lumen`,
-        detail: 'Passkeys saved in Safari, iCloud Keychain or on your iPhone cannot be used in Lumen yet. Sign in with your password here, or open this page in Safari to use that passkey. Once you are signed in, you can add a passkey in this site\'s security settings while in Lumen, and it will work here every time.' })
+        detail: 'Passkeys saved in Safari, iCloud Keychain or on your iPhone stay with Apple: macOS only shares them with Safari and apps Apple has approved. Sign in with your password here, or open this page in Safari to use that passkey. Once you are signed in, add a passkey in this site\'s security settings while in Lumen, and it will work here every time.' })
+      if (r.response === 0) focusSignIn()
       if (r.response === 1 && /^https:/.test(url)) require('child_process').execFile('open', ['-a', 'Safari', url], () => {})
+      return null
     },
+    // the vault could not open this passkey's key: never deleted, and Lumen can try again
     async locked(rp, user) {
-      await novaDialog(w, { type: 'warning', buttons: ['OK'], defaultId: 0, kind: 'passkey', icon: 'key', title: 'Passkey',
+      const r = await pkDialog(e, { type: 'warning', buttons: ['Try again', 'Use my password', 'Cancel'], defaultId: 0, cancelId: 2, kind: 'passkey', icon: 'key', title: 'Passkey',
         message: `Lumen could not unlock your passkey for ${rp}`,
-        detail: `macOS did not let this version of Lumen open the key it saved${user ? ' for ' + user : ''}. This can happen after an update. Sign in with your password, then remove the old passkey in Settings, Passwords and add a new one on the site.` })
+        detail: `The passkey${user ? ' for ' + user : ''} is still saved, nothing was deleted. ${isMac ? 'macOS did not hand this version of Lumen the key it is locked with. If macOS asks about "Lumen Safe Storage", choose Always Allow, then Try again.' : 'The system did not hand Lumen the key it is locked with.'} Or sign in with your password for now.` })
+      if (r.response === 1) focusSignIn()
+      return r.response === 0 ? 'retry' : null
     },
     // on Windows, a site with no Lumen passkey goes to Windows Hello (phones, security keys, Windows passkeys)
     fallback: () => process.platform === 'win32',
@@ -2388,38 +2426,40 @@ function passkeyAsk(e) {
 // passkey autofill: a site waits (mediation: 'conditional') until the user picks an account in its sign-in field
 const pkPending = new Map()
 function pkCancel(id, why) { const p = pkPending.get(id); if (p) { pkPending.delete(id); p.resolve({ error: 'AbortError', message: why || 'The request was aborted.' }) } }
-ipcMain.handle('pk:cond', (e, req) => {
-  const origin = passkeyFrame(e); if (!origin) return { error: 'NotAllowedError', message: 'Not allowed in this frame.' }
-  const id = e.sender.id
+ipcMain.handle('pk:cond', (e, req, policy) => {
+  const fr = passkeyFrame(e, policy, 'get'); if (!fr) return { error: 'NotAllowedError', message: 'Not allowed in this frame.' }
+  const id = pkKey(e)
   pkCancel(id, 'Replaced by a newer request.')
-  if (!pkPending.size || ![...pkPending.values()].some(p => p.wc === e.sender)) e.sender.once('destroyed', () => pkPending.delete(id))
-  return new Promise(resolve => pkPending.set(id, { resolve, origin, req: req || {}, wc: e.sender }))
+  if (![...pkPending.values()].some(p => p.wc === e.sender)) e.sender.once('destroyed', () => { for (const [k, p] of pkPending) if (p.wc === e.sender) pkPending.delete(k) })
+  return new Promise(resolve => pkPending.set(id, { resolve, origin: fr.origin, top: fr.top, req: req || {}, wc: e.sender }))
 })
-ipcMain.handle('pk:cond-cancel', e => pkCancel(e.sender.id))
+ipcMain.handle('pk:cond-cancel', e => pkCancel(pkKey(e)))
+// the page gave up (AbortSignal): close the question it was waiting on
+ipcMain.handle('pk:abort', e => { const h = pkAsking.get(pkKey(e)); if (h) { try { Nova.closeDialog && Nova.closeDialog(h) } catch {} } })
 ipcMain.handle('pk:accounts', e => {
-  const p = pkPending.get(e.sender.id), origin = passkeyFrame(e)
-  if (!p || p.origin !== origin) return []
-  return Passkeys.accounts(origin, p.req)
+  const p = pkPending.get(pkKey(e)), fr = passkeyFrame(e, { get: true }, 'get')
+  if (!p || !fr || p.origin !== fr.origin) return []
+  return Passkeys.accounts(fr.origin, p.req)
 })
 ipcMain.handle('pk:pick', async (e, credId) => {
-  const p = pkPending.get(e.sender.id), origin = passkeyFrame(e)
-  if (!p || p.origin !== origin || typeof credId !== 'string') return false
+  const id = pkKey(e), p = pkPending.get(id), fr = passkeyFrame(e, { get: true }, 'get')
+  if (!p || !fr || p.origin !== fr.origin || typeof credId !== 'string') return false
   const ask = passkeyAsk(e)
   try {
-    const r = await Passkeys.get(origin, { ...p.req, pick: credId }, { ...ask, fallback: null, async none() {}, async choose({ rp, accounts }) { return (await verifyUser(`sign in to ${rp} as ${accounts[0]}`)) ? 0 : -1 } })
-    if (r.error || pkPending.get(e.sender.id) !== p) return false
-    pkPending.delete(e.sender.id); p.resolve(r); return true
+    const r = await Passkeys.get(p.origin, { ...p.req, pick: credId }, { ...ask, fallback: null, async none() { return null }, async choose({ rp, accounts }) { return (await verifyUser(`sign in to ${rp} as ${accounts[0]}`)) ? 0 : -1 } }, p.top)
+    if (r.error || pkPending.get(id) !== p) return false
+    pkPending.delete(id); p.resolve(r); return true
   } catch (err) { log('passkey autofill failed', err.message); return false }
 })
-ipcMain.handle('pk:create', async (e, req) => {
-  const origin = passkeyFrame(e); if (!origin) return { error: 'NotAllowedError', message: 'Not allowed in this frame.' }
-  try { const r = await Passkeys.create(origin, req || {}, passkeyAsk(e)); if (!r.error) { const w = winForWc(e.sender.id); if (w) w.send('toast', 'Passkey saved in Lumen'); Sync.syncNow().catch(() => {}) } return r }
+ipcMain.handle('pk:create', async (e, req, policy) => {
+  const fr = passkeyFrame(e, policy, 'create'); if (!fr) return { error: 'NotAllowedError', message: 'Not allowed in this frame.' }
+  try { const r = await Passkeys.create(fr.origin, req || {}, passkeyAsk(e), fr.top); if (!r.error) { const w = winForWc(e.sender.id); if (w) w.send('toast', 'Passkey saved in Lumen'); Sync.syncNow().catch(() => {}) } return r }
   catch (err) { log('passkey create failed', err.message); return { error: 'UnknownError', message: 'Lumen could not create the passkey.' } }
 })
-ipcMain.handle('pk:get', async (e, req) => {
-  const origin = passkeyFrame(e); if (!origin) return { error: 'NotAllowedError', message: 'Not allowed in this frame.' }
-  pkCancel(e.sender.id, 'A sign-in button started a new passkey request.')
-  try { return await Passkeys.get(origin, req || {}, passkeyAsk(e)) }
+ipcMain.handle('pk:get', async (e, req, policy) => {
+  const fr = passkeyFrame(e, policy, 'get'); if (!fr) return { error: 'NotAllowedError', message: 'Not allowed in this frame.' }
+  pkCancel(pkKey(e), 'A sign-in button started a new passkey request.')
+  try { return await Passkeys.get(fr.origin, req || {}, passkeyAsk(e), fr.top) }
   catch (err) { log('passkey sign-in failed', err.message); return { error: 'UnknownError', message: 'Lumen could not use the passkey.' } }
 })
 
@@ -3066,9 +3106,14 @@ app.whenReady().then(async () => {
   if (windows.some(w => w.arrived)) setTimeout(() => { for (const w of windows) { try { w.win.setBackgroundColor(winBg(w.incognito)) } catch {} } }, 6000)
   log('boot ' + app.getVersion())
   separateAppsCheck()
+  // 4.4.23: passkeys and passwords move into Lumen's key vault while their old key still opens (just after boot,
+  // so the first window is not held up). Anything that does not open is kept and tried again next time.
+  setTimeout(() => {
+    try { const pw = D.migrateSecrets(), pk = Passkeys.migrate(); if (pw || pk.moved || pk.locked) log(`vault: ${pw} passwords and ${pk.moved} passkeys moved, ${pk.locked} passkeys locked (kept)`) } catch (e) { log('vault migration failed', e.message) }
+  }, 1500)
   Sync.start()
   nativeTheme.on('updated', () => { broadcast('theme', nativeTheme.shouldUseDarkColors); for (const w of windows) { try { w.win.setBackgroundColor(winBg(w.incognito)); for (const t of w.tabs.values()) if (t.view && !t.view.webContents.isDestroyed()) t.view.setBackgroundColor(tabBg(t.view.webContents.getURL() || t.url, w.incognito)) } catch {} } })
   powerMonitor.on('resume', () => Sync.syncNow().catch(() => {}))
 })
 
-module.exports = { __downloads: () => listDownloads(), __clips: clips, __clipWatch: clipWatch, __copyAllLinks: copyAllLinks, __pasteTarget: pasteTarget, __closedList: closedList, __reopenAt: reopenAt, __refreshClosedMenu: () => refreshClosedMenu(), __closedTabs: closedTabs, __reopenClosedWindow: reopenClosedWindow, __closeMany: closeMany, __reopenClosed: reopenClosed, __tabMenu: (w, id) => tabMenu(w, id), __copyPageLink: copyPageLink, __cleanLink: cleanLink, __setParcelNote: f => { parcelNote = f }, __showParcels: showParcels, __parcelState: () => ({ busy: parcelBusy, win: !!(parcelWin && !parcelWin.isDestroyed()) }), windows, createWindow, D, __suggest: suggest, allowSites, toggleSiteAdblock, __refreshAdblock: refreshAdblock, __adblockAge: adblockAge, __hl_add: addHighlight, __hl_recolor: recolorHighlight, __addToNTP: addToNTP, __checkParcels: checkParcels, __separateApps: { check: separateAppsCheck, had: hadBuiltInApps, LINKS: SEPARATE_APPS }, __nova: Nova, __novaDialog: novaDialog, __tabMenu: tabMenu, __readerMode: readerMode, __appMenu: appMenuPopup, __confirmQuit: confirmQuit, __printFailed: printFailed, __dockTemplate: dockTemplate, __jumpTasks: jumpTasks, __handleArgs: handleArgs, __recentSites: recentSites }
+module.exports = { __downloads: () => listDownloads(), __clips: clips, __clipWatch: clipWatch, __copyAllLinks: copyAllLinks, __pasteTarget: pasteTarget, __closedList: closedList, __reopenAt: reopenAt, __refreshClosedMenu: () => refreshClosedMenu(), __closedTabs: closedTabs, __reopenClosedWindow: reopenClosedWindow, __closeMany: closeMany, __reopenClosed: reopenClosed, __tabMenu: (w, id) => tabMenu(w, id), __copyPageLink: copyPageLink, __cleanLink: cleanLink, __setParcelNote: f => { parcelNote = f }, __showParcels: showParcels, __parcelState: () => ({ busy: parcelBusy, win: !!(parcelWin && !parcelWin.isDestroyed()) }), windows, createWindow, D, __suggest: suggest, allowSites, toggleSiteAdblock, __refreshAdblock: refreshAdblock, __adblockAge: adblockAge, __hl_add: addHighlight, __hl_recolor: recolorHighlight, __addToNTP: addToNTP, __checkParcels: checkParcels, __separateApps: { check: separateAppsCheck, had: hadBuiltInApps, LINKS: SEPARATE_APPS }, __nova: Nova, __pkAsking: pkAsking, __novaDialog: novaDialog, __tabMenu: tabMenu, __readerMode: readerMode, __appMenu: appMenuPopup, __confirmQuit: confirmQuit, __printFailed: printFailed, __dockTemplate: dockTemplate, __jumpTasks: jumpTasks, __handleArgs: handleArgs, __recentSites: recentSites }

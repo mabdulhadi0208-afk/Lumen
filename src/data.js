@@ -1,5 +1,6 @@
 // All persistent user data: settings, bookmarks, history, passwords, site permissions, session.
-const { safeStorage } = require('electron')
+const Vault = require('./vault')
+const SS = () => Vault.safeStorage()   // Electron's safeStorage (tests can stand in a fake)
 const { Store, uid } = require('./store')
 
 const settings = new Store('settings', {
@@ -198,14 +199,39 @@ function editBookmark(id, patch) {
 const isBookmarked = url => bookmarks.get().some(b => b.url === url && !b.deleted)
 
 // ---------- passwords ----------
-const canEncrypt = () => { try { return safeStorage.isEncryptionAvailable() } catch { return false } }
-function enc(s) { return canEncrypt() ? 'e:' + safeStorage.encryptString(s).toString('base64') : 'p:' + Buffer.from(s).toString('base64') }
-function dec(s) {
+const canEncrypt = () => { try { return SS().isEncryptionAvailable() } catch { return false } }
+// 4.4.23: secrets are sealed with Lumen's key vault (src/vault.js), which survives updates that change the app's
+// signature. Older 'e:' (safeStorage only) values are still read, and moved into the vault while they still open.
+function enc(s) {
+  try { const v = Vault.seal(s); if (v) return v } catch {}
+  return canEncrypt() ? 'e:' + SS().encryptString(s).toString('base64') : 'p:' + Buffer.from(s).toString('base64')
+}
+// the plain text, or null when it is there but cannot be opened right now (never treat that as empty)
+function decOrNull(s) {
+  if (!s) return ''
   try {
-    if (s.startsWith('e:')) return safeStorage.decryptString(Buffer.from(s.slice(2), 'base64'))
+    if (Vault.isSealed(s)) return Vault.open(s)
+    if (s.startsWith('e:')) return SS().decryptString(Buffer.from(s.slice(2), 'base64'))
     if (s.startsWith('p:')) return Buffer.from(s.slice(2), 'base64').toString()
   } catch {}
-  return ''
+  return null
+}
+function dec(s) { const v = decOrNull(s); return v == null ? '' : v }
+// an old value that opens: seal it again in the vault. Returns the new value, or the old one untouched.
+function reseal(s) {
+  if (!s || Vault.isSealed(s)) return s
+  const v = decOrNull(s); if (v == null) return s
+  try { const n = Vault.seal(v); if (n) return n } catch {}
+  return s
+}
+function migrateSecrets() {
+  let n = 0
+  for (const p of passwords.get()) if (!p.deleted && p.password && !Vault.isSealed(p.password)) { const v = reseal(p.password); if (v !== p.password) { p.password = v; n++ } }
+  if (n) passwords.save()
+  const s = settings.get()
+  for (const k of ['aiKey']) if (s[k] && !Vault.isSealed(s[k])) { const v = reseal(s[k]); if (v !== s[k]) settings.set(k, v) }
+  if (s.sync && s.sync.key && !Vault.isSealed(s.sync.key)) { const v = reseal(s.sync.key); if (v !== s.sync.key) settings.set('sync', { ...s.sync, key: v }) }
+  return n
 }
 const livePasswords = () => passwords.get().filter(p => !p.deleted)
 function savePassword(origin, username, password) {
@@ -240,7 +266,7 @@ module.exports = {
   addHistory, updateHistoryTitle, listHistory, deleteHistory, deleteHistoryHost, clearHistory, topSites,
   liveBookmarks, addBookmark, removeBookmark, editBookmark, isBookmarked,
   savePassword, hasPassword, credentialsFor, listPasswords, revealPassword, deletePassword, updatePassword,
-  enc, dec, historyMap, flushHistory, onHistory, historyCompact,
+  enc, dec, decOrNull, reseal, migrateSecrets, historyMap, flushHistory, onHistory, historyCompact,
   readLater, isReadLater, addReadLater, removeReadLater, archive, addArchive, removeArchive, highlights,
   setSiteIcon, iconsFor,
 }

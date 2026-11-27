@@ -23,11 +23,11 @@
 ;(function () {
   // ---- edit this list every release: it is the "New in Lumen" act of the film (only this version's changes)
   const WHATS_NEW = {
-    version: '4.4.15',
+    version: '4.4.16',
     items: [
-      { icon: 'tabs', text: 'Closed a window by mistake? Reopen Closed Tab (Shift Command T) brings the whole window back, every tab in its place' },
-      { icon: 'reload', text: 'New Reopen Closed Window, in the menu and the command bar, finds your last window even after you closed more tabs' },
-      { icon: 'sparkle', text: 'The window comes back at its old size with the tab you were on in front, and it works even with no window open' },
+      { icon: 'clock', text: 'New History, Recently Closed in the menu bar: your last ten closed tabs, batches and windows, by name, one click to bring any back' },
+      { icon: 'tabs', text: 'Recently closed in the main menu names batches and windows too, and brings the whole lot back' },
+      { icon: 'sparkle', text: 'Fixed: picking a batch or a window there could open an empty tab instead' },
     ],
   }
 
@@ -1301,6 +1301,18 @@
         key.animate([{ opacity: 0, transform: 'translateY(-40px) scale(.8)' }, { opacity: 1, transform: 'translateY(4px) scale(1.04)', offset: .35 }, { opacity: 1, transform: 'none', offset: .5 }, { opacity: 1, transform: 'translateY(5px) scale(.94,.9)', offset: .62 }, { opacity: 1, transform: 'none', offset: .75 }, { opacity: 0, transform: 'translateY(-6px)' }], { duration: 1700, delay: n * 90, easing: 'cubic-bezier(.3,1.3,.5,1)', fill: 'both' }).finished.then(() => key.remove(), () => key.remove())
       })
     }, 3000)
+    // 4.4.16: the list. Three short lines of light stack up under the title one after another, like a list writing
+    // itself, then the top one brightens as if picked and they all fade (transform and opacity only)
+    setTimeout(() => {
+      if (skip || still || !logo.offsetParent) return
+      const host = logo.offsetParent, x = logo.offsetLeft + logo.offsetWidth * .5 - 70, y = logo.offsetTop + logo.offsetHeight + 16
+      ;[0, 1, 2].forEach(k => {
+        const l = document.createElement('i')
+        l.style.cssText = `position:absolute;left:${x}px;top:${y + k * 12}px;width:${140 - k * 26}px;height:5px;border-radius:3px;pointer-events:none;transform-origin:left;mix-blend-mode:screen;background:linear-gradient(90deg,color-mix(in srgb,var(--hi) 80%,#fff),transparent)`
+        host.appendChild(l)
+        l.animate([{ opacity: 0, transform: 'scaleX(0)' }, { opacity: .9, transform: 'scaleX(1.04)', offset: .3 }, { opacity: k ? .5 : 1, transform: k ? 'none' : 'scaleX(1.08)', offset: .6 }, { opacity: 0, transform: 'none' }], { duration: 1800, delay: k * 120, easing: 'cubic-bezier(.3,1.3,.5,1)', fill: 'both' }).finished.then(() => l.remove(), () => l.remove())
+      })
+    }, 4100)
     // 4.4.15: the window. A thin rounded frame of light, the shape of a window, folds up from a line beneath the title
     // on a spring, holds, and folds away again, like a window coming back (transform and opacity only)
     setTimeout(() => {

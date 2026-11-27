@@ -25,13 +25,9 @@ Lumen is an Electron (Chromium) browser for Mac and Windows: just the browser. S
 12. Surge, Koi and Grab each show a What's new intro once after they update, like Lumen (the owner asked on 2026-11-27: "add intro updates to surge and koi and grab as well"). Every update of one of them rewrites its What's new with only that version's changes: Grab `WHATS_NEW` in `src/ui/app.js`, Koi `WHATS_NEW` in `renderer/app.html`, Surge's What's new constant. Grab also asks for macOS App Management when it opens without it.
 13. Whenever the work touches anything with an auto-update feature, make the update experience look way, way better. In Lumen that means the update card (`ui/update.html`) and the restart flow, and the update bits in Surge and Koi.
 
-## The hourly update
+## The hourly update (ended)
 
-- The owner said (2026-11-27): "EVERY HOUR LITERALLY EVERYTHING GETS A GLOW UP AND FIX ALL THE LAG AND UPDATE THE SITE". So every hourly update has three parts, not one:
-  1. A big, visible glow-up across the app, not only the new feature: pick screens, menus, pages and animations that have not been touched lately and level them up (docs/NOVA.md).
-  2. A lag pass: measure (test/speed42.js, test/perf*.js, startup, tab switching, typing in the command bar, scrolling) and fix the slowest thing found, with the before and after numbers in the release notes.
-  3. The whole website updated: every screenshot, the film when features changed, and every line of text.
-- The hourly trigger asks for one improvement per hour. If an update is already in progress when it fires, hand the hourly update to a background agent and keep working on the current update.
+- The owner removed the hourly update on 2026-11-27 ("remove the hourly update"). Its scheduled task is deleted. Do not start hourly updates again unless the owner asks. The last hourly release was 4.4.22.
 - Only one release goes to `main` at a time: whichever finishes first ships, and the other one rebases on it and bumps to the next version before its own suite run.
 
 ## How to release

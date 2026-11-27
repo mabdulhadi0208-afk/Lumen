@@ -671,6 +671,7 @@ const COMMANDS = [
   { t: 'Picture in Picture', s: () => `${K.sh} ${K.cmd} P`, k: ['pip', 'picture', 'video'], i: 'pip', run: () => api.do('pip') },
   { t: 'Take Screenshot', s: () => `${K.sh} ${K.cmd} 2`, k: ['screenshot', 'capture'], i: 'camera', run: () => api.do('screenshot') },
   { t: 'Reopen Closed Tab', s: () => `${K.sh} ${K.cmd} T`, k: ['reopen', 'undo close', 'restore'], i: 'reload', run: () => api.do('reopen') },
+  { t: 'Reopen Closed Window', k: ['reopen window', 'restore window', 'undo close window'], i: 'tabs', run: () => api.do('reopenWindow') },
   { t: 'Toggle Sidebar', k: ['sidebar', 'hide sidebar', 'focus'], i: 'sidebar', run: () => { if (!TOP) setCollapsed(!collapsed) } },
   { t: 'Tabs on Top', k: ['top', 'tabs on top', 'horizontal', 'layout', 'sidebar up'], i: 'tabs', run: () => api.do('setSetting', 'tabLayout', 'top') },
   { t: 'Tabs in Sidebar', k: ['side', 'tabs in sidebar', 'vertical', 'layout', 'sidebar left'], i: 'sidebar', run: () => api.do('setSetting', 'tabLayout', 'side') },

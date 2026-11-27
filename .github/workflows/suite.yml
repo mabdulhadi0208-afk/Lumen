@@ -25,7 +25,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        test: [adallow, addbtn, batch12, dark, dark2, polish, qol3, sweep, trcard, trcard2, v17, v20, readlater, wave13, wave14, wave15, wave16, gsignin, updatecard, wave19, ytfix, passkeys2, novamenus, inpage, home40, noapps, sweep41, motion40, ai41, layout42, logos43, totop44, speed42, agent43, passkeys45, intro444, aimode445, shop446, heading447, parcellink448]
+        test: [adallow, addbtn, batch12, dark, dark2, polish, qol3, sweep, trcard, trcard2, v17, v20, readlater, wave13, wave14, wave15, wave16, gsignin, updatecard, wave19, ytfix, passkeys2, novamenus, inpage, home40, noapps, sweep41, motion40, ai41, layout42, logos43, totop44, speed42, agent43, passkeys45, intro444, aimode445, shop446, heading447, parcellink448, notify449]
     steps:
       - uses: actions/checkout@v4
         with: { ref: '${{ github.event.inputs.sha || github.sha }}' }

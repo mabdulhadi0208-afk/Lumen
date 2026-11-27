@@ -1511,17 +1511,32 @@ async function parcelPage(w, t) {
   } catch (e) { log('parcel scan failed', e.message) }
 }
 // background check: open each parcel's page out of sight, read the status, close it
-let parcelBusy = false
+let parcelBusy = false, parcelWin = null
+const parcelNotes = new Set()   // keep notifications alive so their click still works later
+let parcelNote = o => { const { Notification } = require('electron'); return Notification.isSupported() ? new Notification(o) : null }
+// open Parcels in the window you used last (reusing a Parcels tab if one is open), with the parcel highlighted
+function showParcels(id) {
+  let w = windows.find(x => x.win && !x.win.isDestroyed() && x.win.isFocused()) || windows.find(x => x.win && !x.win.isDestroyed() && !x.incognito)
+  if (!w) w = createWindow({ urls: ['lumen://parcels'] })
+  else {
+    const open = [...w.tabs.values()].find(t => t.view && t.view.webContents && !t.view.webContents.isDestroyed() && /^lumen:\/\/parcels/.test(t.view.webContents.getURL()))
+    const url = 'lumen://parcels' + (id ? '#p=' + encodeURIComponent(id) : '')
+    if (open) { open.view.webContents.loadURL(url); w.activate(open.id) } else w.createTab(url, { active: true })
+  }
+  try { if (w.win.isMinimized()) w.win.restore(); w.win.show(); w.win.focus(); app.focus({ steal: true }) } catch {}
+  return w
+}
 async function checkParcels(force = false) {
-  if (parcelBusy || !mainSession) return
+  if (parcelBusy || !mainSession || quitting) return
   parcelBusy = true
   try {
     Parcels.prune()
     const due = Parcels.active().filter(p => Parcels.openURL(p) && (force || Date.now() - (p.checked || 0) > 2 * 3600000))
     for (const p of due.slice(0, 8)) {
+      if (quitting) break   // quitting: stop between parcels instead of opening another carrier page
       let win
       try {
-        win = new BrowserWindow({ show: false, width: 1100, height: 900, webPreferences: { session: mainSession, sandbox: true, contextIsolation: true } })
+        win = parcelWin = new BrowserWindow({ show: false, width: 1100, height: 900, webPreferences: { session: mainSession, sandbox: true, contextIsolation: true } })
         win.webContents.setAudioMuted(true)
         await Promise.race([win.loadURL(Parcels.openURL(p)), new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), 25000))])
         await new Promise(r => setTimeout(r, 3500))
@@ -1531,8 +1546,15 @@ async function checkParcels(force = false) {
         if (st) Parcels.setStatus(p, st, text); else { const eta = Parcels.etaOf(text); Parcels.update(p.id, { checked: Date.now(), ...(eta ? { eta } : {}) }) }
         if (st && st.status !== was) {
           const msg = st.status === 'delivered' ? `${p.name || 'Your parcel'} was delivered` : `${p.name || 'Your parcel'}: ${st.text}`
-          for (const w of windows) w.send('toast', msg)
-          try { const { Notification } = require('electron'); if (Notification.isSupported()) new Notification({ title: 'Lumen Parcels', body: msg, silent: false }).show() } catch {}
+          for (const w of windows) w.send('parcel-news', { msg, id: p.id, delivered: st.status === 'delivered' })
+          try {
+            const n = parcelNote({ title: 'Lumen Parcels', body: msg, silent: false })
+            if (n) {
+              n.on('click', () => showParcels(p.id))   // the notification takes you straight to the parcel
+              parcelNotes.add(n); n.on('close', () => parcelNotes.delete(n)); n.show()
+              setTimeout(() => parcelNotes.delete(n), 3600000)
+            }
+          } catch {}
         }
       } catch (e) { Parcels.update(p.id, { checked: Date.now() }); log('parcel check failed', p.id, e.message) }
       finally {   // close gently so the page can finish what it was doing, then make sure it is gone
@@ -1886,6 +1908,7 @@ ipcMain.handle('ui', async (e, action, ...a) => {
       case 'parcelsAuto': setSetting('parcelsAuto', !!a[0]); return true
       case 'parcelsCount': return Parcels.active().length
       case 'trackNumber': return trackNumber(w, a[0])
+      case 'showParcel': showParcels(String(a[0] || '')); return true
       case 'focusMode': return setFocusMode(w, a[0] === undefined ? !w.focusMode : a[0])
       case 'archiveNow': return archiveIdleTabs()
       case 'readLaterOpen': { const url = String(a[0] || ''); if (!D.isReadLater(url)) return; D.removeReadLater(url); w.createTab(url, { active: true }); return }
@@ -2773,6 +2796,8 @@ function flushAll() {
 }
 app.on('before-quit', () => {
   quitting = true
+  // a background parcel check may be half way through loading a carrier's page: end it now, so quitting is clean
+  try { if (parcelWin && !parcelWin.isDestroyed()) { parcelWin.webContents.stop(); parcelWin.destroy() } } catch {}
   flushAll()
   // a downloaded update is applied when you quit, so the next launch is already new
   if (Updater.isReady()) Updater.install(false, { fromQuit: true })
@@ -2837,4 +2862,4 @@ app.whenReady().then(async () => {
   powerMonitor.on('resume', () => Sync.syncNow().catch(() => {}))
 })
 
-module.exports = { windows, createWindow, D, __suggest: suggest, allowSites, toggleSiteAdblock, __refreshAdblock: refreshAdblock, __adblockAge: adblockAge, __hl_add: addHighlight, __hl_recolor: recolorHighlight, __addToNTP: addToNTP, __checkParcels: checkParcels, __separateApps: { check: separateAppsCheck, had: hadBuiltInApps, LINKS: SEPARATE_APPS }, __nova: Nova, __novaDialog: novaDialog, __tabMenu: tabMenu, __readerMode: readerMode, __appMenu: appMenuPopup, __confirmQuit: confirmQuit, __printFailed: printFailed, __dockTemplate: dockTemplate, __jumpTasks: jumpTasks, __handleArgs: handleArgs, __recentSites: recentSites }
+module.exports = { __setParcelNote: f => { parcelNote = f }, __showParcels: showParcels, __parcelState: () => ({ busy: parcelBusy, win: !!(parcelWin && !parcelWin.isDestroyed()) }), windows, createWindow, D, __suggest: suggest, allowSites, toggleSiteAdblock, __refreshAdblock: refreshAdblock, __adblockAge: adblockAge, __hl_add: addHighlight, __hl_recolor: recolorHighlight, __addToNTP: addToNTP, __checkParcels: checkParcels, __separateApps: { check: separateAppsCheck, had: hadBuiltInApps, LINKS: SEPARATE_APPS }, __nova: Nova, __novaDialog: novaDialog, __tabMenu: tabMenu, __readerMode: readerMode, __appMenu: appMenuPopup, __confirmQuit: confirmQuit, __printFailed: printFailed, __dockTemplate: dockTemplate, __jumpTasks: jumpTasks, __handleArgs: handleArgs, __recentSites: recentSites }

@@ -796,6 +796,18 @@ async function parcelsPage(m) {
     list = await L.invoke('parcels'); draw()
   }
   draw()
+  // 4.4.9: arriving from a parcel notification or toast (#p=<id>): scroll to that parcel and make it glow
+  // (an open Parcels tab gets only a new #p=, so this runs again on hashchange, with fresh data)
+  const focusParcel = async () => {
+    const pid = (location.hash.match(/^#p=([^&]+)/) || [])[1]; if (!pid) return
+    history.replaceState(null, '', location.pathname)
+    list = await L.invoke('parcels'); draw()
+    setTimeout(() => {
+      const r = [...document.querySelectorAll('.prow')].find(x => x.dataset.id === decodeURIComponent(pid))
+      if (r) { r.classList.remove('pfocus'); void r.offsetWidth; r.scrollIntoView({ block: 'center', behavior: 'smooth' }); r.classList.add('pfocus'); setTimeout(() => r.classList.remove('pfocus'), 2600) }
+    }, 300)
+  }
+  focusParcel(); window.addEventListener('hashchange', focusParcel)
 }
 
 // ======================================================================= Surge and Koi

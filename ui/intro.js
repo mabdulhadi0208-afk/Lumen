@@ -23,11 +23,11 @@
 ;(function () {
   // ---- edit this list every release: it is the "New in Lumen" act of the film (only this version's changes)
   const WHATS_NEW = {
-    version: '4.4.8',
+    version: '4.4.9',
     items: [
-      { icon: 'box', text: 'Tracking links work everywhere: right-click a carrier\'s tracking link on any page and pick Track Parcel' },
-      { icon: 'sparkle', text: 'Paste a tracking link in the command bar, or copy one before Track a parcel, and Lumen takes out the number and the right carrier' },
-      { icon: 'play', text: 'Paste a link into the tracking number box and it turns into the number, with a note saying which carrier it found' },
+      { icon: 'box', text: 'Parcel news takes you to the parcel: click the notification and Parcels opens with that parcel lit up' },
+      { icon: 'sparkle', text: 'The toast for it has a View button too, and it reuses the Parcels tab you already have open' },
+      { icon: 'play', text: 'Quitting while Lumen checks a parcel in the background is instant and clean now' },
     ],
   }
 
@@ -1301,6 +1301,22 @@
         key.animate([{ opacity: 0, transform: 'translateY(-40px) scale(.8)' }, { opacity: 1, transform: 'translateY(4px) scale(1.04)', offset: .35 }, { opacity: 1, transform: 'none', offset: .5 }, { opacity: 1, transform: 'translateY(5px) scale(.94,.9)', offset: .62 }, { opacity: 1, transform: 'none', offset: .75 }, { opacity: 0, transform: 'translateY(-6px)' }], { duration: 1700, delay: n * 90, easing: 'cubic-bezier(.3,1.3,.5,1)', fill: 'both' }).finished.then(() => key.remove(), () => key.remove())
       })
     }, 3000)
+    // 4.4.9: the ping. A small bell of light swings in above the title, rings twice on a spring with a ripple at
+    // each ring, and drops away (transform and opacity only)
+    setTimeout(() => {
+      if (skip || still || !logo.offsetParent) return
+      const host = logo.offsetParent, x = logo.offsetLeft + logo.offsetWidth - 14, y = logo.offsetTop - 34
+      const bell = document.createElement('i')
+      bell.style.cssText = `position:absolute;left:${x}px;top:${y}px;width:26px;height:26px;pointer-events:none;transform-origin:50% 0;border-radius:13px 13px 6px 6px;background:linear-gradient(180deg,#fff,color-mix(in srgb,var(--hi) 70%,#fff));box-shadow:0 0 18px color-mix(in srgb,var(--hi) 60%,transparent)`
+      host.appendChild(bell)
+      bell.animate([{ opacity: 0, transform: 'translateY(-20px)' }, { opacity: 1, transform: 'rotate(-18deg)', offset: .2 }, { transform: 'rotate(16deg)', offset: .32 }, { transform: 'rotate(-10deg)', offset: .44 }, { transform: 'rotate(6deg)', offset: .56 }, { opacity: 1, transform: 'none', offset: .75 }, { opacity: 0, transform: 'translateY(10px) scale(.8)' }], { duration: 1900, easing: 'cubic-bezier(.3,1.3,.5,1)', fill: 'both' }).finished.then(() => bell.remove(), () => bell.remove())
+      ;[0, 1].forEach(k => {
+        const r = document.createElement('i')
+        r.style.cssText = `position:absolute;left:${x - 7}px;top:${y - 7}px;width:40px;height:40px;border-radius:50%;pointer-events:none;mix-blend-mode:screen;border:1.5px solid color-mix(in srgb,var(--hi3) 70%,#fff)`
+        host.appendChild(r)
+        r.animate([{ opacity: 0, transform: 'scale(.5)' }, { opacity: .8, transform: 'scale(1)', offset: .2 }, { opacity: 0, transform: 'scale(2.4)' }], { duration: 900, delay: 380 + k * 240, easing: 'cubic-bezier(.16,1,.3,1)', fill: 'both' }).finished.then(() => r.remove(), () => r.remove())
+      })
+    }, 3100)
     // 4.4.8: the link. A short chain link of light swings in beside the title on a spring, its two loops close
     // together with a soft click, and it fades as one (transform and opacity only)
     setTimeout(() => {

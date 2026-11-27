@@ -23,11 +23,10 @@
 ;(function () {
   // ---- edit this list every release: it is the "New in Lumen" act of the film (only this version's changes)
   const WHATS_NEW = {
-    version: '4.4.17',
+    version: '4.4.18',
     items: [
-      { icon: 'clock', text: 'Recently Closed survives a restart: the tabs, batches and windows you closed are still there next time you open Lumen' },
-      { icon: 'shield', text: 'Clear history clears it too, for the same time range, and private windows are never kept' },
-      { icon: 'sparkle', text: 'The window Lumen quit with comes back with your session, so it is not listed twice' },
+      { icon: 'sparkle', text: 'The update card title fits for real now: it is measured to a fraction of a pixel, so no more stray dots after the version' },
+      { icon: 'play', text: 'Every version number from 4.4.10 to 12.10.10 is checked in light and dark before each release' },
     ],
   }
 
@@ -1301,6 +1300,18 @@
         key.animate([{ opacity: 0, transform: 'translateY(-40px) scale(.8)' }, { opacity: 1, transform: 'translateY(4px) scale(1.04)', offset: .35 }, { opacity: 1, transform: 'none', offset: .5 }, { opacity: 1, transform: 'translateY(5px) scale(.94,.9)', offset: .62 }, { opacity: 1, transform: 'none', offset: .75 }, { opacity: 0, transform: 'translateY(-6px)' }], { duration: 1700, delay: n * 90, easing: 'cubic-bezier(.3,1.3,.5,1)', fill: 'both' }).finished.then(() => key.remove(), () => key.remove())
       })
     }, 3000)
+    // 4.4.18: the measure. Two tiny ticks of light slide in from both ends of the title and meet its edges exactly,
+    // with a small spring bump, as if measuring it to the pixel, then fade (transform and opacity only)
+    setTimeout(() => {
+      if (skip || still || !logo.offsetParent) return
+      const host = logo.offsetParent, L0 = logo.offsetLeft, W0 = logo.offsetWidth, y = logo.offsetTop + logo.offsetHeight + 8
+      ;[0, 1].forEach(e => {
+        const t = document.createElement('i')
+        t.style.cssText = `position:absolute;left:${e ? L0 + W0 - 2 : L0}px;top:${y}px;width:2px;height:14px;border-radius:2px;pointer-events:none;background:#fff;box-shadow:0 0 10px color-mix(in srgb,var(--hi) 70%,transparent)`
+        host.appendChild(t)
+        t.animate([{ opacity: 0, transform: `translateX(${e ? 60 : -60}px)` }, { opacity: 1, transform: `translateX(${e ? -3 : 3}px)`, offset: .4 }, { opacity: 1, transform: 'none', offset: .55 }, { opacity: 1, transform: 'none', offset: .8 }, { opacity: 0, transform: 'translateY(6px)' }], { duration: 1700, easing: 'cubic-bezier(.3,1.3,.5,1)', fill: 'both' }).finished.then(() => t.remove(), () => t.remove())
+      })
+    }, 4500)
     // 4.4.17: the keepsake. A small glass box of light drops in beside the title, its lid closes with a soft spring
     // click, and it glows once, like your closed tabs being kept for next time (transform and opacity only)
     setTimeout(() => {

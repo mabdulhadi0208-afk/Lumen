@@ -48,11 +48,11 @@ app.whenReady().then(async () => {
     const w = new BrowserWindow({ width: 600, height: 272 + 5 * 26, show: false, transparent: true, frame: false, webPreferences: { preload: path.join(__dirname, '../src/preload-update.js'), contextIsolation: true, sandbox: true } })
     await w.loadFile(path.join(__dirname, '../ui/update.html')); await wait(1200); await w.webContents.executeJavaScript('document.fonts.ready.then(() => 1)'); await wait(250)
     const r = await w.webContents.executeJavaScript(`(() => { const b = document.getElementById('title'), c = document.getElementById('card').getBoundingClientRect(), r = b.getBoundingClientRect()
-      return { text: b.textContent, fits: b.scrollWidth <= b.clientWidth, inside: r.right <= c.right + 1, size: parseFloat(getComputedStyle(b).fontSize) } })()`)
+      return { text: b.textContent, fits: (() => { const m = b.cloneNode(true); m.removeAttribute('id'); m.style.cssText += ';position:absolute;left:-9999px;visibility:hidden;display:inline-block;width:auto;max-width:none;overflow:visible;text-overflow:clip;white-space:nowrap;font-size:' + getComputedStyle(b).fontSize; b.parentNode.appendChild(m); const wd = m.getBoundingClientRect().width; m.remove(); return wd <= b.clientWidth })(), inside: r.right <= c.right + 1, size: parseFloat(getComputedStyle(b).fontSize) } })()`)
     w.destroy(); return r
   }
   for (const theme of ['light', 'dark']) {
-    for (const V of ['v4.4.10', 'v4.4.12', 'v4.4.88']) for (const [st, extra] of [['downloading', { progress: 40, bytes: 50e6, speed: 6e6, eta: 12 }], ['available', {}], ['ready', { verified: true }]]) {
+    for (const V of ['v4.4.10', 'v4.4.12', 'v4.4.17', 'v4.4.18', 'v4.4.88']) for (const [st, extra] of [['downloading', { progress: 40, bytes: 50e6, speed: 6e6, eta: 12 }], ['available', {}], ['ready', { verified: true }]]) {
       const r = await card(theme, V, st, extra)
       ok(r.text.includes(V.slice(1)) && r.fits && r.inside, `${theme} ${st}: "${r.text}" fits on one line (${r.size}px)`)
     }

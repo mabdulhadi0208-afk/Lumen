@@ -641,6 +641,7 @@ const COMMANDS = [
   { t: 'Split View', s: () => `${K.sh} ${K.cmd} \\`, k: ['split', 'side by side'], i: 'split', run: () => toggleSplit() },
   { t: 'Keyboard Shortcuts', s: () => `${K.cmd} /`, k: ['shortcuts', 'keys', 'hotkeys', 'help'], i: 'bolt', run: () => openShortcuts() },
   { t: 'Save All Tabs as a Session', k: ['save tabs', 'session', 'save all'], i: 'star', run: () => api.do('saveSession') },
+  { t: 'Clipboard History', s: () => `${K.opt} V`, k: ['clipboard', 'paste', 'copied', 'history of copies'], i: 'copy', run: () => openClipboard() },
   { t: 'Copy All Tab Links', k: ['copy all', 'links', 'share tabs'], i: 'arrowRight', run: () => api.do('copyAllLinks') },
   { t: 'Close Duplicate Tabs', k: ['duplicate', 'dupes', 'clean up tabs'], i: 'tabs', run: () => api.do('closeDuplicates') },
   { t: 'Close Other Tabs', k: ['close other', 'close all'], i: 'close', run: () => api.do('closeOthers') },
@@ -973,7 +974,7 @@ const popG = new SpringGroup({ s: 0.96, o: 0, y: -6 }, 'calm', v => { pop.style.
 function openPopover(html, anchor, { above = false, wide = false, mini = false } = {}) {
   if (overlayOpen === 'cmd') closeCmd(true)
   pop.innerHTML = html
-  pop.classList.toggle('wide', wide); pop.classList.remove('sheet'); pop.classList.toggle('mini', mini)
+  pop.classList.toggle('wide', wide); pop.classList.remove('sheet', 'clipz'); pop.classList.toggle('mini', mini)
   // a hidden anchor (Downloads before the first download) measures as nothing: open from the More button instead
   let r = anchor.getBoundingClientRect()
   if (!r.width && !r.height) { const m = $('#btn-menu'); if (m) r = m.getBoundingClientRect() }
@@ -1132,6 +1133,49 @@ function openShortcuts() {
 
 // ---------------------------------------------------------------- main menu
 const K = IS_MAC ? { cmd: 'Cmd', sh: 'Shift', opt: 'Opt' } : { cmd: 'Ctrl', sh: 'Shift', opt: 'Alt' }
+// ---------------------------------------------------------------- clipboard history (4.4.21)
+// Option V or Option C: what you copied lately, newest first. Enter or a click pastes it into the page, 1 to 9 paste
+// straight away, Shift Enter only copies, and Delete forgets one.
+let clipSel = 0, clipData = []
+const clipAgo = t => { const m = Math.round((Date.now() - t) / 60000); return m < 1 ? 'just now' : m < 60 ? m + ' min ago' : Math.round(m / 60) + ' hr ago' }
+const CLIP_KIND = { link: ['link', 'Link'], number: ['bolt', 'Number'], email: ['at', 'Email'], text: ['copy', 'Text'] }
+function clipHTML(info) {
+  clipData = info.clips || []
+  const rows = clipData.map((c, n) => { const k = CLIP_KIND[c.kind] || CLIP_KIND.text
+    return `<div class="clip${n === clipSel ? ' sel' : ''}" data-ci="${c.i}" data-n="${n}" style="--d:${Math.min(n, 8) * 28}ms"><span class="clip-ic">${ICONS[k[0]] || ICONS.link || ''}</span>
+      <span class="clip-b"><span class="clip-t">${esc(c.text.replace(/\s+/g, ' ').trim().slice(0, 180))}${c.long ? '...' : ''}</span>
+      <span class="clip-m">${k[1]}${c.lines > 1 ? '  ·  ' + c.lines + ' lines' : c.chars > 40 ? '  ·  ' + c.chars + ' characters' : ''}  ·  ${clipAgo(c.at)}</span></span>
+      ${n < 9 ? `<kbd class="clip-n">${n + 1}</kbd>` : ''}<button class="clip-x" data-cx="${c.i}" title="Forget">${ICONS.close}</button></div>` }).join('')
+  return `<div class="clipz-head"><span class="clipz-ic">${ICONS.copy || ICONS.link}</span><div class="grow"><b>Clipboard</b><small>${info.on ? (clipData.length ? clipData.length + ' recent ' + (clipData.length === 1 ? 'copy' : 'copies') + ', kept until you quit' : 'Copy something and it shows up here') : 'Paused. Lumen is not keeping what you copy'}</small></div>
+    ${clipData.length ? `<button class="btn sm" data-ca="clear">Clear</button>` : ''}<button class="btn sm" data-ca="${info.on ? 'pause' : 'resume'}">${info.on ? 'Pause' : 'Turn on'}</button></div>
+    <div class="clipz-list">${rows || `<div class="clipz-empty"><span>${ICONS.copy || ''}</span>Nothing copied yet. Text, links and numbers you copy while Lumen is in front show up here.</div>`}</div>
+    <div class="clipz-foot"><span><kbd>Enter</kbd> paste</span><span><kbd>1</kbd>-<kbd>9</kbd> quick paste</span><span><kbd>Shift</kbd><kbd>Enter</kbd> copy only</span><span><kbd>Esc</kbd> close</span></div>`
+}
+async function openClipboard() {
+  const info = await api.do('clipList') || { on: true, clips: [] }
+  clipSel = 0
+  openPopover(clipHTML(info), $('#urlbar'), { wide: true })
+  pop.classList.add('clipz')
+  const redraw = async () => { const fresh = await api.do('clipList'); clipSel = Math.min(clipSel, Math.max(0, (fresh.clips || []).length - 1)); pop.innerHTML = clipHTML(fresh) }
+  pop.onclick = async e => {
+    const x = e.target.closest('[data-cx]'); if (x) { e.stopPropagation(); await api.do('clipRemove', +x.dataset.cx); return redraw() }
+    const a = e.target.closest('[data-ca]')
+    if (a) { const v = a.dataset.ca; if (v === 'clear') await api.do('clipClear'); else await api.do('clipToggle', v === 'resume'); return redraw() }
+    const r = e.target.closest('[data-ci]'); if (r) clipUse(+r.dataset.ci, e.shiftKey)
+  }
+}
+async function clipUse(i, copyOnly) {
+  closePopover(true)
+  if (copyOnly) { await api.do('clipCopy', i); toast('Copied') } else await api.do('clipPaste', i)
+}
+addEventListener('keydown', e => {
+  if (overlayOpen !== 'pop' || !pop.classList.contains('clipz')) return
+  const n = clipData.length
+  if (e.key === 'ArrowDown' || e.key === 'ArrowUp') { e.preventDefault(); if (!n) return; clipSel = (clipSel + (e.key === 'ArrowDown' ? 1 : -1) + n) % n; pop.querySelectorAll('.clip').forEach((r, k) => r.classList.toggle('sel', k === clipSel)); const r = pop.querySelectorAll('.clip')[clipSel]; r && r.scrollIntoView({ block: 'nearest' }) }
+  else if (e.key === 'Enter' && n) { e.preventDefault(); clipUse(clipData[clipSel].i, e.shiftKey) }
+  else if (/^[1-9]$/.test(e.key) && !e.metaKey && !e.ctrlKey && !e.altKey && +e.key <= n) { e.preventDefault(); clipUse(clipData[+e.key - 1].i, false) }
+  else if ((e.key === 'Backspace' || e.key === 'Delete') && n) { e.preventDefault(); api.do('clipRemove', clipData[clipSel].i).then(async () => { const fresh = await api.do('clipList'); clipSel = Math.min(clipSel, Math.max(0, fresh.clips.length - 1)); pop.innerHTML = clipHTML(fresh) }) }
+})
 async function openMainMenu() {
   const cached = pre.menu ? { ...pre.menu, zoom: S.zoom, update: updateState && updateState.status ? updateState : pre.menu.update } : null
   const info = cached || await prefetchMenu() || {}
@@ -1431,6 +1475,7 @@ api.on('command', c => {
   if (c === 'tabgrid') { tgOpen ? closeTabGrid() : openTabGrid(); return }
   if (c === 'ai') { toggleAI(); return }
   if (c === 'aimode') { if (typeof agentSwitchMode === 'function') agentSwitchMode(); return }
+  if (c === 'clipboard') { overlayOpen === 'pop' && pop.classList.contains('clipz') ? closePopover() : openClipboard(); return }
   if (c === 'newtab') api.do('newTab')
   else if (c === 'palette') openCmd('newtab')
   else if (c === 'menu') openMainMenu()

@@ -154,6 +154,38 @@ function copyPageLink(w, t, withTitle) {
   } else { clipboard.writeText(c.url); w.send('toast', cleanNote(c)) }
   return true
 }
+// ---------------------------------------------------------------- clipboard history (4.4.21)
+// Option V / Option C (Alt on Windows) opens a glass list of what you copied lately; picking one pastes it.
+// It lives in memory only (never on disk), it skips what you copy while a private window is in front and
+// passwords copied from Lumen's password list, and it only watches while Lumen is the app in front.
+const clips = []
+let clipLast = null
+const clipSecret = new Set()
+function clipWatch() {
+  if (D.settings.get('clipHistory') === false) return
+  const fw = windows.find(x => x.win && !x.win.isDestroyed() && x.win.isFocused()); if (!fw) return
+  let t = ''; try { t = clipboard.readText() || '' } catch { return }
+  if (clipLast === null) { clipLast = t; return }   // what was there before Lumen started is not history
+  if (t === clipLast) return
+  clipLast = t
+  if (fw.incognito || !t.trim() || t.length > 20000 || clipSecret.has(t)) return
+  clipAdd(t)
+}
+function clipAdd(t) {
+  const i = clips.findIndex(c => c.text === t); if (i >= 0) clips.splice(i, 1)
+  clips.unshift({ text: t, at: Date.now() }); if (clips.length > 25) clips.length = 25
+}
+setInterval(clipWatch, 700)
+const clipKind = t => /^https?:\/\/\S+$/i.test(t.trim()) ? 'link' : /^[\s\d.,+\-*/()%$€£]+$/.test(t.trim()) ? 'number' : /^\S+@\S+\.\S+$/.test(t.trim()) ? 'email' : 'text'
+function clipList() { return clips.map((c, i) => ({ i, text: c.text.slice(0, 600), long: c.text.length > 600, chars: c.text.length, lines: c.text.split('\n').length, kind: clipKind(c.text), at: c.at })) }
+async function clipPaste(w, i) {
+  const c = clips[+i]; if (!c || !w) return false
+  clipboard.writeText(c.text); clipLast = c.text; clipAdd(c.text)
+  const t = w.active(), wc = t && t.view && !t.view.webContents.isDestroyed() ? t.view.webContents : null
+  if (!wc) return true
+  wc.focus(); await new Promise(r => setTimeout(r, 60)); try { wc.paste() } catch {}
+  return true
+}
 // 4.4.20: every tab's link at once, each cleaned like Copy Link: a plain list of addresses as text, and a list of
 // titled links as HTML, so Mail, Notes and documents paste clickable titles
 function copyAllLinks(w) {
@@ -1988,6 +2020,12 @@ ipcMain.handle('ui', async (e, action, ...a) => {
         return x.view.webContents.executeJavaScript(`(() => { const m = [...document.querySelectorAll('video,audio')]; const p = m.filter(v => !v.paused); if (p.length) { p.forEach(v => v.pause()); return 'paused' } const v = m.sort((a, b) => (b.currentTime > 0) - (a.currentTime > 0))[0]; if (v) { v.play(); return 'playing' } return 'none' })()`, true).catch(() => 'none')
       }
       case 'copyAllLinks': return copyAllLinks(w)
+      case 'clipList': return { on: D.settings.get('clipHistory') !== false, clips: clipList() }
+      case 'clipPaste': return clipPaste(w, a[0])
+      case 'clipCopy': { const c = clips[+a[0]]; if (!c) return false; clipboard.writeText(c.text); clipLast = c.text; clipAdd(c.text); return true }
+      case 'clipRemove': { clips.splice(+a[0], 1); return clipList() }
+      case 'clipClear': clips.length = 0; return []
+      case 'clipToggle': { const on = !!a[0]; D.settings.set({ clipHistory: on }); if (!on) clips.length = 0; clipLast = null; return on }
       case 'saveSession': {
         const tabs = w.order.map(i => { const x = w.tabs.get(i); return { url: x.view ? x.view.webContents.getURL() : x.url, title: x.title } }).filter(x => /^https?:/.test(x.url))
         if (!tabs.length) { w.send('toast', 'No web pages to save'); return }
@@ -2463,7 +2501,7 @@ ipcMain.handle('lumen', async (e, action, ...a) => {
         }
         return D.revealPassword(a[0])
       }
-      case 'copyPassword': { const p = D.revealPassword(a[0]); clipboard.writeText(p); setTimeout(async () => { if (String(await clipboard.readText() || '') === p) clipboard.clear() }, 60000); return true }
+      case 'copyPassword': { const p = D.revealPassword(a[0]); clipSecret.add(p); setTimeout(() => clipSecret.delete(p), 120000); clipboard.writeText(p); clipLast = p; setTimeout(async () => { if (String(await clipboard.readText() || '') === p) clipboard.clear() }, 60000); return true }
       case 'deletePassword': return D.deletePassword(a[0])
       case 'updatePassword': return D.updatePassword(a[0], a[1], a[2])
       case 'addPassword': { let o; try { o = new URL(toURL(a[0])).origin } catch { return false } D.savePassword(o, a[1] || '', a[2] || ''); return true }
@@ -2565,6 +2603,9 @@ function buildMenu() {
     ] },
     { label: 'Edit', submenu: [
       { role: 'undo' }, { role: 'redo' }, { type: 'separator' }, { role: 'cut' }, { role: 'copy' }, { role: 'paste' }, { role: 'pasteAndMatchStyle' }, { role: 'selectAll' },
+      { type: 'separator' },
+      { label: 'Clipboard History', accelerator: 'Alt+V', click: focused(w => w.send('command', 'clipboard')) },
+      { label: 'Clipboard History ', accelerator: 'Alt+C', visible: false, click: focused(w => w.send('command', 'clipboard')) },
       { type: 'separator' },
       { label: 'Find...', accelerator: 'CmdOrCtrl+F', click: focused(w => w.send('command', 'find')) },
       { label: 'Find Next', accelerator: 'CmdOrCtrl+G', click: focused(w => w.send('command', 'findNext')) },
@@ -3025,4 +3066,4 @@ app.whenReady().then(async () => {
   powerMonitor.on('resume', () => Sync.syncNow().catch(() => {}))
 })
 
-module.exports = { __copyAllLinks: copyAllLinks, __pasteTarget: pasteTarget, __closedList: closedList, __reopenAt: reopenAt, __refreshClosedMenu: () => refreshClosedMenu(), __closedTabs: closedTabs, __reopenClosedWindow: reopenClosedWindow, __closeMany: closeMany, __reopenClosed: reopenClosed, __tabMenu: (w, id) => tabMenu(w, id), __copyPageLink: copyPageLink, __cleanLink: cleanLink, __setParcelNote: f => { parcelNote = f }, __showParcels: showParcels, __parcelState: () => ({ busy: parcelBusy, win: !!(parcelWin && !parcelWin.isDestroyed()) }), windows, createWindow, D, __suggest: suggest, allowSites, toggleSiteAdblock, __refreshAdblock: refreshAdblock, __adblockAge: adblockAge, __hl_add: addHighlight, __hl_recolor: recolorHighlight, __addToNTP: addToNTP, __checkParcels: checkParcels, __separateApps: { check: separateAppsCheck, had: hadBuiltInApps, LINKS: SEPARATE_APPS }, __nova: Nova, __novaDialog: novaDialog, __tabMenu: tabMenu, __readerMode: readerMode, __appMenu: appMenuPopup, __confirmQuit: confirmQuit, __printFailed: printFailed, __dockTemplate: dockTemplate, __jumpTasks: jumpTasks, __handleArgs: handleArgs, __recentSites: recentSites }
+module.exports = { __clips: clips, __clipWatch: clipWatch, __copyAllLinks: copyAllLinks, __pasteTarget: pasteTarget, __closedList: closedList, __reopenAt: reopenAt, __refreshClosedMenu: () => refreshClosedMenu(), __closedTabs: closedTabs, __reopenClosedWindow: reopenClosedWindow, __closeMany: closeMany, __reopenClosed: reopenClosed, __tabMenu: (w, id) => tabMenu(w, id), __copyPageLink: copyPageLink, __cleanLink: cleanLink, __setParcelNote: f => { parcelNote = f }, __showParcels: showParcels, __parcelState: () => ({ busy: parcelBusy, win: !!(parcelWin && !parcelWin.isDestroyed()) }), windows, createWindow, D, __suggest: suggest, allowSites, toggleSiteAdblock, __refreshAdblock: refreshAdblock, __adblockAge: adblockAge, __hl_add: addHighlight, __hl_recolor: recolorHighlight, __addToNTP: addToNTP, __checkParcels: checkParcels, __separateApps: { check: separateAppsCheck, had: hadBuiltInApps, LINKS: SEPARATE_APPS }, __nova: Nova, __novaDialog: novaDialog, __tabMenu: tabMenu, __readerMode: readerMode, __appMenu: appMenuPopup, __confirmQuit: confirmQuit, __printFailed: printFailed, __dockTemplate: dockTemplate, __jumpTasks: jumpTasks, __handleArgs: handleArgs, __recentSites: recentSites }

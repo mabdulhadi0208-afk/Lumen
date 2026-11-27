@@ -525,6 +525,11 @@
   .notes li:nth-child(1)::after{animation-delay:1.25s}.notes li:nth-child(2)::after{animation-delay:1.37s}.notes li:nth-child(3)::after{animation-delay:1.49s}.notes li:nth-child(4)::after{animation-delay:1.61s}.notes li:nth-child(5)::after{animation-delay:1.73s}
   @keyframes halo4410{0%{opacity:0;transform:scale(.6)}40%{opacity:1;transform:scale(1.1)}100%{opacity:0;transform:scale(1.25)}}
 
+  /* 4.4.11: the bar polishes. A single bright glint slides along the filled part of the download bar once, a moment
+     after the card lands, like a fresh coat of polish (its own layer inside the fill: transform and opacity only) */
+  .bar i::before{content:'';position:absolute;top:0;bottom:0;left:0;width:30%;border-radius:999px;pointer-events:none;background:linear-gradient(90deg,transparent,rgba(255,255,255,.7),transparent);opacity:0;animation:polish4411 1.3s 1.5s cubic-bezier(.45,.05,.3,1) both}
+  @keyframes polish4411{0%{transform:none;opacity:0}20%{opacity:1}80%{opacity:1}100%{transform:translateX(233%);opacity:0}}
+
   @media (prefers-reduced-motion:reduce){*,*::before,*::after{animation:none !important;transition:none !important}}
 </style></head><body>
 <svg class="defs" aria-hidden="true"><defs id="defs"><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" style="stop-color:var(--accent)"/><stop offset=".55" style="stop-color:var(--a2)"/><stop offset="1" style="stop-color:var(--a3)"/></linearGradient></defs></svg>

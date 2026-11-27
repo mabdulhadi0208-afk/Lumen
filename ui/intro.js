@@ -23,10 +23,11 @@
 ;(function () {
   // ---- edit this list every release: it is the "New in Lumen" act of the film (only this version's changes)
   const WHATS_NEW = {
-    version: '4.4.18',
+    version: '4.4.19',
     items: [
-      { icon: 'sparkle', text: 'The update card title fits for real now: it is measured to a fraction of a pixel, so no more stray dots after the version' },
-      { icon: 'play', text: 'Every version number from 4.4.10 to 12.10.10 is checked in light and dark before each release' },
+      { icon: 'search', text: 'The command bar searches what you closed: type part of a page you closed and it shows up under Recently closed, with Reopen' },
+      { icon: 'tabs', text: 'It finds a closed batch or window by any page in it, and brings the whole thing back' },
+      { icon: 'shield', text: 'Private windows never see it, and it waits for two letters before it looks' },
     ],
   }
 
@@ -1300,6 +1301,16 @@
         key.animate([{ opacity: 0, transform: 'translateY(-40px) scale(.8)' }, { opacity: 1, transform: 'translateY(4px) scale(1.04)', offset: .35 }, { opacity: 1, transform: 'none', offset: .5 }, { opacity: 1, transform: 'translateY(5px) scale(.94,.9)', offset: .62 }, { opacity: 1, transform: 'none', offset: .75 }, { opacity: 0, transform: 'translateY(-6px)' }], { duration: 1700, delay: n * 90, easing: 'cubic-bezier(.3,1.3,.5,1)', fill: 'both' }).finished.then(() => key.remove(), () => key.remove())
       })
     }, 3000)
+    // 4.4.19: the search. A small lens of light glides in over the title, pauses on it, flashes once as if it found
+    // what it was looking for, and drifts off (transform and opacity only)
+    setTimeout(() => {
+      if (skip || still || !logo.offsetParent) return
+      const host = logo.offsetParent, x = logo.offsetLeft + logo.offsetWidth * .62, y = logo.offsetTop + logo.offsetHeight * .3
+      const lens = document.createElement('i')
+      lens.style.cssText = `position:absolute;left:${x}px;top:${y}px;width:46px;height:46px;border-radius:50%;pointer-events:none;mix-blend-mode:screen;border:2px solid color-mix(in srgb,var(--hi) 75%,#fff);background:radial-gradient(circle,rgba(255,255,255,.18),transparent 70%);box-shadow:0 0 20px color-mix(in srgb,var(--hi) 50%,transparent)`
+      host.appendChild(lens)
+      lens.animate([{ opacity: 0, transform: 'translate(-120px,30px) scale(.7)' }, { opacity: 1, transform: 'translate(4px,-2px) scale(1.04)', offset: .4 }, { opacity: 1, transform: 'none', offset: .5 }, { opacity: 1, transform: 'scale(1.25)', offset: .62 }, { opacity: 1, transform: 'none', offset: .72 }, { opacity: 0, transform: 'translate(60px,-20px) scale(.8)' }], { duration: 2100, easing: 'cubic-bezier(.3,1.3,.5,1)', fill: 'both' }).finished.then(() => lens.remove(), () => lens.remove())
+    }, 4700)
     // 4.4.18: the measure. Two tiny ticks of light slide in from both ends of the title and meet its edges exactly,
     // with a small spring bump, as if measuring it to the pixel, then fade (transform and opacity only)
     setTimeout(() => {

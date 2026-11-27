@@ -1147,6 +1147,7 @@ class BrowserWin {
       items.push({ label: 'Open Link in New Window', click: () => createWindow({ urls: [p.linkURL] }) })
       if (!this.incognito) items.push({ label: 'Open Link in Private Window', click: () => createWindow({ urls: [p.linkURL], incognito: true }) })
       items.push({ label: 'Copy Link', click: () => clipboard.writeText(p.linkURL) })
+      { const f = Parcels.parse(p.linkURL); if (f) items.push({ label: `Track Parcel ${f.number} (${Parcels.carrierName(f.carrier)})`, click: () => trackNumber(this, p.linkURL, wc.getURL()) }) }
       sep()
     }
     if (p.mediaType === 'image' && /^https?:/.test(p.srcURL)) {
@@ -1542,10 +1543,11 @@ async function checkParcels(force = false) {
 }
 setInterval(() => checkParcels().catch(() => {}), 30 * 60000)
 // a tracking number from the command bar or a right-click on a page
+// (or a carrier's tracking link: the number and carrier come out of it, and the link opens first)
 function trackNumber(w, n, from = '') {
-  if (!Parcels.looksLikeTracking(n)) return null
+  const f = Parcels.parse(n); if (!f) return null
   const before = Parcels.list().length
-  const p = Parcels.add({ number: n, name: '', source: 'manual', shop: from ? (() => { try { return new URL(from).host.replace(/^www\./, '') } catch { return '' } })() : '' })
+  const p = Parcels.add({ number: f.number, carrier: f.carrier, url: f.link, name: '', source: 'manual', shop: from ? (() => { try { return new URL(from).host.replace(/^www\./, '') } catch { return '' } })() : '' })
   if (!p) return null
   w.send('parcel-saved', { id: p.id, name: Parcels.list().length > before ? `Tracking ${p.number}` : 'Already tracking that one' })
   setTimeout(() => checkParcels(true).catch(() => {}), 400)
@@ -1757,7 +1759,7 @@ async function suggest(w, text, opts) {
   const sc = shortcutFor(q); if (sc) out.shortcut = { name: sc.name, query: sc.query }
   const calc = calcOf(q); if (calc !== null) out.calc = calc
   const conv = calc === null && convOf(q); if (conv) out.conv = conv
-  if (q.length < 40 && Parcels.looksLikeTracking(q)) out.parcel = { number: Parcels.clean(q), carrier: Parcels.carrierName(Parcels.detect(q)) }
+  { const f = Parcels.parse(q); if (f) out.parcel = { number: f.number, carrier: Parcels.carrierName(f.carrier), input: q, link: !!f.link } }
   if (!q) {
     out.history = D.topSites(6).map(s => ({ url: s.url, title: s.title }))
     return out
@@ -2241,7 +2243,8 @@ ipcMain.handle('lumen', async (e, action, ...a) => {
         if (o.number !== undefined) { const n = Parcels.clean(o.number); patch.number = n; patch.carrier = n ? (Parcels.CARRIERS[o.carrier] ? o.carrier : Parcels.detect(n)) : '' }
         if (o.url !== undefined) patch.url = /^https?:\/\//i.test(String(o.url || '')) ? String(o.url) : ''
         return parcelView(Parcels.update(p.id, patch)) }
-      case 'parcelClipboard': { const c = String(clipboard.readText() || '').trim(); return c.length < 40 && Parcels.looksLikeTracking(c) ? { number: Parcels.clean(c), carrier: Parcels.detect(c) } : null }
+      case 'parcelClipboard': return Parcels.parse(String(clipboard.readText() || '').trim())
+      case 'parcelParse': return Parcels.parse(String(a[0] || ''))
       case 'parcelDelivered': { const p = Parcels.list().find(x => x.id === a[0]); if (p) Parcels.setStatus(p, a[1] === false ? { status: 'placed', text: 'Waiting for news' } : { status: 'delivered', text: 'Delivered' }); return true }
       case 'parcelRename': return Parcels.update(String(a[0]), { name: String(a[1] || '').slice(0, 80) })
       case 'parcelOpen': { const p = Parcels.list().find(x => x.id === a[0]); const u = p && Parcels.openURL(p); if (u) { if (a[1] && w) w.createTab(u, { active: false }); else e.sender.loadURL(u) } return }

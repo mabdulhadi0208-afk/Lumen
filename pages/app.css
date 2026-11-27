@@ -762,3 +762,10 @@ span.extico { display: grid; place-items: center; color: var(--on-accent, #fff);
 @media (max-width: 560px) {
   .pd-row, .pd-car { grid-template-columns: minmax(0, 1fr); }
 }
+
+/* 4.4.8: a tracking link pasted into Track a parcel: a small green note pops in on a spring to say what it found */
+.pd-link { display: inline-flex; align-items: center; gap: 6px; font-weight: 700; color: #0f9e74; background: rgba(18,184,134,.12); padding: 5px 10px; border-radius: 999px; box-shadow: inset 0 0 0 1px rgba(18,184,134,.24); animation: pdlink448 .6s cubic-bezier(.3,1.4,.5,1) both; }
+.pd-link svg { width: 13px; height: 13px; }
+@keyframes pdlink448 { 0% { transform: scale(.7); opacity: 0 } 60% { transform: scale(1.05); opacity: 1 } 100% { transform: none } }
+@media (prefers-color-scheme: dark) { .pd-link { color: #3ee0a8; } }
+.pd-detect:has(.pd-link)::before { display: none; }

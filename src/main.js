@@ -107,6 +107,39 @@ function cleanURL(u) {
     return changed ? url.toString() : u
   } catch { return u }
 }
+// 4.4.11: the real address inside a redirect wrapper (a search result, a social post, a mail scanner), so a copied
+// link goes straight to the page. Only well-known wrappers, and only when the inner value is a web address.
+const WRAPPERS = [
+  [/(^|\.)google\.[a-z.]+$/, /^\/url$/, ['q', 'url']],
+  [/^l\.facebook\.com$|^lm\.facebook\.com$|^l\.messenger\.com$/, /^\/l\.php$/, ['u']],
+  [/^l\.instagram\.com$/, /^\/$/, ['u']],
+  [/(^|\.)safelinks\.protection\.outlook\.com$/, /./, ['url']],
+  [/^out\.reddit\.com$/, /./, ['url']],
+  [/^(www\.)?youtube\.com$/, /^\/redirect$/, ['q']],
+  [/^slack-redir\.net$/, /^\/link$/, ['url']],
+  [/^(www\.)?linkedin\.com$/, /^\/redir\//, ['url']],
+  [/^(www\.)?bing\.com$/, /^\/ck\/a$/, []],
+  [/^t\.umblr\.com$/, /^\/redirect$/, ['z']],
+  [/^steamcommunity\.com$/, /^\/linkfilter\/$/, ['url', 'u']],
+]
+function unwrapURL(u) {
+  for (let hop = 0; hop < 3; hop++) {
+    let url; try { url = new URL(u) } catch { return u }
+    const w = WRAPPERS.find(([h, p]) => h.test(url.hostname) && p.test(url.pathname)); if (!w) return u
+    const inner = w[2].map(k => url.searchParams.get(k)).find(v => v && /^https?:\/\//i.test(v))
+    if (!inner) return u
+    u = inner
+  }
+  return u
+}
+// what Copy Link puts on the clipboard: the real address without trackers, and how much it took off
+function cleanLink(u) {
+  const inner = unwrapURL(u), unwrapped = inner !== u
+  let removed = 0
+  try { const a = new URL(inner); for (const k of a.searchParams.keys()) if (TRACKING.test(k) || (k === 'si' && /(^|\.)(youtube\.com|youtu\.be|spotify\.com)$/.test(a.hostname))) removed++ } catch {}
+  return { url: cleanURL(inner), removed, unwrapped }
+}
+const cleanNote = c => c.unwrapped && c.removed ? `Link copied, unwrapped and ${c.removed} tracker${c.removed === 1 ? '' : 's'} removed` : c.unwrapped ? 'Link copied, unwrapped to the real page' : c.removed ? `Link copied, ${c.removed} tracker${c.removed === 1 ? '' : 's'} removed` : 'Link copied'
 function upgradeURL(u) {
   if (!u) return u
   let out = D.settings.get('cleanLinks') ? cleanURL(u) : u
@@ -1146,7 +1179,7 @@ class BrowserWin {
       items.push({ label: 'Open Link in Split View', click: () => { const n = this.createTab(p.linkURL, { active: false, openerId: t.id }); this.splitId = n.id; this.activate(t.id) } })
       items.push({ label: 'Open Link in New Window', click: () => createWindow({ urls: [p.linkURL] }) })
       if (!this.incognito) items.push({ label: 'Open Link in Private Window', click: () => createWindow({ urls: [p.linkURL], incognito: true }) })
-      items.push({ label: 'Copy Link', click: () => clipboard.writeText(p.linkURL) })
+      items.push({ label: 'Copy Link', click: () => { const c = cleanLink(p.linkURL); clipboard.writeText(c.url); this.send('toast', cleanNote(c)) } })
       { const f = Parcels.parse(p.linkURL); if (f) items.push({ label: `Track Parcel ${f.number} (${Parcels.carrierName(f.carrier)})`, click: () => trackNumber(this, p.linkURL, wc.getURL()) }) }
       sep()
     }
@@ -1989,7 +2022,7 @@ function tabMenu(w, id) {
       ...(t.group ? [{ label: 'Remove from Group', click: () => { t.group = null; w.regroupOrder(); w.pruneGroups(); w.layout(); w.pushState(); saveSession() } }] : []),
       { type: 'separator' },
     ]),
-    { label: 'Copy Link', click: () => clipboard.writeText(cleanURL(t.view ? t.view.webContents.getURL() : t.url)) },
+    { label: 'Copy Link', click: () => { const c = cleanLink(t.view ? t.view.webContents.getURL() : t.url); clipboard.writeText(c.url); w.send('toast', cleanNote(c)) } },
     { label: 'Copy All Tab Links', click: () => { clipboard.writeText(w.order.map(i => { const x = w.tabs.get(i); return cleanURL(x.view ? x.view.webContents.getURL() : x.url) }).filter(u => /^https?:/.test(u)).join('\n')); w.send('toast', 'All tab links copied') } },
     { label: 'Bookmark', click: () => { D.addBookmark(t.url, t.title); w.pushState() } },
     { label: 'Move to New Window', enabled: w.order.length > 1, click: () => { const url = t.view ? t.view.webContents.getURL() : t.url; w.closeTab(id); createWindow({ urls: [url] }) } },
@@ -2862,4 +2895,4 @@ app.whenReady().then(async () => {
   powerMonitor.on('resume', () => Sync.syncNow().catch(() => {}))
 })
 
-module.exports = { __setParcelNote: f => { parcelNote = f }, __showParcels: showParcels, __parcelState: () => ({ busy: parcelBusy, win: !!(parcelWin && !parcelWin.isDestroyed()) }), windows, createWindow, D, __suggest: suggest, allowSites, toggleSiteAdblock, __refreshAdblock: refreshAdblock, __adblockAge: adblockAge, __hl_add: addHighlight, __hl_recolor: recolorHighlight, __addToNTP: addToNTP, __checkParcels: checkParcels, __separateApps: { check: separateAppsCheck, had: hadBuiltInApps, LINKS: SEPARATE_APPS }, __nova: Nova, __novaDialog: novaDialog, __tabMenu: tabMenu, __readerMode: readerMode, __appMenu: appMenuPopup, __confirmQuit: confirmQuit, __printFailed: printFailed, __dockTemplate: dockTemplate, __jumpTasks: jumpTasks, __handleArgs: handleArgs, __recentSites: recentSites }
+module.exports = { __cleanLink: cleanLink, __setParcelNote: f => { parcelNote = f }, __showParcels: showParcels, __parcelState: () => ({ busy: parcelBusy, win: !!(parcelWin && !parcelWin.isDestroyed()) }), windows, createWindow, D, __suggest: suggest, allowSites, toggleSiteAdblock, __refreshAdblock: refreshAdblock, __adblockAge: adblockAge, __hl_add: addHighlight, __hl_recolor: recolorHighlight, __addToNTP: addToNTP, __checkParcels: checkParcels, __separateApps: { check: separateAppsCheck, had: hadBuiltInApps, LINKS: SEPARATE_APPS }, __nova: Nova, __novaDialog: novaDialog, __tabMenu: tabMenu, __readerMode: readerMode, __appMenu: appMenuPopup, __confirmQuit: confirmQuit, __printFailed: printFailed, __dockTemplate: dockTemplate, __jumpTasks: jumpTasks, __handleArgs: handleArgs, __recentSites: recentSites }

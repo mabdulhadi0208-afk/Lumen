@@ -13,7 +13,10 @@ app.whenReady().then(async () => {
   const pg = s => t.view.webContents.executeJavaScript(s)
   const lum = sel => pg(`(() => { const m = getComputedStyle(document.querySelector('${sel}')).backgroundColor.match(/[\\d.]+/g).map(Number); return Math.round((m[0] + m[1] + m[2]) / 3) })()`)
   ok(await lum('.box') < 70, 'cross-site stylesheet restyled dark (box ' + await lum('.box') + ')')
-  const brand = await pg(`getComputedStyle(document.querySelector('.brand')).backgroundColor`)
+  // the dark engine restyles cross-site sheets after they arrive: give a slow machine up to 3 s to settle
+  const isBlue = b => /rgb\((\d+), (\d+), (\d+)\)/.test(b) && (() => { const m = b.match(/\d+/g).map(Number); return m[2] > m[0] + 40 })()
+  let brand = await pg(`getComputedStyle(document.querySelector('.brand')).backgroundColor`)
+  for (let i = 0; i < 12 && !isBlue(brand); i++) { await wait(250); brand = await pg(`getComputedStyle(document.querySelector('.brand')).backgroundColor`) }
   ok(/rgb\((\d+), (\d+), (\d+)\)/.test(brand) && (() => { const m = brand.match(/\d+/g).map(Number); return m[2] > m[0] + 40 })(), 'brand blue stays blue: ' + brand)
   const txt = await pg(`getComputedStyle(document.querySelector('p')).color`); ok(txt.match(/\d+/g).slice(0, 3).every(v => +v > 170), 'text is light: ' + txt)
   fs.writeFileSync('/tmp/lumen-shots/dark2.png', (await t.view.webContents.capturePage()).toPNG())

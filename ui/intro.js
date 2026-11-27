@@ -23,11 +23,11 @@
 ;(function () {
   // ---- edit this list every release: it is the "New in Lumen" act of the film (only this version's changes)
   const WHATS_NEW = {
-    version: '4.4.10',
+    version: '4.4.11',
     items: [
-      { icon: 'box', text: 'The parcel you open from a notification now glows all the way round, from inside its row, instead of showing a thin line' },
-      { icon: 'sparkle', text: 'Its icon gives a little spring nod, so your eye lands on it straight away' },
-      { icon: 'play', text: 'Two-digit versions fit everywhere: the update card title and this film ease down in size instead of cutting the number off' },
+      { icon: 'link', text: 'Copy Link copies the real page: redirect links from search results, social posts and mail scanners are unwrapped' },
+      { icon: 'shield', text: 'Tracking tags come off the links you copy, and a toast tells you how many it removed' },
+      { icon: 'sparkle', text: 'Works on any link you right-click and on Copy Link for a tab; ordinary links are copied exactly as they are' },
     ],
   }
 
@@ -1301,6 +1301,22 @@
         key.animate([{ opacity: 0, transform: 'translateY(-40px) scale(.8)' }, { opacity: 1, transform: 'translateY(4px) scale(1.04)', offset: .35 }, { opacity: 1, transform: 'none', offset: .5 }, { opacity: 1, transform: 'translateY(5px) scale(.94,.9)', offset: .62 }, { opacity: 1, transform: 'none', offset: .75 }, { opacity: 0, transform: 'translateY(-6px)' }], { duration: 1700, delay: n * 90, easing: 'cubic-bezier(.3,1.3,.5,1)', fill: 'both' }).finished.then(() => key.remove(), () => key.remove())
       })
     }, 3000)
+    // 4.4.11: the clean sweep. A beam of light wipes across the title from left to right, and a few small specks of
+    // dust lift off behind it and fade, like tracking tags being brushed away (transform and opacity only)
+    setTimeout(() => {
+      if (skip || still || !logo.offsetParent) return
+      const host = logo.offsetParent, L0 = logo.offsetLeft, T0 = logo.offsetTop, W0 = logo.offsetWidth, H0 = logo.offsetHeight
+      const beam = document.createElement('i')
+      beam.style.cssText = `position:absolute;left:${L0}px;top:${T0 - 6}px;width:26px;height:${H0 + 12}px;border-radius:13px;pointer-events:none;mix-blend-mode:screen;background:linear-gradient(90deg,transparent,color-mix(in srgb,var(--hi) 70%,#fff),transparent);filter:blur(2px)`
+      host.appendChild(beam)
+      beam.animate([{ opacity: 0, transform: 'translateX(-20px)' }, { opacity: 1, transform: `translateX(${W0 * .15}px)`, offset: .15 }, { opacity: 1, transform: `translateX(${W0 * .9}px)`, offset: .8 }, { opacity: 0, transform: `translateX(${W0}px)` }], { duration: 1300, easing: 'cubic-bezier(.45,.05,.3,1)', fill: 'both' }).finished.then(() => beam.remove(), () => beam.remove())
+      for (let k = 0; k < 6; k++) {
+        const d = document.createElement('i'), x = L0 + W0 * (.15 + k * .13), y = T0 + H0 * (.2 + (k % 3) * .25)
+        d.style.cssText = `position:absolute;left:${x}px;top:${y}px;width:5px;height:5px;border-radius:50%;pointer-events:none;background:color-mix(in srgb,var(--hi3) 60%,#fff);box-shadow:0 0 8px color-mix(in srgb,var(--hi3) 60%,transparent)`
+        host.appendChild(d)
+        d.animate([{ opacity: 0, transform: 'none' }, { opacity: .9, transform: 'translateY(-4px)', offset: .25 }, { opacity: 0, transform: `translate(${10 + k * 3}px,-${26 + k * 4}px) scale(.4)` }], { duration: 1100, delay: 180 + k * 150, easing: 'cubic-bezier(.16,1,.3,1)', fill: 'both' }).finished.then(() => d.remove(), () => d.remove())
+      }
+    }, 2600)
     // 4.4.10: the glow. A soft rounded frame of light fades up just inside the edges of the title, breathes once and
     // fades, like the parcel glow in Parcels (opacity and transform only)
     setTimeout(() => {

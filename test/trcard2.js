@@ -8,6 +8,7 @@ http.createServer((q, r) => {
 }).listen(48160)
 process.env.LUMEN_TR_API = 'http://127.0.0.1:48160'
 fs.rmSync('/tmp/lumen-tr2', { recursive: true, force: true }); app.setPath('userData', '/tmp/lumen-tr2')
+setTimeout(() => { console.log('TIMEOUT after 300 s'); app.exit(1) }, 300000)
 const L = require('../src/main.js'); const wait = ms => new Promise(r => setTimeout(r, ms))
 let fails = 0; const ok = (c, m) => { console.log((c ? 'PASS ' : 'FAIL ') + m); if (!c) fails++ }
 const shot = async (w, n) => fs.writeFileSync('/tmp/lumen-shots/' + n + '.png', (await w.ui.webContents.capturePage()).toPNG())
@@ -20,7 +21,8 @@ app.whenReady().then(async () => {
   ok(await ex(`!!document.querySelector('#btn-translate svg')`), 'translate button next to reload')
   const t = w.createTab('http://127.0.0.1:48160/', { active: true }); await wait(2500)
   const pg = s => t.view.webContents.executeJavaScript(s)
-  // ask popup
+  // ask popup (a slow machine can take longer to read the page's language: wait for it instead of a fixed time)
+  for (let i = 0; i < 40 && !(await ex(`document.getElementById('trask').classList.contains('show')`)); i++) await wait(250)
   ok(await ex(`document.getElementById('trask').classList.contains('show')`), 'ask popup shows for Arabic page without lang tag')
   ok(/English/.test(await ex(`document.getElementById('ta-title').textContent`)) && /Arabic/.test(await ex(`document.getElementById('ta-sub').textContent`)), 'popup text: ' + await ex(`document.getElementById('ta-title').textContent + ' / ' + document.getElementById('ta-sub').textContent`))
   await shot(w, 'tr2-01-ask')

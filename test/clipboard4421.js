@@ -12,7 +12,7 @@ const guard = setTimeout(() => { console.log('TIMEOUT'); app.exit(1) }, 170000)
 const site = http.createServer((q, r) => { r.writeHead(200, { 'content-type': 'text/html' }); r.end('<!doctype html><title>Form</title><textarea id="t" style="width:600px;height:200px"></textarea>') }).listen(0, '127.0.0.1')
 const L = require('../src/main.js')
 // the virtual display has no real clipboard: a small one of our own, read and written the way Lumen does
-let CLIP = ''
+let CLIP = 'already there'   // on the clipboard before Lumen started: never history
 clipboard.readText = () => CLIP
 clipboard.writeText = t => { CLIP = String(t) }
 const copy = async t => { CLIP = t; L.__clipWatch(); await wait(50) }
@@ -35,7 +35,6 @@ app.whenReady().then(async () => {
   ok(items.some(i => i.accelerator === 'Alt+V') && items.some(i => i.accelerator === 'Alt+C'), 'Option V and Option C both open Clipboard History')
 
   // copies become history, newest first, without repeats; what was there at the start is not history
-  CLIP = 'already there'; L.__clipWatch()
   await copy('first note'); await copy('https://example.com/recipes'); await copy('42.50'); await copy('first note')
   ok(JSON.stringify(L.__clips.map(c => c.text)) === JSON.stringify(['first note', '42.50', 'https://example.com/recipes']), 'history is newest first and a repeat moves up instead of doubling: ' + JSON.stringify(L.__clips.map(c => c.text)))
 

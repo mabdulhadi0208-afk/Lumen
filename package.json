@@ -1,7 +1,7 @@
 {
   "name": "lumen",
   "productName": "Lumen",
-  "version": "4.4.20",
+  "version": "4.4.21",
   "description": "Lumen - a fast, private browser",
   "main": "src/main.js",
   "author": "Nauman Munir",

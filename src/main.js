@@ -164,7 +164,8 @@ const clipSecret = new Set()
 function clipWatch() {
   if (D.settings.get('clipHistory') === false) return
   const fw = windows.find(x => x.win && !x.win.isDestroyed() && x.win.isFocused()); if (!fw) return
-  let t = ''; try { t = clipboard.readText() || '' } catch { return }
+  let t = ''; try { t = clipboard.readText() } catch { return }
+  if (typeof t !== 'string') return   // some systems hand back nothing usable: never treat that as a copy
   if (clipLast === null) { clipLast = t; return }   // what was there before Lumen started is not history
   if (t === clipLast) return
   clipLast = t
@@ -2025,7 +2026,7 @@ ipcMain.handle('ui', async (e, action, ...a) => {
       case 'clipCopy': { const c = clips[+a[0]]; if (!c) return false; clipboard.writeText(c.text); clipLast = c.text; clipAdd(c.text); return true }
       case 'clipRemove': { clips.splice(+a[0], 1); return clipList() }
       case 'clipClear': clips.length = 0; return []
-      case 'clipToggle': { const on = !!a[0]; D.settings.set({ clipHistory: on }); if (!on) clips.length = 0; clipLast = null; return on }
+      case 'clipToggle': { const on = !!a[0]; D.settings.set({ clipHistory: on }); if (!on) clips.length = 0; try { const r = clipboard.readText(); clipLast = typeof r === 'string' ? r : '' } catch { clipLast = '' } return on }   // what is there now is not a new copy
       case 'saveSession': {
         const tabs = w.order.map(i => { const x = w.tabs.get(i); return { url: x.view ? x.view.webContents.getURL() : x.url, title: x.title } }).filter(x => /^https?:/.test(x.url))
         if (!tabs.length) { w.send('toast', 'No web pages to save'); return }

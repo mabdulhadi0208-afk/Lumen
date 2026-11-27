@@ -154,6 +154,23 @@ function copyPageLink(w, t, withTitle) {
   } else { clipboard.writeText(c.url); w.send('toast', cleanNote(c)) }
   return true
 }
+// 4.4.20: every tab's link at once, each cleaned like Copy Link: a plain list of addresses as text, and a list of
+// titled links as HTML, so Mail, Notes and documents paste clickable titles
+function copyAllLinks(w) {
+  if (!w) return 0
+  let removed = 0, unwrapped = 0
+  const items = w.order.map(i => { const x = w.tabs.get(i); const raw = x.view && !x.view.webContents.isDestroyed() ? x.view.webContents.getURL() : x.url; return { raw, title: (x.title || '').trim() } })
+    .filter(x => /^https?:/.test(x.raw || ''))
+    .map(x => { const c = cleanLink(x.raw); removed += c.removed; if (c.unwrapped) unwrapped++; return { url: c.url, title: x.title || c.url } })
+  if (!items.length) { w.send('toast', 'No web pages to copy'); return 0 }
+  const esc = t => String(t).replace(/[&<>"]/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[ch])
+  clipboard.write({ text: items.map(x => x.url).join('\n'), html: '<ul>' + items.map(x => `<li><a href="${esc(x.url)}">${esc(x.title)}</a></li>`).join('') + '</ul>' })
+  const extra = [unwrapped ? `${unwrapped} unwrapped` : '', removed ? `${removed} tracker${removed === 1 ? '' : 's'} removed` : ''].filter(Boolean).join(', ')
+  w.send('toast', `Copied ${items.length} tab link${items.length === 1 ? '' : 's'}` + (extra ? ', ' + extra : ''))
+  return items.length
+}
+// Paste and Go with a wrapped or tagged link opens the real page, cleaned like Copy Link
+function pasteTarget(txt) { const url = toURL(txt); if (!url) return null; return /^https?:/.test(url) ? cleanLink(url).url : url }
 function upgradeURL(u) {
   if (!u) return u
   let out = D.settings.get('cleanLinks') ? cleanURL(u) : u
@@ -1970,7 +1987,7 @@ ipcMain.handle('ui', async (e, action, ...a) => {
         if (a[1] === 'go') return w.activate(x.id)
         return x.view.webContents.executeJavaScript(`(() => { const m = [...document.querySelectorAll('video,audio')]; const p = m.filter(v => !v.paused); if (p.length) { p.forEach(v => v.pause()); return 'paused' } const v = m.sort((a, b) => (b.currentTime > 0) - (a.currentTime > 0))[0]; if (v) { v.play(); return 'playing' } return 'none' })()`, true).catch(() => 'none')
       }
-      case 'copyAllLinks': { clipboard.writeText(w.order.map(i => { const x = w.tabs.get(i); return cleanURL(x.view ? x.view.webContents.getURL() : x.url) }).filter(u => /^https?:/.test(u)).join('\n')); w.send('toast', 'All tab links copied'); return }
+      case 'copyAllLinks': return copyAllLinks(w)
       case 'saveSession': {
         const tabs = w.order.map(i => { const x = w.tabs.get(i); return { url: x.view ? x.view.webContents.getURL() : x.url, title: x.title } }).filter(x => /^https?:/.test(x.url))
         if (!tabs.length) { w.send('toast', 'No web pages to save'); return }
@@ -2015,7 +2032,7 @@ ipcMain.handle('ui', async (e, action, ...a) => {
       case 'pageStats': { if (!wc) return null; try { return await wc.executeJavaScriptInIsolatedWorld(1019, [{ code: `(() => { const el = document.querySelector('article') || document.querySelector('main') || document.body; const words = ((el && el.innerText) || '').trim().split(/\\s+/).filter(Boolean).length; return { words, mins: Math.max(1, Math.round(words / 230)) } })()` }]) } catch { return null } }
       case 'clearSiteData': { if (!wc) return; let origin = ''; try { origin = new URL(wc.getURL()).origin } catch { return } await w.ses.clearStorageData({ origin }); try { await w.ses.clearData({ origins: [origin] }) } catch {} wc.reload(); w.send('toast', 'Site data cleared'); return }
       case 'lastTab': { if (w.lastTabId && w.tabs.has(w.lastTabId)) w.activate(w.lastTabId); return }
-      case 'pasteGo': { const txt = String(await clipboard.readText() || '').trim().slice(0, 4000); if (txt) { const url = toURL(txt); if (url) w.createTab(url, { active: true }) } return }
+      case 'pasteGo': { const txt = String(await clipboard.readText() || '').trim().slice(0, 4000); if (txt) { const url = pasteTarget(txt); if (url) w.createTab(url, { active: true }) } return }
       case 'copyText': clipboard.writeText(String(a[0] || '')); return
       case 'duplicateTab': { if (t) w.createTab(wc ? wc.getURL() : t.url, { active: true, index: w.order.indexOf(t.id) + 1 }); return }
       case 'translateTo': return t && translateTab(w, t, String(a[0] || ''))
@@ -2131,7 +2148,7 @@ function tabMenu(w, id) {
       { type: 'separator' },
     ]),
     { label: 'Copy Link', click: () => { const c = cleanLink(t.view ? t.view.webContents.getURL() : t.url); clipboard.writeText(c.url); w.send('toast', cleanNote(c)) } },
-    { label: 'Copy All Tab Links', click: () => { clipboard.writeText(w.order.map(i => { const x = w.tabs.get(i); return cleanURL(x.view ? x.view.webContents.getURL() : x.url) }).filter(u => /^https?:/.test(u)).join('\n')); w.send('toast', 'All tab links copied') } },
+    { label: 'Copy All Tab Links', click: () => copyAllLinks(w) },
     { label: 'Bookmark', click: () => { D.addBookmark(t.url, t.title); w.pushState() } },
     { label: 'Move to New Window', enabled: w.order.length > 1, click: () => { const url = t.view ? t.view.webContents.getURL() : t.url; w.closeTab(id); createWindow({ urls: [url] }) } },
     { label: 'Put to Sleep', enabled: !!t.view && id !== w.activeId, click: () => w.sleep(t) },
@@ -2555,7 +2572,7 @@ function buildMenu() {
       { type: 'separator' },
       { label: 'Command Bar', accelerator: 'CmdOrCtrl+K', click: focused(w => w.send('command', 'palette')) },
       { label: 'Use Selection for Find', accelerator: 'CmdOrCtrl+E', click: focused(async (w, t) => { const wc = activeWc(w, t); if (!wc) return; const sel = await wc.executeJavaScript('String(getSelection()).slice(0, 200)', true).catch(() => ''); if (sel.trim()) w.send('command', { find: sel.trim() }) }) },
-      { label: 'Paste and Go', accelerator: 'CmdOrCtrl+Shift+V', click: focused(async w => { const txt = String(await clipboard.readText() || '').trim().slice(0, 4000); const url = txt && toURL(txt); if (url) { const t = w.active(); if (t && t.view && (t.url || '').startsWith('lumen://newtab')) t.view.webContents.loadURL(url); else w.createTab(url, { active: true }) } }) },
+      { label: 'Paste and Go', accelerator: 'CmdOrCtrl+Shift+V', click: focused(async w => { const txt = String(await clipboard.readText() || '').trim().slice(0, 4000); const url = txt && pasteTarget(txt); if (url) { const t = w.active(); if (t && t.view && (t.url || '').startsWith('lumen://newtab')) t.view.webContents.loadURL(url); else w.createTab(url, { active: true }) } }) },
       { label: 'Copy Link with Title', accelerator: 'CmdOrCtrl+Alt+C', click: focused((w, t) => copyPageLink(w, t, true)) },
       { label: 'Copy Clean Link', accelerator: 'CmdOrCtrl+Shift+C', click: focused((w, t) => copyPageLink(w, t, false)) },
     ] },
@@ -3008,4 +3025,4 @@ app.whenReady().then(async () => {
   powerMonitor.on('resume', () => Sync.syncNow().catch(() => {}))
 })
 
-module.exports = { __closedList: closedList, __reopenAt: reopenAt, __refreshClosedMenu: () => refreshClosedMenu(), __closedTabs: closedTabs, __reopenClosedWindow: reopenClosedWindow, __closeMany: closeMany, __reopenClosed: reopenClosed, __tabMenu: (w, id) => tabMenu(w, id), __copyPageLink: copyPageLink, __cleanLink: cleanLink, __setParcelNote: f => { parcelNote = f }, __showParcels: showParcels, __parcelState: () => ({ busy: parcelBusy, win: !!(parcelWin && !parcelWin.isDestroyed()) }), windows, createWindow, D, __suggest: suggest, allowSites, toggleSiteAdblock, __refreshAdblock: refreshAdblock, __adblockAge: adblockAge, __hl_add: addHighlight, __hl_recolor: recolorHighlight, __addToNTP: addToNTP, __checkParcels: checkParcels, __separateApps: { check: separateAppsCheck, had: hadBuiltInApps, LINKS: SEPARATE_APPS }, __nova: Nova, __novaDialog: novaDialog, __tabMenu: tabMenu, __readerMode: readerMode, __appMenu: appMenuPopup, __confirmQuit: confirmQuit, __printFailed: printFailed, __dockTemplate: dockTemplate, __jumpTasks: jumpTasks, __handleArgs: handleArgs, __recentSites: recentSites }
+module.exports = { __copyAllLinks: copyAllLinks, __pasteTarget: pasteTarget, __closedList: closedList, __reopenAt: reopenAt, __refreshClosedMenu: () => refreshClosedMenu(), __closedTabs: closedTabs, __reopenClosedWindow: reopenClosedWindow, __closeMany: closeMany, __reopenClosed: reopenClosed, __tabMenu: (w, id) => tabMenu(w, id), __copyPageLink: copyPageLink, __cleanLink: cleanLink, __setParcelNote: f => { parcelNote = f }, __showParcels: showParcels, __parcelState: () => ({ busy: parcelBusy, win: !!(parcelWin && !parcelWin.isDestroyed()) }), windows, createWindow, D, __suggest: suggest, allowSites, toggleSiteAdblock, __refreshAdblock: refreshAdblock, __adblockAge: adblockAge, __hl_add: addHighlight, __hl_recolor: recolorHighlight, __addToNTP: addToNTP, __checkParcels: checkParcels, __separateApps: { check: separateAppsCheck, had: hadBuiltInApps, LINKS: SEPARATE_APPS }, __nova: Nova, __novaDialog: novaDialog, __tabMenu: tabMenu, __readerMode: readerMode, __appMenu: appMenuPopup, __confirmQuit: confirmQuit, __printFailed: printFailed, __dockTemplate: dockTemplate, __jumpTasks: jumpTasks, __handleArgs: handleArgs, __recentSites: recentSites }

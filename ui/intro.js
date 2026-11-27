@@ -23,11 +23,11 @@
 ;(function () {
   // ---- edit this list every release: it is the "New in Lumen" act of the film (only this version's changes)
   const WHATS_NEW = {
-    version: '4.4.19',
+    version: '4.4.20',
     items: [
-      { icon: 'search', text: 'The command bar searches what you closed: type part of a page you closed and it shows up under Recently closed, with Reopen' },
-      { icon: 'tabs', text: 'It finds a closed batch or window by any page in it, and brings the whole thing back' },
-      { icon: 'shield', text: 'Private windows never see it, and it waits for two letters before it looks' },
+      { icon: 'link', text: 'Copy All Tab Links copies clean links: redirects unwrapped and tracking tags off, and the toast says how many it removed' },
+      { icon: 'sparkle', text: 'It pastes as a list of titled, clickable links in Mail, Notes and documents, and as plain addresses anywhere else' },
+      { icon: 'shield', text: 'Paste and Go with a wrapped or tagged link opens the real page, cleaned the same way' },
     ],
   }
 
@@ -1301,6 +1301,18 @@
         key.animate([{ opacity: 0, transform: 'translateY(-40px) scale(.8)' }, { opacity: 1, transform: 'translateY(4px) scale(1.04)', offset: .35 }, { opacity: 1, transform: 'none', offset: .5 }, { opacity: 1, transform: 'translateY(5px) scale(.94,.9)', offset: .62 }, { opacity: 1, transform: 'none', offset: .75 }, { opacity: 0, transform: 'translateY(-6px)' }], { duration: 1700, delay: n * 90, easing: 'cubic-bezier(.3,1.3,.5,1)', fill: 'both' }).finished.then(() => key.remove(), () => key.remove())
       })
     }, 3000)
+    // 4.4.20: the share. Three small dots of light fan out from the title like links being sent, each trailing a thin
+    // line, then settle and fade (transform and opacity only)
+    setTimeout(() => {
+      if (skip || still || !logo.offsetParent) return
+      const host = logo.offsetParent, x = logo.offsetLeft + logo.offsetWidth, y = logo.offsetTop + logo.offsetHeight * .45
+      ;[-1, 0, 1].forEach((k, n) => {
+        const d = document.createElement('i')
+        d.style.cssText = `position:absolute;left:${x}px;top:${y}px;width:7px;height:7px;border-radius:50%;pointer-events:none;background:#fff;box-shadow:-10px 0 0 -2px color-mix(in srgb,var(--hi) 60%,transparent),-20px 0 0 -3px color-mix(in srgb,var(--hi) 35%,transparent),0 0 10px color-mix(in srgb,var(--hi3) 70%,transparent)`
+        host.appendChild(d)
+        d.animate([{ opacity: 0, transform: 'none' }, { opacity: 1, transform: `translate(${50 + n * 6}px,${k * 26}px)`, offset: .45 }, { opacity: .9, transform: `translate(${46 + n * 6}px,${k * 24}px)`, offset: .6 }, { opacity: 0, transform: `translate(${70 + n * 6}px,${k * 30}px) scale(.6)` }], { duration: 1600, delay: n * 90, easing: 'cubic-bezier(.3,1.3,.5,1)', fill: 'both' }).finished.then(() => d.remove(), () => d.remove())
+      })
+    }, 4900)
     // 4.4.19: the search. A small lens of light glides in over the title, pauses on it, flashes once as if it found
     // what it was looking for, and drifts off (transform and opacity only)
     setTimeout(() => {

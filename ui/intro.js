@@ -23,11 +23,10 @@
 ;(function () {
   // ---- edit this list every release: it is the "New in Lumen" act of the film (only this version's changes)
   const WHATS_NEW = {
-    version: '4.4.12',
+    version: '4.4.13',
     items: [
-      { icon: 'link', text: 'Copy Clean Link (Shift Command C) unwraps redirect links and takes tracking tags off, and the toast counts them' },
-      { icon: 'sparkle', text: 'Copy Link with Title (Option Command C) pastes as a clickable title in Mail, Notes and documents, and as Markdown anywhere else' },
-      { icon: 'shield', text: 'Fixed: Copy Clean Link in the command bar copied the address as it was, trackers and all' },
+      { icon: 'sparkle', text: 'The update card title always fits in full now: no more trailing dots after a long version number' },
+      { icon: 'play', text: 'It also fits itself again once its font has finished loading, so it is right on every Mac and PC' },
     ],
   }
 
@@ -1301,6 +1300,16 @@
         key.animate([{ opacity: 0, transform: 'translateY(-40px) scale(.8)' }, { opacity: 1, transform: 'translateY(4px) scale(1.04)', offset: .35 }, { opacity: 1, transform: 'none', offset: .5 }, { opacity: 1, transform: 'translateY(5px) scale(.94,.9)', offset: .62 }, { opacity: 1, transform: 'none', offset: .75 }, { opacity: 0, transform: 'translateY(-6px)' }], { duration: 1700, delay: n * 90, easing: 'cubic-bezier(.3,1.3,.5,1)', fill: 'both' }).finished.then(() => key.remove(), () => key.remove())
       })
     }, 3000)
+    // 4.4.13: the full stop. A single dot of light drops in after the version number, lands with a squash, then
+    // brightens and fades, as if putting the last full stop on it (transform and opacity only)
+    setTimeout(() => {
+      if (skip || still || !logo.offsetParent) return
+      const host = logo.offsetParent, x = logo.offsetLeft + logo.offsetWidth + 10, y = logo.offsetTop + logo.offsetHeight * .72
+      const dot = document.createElement('i')
+      dot.style.cssText = `position:absolute;left:${x}px;top:${y}px;width:14px;height:14px;border-radius:50%;pointer-events:none;background:radial-gradient(circle,#fff,color-mix(in srgb,var(--hi) 70%,#fff));box-shadow:0 0 18px color-mix(in srgb,var(--hi) 70%,transparent)`
+      host.appendChild(dot)
+      dot.animate([{ opacity: 0, transform: 'translateY(-60px) scale(.6)' }, { opacity: 1, transform: 'translateY(2px) scale(1.25,.75)', offset: .35 }, { opacity: 1, transform: 'none', offset: .5 }, { opacity: 1, transform: 'scale(1.3)', offset: .72 }, { opacity: 0, transform: 'scale(.4)' }], { duration: 1600, easing: 'cubic-bezier(.3,1.3,.5,1)', fill: 'both' }).finished.then(() => dot.remove(), () => dot.remove())
+    }, 3500)
     // 4.4.12: the copy. A ghost of the title lifts off it, slides down and to the right on a spring, and settles like
     // a copy landing on a clipboard before it fades (transform and opacity only)
     setTimeout(() => {

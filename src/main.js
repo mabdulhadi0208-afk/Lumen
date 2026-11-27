@@ -1040,8 +1040,8 @@ class BrowserWin {
     const t = this.tabs.get(id)
     if (!t) return
     const url = t.view ? t.view.webContents.getURL() : t.url
-    if (!this.incognito && url && url !== 'lumen://newtab/') closedTabs.push({ url, title: t.title, index: this.order.indexOf(id), pinned: t.pinned })
-    if (closedTabs.length > 30) closedTabs.shift()
+    if (!this.incognito && url && url !== 'lumen://newtab/') (closingBatch || closedTabs).push({ url, title: t.title, index: this.order.indexOf(id), pinned: t.pinned })
+    if (!closingBatch && closedTabs.length > 30) closedTabs.shift()
     if (/^https?:/.test(url || '')) spareChanged()
     AIHost.tabClosed(this, id); Agent.tabClosed(id)
     const idx = this.order.indexOf(id)
@@ -1947,8 +1947,8 @@ ipcMain.handle('ui', async (e, action, ...a) => {
       case 'fullscreen': return w.win.setFullScreen(!w.win.isFullScreen())
       case 'savePage': return wc && savePage(wc)
       case 'reopenAt': { const i = closedTabs.length - 1 - a[0]; const c = closedTabs.splice(i, 1)[0]; if (c) w.createTab(c.url, { pinned: c.pinned }); return }
-      case 'closeDuplicates': { const urlOf = x => x.view ? x.view.webContents.getURL() : x.url; const seen = new Set(t ? [urlOf(t)] : []); let n = 0; for (const id of [...w.order]) { if (id === w.activeId) continue; const x = w.tabs.get(id); const u = urlOf(x); if (seen.has(u) && !x.pinned) { w.closeTab(id); n++ } else seen.add(u) } w.send('toast', n ? `Closed ${n} duplicate tab${n > 1 ? 's' : ''}` : 'No duplicate tabs'); return n }
-      case 'closeOthers': { for (const id of [...w.order]) if (id !== w.activeId && !w.tabs.get(id).pinned) w.closeTab(id); return }
+      case 'closeDuplicates': { const urlOf = x => samePage(x.view ? x.view.webContents.getURL() : x.url); const seen = new Set(t ? [urlOf(t)] : []), dup = []; for (const id of [...w.order]) { if (id === w.activeId) continue; const x = w.tabs.get(id); const u = urlOf(x); if (seen.has(u) && !x.pinned) dup.push(id); else seen.add(u) } if (!dup.length) { w.send('toast', 'No duplicate tabs'); return 0 } return closeMany(w, dup, 'duplicates') }
+      case 'closeOthers': return closeMany(w, w.order.filter(id => id !== w.activeId && !w.tabs.get(id).pinned))
       case 'muteOthers': { for (const x of w.tabs.values()) if (x.id !== w.activeId && x.view) { x.muted = true; x.view.webContents.setAudioMuted(true) } w.pushState(); return }
       case 'restart': app.relaunch(); app.quit(); return
       case 'readLater': return toggleReadLater(w, t)
@@ -2014,8 +2014,27 @@ function siteInfo(w) {
 
 function reopenClosed(w) {
   const c = closedTabs.pop()
-  if (c) w.createTab(c.url, { index: Math.min(c.index, w.order.length), pinned: c.pinned })
+  if (!c) return 0
+  // a batch comes back as it went: the last one closed first, each into the place it had, in the background
+  if (c.batch) { for (const e of c.batch.slice().reverse()) w.createTab(e.url, { index: Math.min(e.index, w.order.length), pinned: e.pinned, active: false }); w.send('toast', `Reopened ${c.batch.length} tabs`); return c.batch.length }
+  w.createTab(c.url, { index: Math.min(c.index, w.order.length), pinned: c.pinned }); return 1
 }
+// 4.4.14: closing several tabs at once (other tabs, tabs to one side, duplicates) is one step to undo: Undo in the
+// toast, or Reopen Closed Tab, brings the whole batch back where it was
+let closingBatch = null
+function closeMany(w, ids, what = 'tabs') {
+  ids = ids.filter(id => w.tabs.has(id)); if (!ids.length) return 0
+  closingBatch = []
+  try { for (const id of ids) w.closeTab(id) } finally {
+    const got = closingBatch; closingBatch = null
+    if (got.length > 1) closedTabs.push({ batch: got }); else closedTabs.push(...got)
+    while (closedTabs.length > 30) closedTabs.shift()
+  }
+  if (ids.length > 1) w.send('tabs-closed', { n: ids.length, what }); else w.send('toast', what === 'duplicates' ? 'Closed 1 duplicate tab' : 'Closed 1 tab')
+  return ids.length
+}
+// the same page: trackers and the part after # do not make a tab different
+const samePage = u => { try { const c = cleanLink(String(u || '')).url, x = new URL(c); x.hash = ''; return x.toString() } catch { return String(u || '') } }
 
 function tabMenu(w, id) {
   const t = w.tabs.get(id); if (!t) return
@@ -2046,9 +2065,9 @@ function tabMenu(w, id) {
     { label: 'Add to New Tab Page', enabled: /^https?:/.test(t.url), click: () => addToNTP(w, t) },
     { type: 'separator' },
     { label: 'Close Tab', click: () => w.closeTab(id, { undo: true }) },
-    { label: 'Close Other Tabs', enabled: others.length > 0, click: () => others.filter(i => !w.tabs.get(i).pinned).forEach(i => w.closeTab(i)) },
-    { label: D.settings.get('tabLayout') === 'top' ? 'Close Tabs to the Left' : 'Close Tabs Above', click: () => w.order.slice(0, w.order.indexOf(id)).filter(i => !w.tabs.get(i).pinned).forEach(i => w.closeTab(i)) },
-    { label: D.settings.get('tabLayout') === 'top' ? 'Close Tabs to the Right' : 'Close Tabs Below', click: () => w.order.slice(w.order.indexOf(id) + 1).filter(i => !w.tabs.get(i).pinned).forEach(i => w.closeTab(i)) },
+    { label: 'Close Other Tabs', enabled: others.length > 0, click: () => closeMany(w, others.filter(i => !w.tabs.get(i).pinned)) },
+    { label: D.settings.get('tabLayout') === 'top' ? 'Close Tabs to the Left' : 'Close Tabs Above', click: () => closeMany(w, w.order.slice(0, w.order.indexOf(id)).filter(i => !w.tabs.get(i).pinned)) },
+    { label: D.settings.get('tabLayout') === 'top' ? 'Close Tabs to the Right' : 'Close Tabs Below', click: () => closeMany(w, w.order.slice(w.order.indexOf(id) + 1).filter(i => !w.tabs.get(i).pinned)) },
     { type: 'separator' },
     { label: 'Mute Other Tabs', enabled: others.length > 0, click: () => { for (const i of others) { const o = w.tabs.get(i); if (o && o.view && !o.muted) { o.muted = true; o.view.webContents.setAudioMuted(true) } } w.pushState() } },
   ], { kind: 'tab' })
@@ -2910,4 +2929,4 @@ app.whenReady().then(async () => {
   powerMonitor.on('resume', () => Sync.syncNow().catch(() => {}))
 })
 
-module.exports = { __copyPageLink: copyPageLink, __cleanLink: cleanLink, __setParcelNote: f => { parcelNote = f }, __showParcels: showParcels, __parcelState: () => ({ busy: parcelBusy, win: !!(parcelWin && !parcelWin.isDestroyed()) }), windows, createWindow, D, __suggest: suggest, allowSites, toggleSiteAdblock, __refreshAdblock: refreshAdblock, __adblockAge: adblockAge, __hl_add: addHighlight, __hl_recolor: recolorHighlight, __addToNTP: addToNTP, __checkParcels: checkParcels, __separateApps: { check: separateAppsCheck, had: hadBuiltInApps, LINKS: SEPARATE_APPS }, __nova: Nova, __novaDialog: novaDialog, __tabMenu: tabMenu, __readerMode: readerMode, __appMenu: appMenuPopup, __confirmQuit: confirmQuit, __printFailed: printFailed, __dockTemplate: dockTemplate, __jumpTasks: jumpTasks, __handleArgs: handleArgs, __recentSites: recentSites }
+module.exports = { __closeMany: closeMany, __reopenClosed: reopenClosed, __tabMenu: (w, id) => tabMenu(w, id), __copyPageLink: copyPageLink, __cleanLink: cleanLink, __setParcelNote: f => { parcelNote = f }, __showParcels: showParcels, __parcelState: () => ({ busy: parcelBusy, win: !!(parcelWin && !parcelWin.isDestroyed()) }), windows, createWindow, D, __suggest: suggest, allowSites, toggleSiteAdblock, __refreshAdblock: refreshAdblock, __adblockAge: adblockAge, __hl_add: addHighlight, __hl_recolor: recolorHighlight, __addToNTP: addToNTP, __checkParcels: checkParcels, __separateApps: { check: separateAppsCheck, had: hadBuiltInApps, LINKS: SEPARATE_APPS }, __nova: Nova, __novaDialog: novaDialog, __tabMenu: tabMenu, __readerMode: readerMode, __appMenu: appMenuPopup, __confirmQuit: confirmQuit, __printFailed: printFailed, __dockTemplate: dockTemplate, __jumpTasks: jumpTasks, __handleArgs: handleArgs, __recentSites: recentSites }

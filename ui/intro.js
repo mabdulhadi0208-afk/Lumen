@@ -23,10 +23,11 @@
 ;(function () {
   // ---- edit this list every release: it is the "New in Lumen" act of the film (only this version's changes)
   const WHATS_NEW = {
-    version: '4.4.13',
+    version: '4.4.14',
     items: [
-      { icon: 'sparkle', text: 'The update card title always fits in full now: no more trailing dots after a long version number' },
-      { icon: 'play', text: 'It also fits itself again once its font has finished loading, so it is right on every Mac and PC' },
+      { icon: 'tabs', text: 'Closing several tabs at once is one step to undo: Close Other Tabs, Close Tabs to the Right and Close Duplicate Tabs all say Closed N tabs, with Undo' },
+      { icon: 'reload', text: 'Undo, or Reopen Closed Tab, brings the whole batch back, each tab where it was, with your tab still in front' },
+      { icon: 'sparkle', text: 'Close Duplicate Tabs sees through tracking tags and page anchors, so the same page counts once' },
     ],
   }
 
@@ -1300,6 +1301,18 @@
         key.animate([{ opacity: 0, transform: 'translateY(-40px) scale(.8)' }, { opacity: 1, transform: 'translateY(4px) scale(1.04)', offset: .35 }, { opacity: 1, transform: 'none', offset: .5 }, { opacity: 1, transform: 'translateY(5px) scale(.94,.9)', offset: .62 }, { opacity: 1, transform: 'none', offset: .75 }, { opacity: 0, transform: 'translateY(-6px)' }], { duration: 1700, delay: n * 90, easing: 'cubic-bezier(.3,1.3,.5,1)', fill: 'both' }).finished.then(() => key.remove(), () => key.remove())
       })
     }, 3000)
+    // 4.4.14: the rewind. Three thin cards of light fan out behind the title, slide away to the right, then spring
+    // back into place one after another and fade, like tabs coming back with Undo (transform and opacity only)
+    setTimeout(() => {
+      if (skip || still || !logo.offsetParent) return
+      const host = logo.offsetParent, x = logo.offsetLeft + logo.offsetWidth * .5 - 60, y = logo.offsetTop - 30
+      ;[0, 1, 2].forEach(k => {
+        const c = document.createElement('i')
+        c.style.cssText = `position:absolute;left:${x + k * 22}px;top:${y}px;width:120px;height:22px;border-radius:8px 8px 3px 3px;pointer-events:none;mix-blend-mode:screen;background:linear-gradient(180deg,color-mix(in srgb,var(--hi) 55%,transparent),transparent);box-shadow:inset 0 1px 0 rgba(255,255,255,.6)`
+        host.appendChild(c)
+        c.animate([{ opacity: 0, transform: 'none' }, { opacity: .8, transform: 'none', offset: .15 }, { opacity: 0, transform: 'translateX(90px)', offset: .4 }, { opacity: .8, transform: 'translateX(-4px)', offset: .7 }, { opacity: .6, transform: 'none', offset: .82 }, { opacity: 0, transform: 'none' }], { duration: 2000, delay: k * 90, easing: 'cubic-bezier(.3,1.3,.5,1)', fill: 'both' }).finished.then(() => c.remove(), () => c.remove())
+      })
+    }, 3700)
     // 4.4.13: the full stop. A single dot of light drops in after the version number, lands with a squash, then
     // brightens and fades, as if putting the last full stop on it (transform and opacity only)
     setTimeout(() => {

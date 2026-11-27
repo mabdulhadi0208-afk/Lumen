@@ -12,6 +12,8 @@ app.whenReady().then(async () => {
   const t = w.createTab('http://127.0.0.1:48200/', { active: true }); await wait(3000)
   const pg = s => t.view.webContents.executeJavaScript(s)
   const lum = sel => pg(`(() => { const m = getComputedStyle(document.querySelector('${sel}')).backgroundColor.match(/[\\d.]+/g).map(Number); return Math.round((m[0] + m[1] + m[2]) / 3) })()`)
+  // the dark engine restyles cross-site sheets after they arrive: give a slow machine up to 6 s to settle
+  for (let i = 0; i < 24 && (await lum('.box')) >= 70; i++) await wait(250)
   ok(await lum('.box') < 70, 'cross-site stylesheet restyled dark (box ' + await lum('.box') + ')')
   // the dark engine restyles cross-site sheets after they arrive: give a slow machine up to 3 s to settle
   const isBlue = b => /rgb\((\d+), (\d+), (\d+)\)/.test(b) && (() => { const m = b.match(/\d+/g).map(Number); return m[2] > m[0] + 40 })()

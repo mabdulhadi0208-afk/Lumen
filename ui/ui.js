@@ -1409,6 +1409,8 @@ api.on('prompt', p => addPrompt(p))
 api.on('toast', m => toast(m))
 api.on('yt-stuck', h => toast(`Video still stuck on ${h || 'this site'}?`, { label: 'Pause ad blocker here', run: () => api.do('siteAdblock', false) }))
 api.on('parcel-saved', p => toast(/^(Tracking|Already)/.test(p.name || '') ? p.name : p.shop ? 'Shop order saved to Parcels' : 'Order saved to Parcels', { label: 'View', run: () => api.do('openPage', 'parcels') }))
+// 4.4.14: several tabs closed at once: one Undo brings them all back where they were
+api.on('tabs-closed', p => toast(`Closed ${p.n} ${p.what === 'duplicates' ? 'duplicate tabs' : 'tabs'}`, { label: 'Undo', run: () => api.do('reopen') }))
 // a parcel's news from a background check: the toast has View, which opens Parcels on that parcel
 api.on('parcel-news', p => toast(p.msg, { label: 'View', run: () => api.do('showParcel', p.id) }))
 api.on('focus-mode', on => document.body.classList.toggle('focusmode', !!on))

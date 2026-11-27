@@ -64,7 +64,7 @@ app.whenReady().then(async () => {
   const menu = Menu.getApplicationMenu()
   const item = label => { let f; const walk = m => m.items.forEach(i => { if (i.label === label) f = i; if (i.submenu) walk(i.submenu) }); walk(menu); return f }
   w.win.focus(); await wait(200)
-  for (const lbl of ['Copy Link as Markdown', 'Paste and Go', 'Duplicate Tab', 'Use Selection for Find', 'Switch to Last Used Tab', 'Send Page to Phone']) ok(!!item(lbl), 'menu has ' + lbl)
+  for (const lbl of ['Copy Link with Title', 'Paste and Go', 'Duplicate Tab', 'Use Selection for Find', 'Switch to Last Used Tab', 'Send Page to Phone']) ok(!!item(lbl), 'menu has ' + lbl)
   const n0 = w.order.length; await ex(`api.do('duplicateTab')`); await wait(800); ok(w.order.length === n0 + 1, 'duplicate tab')
   clipboard.writeText('yt cats'); await ex(`api.do('pasteGo')`); await wait(500)
   ok(/youtube\.com(\/|%2F)results(\?|%3F)search_query(=|%3D)cats/.test(w.active().url), 'paste and go with shortcut ' + w.active().url)

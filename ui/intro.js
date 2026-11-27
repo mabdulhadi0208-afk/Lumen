@@ -23,11 +23,11 @@
 ;(function () {
   // ---- edit this list every release: it is the "New in Lumen" act of the film (only this version's changes)
   const WHATS_NEW = {
-    version: '4.4.11',
+    version: '4.4.12',
     items: [
-      { icon: 'link', text: 'Copy Link copies the real page: redirect links from search results, social posts and mail scanners are unwrapped' },
-      { icon: 'shield', text: 'Tracking tags come off the links you copy, and a toast tells you how many it removed' },
-      { icon: 'sparkle', text: 'Works on any link you right-click and on Copy Link for a tab; ordinary links are copied exactly as they are' },
+      { icon: 'link', text: 'Copy Clean Link (Shift Command C) unwraps redirect links and takes tracking tags off, and the toast counts them' },
+      { icon: 'sparkle', text: 'Copy Link with Title (Option Command C) pastes as a clickable title in Mail, Notes and documents, and as Markdown anywhere else' },
+      { icon: 'shield', text: 'Fixed: Copy Clean Link in the command bar copied the address as it was, trackers and all' },
     ],
   }
 
@@ -1301,6 +1301,16 @@
         key.animate([{ opacity: 0, transform: 'translateY(-40px) scale(.8)' }, { opacity: 1, transform: 'translateY(4px) scale(1.04)', offset: .35 }, { opacity: 1, transform: 'none', offset: .5 }, { opacity: 1, transform: 'translateY(5px) scale(.94,.9)', offset: .62 }, { opacity: 1, transform: 'none', offset: .75 }, { opacity: 0, transform: 'translateY(-6px)' }], { duration: 1700, delay: n * 90, easing: 'cubic-bezier(.3,1.3,.5,1)', fill: 'both' }).finished.then(() => key.remove(), () => key.remove())
       })
     }, 3000)
+    // 4.4.12: the copy. A ghost of the title lifts off it, slides down and to the right on a spring, and settles like
+    // a copy landing on a clipboard before it fades (transform and opacity only)
+    setTimeout(() => {
+      if (skip || still || !logo.offsetParent) return
+      const host = logo.offsetParent, g = logo.cloneNode(true)
+      g.removeAttribute('id'); g.querySelectorAll('[id]').forEach(n => n.removeAttribute('id'))
+      g.style.cssText += `;position:absolute;left:${logo.offsetLeft}px;top:${logo.offsetTop}px;width:${logo.offsetWidth}px;margin:0;pointer-events:none;mix-blend-mode:screen;filter:blur(.5px)`
+      host.appendChild(g)
+      g.animate([{ opacity: 0, transform: 'none' }, { opacity: .35, transform: 'translate(10px,8px) scale(.985)', offset: .3 }, { opacity: .28, transform: 'translate(16px,14px) scale(.97)', offset: .55 }, { opacity: 0, transform: 'translate(18px,18px) scale(.96)' }], { duration: 1500, easing: 'cubic-bezier(.3,1.3,.5,1)', fill: 'both' }).finished.then(() => g.remove(), () => g.remove())
+    }, 2400)
     // 4.4.11: the clean sweep. A beam of light wipes across the title from left to right, and a few small specks of
     // dust lift off behind it and fade, like tracking tags being brushed away (transform and opacity only)
     setTimeout(() => {

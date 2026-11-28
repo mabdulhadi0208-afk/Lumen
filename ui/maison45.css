@@ -392,3 +392,18 @@ body.toplayout .urltext:not(.empty) .host, .urltext .host { color: var(--m-fg) !
 .tab .eq i, .np-eq i, .pin .dot { background: var(--m-fg2) !important; box-shadow: none !important; }
 #resizer::after { background: var(--m-line2) !important; }
 .chero, .chero *, .mm-head .mm-title, .mm-head .mm-sub { color: var(--m-on-solid) !important; -webkit-text-fill-color: var(--m-on-solid) !important; }
+
+/* ------------------------------------------------------------- 4.5.1: browser themes, calm
+   A theme paints the window as one flat tone (ui.js averages its colours into --theme-flat), and the chrome takes ink
+   or paper type to suit it, whatever the system theme is. */
+body.themed #themebg { background: var(--theme-flat) !important; clip-path: none; }
+body.themed #sidebar { background: var(--theme-flat) !important; }
+body.themed #nova-bg { display: none !important; }
+body.chrome-light:not(.incognito) { --m-bg: #f6f3ed; --m-bg2: #eeeae1; --m-bg3: #e4ded2; --m-card: #fcfbf8; --m-fg: #15130f; --m-fg2: #5d574c; --m-fg3: #8f887b; --m-line: rgba(21, 19, 15, .1); --m-line2: rgba(21, 19, 15, .2); --m-tint: rgba(21, 19, 15, .055); --m-solid: #15130f; --m-on-solid: #f6f3ed; --m-float: 0 18px 44px -22px rgba(21, 19, 15, .42); --bg: var(--m-bg); --bg-solid: var(--m-bg); --fg: var(--m-fg); --fg2: var(--m-fg2); --fg3: var(--m-fg3); --hover: var(--m-tint); --glass: var(--m-card); --glass-hi: var(--m-card); --menu: var(--m-card); --card: var(--m-card); --card-solid: var(--m-card); --pill: var(--m-card); --line: var(--m-line); --shadow-lg: var(--m-float); color: var(--m-fg); color-scheme: light; }
+body.chrome-dark:not(.incognito) { --m-bg: #0d0c0a; --m-bg2: #161512; --m-bg3: #211f1b; --m-card: #151411; --m-fg: #f2eee5; --m-fg2: #aba495; --m-fg3: #6f695e; --m-line: rgba(242, 238, 229, .1); --m-line2: rgba(242, 238, 229, .2); --m-tint: rgba(242, 238, 229, .07); --m-solid: #f2eee5; --m-on-solid: #0d0c0a; --m-float: 0 18px 44px -20px rgba(0, 0, 0, .85); --bg: var(--m-bg); --bg-solid: var(--m-bg); --fg: var(--m-fg); --fg2: var(--m-fg2); --fg3: var(--m-fg3); --hover: var(--m-tint); --glass: var(--m-card); --glass-hi: var(--m-card); --menu: var(--m-card); --card: var(--m-card); --card-solid: var(--m-card); --pill: var(--m-card); --line: var(--m-line); --shadow-lg: var(--m-float); color: var(--m-fg); color-scheme: dark; }
+body.themed .urlbar { background: color-mix(in srgb, var(--m-fg) 7%, transparent) !important; }
+
+/* 4.5.1: once a fill has flowed in, everything on the control flips with the label: icons, key caps, hints */
+.ib:hover *, .newtab:hover *, .popover .item:hover *, .res:hover *, .res.sel *, .qa:hover *, .tg-close:hover *, .ta-btn:hover *, .tr-btn:hover *, .mm-tile:hover *,
+.clip:hover *, .clip.sel *, .update:hover *, .prompt .btn:hover *, .popover .btn:hover *, #toast button:hover * { color: inherit !important; -webkit-text-fill-color: currentColor !important; }
+.popover .item:hover kbd, .res:hover kbd, .res.sel kbd, .qa:hover kbd, .clip:hover kbd, .clip.sel kbd, .newtab:hover kbd { background: transparent !important; box-shadow: inset 0 0 0 1px color-mix(in srgb, currentColor 40%, transparent) !important; opacity: 1 !important; }

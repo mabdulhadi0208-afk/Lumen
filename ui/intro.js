@@ -23,13 +23,12 @@
 ;(function () {
   // ---- edit this list every release: it is the "New in Lumen" act of the film (only this version's changes)
   const WHATS_NEW = {
-    version: '4.5.0',
+    version: '4.5.1',
     items: [
-      { icon: 'sparkle', text: 'A whole new monochrome look: warm paper in light, deep ink in dark, fine hairlines and big editorial titles' },
-      { icon: 'moon', text: 'A new Lumen logo: a crescent of light in a simple ring, in eight quiet tones' },
-      { icon: 'bolt', text: 'Buttons, tabs and menu rows fill with ink from wherever your pointer comes in' },
-      { icon: 'layers', text: 'Menus, popovers and the command bar are solid and calm now: no blur, no ghosting, less lag' },
-      { icon: 'download', text: 'A redesigned update card and restart screen, set like a magazine cover' },
+      { icon: 'check', text: 'Buttons that fill with colour on hover keep their labels, icons and keys readable, in light and dark' },
+      { icon: 'sparkle', text: 'The New Tab banner takes the colour of the background you chose, a shade darker, with text that always reads' },
+      { icon: 'moon', text: 'Browser themes and New Tab backgrounds show as one calm tone, and the last bits of rainbow on New Tab are gone' },
+      { icon: 'layers', text: 'Buttons with a warning, like Clear browsing data, stay readable while you hover them' },
     ],
   }
 

@@ -746,6 +746,44 @@
     document.querySelectorAll('[data-wp="theme"] i').forEach(i => { i.outerHTML = swatch('theme') })
     if (wp === 'custom' && img && !H.private) bg.style.backgroundImage = `url('${img}')`
     if (old && fade && !still()) { bg.classList.add('fadein'); old.after(bg); setTimeout(() => old.remove(), 700) } else { if (old) old.replaceWith(bg); else ntp.prepend(bg) }
+    paintBanner(ntp, bg, wp === 'custom' && img && !H.private ? img : '')
+  }
+
+  // 4.5.1: the background is one calm tone (the average of the wallpaper's colours) and the banner is that same tone a
+  // little darker, with ink or paper type, whichever reads. A photo wallpaper gives its average colour.
+  function paintBanner(ntp, bg, img) {
+    // the accent can change while the page is open (Settings, another window): the tone is worked out again then
+    if (!paintBanner.watch) {
+      let last = document.documentElement.style.getPropertyValue('--accent')
+      paintBanner.watch = new MutationObserver(() => {
+        const now = document.documentElement.style.getPropertyValue('--accent'); if (now === last) return; last = now
+        const n = qs('#ntp'), b = n && [...n.querySelectorAll('.ntp-bg')].pop(); if (!n || !b || !b.classList.contains('flat')) return
+        b.classList.remove('flat'); paintBanner(n, b, '')
+      })
+      paintBanner.watch.observe(document.documentElement, { attributes: true, attributeFilter: ['style'] })
+    }
+    const set = c => {
+      if (!c || !window.lumaOf) return
+      const m = c.match(/[\d.]+/g).map(Number), L = lumaOf(c)
+      const mix = (t, k) => m.slice(0, 3).map((v, i) => Math.round(v + (t[i] - v) * k))
+      const b = L < 0.03 ? mix([255, 255, 255], 0.08) : mix([0, 0, 0], 0.12)
+      const ban = `rgb(${b.join(', ')})`, light = lumaOf(ban) > 0.22
+      const st = ntp.style
+      if (!img) st.setProperty('--ntp-flat', c); else st.removeProperty('--ntp-flat')
+      st.setProperty('--ban', ban)
+      st.setProperty('--ban-fg', light ? '#15130f' : '#f4efe5')
+      st.setProperty('--ban-fg2', light ? 'rgba(21, 19, 15, .62)' : 'rgba(244, 239, 229, .64)')
+      st.setProperty('--ban-line', light ? 'rgba(21, 19, 15, .16)' : 'rgba(244, 239, 229, .2)')
+      ntp.classList.toggle('ban-light', light); ntp.classList.toggle('ban-dark', !light)
+      ntp.classList.toggle('bg-light', L > 0.3); ntp.classList.toggle('bg-dark', L <= 0.3)
+      if (!img) bg.classList.add('flat')
+    }
+    if (img) {
+      const im = new Image(); im.onload = () => { try { const c = document.createElement('canvas'); c.width = c.height = 8; const g = c.getContext('2d'); g.drawImage(im, 0, 0, 8, 8); const d = g.getImageData(0, 0, 8, 8).data; let r = 0, gg = 0, bb = 0; for (let i = 0; i < d.length; i += 4) { r += d[i]; gg += d[i + 1]; bb += d[i + 2] } const n = d.length / 4; set(`rgb(${Math.round(r / n * .7)}, ${Math.round(gg / n * .7)}, ${Math.round(bb / n * .7)})`) } catch { set('rgb(21, 19, 15)') } }
+      im.onerror = () => set('rgb(21, 19, 15)'); im.src = img; return
+    }
+    const cs = getComputedStyle(bg)
+    set(window.flatColor ? flatColor(cs.backgroundImage + ' ' + cs.backgroundColor, getComputedStyle(document.documentElement).backgroundColor) : null)
   }
 
   // ---------------------------------------------------------------- search with suggestions

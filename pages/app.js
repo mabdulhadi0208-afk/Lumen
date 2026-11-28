@@ -82,7 +82,7 @@ const page = location.host
 let sub = location.pathname.replace(/^\/+|\/+$/g, '')
 
 function applyLook(s) {
-  document.documentElement.style.setProperty('--accent', s.accent || '#5b8cff')
+  document.documentElement.style.setProperty('--accent', s.accent || '#1f6b52')
   document.body.dataset.motion = s.motion
   Jelly.setMode(s.motion === 'lively' ? 'jelly' : s.motion)
   const was = window.Glass && Glass.on

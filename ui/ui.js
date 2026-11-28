@@ -1501,6 +1501,8 @@ function applyTheme() {
   b.classList.toggle('chrome-dark', th.dark === true)
   b.classList.toggle('chrome-light', th.dark === false)
   document.documentElement.style.setProperty('--theme-bg', th.bg || 'none')
+  // 4.5.1: the chrome shows a theme as one flat tone (the average of its colours), never as a multi-colour wash
+  document.documentElement.style.setProperty('--theme-flat', th.bg ? (window.flatColor ? flatColor(th.bg, '#f6f3ed') : '#f6f3ed') : 'transparent')
   const compact = !!settings.compact
   if (compact !== b.classList.contains('compact') || ROW !== (compact ? 30 : 36)) {
     api.do('trafficLights', !collapsed, TOP ? { x: 16, y: compact ? 11 : 15 } : { x: 16, y: 18 })

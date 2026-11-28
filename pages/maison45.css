@@ -96,18 +96,18 @@ input:focus, select:focus, textarea:focus { box-shadow: inset 0 0 0 1px var(--m-
 .chip.on, .fchip.on { background: var(--m-solid) !important; color: var(--m-on-solid) !important; --flow: var(--accent); --flow-fg: #fff; }
 
 /* New Tab: a noir cover for the greeting and the clock, paper for everything under it */
-.hm-hero { background: var(--m-noir) !important; background-image: none !important; box-shadow: none !important; border-radius: 8px !important; color: var(--m-on-noir) !important; }
+.hm-hero { background: var(--ban) !important; background-image: none !important; box-shadow: none !important; border-radius: 8px !important; color: var(--ban-fg) !important; }
 .hm-hero::before, .hm-hero::after { display: none !important; }
-.hm-greet, #greet { font: 400 76px/.95 var(--display) !important; letter-spacing: -.015em !important; color: var(--m-on-noir) !important; }
+.hm-greet, #greet { font: 400 76px/.95 var(--display) !important; letter-spacing: -.015em !important; color: var(--ban-fg) !important; }
 .hm-greet *, #greet * { background: none !important; color: inherit !important; -webkit-text-fill-color: currentColor !important; }
-.hm-greet em, #greet em, .hm-greet i { font-style: italic !important; color: rgba(244, 239, 229, .62) !important; }
-.hm-date, #date { font: 500 10.5px var(--font) !important; letter-spacing: .22em !important; color: #cfc5b2 !important; }
-.hm-date::before, #date::before { background: #cfc5b2 !important; box-shadow: none !important; }
-.hm-sub, #hsub { color: rgba(244, 239, 229, .66) !important; }
-.hm-hero .hm-act { background: transparent !important; box-shadow: inset 0 0 0 1px rgba(244, 239, 229, .24) !important; color: var(--m-on-noir) !important; --flow: var(--m-on-noir); --flow-fg: var(--m-noir); }
-.hm-hero .hm-act:first-child { background: var(--m-on-noir) !important; color: var(--m-noir) !important; --flow: #cfc5b2; --flow-fg: var(--m-noir); }
+.hm-greet em, #greet em, .hm-greet i { font-style: italic !important; color: var(--ban-fg2) !important; }
+.hm-date, #date { font: 500 10.5px var(--font) !important; letter-spacing: .22em !important; color: var(--ban-fg2) !important; }
+.hm-date::before, #date::before { background: var(--ban-fg2) !important; box-shadow: none !important; }
+.hm-sub, #hsub { color: var(--ban-fg2) !important; }
+.hm-hero .hm-act { background: transparent !important; box-shadow: inset 0 0 0 1px var(--ban-line) !important; color: var(--ban-fg) !important; --flow: var(--ban-fg); --flow-fg: var(--ban); }
+.hm-hero .hm-act:first-child { background: var(--ban-fg) !important; color: var(--ban) !important; --flow: var(--accent); --flow-fg: #fff; }
 .hm-act kbd { background: transparent !important; box-shadow: inset 0 0 0 1px currentColor !important; color: inherit !important; opacity: .7; }
-#clock { color: var(--m-on-noir) !important; }
+#clock { color: var(--ban-fg) !important; }
 #clock b, .ck-col, .ck-h, .ck-m { font-family: var(--display) !important; font-weight: 400 !important; background: none !important; -webkit-text-fill-color: currentColor !important; }
 .hm-search { background: var(--m-card) !important; background-image: none !important; box-shadow: inset 0 0 0 1px var(--m-line2) !important; border-radius: 999px !important; }
 .hm-search::before, .hm-search::after { display: none !important; }
@@ -127,8 +127,8 @@ body[data-motion="off"] *, body[data-motion="off"] *::before, body[data-motion="
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { transition-duration: 0s !important; } }
 /* the clock tile sits on the noir cover itself, with a hairline divider */
 .hm-hero .hm-tile, .hm-hero #cktile { background: transparent !important; box-shadow: none !important; }
-.hm-hero #cktile::before { background: rgba(244, 239, 229, .16) !important; box-shadow: none !important; }
-#clock, #clock * { color: var(--m-on-noir) !important; -webkit-text-fill-color: currentColor !important; background-color: transparent !important; }
+.hm-hero #cktile::before { background: var(--ban-line) !important; box-shadow: none !important; }
+#clock, #clock * { color: var(--ban-fg) !important; -webkit-text-fill-color: currentColor !important; background-color: transparent !important; }
 .navsearch input::placeholder { color: var(--m-fg3) !important; }
 
 /* ---------------------------------------------------------------- 4.5, round two: monochrome (the owner: "remove all
@@ -139,7 +139,7 @@ body[data-motion="off"] *, body[data-motion="off"] *::before, body[data-motion="
   --a2: var(--accent); --a3: var(--accent); --c-cyan: var(--accent); --c-violet: var(--accent); --c-amber: var(--accent); --c-pink: var(--accent); --c-deep: var(--accent);
   --lq-sheen: none; --lq-ring: none; --lq-refr: none; --banner: var(--m-noir); --rim41: var(--m-line2); --sec: var(--m-fg); --ic: var(--m-fg);
 }
-#clock .ck-col i { background: var(--m-on-noir) !important; box-shadow: none !important; }
+#clock .ck-col i { background: var(--ban-fg) !important; box-shadow: none !important; }
 /* New Tab: plain paper behind everything (the themes and wallpapers you pick yourself still apply) */
 .ntp.wp-theme .ntp-bg:not([style*="--thbg"]), .ntp-bg.wp-theme:not([style*="--thbg"]) { background: var(--m-bg) !important; }
 .ntp.wp-theme .ntp-bg:not([style*="--thbg"])::before, .ntp.wp-theme .ntp-bg:not([style*="--thbg"])::after { display: none !important; }
@@ -162,3 +162,74 @@ body[data-motion="off"] *, body[data-motion="off"] *::before, body[data-motion="
 .switch input:checked + span { background: var(--accent) !important; }
 .switch span::before, .switch span::after { background: #fff !important; box-shadow: 0 1px 2px rgba(0,0,0,.2) !important; }
 ::-webkit-scrollbar-thumb, ::-webkit-scrollbar-thumb:hover, ::-webkit-scrollbar-thumb:active { background: var(--m-line2) padding-box !important; }
+
+
+/* ---------------------------------------------------------------- 4.5.1: the banner takes the New Tab background's own
+   colour, a little darker (home.js sets --ban from the background you chose, and picks ink or paper for the type) */
+.ntp { --ban: var(--m-noir); --ban-fg: var(--m-on-noir); --ban-fg2: rgba(244, 239, 229, .64); --ban-line: rgba(244, 239, 229, .22); }
+.hm-hero .hm-act { --flow: var(--ban-fg); --flow-fg: var(--ban); }
+.hm-hero .hm-act:first-child { --flow: var(--accent); --flow-fg: #fff; }
+.hm-hero .hm-act:hover, .hm-hero .hm-act:hover * { color: var(--flow-fg) !important; -webkit-text-fill-color: var(--flow-fg) !important; }
+.hm-hero .hm-act:hover kbd { box-shadow: inset 0 0 0 1px var(--flow-fg) !important; opacity: .85; }
+.hm-hero .hm-act svg, .hm-hero .hm-act kbd { color: inherit !important; }
+#clock .ck-sec { background: var(--ban-line) !important; }
+#clock .ck-run, #clock .ck-run *, #clock .ck-tip { background-color: var(--ban-fg) !important; }
+.ntp-bg.flat { background-color: var(--ntp-flat) !important; background-image: linear-gradient(var(--ntp-flat), var(--ntp-flat)) !important; }
+.ntp-bg.flat::before, .ntp-bg.flat::after { display: none !important; }
+
+/* 4.5.1: everything below the banner follows the background's own lightness, whatever the system theme is */
+.ntp.bg-light { --m-bg: #f6f3ed; --m-bg2: #eeeae1; --m-bg3: #e4ded2; --m-card: #fcfbf8; --m-fg: #15130f; --m-fg2: #5d574c; --m-fg3: #8f887b; --m-line: rgba(21, 19, 15, .1); --m-line2: rgba(21, 19, 15, .2); --m-tint: rgba(21, 19, 15, .05); --m-solid: #15130f; --m-on-solid: #f6f3ed; --bg: var(--m-bg); --bg2: var(--m-card); --fg: var(--m-fg); --fg2: var(--m-fg2); --fg3: var(--m-fg3); --line: var(--m-line); --hover: var(--m-tint); --glass: var(--m-card); --glass2: var(--m-card); --field: var(--m-bg2); --seg-on: var(--m-solid); color: var(--m-fg); color-scheme: light; }
+.ntp.bg-dark { --m-bg: #0d0c0a; --m-bg2: #1b1916; --m-bg3: #26231f; --m-card: #131210; --m-fg: #f2eee5; --m-fg2: #aba495; --m-fg3: #6f695e; --m-line: rgba(242, 238, 229, .1); --m-line2: rgba(242, 238, 229, .2); --m-tint: rgba(242, 238, 229, .06); --m-solid: #f2eee5; --m-on-solid: #0d0c0a; --bg: var(--m-bg); --bg2: var(--m-card); --fg: var(--m-fg); --fg2: var(--m-fg2); --fg3: var(--m-fg3); --line: var(--m-line); --hover: var(--m-tint); --glass: var(--m-card); --glass2: var(--m-card); --field: var(--m-bg2); --seg-on: var(--m-solid); color: var(--m-fg); color-scheme: dark; }
+
+/* ---------------------------------------------------------------- 4.5.1: the last of the colour
+   Every title that was gradient text is plain type now (these are all the background-clip: text rules in the older
+   layers), and widget icons, rings, numbers, watermarks and the Customize chip are ink and greys. */
+.abouthero h2,
+.ck-minimal .ck-m b,
+.clock b,
+.drawer .dh b,
+.err .hero h1,
+.err h1,
+.hm-greet,
+.hm-greet em,
+.hm-ring b,
+.hm-sect h2 em,
+.hm-st b,
+.main .hero h2,
+.main h2,
+.nav h1,
+.ntp.private .hm-greet em,
+.shieldrow b,
+.st-big b,
+.w-focus.running .fc-t { background: none !important; -webkit-background-clip: border-box !important; background-clip: border-box !important; color: inherit !important; -webkit-text-fill-color: currentColor !important; filter: none !important; }
+.hm-sect h2 { font: 400 clamp(32px, 3.6vw, 48px)/1.05 var(--display) !important; letter-spacing: -.01em !important; color: var(--m-fg) !important; }
+.hm-sect h2 em { font-style: italic !important; color: var(--m-fg2) !important; -webkit-text-fill-color: var(--m-fg2) !important; }
+.st-big b, .hm-st b, .hm-ring b, .shieldrow b { font-family: var(--display) !important; font-weight: 400 !important; color: var(--m-fg) !important; -webkit-text-fill-color: var(--m-fg) !important; }
+.hm-cust { background: transparent !important; background-image: none !important; box-shadow: inset 0 0 0 1px var(--m-line2) !important; color: var(--m-fg) !important; position: relative; overflow: hidden; isolation: isolate; --flow: var(--m-solid); --flow-fg: var(--m-on-solid); transition: color .42s var(--m-ease) !important; }
+.hm-cust svg { background: transparent !important; background-image: none !important; box-shadow: none !important; color: inherit !important; }
+.hm-cust::before { all: initial !important; content: "" !important; display: block !important; position: absolute !important; z-index: -1 !important; left: var(--fx, 50%) !important; top: var(--fy, 100%) !important; width: 260% !important; aspect-ratio: 1 !important; min-width: 120px !important; border-radius: 50% !important; background: var(--flow) !important; transform: translate(-50%, -50%) scale(0) !important; transition: transform .42s var(--m-ease) !important; pointer-events: none !important; }
+.hm-cust:hover::before { transform: translate(-50%, -50%) scale(1) !important; }
+.hm-cust:hover, .hm-cust:hover * { color: var(--flow-fg) !important; }
+.hm-ic, .hm-stat .hm-ic, .hm-icob { background: transparent !important; background-image: none !important; box-shadow: inset 0 0 0 1px var(--m-line2) !important; color: var(--m-fg) !important; filter: none !important; }
+.hm-ic::before, .hm-ic::after { display: none !important; }
+.hm-ic svg { color: var(--m-fg) !important; }
+.hm-wm { color: var(--m-fg) !important; opacity: .05 !important; filter: none !important; }
+/* charts, rings, bars and dots inside the widgets: greys (favicons and photos keep their own colours) */
+.hm-card svg:not(.hm-lg):not(.fav), .hm-ring, .hm-viz, .st-bars, .hm-pulse, .hm-pulsex, .hm-badge, .hm-dot, .bars, .road, .fc-ring, .cal-g .on { filter: grayscale(1) !important; }
+.hm-kicker { color: var(--m-fg3) !important; }
+.hm-kicker::before { background: var(--m-fg3) !important; }
+
+/* 4.5.1: once a fill has flowed in, everything on the control flips with the label: icons, key caps, hints */
+.btn:hover *, .chip:hover *, .fchip:hover *, .allowchip:hover *, .hm-act:hover *, .pill:hover *, .getapp:hover *, .hm-cust:hover * { color: inherit !important; -webkit-text-fill-color: currentColor !important; }
+.btn:hover kbd, .chip:hover kbd, .hm-act:hover kbd { box-shadow: inset 0 0 0 1px color-mix(in srgb, currentColor 40%, transparent) !important; opacity: 1 !important; }
+.btn.danger:hover, .btn.danger:hover *, .btn.warn:hover, .btn.warn:hover * { color: #fff !important; -webkit-text-fill-color: #fff !important; }
+.btn.danger { color: #a8323f !important; }
+@media (prefers-color-scheme: dark) { .btn.danger { color: #e3737e !important; } }
+.ntp.bg-dark .btn.danger { color: #e3737e !important; }
+.btn.primary.danger-p { background: #a8323f !important; background-image: none !important; color: #fff !important; box-shadow: none !important; --flow: #6e1f28; --flow-fg: #fff; }
+/* 4.5.1: the footer links and the wallpaper picker in quiet tones */
+.hm-foot, .hm-foot * { background-image: none !important; }
+.hm-foot { background: var(--m-card) !important; box-shadow: inset 0 0 0 1px var(--m-line) !important; }
+.hm-foot a { color: var(--m-fg) !important; }
+.hm-foot a svg { background: transparent !important; box-shadow: none !important; color: var(--m-fg2) !important; filter: none !important; }
+.wps .wpsw, .wpq .wpsw, .wpsw.lqsw, .wpb .wpsw { filter: saturate(.3) !important; }

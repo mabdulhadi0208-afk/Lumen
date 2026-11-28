@@ -128,9 +128,9 @@
     function close() { d.classList.remove('on'); d.hidden = true; ls.set('popupSeen', true); }
   }
   window.dropWeb = { download };
-  const btn = document.createElement('button');
-  btn.id = 'web-dl'; btn.className = 'btn btn-solid small web-dl'; btn.innerHTML = '<svg viewBox="0 0 24 24"><path d="M12 4v11M7 10.5l5 5 5-5M5 19.5h14"/></svg>Download';
-  btn.addEventListener('click', download);
+  // the Download button, top left, goes to Drop's page on getlumen.info (what it does, and the Mac and Windows downloads)
+  const btn = document.createElement('a');
+  btn.id = 'web-dl'; btn.className = 'btn btn-solid small web-dl'; btn.href = '/#get-drop'; btn.innerHTML = '<svg viewBox="0 0 24 24"><path d="M12 4v11M7 10.5l5 5 5-5M5 19.5h14"/></svg>Download';
   document.body.appendChild(btn);
   if (!ls.get('popupSeen', false)) setTimeout(download, 600);
   // Saved prices: checked when the page opens (the app checks in the background)

@@ -79,12 +79,20 @@ kbd{font:500 .82em/1 var(--sans);padding:3px 7px;border-radius:6px;box-shadow:in
 .kicker::before{content:"";width:7px;height:7px;border-radius:50%;background:var(--accent);flex:none}
 
 /* ---------- the flow: colour grows from where the pointer came in, the label flips with it ---------- */
+/* slow enough to see: the fill comes in over --flow-in and leaves over --flow-out; the label flips at about 30% of the
+   fill (when most of the button is already covered) so it stays readable the whole way. The fill is clipped to the
+   button (overflow hidden, its own stacking context) and its circle is sized from the button (--fd, set on pointerenter
+   to twice the distance from the entry point to the farthest corner) */
+:root{--flow-in:.7s;--flow-out:.45s;--flow-ease:cubic-bezier(.2,.8,.2,1);--flow-flip:.25s}
 .fl{position:relative;isolation:isolate;overflow:hidden;--flow:var(--solid);--flow-fg:var(--on-solid);cursor:pointer;
-  transition:color .42s var(--ease),box-shadow .42s var(--ease),transform .25s var(--ease)}
-.fl::before{content:"";position:absolute;z-index:-1;left:var(--fx,50%);top:var(--fy,100%);width:260%;min-width:160px;aspect-ratio:1;border-radius:50%;
-  background:var(--flow);transform:translate(-50%,-50%) scale(0);transition:transform .42s var(--ease);pointer-events:none}
-.fl:hover::before{transform:translate(-50%,-50%) scale(1)}
+  transition:color var(--flow-flip) var(--flow-ease) calc(var(--flow-out) * .15),box-shadow var(--flow-out) var(--flow-ease),transform .25s var(--ease)}
+.fl::before{content:"";position:absolute;z-index:-1;left:var(--fx,50%);top:var(--fy,100%);width:var(--fd,260%);aspect-ratio:1;border-radius:50%;
+  background:var(--flow);transform:translate(-50%,-50%) scale(0);transition:transform var(--flow-out) var(--flow-ease);pointer-events:none}
+.fl:hover{transition:color var(--flow-flip) var(--flow-ease) calc(var(--flow-in) * .3),box-shadow var(--flow-in) var(--flow-ease),transform .25s var(--ease)}
+.fl:hover::before{transform:translate(-50%,-50%) scale(1);transition:transform var(--flow-in) var(--flow-ease)}
 .fl:hover,.fl:hover *{color:var(--flow-fg)!important}
+.fl *{transition:color var(--flow-flip) var(--flow-ease) calc(var(--flow-out) * .15)}
+.fl:hover *{transition:color var(--flow-flip) var(--flow-ease) calc(var(--flow-in) * .3)}
 .fl:hover small{opacity:.9}
 .fl:active{transform:scale(.97)}
 
@@ -109,6 +117,7 @@ kbd{font:500 .82em/1 var(--sans);padding:3px 7px;border-radius:6px;box-shadow:in
 .nav .links a{text-decoration:none;font:500 14px/1 var(--sans);color:var(--fg2);padding:11px 14px;border-radius:99px;--flow:var(--bg2);--flow-fg:var(--fg)}
 .tbtn{appearance:none;border:0;background:transparent;box-shadow:inset 0 0 0 1px var(--line2);color:var(--fg);width:40px;height:40px;border-radius:50%;display:grid;place-items:center;flex:none;padding:0}
 .tbtn svg{width:18px;height:18px}
+#snd .x{display:none}#snd[aria-pressed=false] .x{display:inline}#snd[aria-pressed=false] .w{display:none}#snd[aria-pressed=false]{color:var(--fg3)}
 .nav .cta{flex:none}
 .nav .links .p{display:none}
 :root[data-view=surge] .nav .links .h,:root[data-view=koi] .nav .links .h,:root[data-view=grab] .nav .links .h,:root[data-view=drop] .nav .links .h{display:none}
@@ -117,7 +126,7 @@ kbd{font:500 .82em/1 var(--sans);padding:3px 7px;border-radius:6px;box-shadow:in
 @media (max-width:940px){
   html{scroll-padding-top:120px}
   .nav .bar{flex-wrap:wrap;column-gap:8px;row-gap:0;padding-top:10px}
-  .nav .tbtn{margin-left:auto}
+  .nav #snd{margin-left:auto}
   .nav .links{order:3;width:calc(100% + 24px);margin:8px -12px 0;padding:0 6px 8px;overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch}
   .nav .links::-webkit-scrollbar{display:none}
   .nav .links a{flex:none;padding:10px 12px}
@@ -185,7 +194,8 @@ kbd{font:500 .82em/1 var(--sans);padding:3px 7px;border-radius:6px;box-shadow:in
 .player{position:relative}
 .player video{aspect-ratio:16/9;background:#0d0c0a}
 .play{position:absolute;left:50%;top:50%;width:88px;height:88px;margin:-44px 0 0 -44px;border:0;border-radius:50%;display:grid;place-items:center;
-  background:var(--solid);color:var(--on-solid);--flow:var(--accent);--flow-fg:#fff;transition:opacity .42s var(--ease),transform .42s var(--ease),color .42s var(--ease)}
+  background:var(--solid);color:var(--on-solid);--flow:var(--accent);--flow-fg:#fff;transition:opacity .42s var(--ease),transform .42s var(--ease),color var(--flow-flip) var(--flow-ease) calc(var(--flow-out) * .15)}
+.play:hover{transition:opacity .42s var(--ease),transform .42s var(--ease),color var(--flow-flip) var(--flow-ease) calc(var(--flow-in) * .3)}
 .play svg{width:26px;height:26px;margin-left:4px}
 .player.on .play{opacity:0;transform:scale(.9);pointer-events:none}
 .film-plate{max-width:1080px;margin:56px auto 0}
@@ -297,7 +307,7 @@ footer nav a:hover{text-decoration:underline;text-underline-offset:4px;text-deco
   .hero-grid .seal{animation-delay:.16s}.hero .hero-plate{animation-delay:.3s}
 }
 @keyframes rise{from{opacity:0;transform:translateY(22px)}}
-@media (prefers-reduced-motion:reduce){.fl,.fl::before,.play{transition:none}}
+@media (prefers-reduced-motion:reduce){:root{--flow-in:0s;--flow-out:0s;--flow-flip:0s}.fl,.fl:hover,.fl *,.fl:hover *,.fl::before,.fl:hover::before,.play{transition:none}}
 
 /* ---------- phone and tablet ---------- */
 @media (max-width:1080px){.only{grid-template-columns:repeat(3,minmax(0,1fr))}.apps{grid-template-columns:minmax(0,1fr)}}
@@ -357,6 +367,9 @@ footer nav a:hover{text-decoration:underline;text-underline-offset:4px;text-deco
       <a class="ng fl" href="#grab">Grab</a>
       <a class="nd fl" href="https://drop.getlumen.info/">Drop</a>
     </nav>
+    <button class="tbtn fl" id="snd" type="button" aria-label="Interface sounds" aria-pressed="true" title="Interface sounds">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 9.5h3l4.5-4v13l-4.5-4h-3z"/><path class="w" d="M15.5 9.2a4 4 0 0 1 0 5.6M18 6.8a7.5 7.5 0 0 1 0 10.4"/><path class="x" d="M16 9.5l5 5m0-5l-5 5"/></svg>
+    </button>
     <button class="tbtn fl" id="theme" type="button" aria-label="Switch light or dark">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="8.2"/><path d="M12 3.8a8.2 8.2 0 0 1 0 16.4z" fill="currentColor" stroke="none"/></svg>
     </button>
@@ -395,7 +408,7 @@ footer nav a:hover{text-decoration:underline;text-underline-offset:4px;text-deco
   <div class="wrap">
     <div class="head c">
       <span class="kicker">The film</span>
-      <h2>Lumen in <em>78 seconds.</em></h2>
+      <h2>Lumen in <em>60 seconds.</em></h2>
       <p>Only what Lumen does. Nothing every other browser already has.</p>
     </div>
     <figure class="plate film-plate"><div class="player" id="player"><video src="shots/film.mp4" poster="shots/film-poster.webp" controls playsinline preload="none" width="1920" height="1080"></video><button class="play fl" type="button" aria-label="Play the film"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M7 4.5v15l12.5-7.5z"/></svg></button></div></figure>
@@ -414,7 +427,7 @@ footer nav a:hover{text-decoration:underline;text-underline-offset:4px;text-deco
     <div class="plates">
       <figure class="plate"><img src="shots/parcels.webp" alt="The Parcels page with three parcels on the way: two orders saved from online shops, each with a Shop tag, the store name and its order number, and a progress line from Placed to Delivered" width="1264" height="590" loading="lazy" decoding="async"><figcaption>New in 4.4.6: Shop orders in Parcels</figcaption></figure>
       <figure class="plate"><img src="shots/parcel-link.webp" alt="The Track a parcel dialog after a UPS tracking link was pasted into the number box: the tracking number is filled in, the carrier is set to UPS, the link sits in the link field and a green note says Got it from the link: UPS" width="1264" height="700" loading="lazy" decoding="async"><figcaption>New in 4.4.8: paste a tracking link</figcaption></figure>
-      <figure class="plate"><img src="shots/clipboard.webp" alt="Clipboard History open over a travel article: a list of five recent copies, newest first, each marked Text, Link, Email or Phone with its number key" width="1280" height="820" loading="lazy" decoding="async"><figcaption>New in 4.4.21: clipboard history on Option V</figcaption></figure>
+      <figure class="plate"><img src="shots/clipboard.webp" alt="Clipboard History open over a travel article: a list of five recent copies, newest first, each marked Text, Number, Link or Email with its number key" width="1280" height="820" loading="lazy" decoding="async"><figcaption>New in 4.4.21: clipboard history on Option V</figcaption></figure>
       <figure class="plate"><img src="shots/downloads.webp" alt="The Downloads page: kind filters with counts, a lit In progress card with a video coming in at 3.1 MB a second and 13 seconds left, and finished files below, each with a green check, Open, Show in folder and Copy download link" width="1264" height="730" loading="lazy" decoding="async"><figcaption>New in 4.4.22: Downloads, made over</figcaption></figure>
     </div>
 
@@ -611,8 +624,8 @@ footer nav a:hover{text-decoration:underline;text-underline-offset:4px;text-deco
         <ul class="tags"><li>Trailer-style intro</li><li>New update card</li><li>New restart screen</li></ul>
       </div>
       <div class="overlap">
-        <figure class="plate back-p"><img src="shots/intro.webp" alt="The Lumen 4.4.22 intro, fresh from an update, as a file of light lands in a glowing tray above the title" width="1280" height="676" loading="lazy" decoding="async"></figure>
-        <figure class="plate front sm"><img src="shots/updatecard.webp" alt="The update card downloading Lumen 4.4.22, with what is new in it" width="600" height="402" loading="lazy" decoding="async"></figure>
+        <figure class="plate back-p"><img src="shots/intro.webp" alt="The Lumen 4.6.0 intro, fresh from an update: the title set in serif on deep ink, over the line Quicker to open. Clever on every page." width="1280" height="676" loading="lazy" decoding="async"></figure>
+        <figure class="plate front sm"><img src="shots/updatecard.webp" alt="The update card downloading Lumen 4.6.0: its Download, Verify, Install and Restart steps, the progress and what is new in it" width="600" height="402" loading="lazy" decoding="async"></figure>
       </div>
     </div>
   </div>
@@ -779,8 +792,8 @@ footer nav a:hover{text-decoration:underline;text-underline-offset:4px;text-deco
         <ul class="tags"><li>Flowing while charging</li><li>Light and dark menu bars</li><li>Battery or percentage chip</li></ul>
       </div>
       <div class="stack">
-        <figure class="plate"><img src="shots/surge-flow.webp" alt="Frames of the flowing battery icon while charging" width="1420" height="160" loading="lazy" decoding="async"><figcaption>The flow, frame by frame</figcaption></figure>
-        <figure class="plate"><img src="shots/surge-tray.webp" alt="Surge menu bar icons in light and dark menu bars, and how they look in a real macOS menu bar" width="1600" height="580" loading="lazy" decoding="async"><figcaption>In light and dark menu bars</figcaption></figure>
+        <figure class="plate"><img src="shots/surge-flow.webp" alt="Frames of the flowing battery icon and the charge chip while charging, in light and dark menu bars" width="1420" height="160" loading="lazy" decoding="async"><figcaption>The flow, frame by frame</figcaption></figure>
+        <figure class="plate"><img src="shots/surge-tray.webp" alt="Surge menu bar icons in light and dark menu bars, in Surge colours and in the plain monochrome style" width="1600" height="580" loading="lazy" decoding="async"><figcaption>Light or dark, colour or monochrome</figcaption></figure>
       </div>
     </div>
 
@@ -936,7 +949,7 @@ footer nav a:hover{text-decoration:underline;text-underline-offset:4px;text-deco
           <figure class="plate"><img class="only-light" src="shots/koi-pop-light.webp" alt="Koi menu bar settings in light mode" width="372" height="798" loading="lazy" decoding="async"><img class="only-dark" src="shots/koi-pop-dark.webp" alt="Koi menu bar settings in dark mode" width="372" height="798" loading="lazy" decoding="async"><figcaption>Settings in the menu bar</figcaption></figure>
           <figure class="plate"><img src="shots/koi-about.webp" alt="The About Koi card" width="560" height="593" loading="lazy" decoding="async"><figcaption>About Koi</figcaption></figure>
         </div>
-        <figure class="plate mid"><img src="shots/koi-tray.webp" alt="The Koi menu bar icon, a lotus, in frames" width="930" height="400" loading="lazy" decoding="async"><figcaption>The lotus in your menu bar</figcaption></figure>
+        <figure class="plate mid"><img src="shots/koi-tray.webp" alt="The Koi menu bar icon, a lotus, opening frame by frame, in light and dark menu bars" width="930" height="400" loading="lazy" decoding="async"><figcaption>The lotus in your menu bar</figcaption></figure>
       </div>
     </div>
 
@@ -1234,9 +1247,41 @@ footer nav a:hover{text-decoration:underline;text-underline-offset:4px;text-deco
 </script>
 
 <script>
+/* hover and click sounds (SOUNDS.md): synthesised with Web Audio, no files. One AudioContext, made on the first click or
+   key press (never at load), a soft tick on pointing at a flow control (at most one per 45 ms, never while scrolling or
+   on touch), a soft tock when a button or link is pressed. The speaker in the nav turns them off, remembered here. */
+var LumenSound=(function(){
+  var KEY='lumen-sounds',on=true,ctx=null,armed=false,last=0,scrolled=0,noise=null,btn=document.getElementById('snd');
+  try{on=localStorage.getItem(KEY)!=='off'}catch(e){}
+  function paint(){if(btn)btn.setAttribute('aria-pressed',on?'true':'false')}
+  function ac(){if(!armed)return null;if(!ctx){var A=window.AudioContext||window.webkitAudioContext;if(!A)return null;try{ctx=new A()}catch(e){return null}}
+    if(ctx.state==='suspended'&&ctx.resume){try{var q=ctx.resume();if(q&&q.catch)q.catch(function(){})}catch(e){}}return ctx}
+  function env(c,g,t,peak,dec,att){g.gain.setValueAtTime(0.0001,t);g.gain.linearRampToValueAtTime(peak,t+(att||.002));g.gain.exponentialRampToValueAtTime(0.0001,t+dec)}
+  function tone(c,type,f0,f1,peak,dec,at){var o=c.createOscillator(),g=c.createGain(),t=c.currentTime+(at||0);o.type=type;o.frequency.setValueAtTime(f0,t);if(f1)o.frequency.exponentialRampToValueAtTime(f1,t+dec);
+    env(c,g,t,peak,dec);o.connect(g);g.connect(c.destination);o.start(t);o.stop(t+dec+.02);o.onended=function(){try{o.disconnect();g.disconnect()}catch(e){}}}
+  function tick(el){if(!on)return;var n=performance.now();if(n-last<45||n-scrolled<150)return;var c=ac();if(!c)return;last=n;
+    var h=el&&el.getBoundingClientRect?el.getBoundingClientRect().height:44;tone(c,'sine',h<44?2300:1950,0,.03,.037)}
+  function tock(){if(!on)return;var c=ac();if(!c)return;tone(c,'triangle',640,512,.06,.07);
+    try{if(!noise){noise=c.createBuffer(1,Math.ceil(c.sampleRate*.006),c.sampleRate);var d=noise.getChannelData(0);for(var i=0;i<d.length;i++)d[i]=(Math.random()*2-1)*(1-i/d.length)}
+      var s=c.createBufferSource(),f=c.createBiquadFilter(),g=c.createGain(),t=c.currentTime;s.buffer=noise;f.type='bandpass';f.frequency.value=2600;g.gain.value=.025;
+      s.connect(f);f.connect(g);g.connect(c.destination);s.start(t);s.onended=function(){try{s.disconnect();f.disconnect();g.disconnect()}catch(e){}}}catch(e){}}
+  function done(up){var c=ac();if(!c)return;tone(c,'sine',up?880:1320,0,.04,.08);tone(c,'sine',up?1320:880,0,.04,.1,.07)}
+  var CTRL='button,a[href],[role=button],summary,.fl';
+  function ctrl(t){var e=t&&t.closest?t.closest(CTRL):null;return e&&!e.closest('input,textarea,select,[contenteditable]')?e:null}
+  document.addEventListener('pointerdown',function(e){armed=true;if(e.button===0&&ctrl(e.target)&&!(btn&&btn.contains(e.target)))tock()},true);
+  document.addEventListener('keydown',function(e){armed=true;if((e.key==='Enter'||e.key===' ')&&ctrl(e.target)&&!(btn&&btn.contains(e.target)))tock()},true);
+  addEventListener('scroll',function(){scrolled=performance.now()},{passive:true});
+  if(btn)btn.addEventListener('click',function(){on=!on;try{localStorage.setItem(KEY,on?'on':'off')}catch(e){}paint();if(on)done(true);else{var w=on;on=true;done(false);on=w}});
+  paint();
+  return {tick:tick,tock:tock,on:function(){return on}};
+})();
+</script>
+<script>
 (function(){
   /* the flow: remember where the pointer came in (and left), so the fill grows from there */
-  function at(e){var t=e.currentTarget,b=t.getBoundingClientRect();t.style.setProperty('--fx',(e.clientX-b.left)+'px');t.style.setProperty('--fy',(e.clientY-b.top)+'px')}
+  function at(e){var t=e.currentTarget,b=t.getBoundingClientRect(),x=Math.min(Math.max(e.clientX-b.left,0),b.width),y=Math.min(Math.max(e.clientY-b.top,0),b.height);t.style.setProperty('--fx',x+'px');t.style.setProperty('--fy',y+'px');
+    if(e.type==='pointerenter'&&e.pointerType!=='touch'&&window.LumenSound)LumenSound.tick(t);
+    if(e.type==='pointerenter'){var dx=Math.max(x,b.width-x),dy=Math.max(y,b.height-y);t.style.setProperty('--fd',Math.ceil(2*Math.sqrt(dx*dx+dy*dy)+4)+'px')}}
   [].forEach.call(document.querySelectorAll('.fl'),function(el){el.addEventListener('pointerenter',at);el.addEventListener('pointerleave',at)});
   /* the film: a calm play button over the poster */
   var p=document.getElementById('player'),v=p&&p.querySelector('video'),pb=p&&p.querySelector('.play');

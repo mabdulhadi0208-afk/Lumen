@@ -67,7 +67,7 @@
   const nothing = async () => null;
 
   window.drop = {
-    info: async () => ({ platform: /Mac|iPhone|iPad/.test(navigator.platform) ? 'darwin' : 'win32', arch: '', version: '1.3.0', dark: matchMedia('(prefers-color-scheme: dark)').matches, web: true }),
+    info: async () => ({ platform: /Mac|iPhone|iPad/.test(navigator.platform) ? 'darwin' : 'win32', arch: '', version: (window.DROP_VERSION || ''), dark: matchMedia('(prefers-color-scheme: dark)').matches, web: true }),
     ready: nothing,
     stores: async () => ({ logos: window.DROP_LOGOS || [], stores: ST.STORES, categories: ST.CATEGORIES, countries: ST.COUNTRIES, engines: Object.fromEntries(Object.entries(ST.ENGINES).map(([k, v]) => [k, v.name])) }),
     fav: nothing, pimg: async (u) => (/^https?:\/\//.test(u) ? u : null),

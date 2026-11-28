@@ -209,9 +209,35 @@
       + `<div class="chips row" id="feed-cats">${FEED_CATS.map(([id, n]) => `<button class="chip${F.cat === id ? ' on' : ''}" data-fcat="${id}">${esc(n)}</button>`).join('')}</div><div style="height:14px"></div>`
       + `<div class="pgrid2" id="feed">${F.items.map(pcHTML).join('')}${!F.items.length && !F.done ? skelHTML(12) : ''}</div><div class="feed-more" id="feed-more"></div>`, 'home');
     paintMore();
-    if (!F.items.length && !F.done) loadFeed();
+    if (!F.items.length && !F.done) { if (!fromCache()) loadFeed(); }
     watchMore();
   }
+  // 1.4: the last feed is kept (localStorage, per category) and painted at once on the next launch, so Discover is never
+  // an empty skeleton when anything was seen before; a fresh first page is fetched behind it and swapped in while the
+  // person is still at the top. Off in the self test, and namespaced by the fake-store base, so tests never see it.
+  const feedKey = (cat, ns) => 'drop-feed2:' + (ns || '') + ':' + (cat || '');
+  function fromCache() {
+    const F = S.feed; if (S.info.selftest) return false;
+    const c = store.get(feedKey(F.cat, S.info.ns), null);
+    if (!c || !Array.isArray(c.items) || !c.items.length || Date.now() - c.t > 3 * 864e5) return false;
+    F.items = c.items; F.cursor = 0; F.stale = true;
+    const g = $('#feed'); if (g) { g.innerHTML = F.items.map(pcHTML).join(''); hydrate(g); }
+    revalidate(F);
+    return true;
+  }
+  async function revalidate(F) {
+    try {
+      const r = await G.shopFeed({ cat: F.cat, cursor: 0 });
+      if (S.feed !== F || !r.items.length) { if (S.feed === F) { F.stale = false; F.cursor = r.cursor; F.done = r.done; } return; }
+      keepFeed(F.cat, r);
+      const g = S.view === 'home' && $('#feed');
+      const atTop = !g || view.scrollTop < 200;
+      if (atTop) { F.items = r.items; if (g) { g.innerHTML = F.items.map(pcHTML).join(''); hydrate(g); } }
+      else { const seen = new Set(F.items.map(p => p.key)); F.items.push(...r.items.filter(p => !seen.has(p.key))); }
+      F.stale = false; F.cursor = r.cursor; F.done = r.done;
+    } catch { F.stale = false; }
+  }
+  const keepFeed = (cat, r) => { if (r && r.items && r.items.length) store.set(feedKey(cat, r.ns), { t: Date.now(), items: r.items.slice(0, 32).map(p => ({ ...p, images: [], variants: [], options: [], desc: '' })) }); };
   function paintMore() {
     const m = $('#feed-more'); if (!m) return;
     const F = S.feed;
@@ -227,13 +253,14 @@
   }
   const nearEnd = () => { const m = $('#feed-more'); return m && m.getBoundingClientRect().top < view.getBoundingClientRect().bottom + 900; };
   async function loadFeed() {
-    const F = S.feed; if (F.loading || F.done) return;
+    const F = S.feed; if (F.loading || F.done || F.stale) return;
     F.loading = true; F.err = false; paintMore();
     const cat = F.cat;
     try {
       const r = await G.shopFeed({ cat, cursor: F.cursor });
       if (cat !== S.feed.cat) return;
       const seen = new Set(F.items.map(p => p.key)), add = r.items.filter(p => !seen.has(p.key));
+      if (!F.cursor) keepFeed(cat, r);
       F.items.push(...add); F.cursor = r.cursor; F.done = r.done;
       const g = S.view === 'home' && $('#feed');
       if (g) { $$('.pc.skel', g).forEach(x => x.remove()); g.insertAdjacentHTML('beforeend', add.map(pcHTML).join('')); hydrate(g); }
@@ -247,7 +274,7 @@
     S.feed = { cat, items: [], cursor: 0, done: false, loading: false, err: false };
     for (const b of $$('[data-fcat]')) b.classList.toggle('on', b.dataset.fcat === cat);
     const g = $('#feed'); if (g) g.innerHTML = skelHTML(12);
-    loadFeed();
+    if (!fromCache()) loadFeed();
   }
 
   // ---------- a native store page ----------
@@ -343,7 +370,7 @@
     if (tr) { let q = false; tr.addEventListener('scroll', () => { if (q) return; q = true; requestAnimationFrame(() => { q = false; const i = Math.round(tr.scrollLeft / Math.max(1, tr.clientWidth)); if (i !== T.img) { T.img = i; $$('#pp-dots i').forEach((d, k) => d.classList.toggle('on', k === i)); $$('#pp-thumbs button').forEach((d, k) => d.classList.toggle('on', k === i)); } }); }, { passive: true }); }
   }
   const paintInfo = () => { const el = $('#pp-info'); if (el) { el.innerHTML = ppInfoHTML(); hydrate(el); } };
-  function galTo(i) { const tr = $('#pp-track'); if (!tr) return; const n = tr.children.length; i = (i + n) % n; tr.scrollTo({ left: i * tr.clientWidth, behavior: S.motion === 'off' ? 'auto' : 'smooth' }); }
+  function galTo(i) { const tr = $('#pp-track'); if (!tr) return; const n = tr.children.length; i = (i + n) % n; tr.scrollTo({ left: i * tr.clientWidth, behavior: 'auto' }); }
   async function buy() {
     const T = S.pp; if (!T) return; const p = T.p, v = curVariant();
     try {
@@ -423,9 +450,7 @@
     for (const tl of $$('.tl:not([data-drawn])', root)) {
       tl.dataset.drawn = '1';
       const fill = $('.tl-fill', tl), target = +tl.dataset.step / 3;
-      if (!window.Jelly || S.motion === 'off') { fill.style.transform = `scaleX(${target})`; continue; }
-      const sp = new Jelly.Spring(0, 'jelly', v => { fill.style.transform = `scaleX(${Math.min(1, Math.max(0, v))})`; });
-      setTimeout(() => sp.to(target), 120);
+      fill.style.transform = `scaleX(${target})`; // 1.4: no growing animation, it is simply drawn
     }
   }
   function ocardHTML(o, compact = false) {
@@ -663,7 +688,7 @@
   function closeSheet() {
     const sh = $('#sheet'), back = $('#sheet-back'); if (sh.hidden) return;
     sh.classList.remove('on'); back.classList.remove('on'); const tok = ++sheetTok;
-    setTimeout(() => { if (tok !== sheetTok) return; sh.hidden = true; back.hidden = true; sh.innerHTML = ''; syncBrowser(); }, S.motion === 'off' ? 0 : 220);
+    setTimeout(() => { if (tok !== sheetTok) return; sh.hidden = true; back.hidden = true; sh.innerHTML = ''; syncBrowser(); }, 0);
   }
 
   // ---------- dialogs ----------
@@ -689,11 +714,11 @@
 
   // ---------- the intro: a simple first-run welcome and What's new, one overlay ----------
   // WHATS_NEW holds ONLY this version's changes. Rewrite it with every release.
-  const WHATS_NEW = { version: '1.3', lead: 'Shop right here. And it is fast now.', items: [
-    ['#14b884', I.home, 'Discover', 'A feed of real products from hundreds of stores, with the stores you follow first. Scroll, tap, done.'],
-    ['#4f7dff', I.stores, 'Stores open in Drop', 'Store pages and product pages are Drop’s own now: pictures, sizes and colours, stock and price, no website to wade through.'],
-    ['#e5487d', I.bag, 'Buy in one step', 'Pick a size and tap Buy: the store’s checkout opens with it already in your cart.'],
-    ['#f0763b', I.bolt, 'No more lag', 'A lighter look with no heavy effects: screens switch at once and scrolling stays smooth.'],
+  const WHATS_NEW = { version: '1.4', lead: 'Faster everywhere. And a new look.', items: [
+    ['#14b884', I.bolt, 'Discover opens at once', 'The last feed you saw shows the moment Drop opens, and fresh products slip in behind it. No more empty grey boxes.'],
+    ['#4f7dff', I.stores, 'Stores in half the time', 'Store pages and product pages ask the store for everything at once, so they fill in about twice as fast.'],
+    ['#7c5cff', I.spark, 'No waiting on motion', 'Screens, sheets and messages appear instantly. The only motion left is the small press on buttons.'],
+    ['#0ea5b7', I.down, 'A new icon', 'A bold, flat drop with a price-drop arrow: what Drop is for, in one mark.'],
   ] };
   function intro(kind = 'welcome') {
     const el = $('#intro');
@@ -715,7 +740,7 @@
     el.hidden = false; el.className = 'intro ' + kind; syncBrowser();
     requestAnimationFrame(() => requestAnimationFrame(() => el.classList.add('play')));
     setTimeout(() => kick($('.in-bag', el), 0.6, 0.4), S.motion === 'off' ? 0 : 260);
-    return new Promise(res => { el.onclick = (e) => { if (e.target.closest('[data-intro-done]')) { el.classList.add('out'); setTimeout(() => { el.hidden = true; el.innerHTML = ''; el.className = 'intro'; syncBrowser(); res(); }, S.motion === 'off' ? 0 : 260); } }; });
+    return new Promise(res => { el.onclick = (e) => { if (e.target.closest('[data-intro-done]')) { el.classList.add('out'); setTimeout(() => { el.hidden = true; el.innerHTML = ''; el.className = 'intro'; syncBrowser(); res(); }, 0); } }; });
   }
 
   // ---------- toasts ----------
@@ -725,7 +750,7 @@
     t.innerHTML = `<span class="t-orb">${kind === 'bad' ? I.x : kind === 'info' ? I.spark : I.check}</span><span>${esc(msg)}</span>${goTo ? `<button class="lnk" data-go="${esc(goTo)}">View</button>` : ''}`;
     const box = $('#toasts');
     box.appendChild(t); while (box.children.length > 3) box.firstElementChild.remove();
-    setTimeout(() => { t.classList.add('out'); setTimeout(() => t.remove(), 220); }, kind === 'bad' ? 6000 : 3800);
+    setTimeout(() => t.remove(), kind === 'bad' ? 6000 : 3800);
   }
 
   // ---------- tracking box (Orders) ----------

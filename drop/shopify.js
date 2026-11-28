@@ -206,9 +206,9 @@
     }
     async function products(domain, page = 1, limit = 30) {
       const v = await cached(`p:${domain}:${page}:${limit}`, TTL.list, async () => {
-        const j = await get(domain, `/products.json?limit=${limit}&page=${page}`);
+        // the products and the store's currency are asked for at the same time (one round trip, not two)
+        const [j, ctx] = await Promise.all([get(domain, `/products.json?limit=${limit}&page=${page}`), ctxOf(domain)]);
         if (!j) return j === null ? null : undefined;
-        const ctx = await ctxOf(domain);
         const list = parseProducts(j, { ...ctx, descMax: 280 });
         return list ? list.map(slim) : null;
       });
@@ -217,9 +217,9 @@
     async function product(domain, handle) {
       if (!/^[\w.%-]+$/.test(String(handle))) return null;
       return (await cached(`one:${domain}:${handle}`, TTL.product, async () => {
-        const j = await get(domain, `/products/${encodeURIComponent(handle)}.json`);
+        const [j, ctx] = await Promise.all([get(domain, `/products/${encodeURIComponent(handle)}.json`), ctxOf(domain)]);
         if (!j) return j === null ? null : undefined;
-        return parseProduct(j.product, await ctxOf(domain));
+        return parseProduct(j.product, ctx);
       })) || null;
     }
     async function storeSearch(domain, q, limit = 10) {

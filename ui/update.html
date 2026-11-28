@@ -706,6 +706,29 @@
   .rail span::before,.rail span::after{background:var(--m-gold)!important;box-shadow:none!important}
   .curtain .flash{background:#f6f3ed!important}
   @media (prefers-reduced-motion:reduce){.card,.bignum,.notes li,.btn::before,.row .lnk::before{animation:none!important;transition:none!important}}
+
+  /* =================================================================== Lumen 4.6: the update card, finished
+     The cover now tells you where the update is: Download, Verify, Install and Restart run down the noir panel, each
+     done step ticks off in gold and the current one is set in paper with a short rule that grows in (transform only).
+     While it downloads, the percent counts up under the number in the serif. Return does the main thing (Update now,
+     Restart now, Try again, Done) and Esc is Later; the footer says so. The card no longer tilts under the pointer:
+     it lands once and holds still. */
+  .stp{list-style:none;margin:18px 0 0;padding:0;display:flex;flex-direction:column;gap:7px;counter-reset:st}
+  .stp li{counter-increment:st;display:flex;align-items:center;gap:9px;font:500 9.5px/1 var(--sans);letter-spacing:.2em;text-transform:uppercase;color:var(--m-noir2);opacity:.38;transition:opacity .42s var(--m-ease),color .42s var(--m-ease)}
+  .stp li::before{content:counter(st,decimal-leading-zero);font:italic 400 12px/1 var(--serif);letter-spacing:0;width:16px;color:inherit}
+  .stp li::after{content:"";height:1px;width:22px;background:currentColor;transform:scaleX(0);transform-origin:0 50%;transition:transform .5s var(--m-ease)}
+  .stp li.done{color:var(--m-gold);opacity:.95}
+  .stp li.done::after{transform:scaleX(.35)}
+  .stp li.now{color:var(--m-on-noir);opacity:1}
+  .stp li.now::after{transform:scaleX(1)}
+  .card.uptodate .stp,.card.checking .stp{display:none}
+  .ppct{font:italic 400 20px/1 var(--serif);color:var(--m-gold);height:0;opacity:0;transform:translateY(6px);transition:opacity .4s var(--m-ease),transform .4s var(--m-ease);font-variant-numeric:tabular-nums}
+  .downloading .ppct{height:auto;margin-top:6px;opacity:1;transform:none}
+  .available #m2,.ready #m2{display:block}
+  .lft{overflow:hidden}#m2{overflow:hidden;text-overflow:ellipsis;min-width:0}
+  .hint{display:inline-flex;align-items:center;gap:5px;font:400 11px var(--sans);color:var(--m-fg3)}
+  .hint kbd{font:500 10px var(--sans);padding:2px 5px;border-radius:4px;box-shadow:inset 0 0 0 1px var(--m-line2);color:var(--m-fg2);background:none}
+  @media (prefers-reduced-motion:reduce){.stp li,.stp li::after,.ppct{transition:none!important}}
 </style></head><body>
 <svg class="defs" aria-hidden="true"><defs id="defs"><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" style="stop-color:var(--accent)"/><stop offset=".55" style="stop-color:var(--a2)"/><stop offset="1" style="stop-color:var(--a3)"/></linearGradient></defs></svg>
 <div class="card" id="card">
@@ -717,8 +740,9 @@
     <i class="tap43" aria-hidden="true"></i><i class="edge44" aria-hidden="true"></i>
     <div class="pin">
       <div class="ic"><img id="icon" src="../pages/icon-default.png" alt=""><svg class="ring" viewBox="0 0 64 64"><rect class="bgc" x="2" y="2" width="60" height="60" rx="21"/><rect class="fg" id="arc" x="2" y="2" width="60" height="60" rx="21" pathLength="226"/></svg><span class="badge"><svg viewBox="0 0 16 16"><path d="m3.5 8.5 3 3 6-7"/></svg></span></div>
+      <ol class="stp" id="stp" aria-label="Update steps"><li data-s="get">Download</li><li data-s="check">Verify</li><li data-s="ready">Install</li><li data-s="go">Restart</li></ol>
       <div class="art" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9.5"/><path d="M12 7v9m-4-4 4 4 4-4"/><path d="M4.5 12a7.5 7.5 0 0 1 4-6.6" opacity=".5"/></svg></div>
-      <div class="pv"><small>Lumen</small><div class="bignum" id="bignum"></div><div class="psw"><i></i><i></i><i></i><i></i><i></i></div></div>
+      <div class="pv"><small>Lumen</small><div class="bignum" id="bignum"></div><div class="ppct" id="ppct" aria-hidden="true"></div><div class="psw"><i></i><i></i><i></i><i></i><i></i></div></div>
       <div class="pf"><button class="lnk" id="skip">Skip this version</button><span class="chip ok" title="The download matched the fingerprint GitHub published for it"><svg viewBox="0 0 12 12"><path d="m2.5 6.3 2.3 2.2 4.7-5"/></svg>Verified</span></div>
     </div>
   </div>
@@ -861,6 +885,13 @@ function paint(u) {
   $('#nc').textContent = notes.length ? `${notes.length} ${notes.length === 1 ? 'change' : 'changes'}` : ''
   const key = v(u.latest) + notes.join('|')
   if (key !== notesKey) { notesKey = key; $('#notes').innerHTML = notes.map((n, i) => `<li style="animation-delay:${.15 + i * .06}s" title="${esc(n)}">${esc(n)}</li>`).join('') }
+  // 4.6: where the update is, step by step, and the percent while it downloads
+  const stage = { available: 0, downloading: 0, verifying: 1, unpacking: 2, ready: 3, installing: 4, error: -1 }[u.status]
+  document.querySelectorAll('#stp li').forEach((li, i) => { li.classList.toggle('done', stage !== undefined && stage > i); li.classList.toggle('now', stage !== undefined && stage === i && u.status !== 'available') })
+  $('#ppct').textContent = u.status === 'downloading' && u.size ? `${Math.max(0, Math.min(100, Math.round(u.progress || 0)))}%` : ''
+  const hint = { available: 'update', ready: 'restart', error: 'try again', uptodate: 'close' }[u.status]
+  // the ready row has the longer When I quit button, so it only shows the Return hint there
+  if (hint && u.status !== 'uptodate') $('#m2').innerHTML = `<span class="hint"><kbd>Return</kbd>${hint}${u.status === 'ready' ? '' : '<kbd>Esc</kbd>later'}</span>`
   const b = $('#go'); b.disabled = false
   if (u.status === 'ready') b.textContent = 'Restart now'
   else if (busy && u.status !== 'checking') b.textContent = 'Cancel'
@@ -884,9 +915,12 @@ addEventListener('mousemove', e => {
   if (U.status === 'installing') return
   const r = card.getBoundingClientRect(), x = (e.clientX - r.left) / r.width, y = (e.clientY - r.top) / r.height
   glint(x, y)
-  if (!still) card.style.transform = `perspective(1000px) rotateX(${(-(y - .5) * 2).toFixed(2)}deg) rotateY(${((x - .5) * 2.6).toFixed(2)}deg)`
 })
 addEventListener('mouseleave', () => { card.style.transform = '' })
-addEventListener('keydown', e => { if (e.key === 'Escape' && U.status !== 'installing') api.action('later') })
+addEventListener('keydown', e => {
+  if (e.key === 'Escape' && U.status !== 'installing') api.action('later')
+  // 4.6: Return does the main thing, but never cancels a download that is already running
+  else if (e.key === 'Enter' && ['available', 'ready', 'error', 'uptodate'].includes(U.status) && !$('#go').disabled) { e.preventDefault(); $('#go').click() }
+})
 ;(async () => { const s = await api.action('state') || {}; if (s.appIcon) $('#icon').src = $('#dicon').src = `../pages/icon-${s.appIcon}.png`; paint(s); api.on(paint) })()
 </script></body></html>

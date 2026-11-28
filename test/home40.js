@@ -117,13 +117,14 @@ app.whenReady().then(async () => {
   ok(/144/.test(await pg(`(document.querySelector('#sug .sg-answer') || {}).textContent || ''`)), 'the calculator answers in the pill')
   await pg(`(() => { const q = document.getElementById('q'); q.value = ''; q.dispatchEvent(new Event('input')); q.blur() })()`); await wait(400)
 
-  // ---- wallpaper from the widget follows the accent
+  // ---- wallpaper from the widget (4.6: calm tones, not tinted by the accent)
   await pg(`document.querySelector('.wpq [data-wp="nebula"]').click()`); await wait(1200)
   ok(L.D.settings.get('ntpWallpaper') === 'nebula' && await pg(`document.getElementById('ntp').classList.contains('on-dark') && !!document.querySelector('.ntp-bg.wp-nebula')`), 'wallpaper switches from the widget, with light text over it')
   const bgA = await pg(`getComputedStyle(document.querySelector('.ntp-bg')).backgroundImage`)
   await ex(`api.do('setSetting','accent','#e5487d')`); await wait(900)
   const bgB = await pg(`getComputedStyle(document.querySelector('.ntp-bg')).backgroundImage`)
-  ok(bgA !== bgB, 'the wallpaper changes with the accent')
+  // 4.6: the wallpapers are calm tones of their own (no accent wash any more), so a new accent leaves them as they are
+  ok(bgA === bgB && !/rgba?\(\s*(229|91)\b/.test(bgB), 'the wallpaper is its own calm tone; a new accent does not tint it')
   await ex(`api.do('setSetting','accent','#5b8cff')`); await pg(`document.querySelector('.wpq [data-wp="aurora"]').click()`); await wait(900)
 
   // ---- Match theme follows the browser theme, live, Dark Glass included; Customize has a tile per theme

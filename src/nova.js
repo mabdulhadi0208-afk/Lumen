@@ -3,13 +3,16 @@
 // Each browser window gets a transparent WebContentsView laid over the whole window: ui/menu.html for menus,
 // ui/dialog.html for dialogs. The view covers the window so a click anywhere outside the menu closes it, and so a
 // dialog can dim the window behind its sheet. The views are separate renderers and cannot see the page through
-// backdrop-filter, so Lumen hands them a small snapshot of what is underneath; the glass refracts that.
+// backdrop-filter. Up to 4.5.1 Lumen handed them a snapshot of what is underneath for the glass to refract; since
+// 4.6 every Nova surface is solid (Maison), the views are transparent, so the window simply shows through and
+// nothing is captured (NOVA_GLASS = false): opening a menu, a dialog or a toast no longer reads the page back.
 //
 // Menus take the same item objects Electron's Menu.buildFromTemplate takes (label, click, type, checked, enabled,
 // submenu, accelerator, role, icon), and every click handler stays here in the main process. If the Nova view cannot
 // load, Lumen falls back to the native menu or dialog, so nothing is ever lost.
 const { WebContentsView, Menu, dialog, nativeImage, ipcMain, webContents: allWebContents } = require('electron')
 const path = require('path')
+const NOVA_GLASS = false
 
 const ROOT = path.join(__dirname, '..')
 const PRELOAD = path.join(__dirname, 'preload-nova.js')
@@ -201,7 +204,7 @@ async function popupMenu(host, items, { at, wc, source, kind = 'menu' } = {}) {
   attach(host, o)
   o.view.webContents.send('nova:menu-open', { items: data, x: Math.round(at.x), y: Math.round(at.y), kind, theme: theme(host) })
   // the glass refracts a picture of what is underneath; it arrives a moment after the menu, which is already open
-  snapshot(host).then(shots => { if (n.menuState === st && shots.length) o.view.webContents.send('nova:menu-backdrop', shots) }).catch(() => {})
+  if (NOVA_GLASS) snapshot(host).then(shots => { if (n.menuState === st && shots.length) o.view.webContents.send('nova:menu-backdrop', shots) }).catch(() => {})
 }
 function closeMenu(host, why) {
   const n = host._nova; if (!n || !n.menuState) return
@@ -297,7 +300,7 @@ async function showDialog(host, opts) {
       kind: opts.kind || '', theme: theme(host),
     }
     o.view.webContents.send('nova:dialog-open', payload)
-    snapshot(host).then(shots => { if (!settled && shots.length) o.view.webContents.send('nova:dialog-backdrop', shots) }).catch(() => {})
+    if (NOVA_GLASS) snapshot(host).then(shots => { if (!settled && shots.length) o.view.webContents.send('nova:dialog-backdrop', shots) }).catch(() => {})
   })
 }
 
@@ -333,6 +336,7 @@ async function toast(host, data) {
   return true
 }
 async function toastBackdrop(host) {
+  if (!NOVA_GLASS) return
   const n = host._nova, o = n && n.toast; if (!o || !o.attached || !n.toastState) return
   try {
     const a = host.active && host.active(); if (!a || !a.view) return

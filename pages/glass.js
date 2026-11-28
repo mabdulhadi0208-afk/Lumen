@@ -147,7 +147,11 @@
     g.o.to(1)
   }
 
+  // 4.6: Maison draws every surface solid (pages/maison45.css turns backdrop-filter off), so the lenses, the glint
+  // springs, the pointer tracking and the page-wide MutationObserver did work nobody could see. Glass stays off.
+  const MAISON = true
   function start() {
+    if (MAISON) { on = false; document.documentElement.classList.add('lg-off'); return }
     root(); scan()
     new MutationObserver(later).observe(document.body, { childList: true, subtree: true })
     document.addEventListener('pointermove', move, { passive: true })
@@ -156,7 +160,7 @@
   }
   function setMode(m) {
     const was = on
-    on = !reduce && m !== 'off'
+    on = !MAISON && !reduce && m !== 'off'
     document.documentElement.classList.toggle('lg-off', !on)
     if (was !== on) document.querySelectorAll('.lg').forEach(fit)
   }

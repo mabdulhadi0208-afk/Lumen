@@ -26,15 +26,16 @@
   // ---------------------------------------------------------------- wallpapers: all of them are made from your accent
   // dark: true means the wallpaper is always dark, so the page switches to light text over it
   const WALLPAPERS = {
-    auto: { name: 'Sky' },
-    aurora: { name: 'Aurora' },
-    nebula: { name: 'Nebula', dark: true },
-    sunset: { name: 'Glow', dark: true },
-    ocean: { name: 'Tide', dark: true },
+    // 4.6: calm tones in place of the old colour washes (pages/maison46.css); the keys stay so saved choices carry over
+    auto: { name: 'Day and night' },
+    aurora: { name: 'Linen' },
+    nebula: { name: 'Ink', dark: true },
+    sunset: { name: 'Umber', dark: true },
+    ocean: { name: 'Slate', dark: true },
     dusk: { name: 'Dusk', dark: true },
-    ember: { name: 'Ember', dark: true },
-    forest: { name: 'Silk' },
-    plain: { name: 'Plain' },
+    ember: { name: 'Oxblood', dark: true },
+    forest: { name: 'Sage' },
+    plain: { name: 'Paper' },
   }
 
   // ---------------------------------------------------------------- widgets
@@ -723,7 +724,7 @@
     return `<i class="wpsw wp-${isThemeKey(k) ? 'aurora' : k}${isThemeKey(k) ? ' lqsw' : ''}"></i>`
   }
   // the wallpaper layer cross-fades to the next one
-  // Sky follows the hour: Glow at dawn, Aurora by day, Dusk in the evening, Nebula at night
+  // Day and night follows the hour: Umber at dawn, Linen by day, Dusk in the evening, Ink at night
   const skyFor = (h = new Date().getHours()) => h >= 5 && h < 9 ? 'sunset' : h >= 9 && h < 17 ? 'aurora' : h >= 17 && h < 20 ? 'dusk' : 'nebula'
   async function paintWallpaper(fade) {
     const ntp = qs('#ntp'); if (!ntp) return
@@ -1164,7 +1165,9 @@
         if (e.altKey && !e.metaKey && !e.ctrlKey && /^Digit[1-9]$/.test(e.code)) { const s2 = H.sites[+e.code.slice(5) - 1]; if (s2) { e.preventDefault(); L.invoke('navigate', s2.url) } }
       })
     }
-    if (window.ResizeObserver) { let w = g.clientWidth; new ResizeObserver(() => { if (g.clientWidth !== w) { w = g.clientWidth; layout() } }).observe(g) }
+    // 4.6: the re-layout waits for the next frame, so changing the grid inside the observer can never start a
+    // ResizeObserver loop (it did when the scroll bar came and went with the new layout)
+    if (window.ResizeObserver) { let w = g.clientWidth, q = 0; new ResizeObserver(() => { if (q) return; q = requestAnimationFrame(() => { q = 0; if (g.clientWidth !== w) { w = g.clientWidth; layout() } }) }).observe(g) }
     // (no glass droplet following the cursor here: a lens over moving content costs every frame)
     // the entrance plays once; after it nothing on the page moves on its own
     setTimeout(() => { const h = qs('#hero'); if (h) h.classList.remove('enter'); if (g) g.classList.remove('enter') }, 2600)

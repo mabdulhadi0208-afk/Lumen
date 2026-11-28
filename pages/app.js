@@ -63,6 +63,13 @@ function flash(msg) {
   clearTimeout(flash.t); flash.t = setTimeout(() => el.classList.remove('show'), 2600)
 }
 const $$ = s => [...document.querySelectorAll(s)]
+// 4.6: an empty search result says what was searched and offers to clear it
+const noMatch = q => `Nothing matches${q ? ` <b>${esc(q)}</b>` : ''}. <button class="btn sm" data-clearq>Clear the search</button>`
+document.addEventListener('click', e => {
+  const b = e.target.closest && e.target.closest('[data-clearq]'); if (!b) return
+  const q = document.querySelector('.toolbar input[type=search]'); if (!q) return
+  q.value = ''; q.dispatchEvent(new Event('input', { bubbles: true })); q.focus()
+})
 function novaConfirm({ title, text, ok = 'OK', cancel = 'Cancel', danger = false, icon }) {
   return new Promise(res => {
     const d = document.createElement('div'); d.className = 'dialog-wrap nv-wrap'
@@ -307,9 +314,26 @@ async function general(m) {
   <div class="card vcard" style="--ic:${tint(200)}"><div class="vart" aria-hidden="true"><span class="fa-tabs"><i class="on"></i><i></i><i class="zz"></i><i class="zz"></i><i class="zz"></i><i></i></span><span class="lbl">Tabs that look after themselves</span></div><div class="vrows"><h3>TABS</h3>
     ${row('Sleep inactive tabs', 'Frees memory from tabs you have not looked at in a while. They wake up instantly when you click them.', seg('sleepTabsAfterMin', [[0, 'Never'], [15, '15 min'], [30, '30 min'], [60, '1 hour'], [240, '4 hours']], S.sleepTabsAfterMin || 0))}
     ${row('Archive tabs you have not used', 'Tabs you have not opened in this long close themselves. Pinned tabs and tabs playing sound stay. Find them again in History, Archived tabs.', seg('archiveTabsAfterH', [[0, 'Never'], [12, '12 hours'], [24, '1 day'], [168, '1 week']], S.archiveTabsAfterH || 0))}
-  </div></div>`
+  </div></div>
+  <div class="card" id="setfile"><h3>YOUR SETTINGS</h3>
+    ${row('Take your settings with you', 'Save your look, tab layout, New Tab and privacy switches to a file, then load it on another Mac or PC. Passwords, passkeys, keys and history never go in it.', `<div class="setfile-btns"><button class="btn" id="sexp">${ICONS.download}Export</button><button class="btn" id="simp">${ICONS.folder}Import</button></div>`)}
+    <div class="setmsg" id="setmsg" role="status" aria-live="polite"></div>
+  </div>`
   bindSettings(m)
   const b = $('#mkdef'); if (b) b.onclick = async () => { await L.invoke('defaultBrowser', 'set'); setTimeout(() => general(m), 1200) }
+  // 4.6: export and import settings, with Undo after an import
+  const say = (html) => { const e = m.querySelector('#setmsg'); if (e) { e.innerHTML = html; e.classList.toggle('on', !!html) } }
+  m.querySelector('#sexp').onclick = async () => {
+    const r = await L.invoke('exportSettings'); if (!r || r.canceled) return
+    say(r.ok ? `Saved ${r.count} settings to <b>${esc(String(r.file || '').split(/[\\/]/).pop())}</b>.` : 'Lumen could not save that file.')
+  }
+  m.querySelector('#simp').onclick = async () => {
+    const r = await L.invoke('importSettings'); if (!r || r.canceled) return
+    if (!r.ok) return say(esc(r.error || 'That file could not be read.'))
+    await general(m); setTimeout(() => m.querySelector('#setfile') && m.querySelector('#setfile').scrollIntoView({ block: 'center' }), 50)
+    say(r.count ? `Imported ${r.count} setting${r.count === 1 ? '' : 's'}. <button class="btn sm" id="sundo">Undo</button>` : 'Everything in that file matches what you have already.')
+    const u = m.querySelector('#sundo'); if (u) u.onclick = async () => { const x = await L.invoke('undoImportSettings'); await general(m); m.querySelector('#setfile').scrollIntoView({ block: 'center' }); m.querySelector('#setmsg').classList.add('on'); m.querySelector('#setmsg').textContent = x && x.ok ? `Put back ${x.count} setting${x.count === 1 ? '' : 's'}.` : 'Nothing to undo.' }
+  }
 }
 
 async function aiPage(m) {
@@ -378,7 +402,8 @@ function paintPreview() {
   const f = $('#apvf'); if (f) f.innerHTML = [S.tabLayout === 'side' ? 'Tabs in the sidebar' : 'Tabs on top', S.compact ? 'Compact' : 'Roomy', (S.browserTheme === 'custom' ? 'Your colors' : (th ? th.name : 'Default')) + ' theme', { jelly: 'Jelly', lively: 'Jelly', calm: 'Calm', off: 'No' }[S.motion || 'jelly'] + ' motion', { system: 'Follows your computer', light: 'Light', dark: 'Dark' }[S.theme || 'system']].map(x => `<span><i></i>${esc(x)}</span>`).join('')
 }
 function appearance(m) {
-  const colors = ['#5b8cff', '#7c5cff', '#e5487d', '#f0763b', '#e8b22c', '#2fb67c', '#16a3b8', '#7a7d87']
+  // 4.6: calm, deep tones only (emerald is the default); your own colour is still one click away
+  const colors = ['#1f6b52', '#2a5f66', '#2d4a6b', '#4d3b63', '#6b2d3a', '#7a5a26', '#5d574c']
   const own = S.accent && !colors.includes(S.accent)
   m.innerHTML = `<h2>Appearance</h2><p class="lead">Make it yours. The picture below follows every change, and so does all of Lumen.</p>
   <div class="apv-stage"><div class="apv" id="apv" role="img" aria-label="A preview of your browser"><div class="apv-bar"><span class="apv-dots"><i></i><i></i><i></i></span><span class="apv-tabs"><i class="on"></i><i></i><i></i></span></div><div class="apv-url">lumen</div><div class="apv-bm"><i></i><i></i><i></i><i></i></div><div class="apv-body"><div class="apv-side"><i class="on"></i><i></i><i></i><i></i></div><div class="apv-page"><b></b><i></i><i></i><i></i><em></em></div></div></div>
@@ -406,7 +431,7 @@ function appearance(m) {
   </div>
   <div class="card fcard"><h3>COLORS AND MOTION</h3>
     ${vrow('Theme', 'Follow your computer, or pick one.', vchoice('theme', [['system', 'System', 'th-system', 'Matches your computer'], ['light', 'Light', 'th-light', 'Porcelain and glass'], ['dark', 'Dark', 'th-dark', 'Deep ink and star dust']], S.theme || 'system'))}
-    ${row('Accent color', 'Every glow, gradient and highlight in Lumen comes from this one color.', `<div class="swatches big">${colors.map(c => `<button data-c="${c}" style="background:${c};color:${c}" class="${c === S.accent ? 'on' : ''}" aria-label="Accent ${c}"></button>`).join('')}<label class="accent-custom ${own ? 'on' : ''}" title="Your own color" style="--cc:${own ? esc(S.accent) : '#fff'}"><input type="color" id="accentc" value="${esc(own ? S.accent : '#5b8cff')}" aria-label="Your own accent color"></label></div>`)}
+    ${row('Accent color', 'The one colour Lumen uses, for switches, focus rings and the fill that flows into buttons.', `<div class="swatches big" data-mono-ok>${colors.map(c => `<button data-c="${c}" style="background:${c};color:${c}" class="${c === S.accent ? 'on' : ''}" aria-label="Accent ${c}"></button>`).join('')}<label class="accent-custom ${own ? 'on' : ''}" title="Your own color" style="--cc:${own ? esc(S.accent) : '#fff'}"><input type="color" id="accentc" value="${esc(own ? S.accent : '#5b8cff')}" aria-label="Your own accent color"></label></div>`)}
     ${vrow('Motion', 'Jelly is the default: things overshoot a little and settle with a soft wobble. Calm barely overshoots. Off removes animation. Scrolling always glides straight to a stop. Point at one to feel it.', vchoice('motion', [['jelly', 'Jelly', 'mo mo-jelly', 'Overshoots, then settles'], ['calm', 'Calm', 'mo mo-calm', 'Barely overshoots'], ['off', 'Off', 'mo mo-off', 'No animation at all']], S.motion === 'lively' ? 'jelly' : S.motion || 'jelly'))}
   </div>
   <p class="note">Tip: hide the sidebar with Shift + ${MOD()} + S and move your mouse to the left edge to peek at it. Switch between sidebar and top tabs with Option + ${MOD()} + S.</p>`
@@ -670,7 +695,7 @@ async function historyPage(m) {
   bindLibTabs(m)
   const draw = async q => {
     const list = q ? await L.invoke('history', q) : all
-    if (!list.length) { $('#out').innerHTML = `<div class="empty">${q ? 'No matches' : 'Nothing here yet'}</div>`; return }
+    if (!list.length) { $('#out').innerHTML = `<div class="empty">${q ? noMatch(q) : 'Nothing here yet. Pages you visit show up here, newest first.'}</div>`; return }
     let html = '', cur = null, n = 0, run = null
     const days = new Map(); for (const h of list) { const lab = dayLabel(h.t); days.set(lab, (days.get(lab) || 0) + 1) }
     for (const h of list) {
@@ -844,7 +869,7 @@ async function highlightsPage(m) {
   const chips = () => { $('#hlf').innerHTML = list.length ? [['', 'All', ''], ...HL_COLORS].map(([k, l, c]) => { const n = k ? list.filter(h => h.color === k).length : list.length; return n || !k ? `<button class="fchip ${color === k ? 'on' : ''}" data-hc="${k}">${c ? `<i style="background:${c};box-shadow:0 0 8px ${c}"></i>` : ''}${l} <b>${n}</b></button>` : '' }).join('') : '' }
   const draw = q => {
     const f = list.filter(h => (!q || (h.text + ' ' + h.title + ' ' + h.url).toLowerCase().includes(q.toLowerCase())) && (!color || h.color === color))
-    if (!f.length) { $('#out').innerHTML = `<div class="empty">${q || color ? 'No matches' : 'No highlights yet.'}</div>`; return }
+    if (!f.length) { $('#out').innerHTML = `<div class="empty">${q || color ? noMatch(q) : 'No highlights yet. Select text on any page and pick Highlight.'}</div>`; return }
     const pages = new Map(); for (const h of f) { if (!pages.has(h.url)) pages.set(h.url, []); pages.get(h.url).push(h) }
     $('#out').innerHTML = [...pages].map(([url, hs]) => `<div class="card hlcard"><a class="hlhead" data-go="${esc(url)}">${fav(url)}<div class="grow"><div class="t">${esc(hs[0].title || hostOf(url))}</div><div class="d">${esc(hostOf(url))}  ·  ${hs.length} highlight${hs.length > 1 ? 's' : ''}</div></div></a>${hs.map(h => `<div class="hl" data-id="${esc(h.id)}" data-url="${esc(url)}" data-text="${esc(h.text.slice(0, 120))}"><span class="hlbar hl-${esc(h.color)}"></span><q>${esc(h.text.length > 420 ? h.text.slice(0, 420) + '...' : h.text)}</q><button class="ib hov" data-copy title="Copy">${ICONS.link || ICONS.close}</button><button class="ib hov" data-del title="Remove">${ICONS.close}</button></div>`).join('')}</div>`).join('')
   }
@@ -876,7 +901,7 @@ async function archivePage(m) {
   const draw = q => {
     const f = list.filter(x => !q || (x.title + ' ' + x.url).toLowerCase().includes(q.toLowerCase()))
     $('#out').innerHTML = f.length ? `<div class="bmgrid">${f.map(x => pageTile(x, '', `<span class="grow">Archived ${shortAgo(x.at)}</span><button class="btn sm primary" data-open>Open</button>`)).join('')}</div>`
-      : `<div class="empty">${q ? 'No matches' : 'No archived tabs yet. Idle tabs land here when tab archiving is on.'}</div>`
+      : `<div class="empty">${q ? noMatch(q) : 'No archived tabs yet. Idle tabs land here when tab archiving is on.'}</div>`
   }
   $('#q').oninput = e => draw(e.target.value)
   if ($('#clrA')) $('#clrA').onclick = async () => { if (!await novaConfirm({ title: 'Clear the archive?', text: `Remove all ${list.length} archived tabs?`, ok: 'Clear', danger: true, icon: ICONS.trash })) return; await L.invoke('archiveRemove'); archivePage(m) }
@@ -903,7 +928,7 @@ async function readLaterPage(m) {
     $('#rlall').disabled = !list.length
     const f = list.filter(x => !q || (x.title + ' ' + x.url).toLowerCase().includes(q)).sort((a, b) => sort === 'new' ? b.t - a.t : a.t - b.t)
     $('#out').innerHTML = f.length ? `<div class="rlgrid">${f.map(x => pageTile(x, 'rlc' + (Date.now() - x.t > 7 * 864e5 ? ' old' : ''), `<span class="grow">${esc(hostOf(x.url).replace(/^www\./, ''))}</span><button class="btn sm primary" data-open>Read now</button>`, `<span class="rl-age"><i></i>Saved ${shortAgo(x.t)}</span>`).replace('<div class="d">' + esc(hostOf(x.url).replace(/^www\./, '')) + '</div>', '')).join('')}</div>`
-      : `<div class="empty">${q ? 'No matches' : `Nothing saved for later. On any page press ${MOD()} Shift D, and it waits here until you are ready.`}</div>`
+      : `<div class="empty">${q ? noMatch(q) : `Nothing saved for later. On any page press ${MOD()} Shift D, and it waits here until you are ready.`}</div>`
   }
   const done = async (r, how) => {
     const url = r.dataset.url
@@ -963,7 +988,7 @@ async function bookmarksPage(m) {
     if (folder !== null && !fo.includes(folder)) folder = null
     $('#bmf').innerHTML = fo.length > 1 ? [[null, 'All'], ...fo.map(f => [f, f || 'Unfiled'])].map(([k, l]) => `<button class="fchip ${folder === k ? 'on' : ''}" data-f="${k === null ? '*' : esc(k)}">${k === null ? ICONS.star : ICONS.folder}${esc(l)} <b>${k === null ? all.length : all.filter(b => (b.folder || '') === k).length}</b></button>`).join('') : ''
     const f = all.filter(b => (!q || (b.title || '').toLowerCase().includes(q) || b.url.toLowerCase().includes(q)) && (folder === null || (b.folder || '') === folder))
-    if (!f.length) { $('#out').innerHTML = `<div class="empty">${q ? 'No matches' : 'No bookmarks yet'}</div>`; return }
+    if (!f.length) { $('#out').innerHTML = `<div class="empty">${q ? noMatch(q) : `No bookmarks yet. Press ${MOD()} D on any page to keep it here.`}</div>`; return }
     const groups = {}
     for (const b of f) (groups[b.folder || ''] = groups[b.folder || ''] || []).push(b)
     $('#out').innerHTML = Object.entries(groups).sort((a, b) => a[0].localeCompare(b[0])).map(([fo, items]) => `${fo || Object.keys(groups).length > 1 ? `<div class="daylabel">${esc(fo || 'Unfiled')} <b>${items.length}</b></div>` : ''}<div class="bmgrid">${items.map(b => pageTile(b, '', `<span class="grow">${esc(fo || 'Bookmarks')}</span><button class="ib" data-edit title="Edit">${ICONS.tune}</button>`)).join('')}</div>`).join('')
@@ -1044,7 +1069,7 @@ async function downloadsPage(m) {
     const groups = [['live', 'In progress', vis.filter(d => d.state === 'progressing')], ['done', 'Finished', vis.filter(d => d.state === 'completed')], ['off', 'Stopped', vis.filter(d => d.state !== 'progressing' && d.state !== 'completed')]]
     let i = 0
     const html = groups.filter(g => g[2].length).map(([k, l, rows]) => `<div class="daylabel dlgroup ${k}">${l} <b>${rows.length}</b></div><div class="card list dllist ${k}">${rows.map(d => dlRow(d, i++)).join('')}</div>`).join('')
-    $('#out').innerHTML = html || (list.length ? `<div class="empty">No downloads match${q ? ` "${esc(q)}"` : ''}</div>` : '<div class="empty dlempty">No downloads yet. Files you download show up here, with their speed while they come in.</div>')
+    $('#out').innerHTML = html || (list.length ? `<div class="empty">No downloads match${q ? ` <b>${esc(q)}</b>` : ''}. <button class="btn sm" data-clearq>Clear the search</button></div>` : '<div class="empty dlempty">No downloads yet. Files you download show up here, with their speed while they come in.</div>')
     // a file that just finished gets its check with a spring (not on the first draw)
     if (seen) $$('.dlrow.ok').forEach(r => { if (seen.get(+r.dataset.id) === 'progressing') r.classList.add('landed') })
     seen = new Map(list.map(d => [d.id, d.state]))

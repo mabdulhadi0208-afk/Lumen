@@ -2046,6 +2046,8 @@ ipcMain.handle('ui', async (e, action, ...a) => {
       case 'reopenAt': return reopenAt(w, a[0])
       case 'closeDuplicates': { const urlOf = x => samePage(x.view ? x.view.webContents.getURL() : x.url); const seen = new Set(t ? [urlOf(t)] : []), dup = []; for (const id of [...w.order]) { if (id === w.activeId) continue; const x = w.tabs.get(id); const u = urlOf(x); if (seen.has(u) && !x.pinned) dup.push(id); else seen.add(u) } if (!dup.length) { w.send('toast', 'No duplicate tabs'); return 0 } return closeMany(w, dup, 'duplicates') }
       case 'closeOthers': return closeMany(w, w.order.filter(id => id !== w.activeId && !w.tabs.get(id).pinned))
+      // 4.6: reload every awake tab in this window (sleeping tabs load fresh when you open them anyway)
+      case 'reloadAll': { let n = 0; for (const x of w.tabs.values()) if (x.view && !x.asleep && !x.view.webContents.isDestroyed()) { try { x.view.webContents.reload(); n++ } catch {} } return n }
       case 'muteOthers': { for (const x of w.tabs.values()) if (x.id !== w.activeId && x.view) { x.muted = true; x.view.webContents.setAudioMuted(true) } w.pushState(); return }
       case 'restart': app.relaunch(); app.quit(); return
       case 'readLater': return toggleReadLater(w, t)
@@ -2106,7 +2108,9 @@ ipcMain.handle('ui', async (e, action, ...a) => {
 
 function siteInfo(w) {
   const t = w.active(); if (!t) return null
+  // 4.6: data:, file: and blob: pages have the opaque origin "null", which used to throw here and leave the site panel empty
   let origin = ''; try { origin = new URL(t.url).origin } catch {}
+  if (origin === 'null') origin = ''
   return { url: t.url, host: origin ? new URL(origin).host : '', secure: /^https:/.test(t.url), forceDark: !!D.settings.get('forceDark'), darkOff: siteDarkOff(t.view ? t.view.webContents.getURL() : t.url), permissions: D.permissions.get()[origin] || {}, blocked: t.view ? (blockedByWc.get(t.view.webContents.id) || 0) : 0, adblock: !!D.settings.get('adblock'), adOff: adAllowed(t.view ? t.view.webContents.getURL() : t.url) }
 }
 
@@ -2270,6 +2274,43 @@ function setSetting(k, v) {
   if (k === 'appIcon') applyAppIcon()
   broadcast('settings', publicSettings())
   for (const w of windows) for (const t of w.tabs.values()) if (t.view && (t.url || '').startsWith('lumen://')) t.view.webContents.send('lumen:settings', publicSettings())
+}
+
+// ---------------------------------------------------------------- 4.6: export and import your settings
+// A small JSON file with the public settings only (look, layout, New Tab, privacy switches): never passwords,
+// passkeys, keys, history, bookmarks or sync data. Import runs every value through setSetting, so it is checked the
+// same way a click in Settings is, and the settings it changed can be put back with Undo.
+const SETTINGS_KIND = 'lumen-settings'
+const NO_EXPORT = new Set(['introSeen', 'whatsNewSeen', 'ntpFocus', 'sidebarWidth'])
+let settingsUndo = null
+function exportSettingsTo(file) {
+  const s = publicSettings()
+  for (const k of Object.keys(s)) if (NO_EXPORT.has(k) || s[k] === undefined) delete s[k]
+  fs.writeFileSync(file, JSON.stringify({ kind: SETTINGS_KIND, app: 'Lumen', version: app.getVersion(), at: new Date().toISOString(), settings: s }, null, 2))
+  return { ok: true, count: Object.keys(s).length, file }
+}
+function importSettingsFrom(file) {
+  let j = null
+  try { const st = fs.statSync(file); if (st.size > 2e6) throw new Error('big'); j = JSON.parse(fs.readFileSync(file, 'utf8')) } catch { return { ok: false, error: 'That file could not be read as a Lumen settings file.' } }
+  if (!j || j.kind !== SETTINGS_KIND || !j.settings || typeof j.settings !== 'object' || Array.isArray(j.settings)) return { ok: false, error: 'That file is not a Lumen settings file.' }
+  const cur = D.settings.get(), before = {}
+  let n = 0
+  for (const [k, v] of Object.entries(j.settings)) {
+    if (!PUBLIC_SETTINGS.includes(k) || NO_EXPORT.has(k) || v === undefined) continue
+    const c = cur[k]
+    if (c !== undefined && c !== null && v !== null && typeof c !== typeof v) continue
+    if (JSON.stringify(c) === JSON.stringify(v)) continue
+    setSetting(k, v)
+    if (JSON.stringify(D.settings.get(k)) !== JSON.stringify(c)) { before[k] = c === undefined ? null : c; n++ }
+  }
+  settingsUndo = n ? before : null
+  return { ok: true, count: n, undo: !!n }
+}
+function undoImportSettings() {
+  if (!settingsUndo) return { ok: false }
+  const b = settingsUndo; settingsUndo = null
+  for (const [k, v] of Object.entries(b)) setSetting(k, v)
+  return { ok: true, count: Object.keys(b).length }
 }
 
 // ---------------------------------------------------------------- IPC: web pages (password manager)
@@ -2555,6 +2596,17 @@ ipcMain.handle('lumen', async (e, action, ...a) => {
         if (r.canceled || !r.filePaths[0]) return { ok: false }
         return Importer.importPasswordsCSV(r.filePaths[0])
       }
+      case 'exportSettings': {
+        const r = await dialog.showSaveDialog(w ? w.win : undefined, { defaultPath: path.join(app.getPath('documents'), 'Lumen Settings.json'), filters: [{ name: 'Lumen settings', extensions: ['json'] }] })
+        if (r.canceled || !r.filePath) return { ok: false, canceled: true }
+        return exportSettingsTo(r.filePath)
+      }
+      case 'importSettings': {
+        const r = await dialog.showOpenDialog(w ? w.win : undefined, { properties: ['openFile'], filters: [{ name: 'Lumen settings', extensions: ['json'] }] })
+        if (r.canceled || !r.filePaths || !r.filePaths[0]) return { ok: false, canceled: true }
+        return importSettingsFrom(r.filePaths[0])
+      }
+      case 'undoImportSettings': return undoImportSettings()
       case 'exportPasswords': {
         const r = await dialog.showSaveDialog({ defaultPath: path.join(app.getPath('documents'), 'Lumen Passwords.csv') })
         if (r.canceled || !r.filePath) return { ok: false }
@@ -3116,4 +3168,4 @@ app.whenReady().then(async () => {
   powerMonitor.on('resume', () => Sync.syncNow().catch(() => {}))
 })
 
-module.exports = { __downloads: () => listDownloads(), __clips: clips, __clipWatch: clipWatch, __copyAllLinks: copyAllLinks, __pasteTarget: pasteTarget, __closedList: closedList, __reopenAt: reopenAt, __refreshClosedMenu: () => refreshClosedMenu(), __closedTabs: closedTabs, __reopenClosedWindow: reopenClosedWindow, __closeMany: closeMany, __reopenClosed: reopenClosed, __tabMenu: (w, id) => tabMenu(w, id), __copyPageLink: copyPageLink, __cleanLink: cleanLink, __setParcelNote: f => { parcelNote = f }, __showParcels: showParcels, __parcelState: () => ({ busy: parcelBusy, win: !!(parcelWin && !parcelWin.isDestroyed()) }), windows, createWindow, D, __suggest: suggest, allowSites, toggleSiteAdblock, __refreshAdblock: refreshAdblock, __adblockAge: adblockAge, __hl_add: addHighlight, __hl_recolor: recolorHighlight, __addToNTP: addToNTP, __checkParcels: checkParcels, __separateApps: { check: separateAppsCheck, had: hadBuiltInApps, LINKS: SEPARATE_APPS }, __nova: Nova, __pkAsking: pkAsking, __novaDialog: novaDialog, __tabMenu: tabMenu, __readerMode: readerMode, __appMenu: appMenuPopup, __confirmQuit: confirmQuit, __printFailed: printFailed, __dockTemplate: dockTemplate, __jumpTasks: jumpTasks, __handleArgs: handleArgs, __recentSites: recentSites }
+module.exports = { __exportSettings: exportSettingsTo, __importSettings: importSettingsFrom, __undoImportSettings: undoImportSettings, __downloads: () => listDownloads(), __clips: clips, __clipWatch: clipWatch, __copyAllLinks: copyAllLinks, __pasteTarget: pasteTarget, __closedList: closedList, __reopenAt: reopenAt, __refreshClosedMenu: () => refreshClosedMenu(), __closedTabs: closedTabs, __reopenClosedWindow: reopenClosedWindow, __closeMany: closeMany, __reopenClosed: reopenClosed, __tabMenu: (w, id) => tabMenu(w, id), __copyPageLink: copyPageLink, __cleanLink: cleanLink, __setParcelNote: f => { parcelNote = f }, __showParcels: showParcels, __parcelState: () => ({ busy: parcelBusy, win: !!(parcelWin && !parcelWin.isDestroyed()) }), windows, createWindow, D, __suggest: suggest, allowSites, toggleSiteAdblock, __refreshAdblock: refreshAdblock, __adblockAge: adblockAge, __hl_add: addHighlight, __hl_recolor: recolorHighlight, __addToNTP: addToNTP, __checkParcels: checkParcels, __separateApps: { check: separateAppsCheck, had: hadBuiltInApps, LINKS: SEPARATE_APPS }, __nova: Nova, __pkAsking: pkAsking, __novaDialog: novaDialog, __tabMenu: tabMenu, __readerMode: readerMode, __appMenu: appMenuPopup, __confirmQuit: confirmQuit, __printFailed: printFailed, __dockTemplate: dockTemplate, __jumpTasks: jumpTasks, __handleArgs: handleArgs, __recentSites: recentSites }

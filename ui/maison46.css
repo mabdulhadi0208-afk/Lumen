@@ -1,0 +1,33 @@
+/* =====================================================================
+   Lumen 4.6: Maison, finished, for the browser chrome. Linked after ui/maison45.css.
+   The covers at the top of the main menu, the shortcut sheet and the other popovers were "solid", which is ink on
+   paper in light mode but a slab of bright paper in dark mode and in private windows. They are noir covers now, the
+   same in every theme (a lifted ink in dark, the private window's own plum in private), with paper type and a
+   hairline, and the buttons on them flow paper into ink.
+   ===================================================================== */
+:root { --m-noir: #15130f; --m-on-noir: #f4efe5; --m-noir-2: rgba(244, 239, 229, .64); --m-noir-line: rgba(244, 239, 229, .18); }
+@media (prefers-color-scheme: dark) { :root { --m-noir: #1f1d19; } }
+body.chrome-light:not(.incognito) { --m-noir: #15130f; }
+body.chrome-dark:not(.incognito) { --m-noir: #1f1d19; }
+body.incognito { --m-noir: #2c2238; --m-on-noir: #f1ecf8; --m-noir-2: rgba(241, 236, 248, .66); --m-noir-line: rgba(241, 236, 248, .2); }
+
+.popover .chero, .chero { background: var(--m-noir) !important; color: var(--m-on-noir) !important; box-shadow: inset 0 0 0 1px var(--m-noir-line) !important; }
+.chero, .chero *, .mm-head .mm-title, .mm-head .mm-sub { color: var(--m-on-noir) !important; -webkit-text-fill-color: var(--m-on-noir) !important; }
+.chero .mm-sub, .chero .sc-sub, .chero small { color: var(--m-noir-2) !important; -webkit-text-fill-color: var(--m-noir-2) !important; }
+.chero .hero-ic, .chero .sc-orb, .chero .em-orb, .mm-logo { box-shadow: inset 0 0 0 1px var(--m-noir-line) !important; }
+.chero .ib { --flow: var(--m-on-noir); --flow-fg: var(--m-noir); color: var(--m-noir-2) !important; }
+.chero .ib:hover, .chero .ib:hover * { color: var(--m-noir) !important; -webkit-text-fill-color: var(--m-noir) !important; }
+.chero .mm-kind, .chero .tag, .chero .pill { box-shadow: inset 0 0 0 1px var(--m-noir-line) !important; color: var(--m-noir-2) !important; background: transparent !important; }
+
+/* 4.6: the keyboard shortcut sheet's search field */
+.sc-find { display: flex; align-items: center; gap: 10px; margin: 12px 4px 4px; padding: 0 14px; height: 38px; border-radius: 999px; background: var(--m-bg2); box-shadow: inset 0 0 0 1px var(--m-line); color: var(--m-fg3); }
+.sc-find:focus-within { box-shadow: inset 0 0 0 1px var(--m-fg); }
+.sc-find svg { width: 15px; height: 15px; flex: none; }
+.sc-find input { flex: 1; min-width: 0; border: 0; outline: 0; background: none; color: var(--m-fg); font: 400 13.5px var(--font); }
+.sc-find input::placeholder { color: var(--m-fg3); }
+.sc-find kbd { font: 500 10.5px var(--font); padding: 2px 6px; border-radius: 5px; box-shadow: inset 0 0 0 1px var(--m-line2); color: var(--m-fg3); background: none; }
+.sc-row.sc-hide, .sc-sec.sc-hide { display: none !important; }
+.sc-row mark { background: none; color: var(--accent); font-weight: 600; }
+.sc-none { display: none; padding: 26px 8px 18px; text-align: center; color: var(--m-fg2); font: 400 20px/1.3 var(--display); }
+.sc-none small { display: block; margin-top: 6px; font: 400 12px var(--font); color: var(--m-fg3); }
+.sheet.sc-empty .sc-none { display: block; }

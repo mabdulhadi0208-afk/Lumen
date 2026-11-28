@@ -52,3 +52,17 @@ Every surface Lumen draws, plus the things it used to leave to the system: the a
 and Koi's menu-bar icons, right-click menus on web pages and tabs (drawn by Lumen in Nova instead of the plain system
 menu), and Lumen's pop-up questions such as Quit Lumen (Nova dialogs instead of system alerts). Notifications and the
 macOS menu bar stay native: the system draws those.
+
+## Maison (4.5 and later)
+
+Nova's glass gave way to Maison in 4.5, and 4.6 finished it everywhere. What wins over anything above:
+
+- Paper (#f6f3ed) in light, ink (#0d0c0a) in dark, solid surfaces, hairline borders, at most one modest shadow.
+- Instrument Serif for big titles and numbers, Geist for the interface (`ui/fonts`).
+- One accent, deep emerald (#1f6b52) by default, only on small details. No rainbow, no gradients of several colours,
+  no glows, no auroras or nebulas, no gradient text. Wallpapers, themes and tab group colours are calm tones.
+- Covers (the main menu header, Settings heroes, the update card's poster, the intro) are noir in every theme.
+- The flow hover on every button, chip, tab and menu item: a circle grows from where the pointer came in (transform
+  only, .42 s, cubic-bezier(.2,.8,.2,1)) and the label, icons and key caps flip to contrast with it (3:1 or better).
+- Only transform and opacity animate; nothing loops but loading indicators; no backdrop-filter; reduced motion is still.
+- Checks: `test/mono46.js` (no colour but the accent), `test/flow451.js` and `test/flow46.js` (flow contrast).

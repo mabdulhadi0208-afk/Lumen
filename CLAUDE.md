@@ -45,7 +45,7 @@ Lumen is an Electron (Chromium) browser for Mac and Windows: just the browser. S
 
 - Run a test with `xvfb-run -a npx electron test/NAME.js --no-sandbox`. Each test prints PASS and FAIL lines; newer tests also write them to `/tmp/lumen-NAME.log`.
 - Before every release, run the full suite on a git worktree of the exact release commit, with `node_modules` symlinked in.
-- The suite: `adallow addbtn batch12 dark dark2 polish qol3 sweep trcard trcard2 v17 v20 readlater wave13 wave14 wave15 wave16 gsignin updatecard wave19 ytfix passkeys2 novamenus inpage home40 noapps sweep41 motion40 ai41 layout42 logos43 totop44 speed42 agent43 passkeys45 intro444 aimode445 shop446 heading447 parcellink448 notify449 twodigit4410 cleanlink4411 copylink4412 undoclose4414 reopenwin4415 closedlist4416 closedkeep4417 closedsearch4419 sharelinks4420 clipboard4421 downloads4422 passkeys4423 ghost4424`.
+- The suite: `adallow addbtn batch12 dark dark2 polish qol3 sweep trcard trcard2 v17 v20 readlater wave13 wave14 wave15 wave16 gsignin updatecard wave19 ytfix passkeys2 novamenus inpage home40 noapps sweep41 motion40 ai41 layout42 logos43 totop44 speed42 agent43 passkeys45 intro444 aimode445 shop446 heading447 parcellink448 notify449 twodigit4410 cleanlink4411 copylink4412 undoclose4414 reopenwin4415 closedlist4416 closedkeep4417 closedsearch4419 sharelinks4420 clipboard4421 downloads4422 passkeys4423 ghost4424 flow451 mono46 flow46 qol46`.
   - `sweep` should print NO ERRORS.
   - `selftest.js` was already broken before these rules and is unrelated.
 
@@ -59,5 +59,6 @@ Lumen is an Electron (Chromium) browser for Mac and Windows: just the browser. S
 - `separateAppsCheck()` in `src/main.js`: the one-time "Surge and Koi are now their own apps" card for people upgrading from 3.x (flag `separateAppsShown`). Lumen never starts, hosts or installs Surge or Koi.
 - `src/updater.js` and `ui/update.html`: the updater and its update card.
 - `src/nova.js`, `ui/menu.html`, `ui/dialog.html`: the right-click menus and dialogs Lumen draws itself. Use `Nova.popupMenu(w, template)` instead of `Menu.buildFromTemplate(...).popup()` and `novaDialog(w, opts)` instead of `dialog.showMessageBox`; both fall back to the native ones if the Nova view fails.
-- `ui/`: the browser chrome (`ui.js`, `ui.css`, `intro.js`, `icons.js`).
+- `ui/`: the browser chrome (`ui.js`, `ui.css`, `intro.js`, `icons.js`). The Maison look is the top layers: `ui/maison45.css` + `ui/maison46.css` for the chrome, `pages/maison45.css` + `pages/maison46.css` for the `lumen://` pages. `test/mono46.js` fails on any colour but the one accent; `test/flow451.js` and `test/flow46.js` check every flow hover keeps its label readable.
+- `build/make-installer-art.js`: renders the DMG background and the Windows installer bitmaps in the Maison look.
 - `pages/`: the internal `lumen://` pages (Settings, New Tab and so on).

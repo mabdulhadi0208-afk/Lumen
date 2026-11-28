@@ -259,7 +259,8 @@ let TOP = false
 const GAP = 6
 let tabW = 200
 const stepOf = () => TOP ? tabW + GAP : ROW
-const GROUP_COLORS = { blue: '#5b8cff', purple: '#8a63f2', pink: '#e9609c', orange: '#f08a3c', yellow: '#dcae22', green: '#3fb37f', teal: '#22a6b3', gray: '#8a8f98' }
+// 4.6: tab group colours are calm, deep tones that sit with paper and ink (the names stay, so saved groups keep theirs)
+const GROUP_COLORS = { blue: '#4a6585', purple: '#665a84', pink: '#94596b', orange: '#9c6a42', yellow: '#8f7a3e', green: '#4d7659', teal: '#3e7272', gray: '#7d786f' }
 const groupOf = id => (S.groups || []).find(g => g.id === id)
 const headW = g => g.collapsed ? Math.min(150, 34 + g.name.length * 7) : Math.min(150, 26 + g.name.length * 7)
 const HEAD_H = () => ROW - 8
@@ -643,6 +644,10 @@ const COMMANDS = [
   { t: 'Save All Tabs as a Session', k: ['save tabs', 'session', 'save all'], i: 'star', run: () => api.do('saveSession') },
   { t: 'Clipboard History', s: () => `${K.opt} V`, k: ['clipboard', 'paste', 'copied', 'history of copies'], i: 'copy', run: () => openClipboard() },
   { t: 'Copy All Tab Links', k: ['copy all', 'links', 'share tabs'], i: 'arrowRight', run: () => api.do('copyAllLinks') },
+  { t: 'Pin or Unpin Tab', k: ['pin', 'unpin', 'keep tab', 'stick'], i: 'star', run: () => api.do('pin', S.activeId) },
+  { t: 'Mute or Unmute Tab', k: ['mute', 'unmute', 'sound', 'silence this'], i: 'muted', run: () => api.do('mute', S.activeId) },
+  { t: 'Reload All Tabs', k: ['reload all', 'refresh all', 'refresh tabs'], i: 'reload', run: () => api.do('reloadAll').then(n => toast(n ? `Reloaded ${n} tab${n === 1 ? '' : 's'}` : 'Nothing to reload')) },
+  { t: 'Export or Import Settings', k: ['export', 'import', 'backup', 'settings file', 'move settings', 'restore settings'], i: 'gear', run: () => api.do('openPage', 'settings/general#' + encodeURIComponent('Take your settings with you')) },
   { t: 'Close Duplicate Tabs', k: ['duplicate', 'dupes', 'clean up tabs'], i: 'tabs', run: () => api.do('closeDuplicates') },
   { t: 'Close Other Tabs', k: ['close other', 'close all'], i: 'close', run: () => api.do('closeOthers') },
   { t: 'Mute Other Tabs', k: ['mute', 'silence', 'quiet'], i: 'muted', run: () => api.do('muteOthers') },
@@ -1114,10 +1119,10 @@ function openShortcuts() {
   // every key is its own keycap; gestures (clicks, swipes) get one soft chip
   const keys = k => /click|finger/i.test(k) ? `<kbd class="gesture">${esc(k)}</kbd>` : `<span class="keys">${k.split(/\s+/).filter(Boolean).map(x => `<kbd>${esc(x)}</kbd>`).join('')}</span>`
   const gi = { Tabs: 'tabs', Navigate: 'arrowRight', Page: 'file', Lumen: 'sparkle' }
-  const html = `<div class="sc-head chero">${heroBits('keyboard')}<span class="sc-orb">${ICONS.keyboard}</span><div class="grow"><b>Keyboard shortcuts</b><div class="sc-sub">Everything Lumen does, one keystroke away. Press ${K.cmd} / any time.</div></div><button class="ib sm" data-sc="close" title="Close">${ICONS.close}</button></div><div class="sc-grid">${groups.map(([g, rows]) => `<div class="sc-sec"><div class="mm-label sc-label"><span class="sc-gi">${ICONS[gi[g]]}</span>${g}</div>${rows.map(([l, k]) => `<div class="sc-row"><span>${esc(l)}</span>${keys(k)}</div>`).join('')}</div>`).join('')}</div>`
+  const html = `<div class="sc-head chero">${heroBits('keyboard')}<span class="sc-orb">${ICONS.keyboard}</span><div class="grow"><b>Keyboard shortcuts</b><div class="sc-sub">Everything Lumen does, one keystroke away. Press ${K.cmd} / any time.</div></div><button class="ib sm" data-sc="close" title="Close">${ICONS.close}</button></div><label class="sc-find">${ICONS.search}<input id="scq" type="text" placeholder="Search shortcuts, like tab, find or split" autocomplete="off" spellcheck="false" aria-label="Search shortcuts"><kbd>Esc</kbd></label><div class="sc-grid">${groups.map(([g, rows]) => `<div class="sc-sec"><div class="mm-label sc-label"><span class="sc-gi">${ICONS[gi[g]]}</span>${g}</div>${rows.map(([l, k]) => `<div class="sc-row" data-find="${esc((g + ' ' + l + ' ' + k).toLowerCase())}"><span>${esc(l)}</span>${keys(k)}</div>`).join('')}</div>`).join('')}</div><div class="sc-none">No shortcut matches<small>Try a word like tab, find, split or reader</small></div>`
   if (overlayOpen === 'cmd') closeCmd(true)
   pop.innerHTML = html
-  pop.classList.add('wide', 'sheet'); pop.classList.remove('mini')
+  pop.classList.add('wide', 'sheet'); pop.classList.remove('mini', 'sc-empty')
   pop.style.maxHeight = ''; pop.style.overflowY = ''   // a menu opened before may have left a height limit
   overlay.classList.add('show'); pop.classList.add('show')
   pop.style.left = Math.max(8, (innerWidth - pop.offsetWidth) / 2) + 'px'
@@ -1129,6 +1134,24 @@ function openShortcuts() {
   glassUnder(pop)
   api.do('focusUI')
   pop.onclick = e => { if (e.target.closest('[data-sc="close"]')) closePopover() }
+  // 4.6: type to find a shortcut; every word you type has to match (the group, the name or the keys)
+  const q = pop.querySelector('#scq')
+  if (q) {
+    q.addEventListener('input', () => filterShortcuts(q.value))
+    q.addEventListener('keydown', e => { if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); if (q.value) { q.value = ''; filterShortcuts('') } else closePopover() } })
+    setTimeout(() => { try { q.focus({ preventScroll: true }) } catch {} }, 60)
+  }
+}
+function filterShortcuts(text) {
+  const words = String(text || '').toLowerCase().split(/\s+/).filter(Boolean)
+  let shown = 0
+  pop.querySelectorAll('.sc-sec').forEach(sec => {
+    let n = 0
+    sec.querySelectorAll('.sc-row').forEach(r => { const hit = words.every(w => r.dataset.find.includes(w)); r.classList.toggle('sc-hide', !hit); if (hit) n++ })
+    sec.classList.toggle('sc-hide', !n); shown += n
+  })
+  pop.classList.toggle('sc-empty', !shown)
+  return shown
 }
 
 // ---------------------------------------------------------------- main menu

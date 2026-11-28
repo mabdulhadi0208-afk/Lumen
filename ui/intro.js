@@ -23,12 +23,14 @@
 ;(function () {
   // ---- edit this list every release: it is the "New in Lumen" act of the film (only this version's changes)
   const WHATS_NEW = {
-    version: '4.5.1',
+    version: '4.6.0',
     items: [
-      { icon: 'check', text: 'Buttons that fill with colour on hover keep their labels, icons and keys readable, in light and dark' },
-      { icon: 'sparkle', text: 'The New Tab banner takes the colour of the background you chose, a shade darker, with text that always reads' },
-      { icon: 'moon', text: 'Browser themes and New Tab backgrounds show as one calm tone, and the last bits of rainbow on New Tab are gone' },
-      { icon: 'layers', text: 'Buttons with a warning, like Clear browsing data, stay readable while you hover them' },
+      { icon: 'check', text: 'Every Settings and library page is finished in paper and ink: stat tiles you can read, quiet empty states, no colour washes' },
+      { icon: 'gear', text: 'Export your settings to a file and import them on another computer, with Undo' },
+      { icon: 'keyboard', text: 'Search the keyboard shortcut sheet: press Cmd / (Ctrl / on Windows) and type' },
+      { icon: 'moon', text: 'Calm wallpapers and themes: Linen, Ink, Umber, Slate, Sage, Clay and Moss' },
+      { icon: 'download', text: 'The update card shows each step and counts the download; Return updates and Esc waits' },
+      { icon: 'bolt', text: 'Menus, dialogs and toasts open without copying the window behind them, and Cmd K can pin, mute and reload all tabs' },
     ],
   }
 
@@ -614,7 +616,9 @@
   /* ===================================================================== 4.5 Maison: the film in noir and paper
      No aurora, nebula, stars, bokeh, flares, light leaks or colour: deep ink, paper type, the display serif for the
      titles, hairlines for the cards, a gold-free monochrome. The close path and timings are untouched. */
-  #intro{--a:#f4efe5;--a2:#f4efe5;--a3:#f4efe5;--nova:#f4efe5;--hi:#f4efe5;--hi3:#f4efe5;background:#0d0c0a!important;color:#f4efe5}
+  #intro{--a:#f4efe5!important;--a2:#f4efe5!important;--a3:#f4efe5!important;--nova:#f4efe5!important;--hi:#f4efe5!important;--hi3:#f4efe5!important;background:#0d0c0a!important;color:#f4efe5}
+  /* 4.6: no glow blobs behind the numbers (the accent used to leak in through the inline --a) */
+  #intro .wall .fig .gw,#intro .speedo .glow,#intro .speedo .halo,#intro .speedo .gw{display:none!important}
   #intro .nebw,#intro .neb,#intro .nebc,#intro canvas,#intro .flare,#intro .leak,#intro .beam,#intro .ca,#intro .grain,#intro .halo,#intro .glassf,#intro .cring,#intro .art,#intro .echo,#intro .rig,#intro .drop,#intro .slabs,#intro .hud .sw,#intro .meter{display:none!important}
   #intro .vig{background:radial-gradient(120% 90% at 50% 45%,transparent 55%,rgba(0,0,0,.45))!important}
   #intro .bar{background:#0d0c0a!important}
@@ -647,6 +651,20 @@
   #intro .new .lede,#intro .new p{color:rgba(244,239,229,.62)!important;-webkit-text-fill-color:currentColor!important}
   #intro .new .k{background:transparent!important;background-image:none!important;box-shadow:inset 0 0 0 1px rgba(244,239,229,.24)!important;color:#f4efe5!important;filter:none!important}
   #intro .new .k::before,#intro .new .k::after,#intro .new .it::before,#intro .new .it::after{display:none!important}
+
+  /* ===================================================================== 4.6: the film gets its pictures back
+     The tour's demos return as prints on paper: each shot is a monochrome frame (grayscale, solid, one deep shadow) that
+     swings in on the camera rig, and a monument numeral in outline drifts slowly behind it, like a chapter mark on a
+     title sequence. A hairline rule draws across the frame and the caption types in. No colour, no glow: transform and
+     opacity only. */
+  #intro .scene .rig{display:block!important;will-change:auto}
+  #intro .scene .glassf{display:block!important;position:relative;background:#f4efe5!important;background-image:none!important;border-radius:14px!important;padding:10px!important;
+    box-shadow:0 40px 90px -40px rgba(0,0,0,.95),0 0 0 1px rgba(244,239,229,.25)!important}
+  #intro .scene .glassf > *:not(.glare){filter:grayscale(1) contrast(1.04)!important}
+  #intro .scene .glassf .glare{display:none!important}
+  #intro .mono46{position:absolute;right:-2vw;top:50%;margin-top:-34vh;font:400 68vh/1 "Instrument Serif",Georgia,serif;letter-spacing:-.04em;color:transparent;-webkit-text-stroke:1px rgba(244,239,229,.14);
+    pointer-events:none;z-index:0;white-space:nowrap;opacity:0}
+  #intro .rule46{position:absolute;left:6vw;right:6vw;top:calc(var(--bar) + 5vh);height:1px;background:rgba(244,239,229,.2);transform:scaleX(0);transform-origin:0 50%;z-index:6;pointer-events:none}
   `
   // ------------------------------------------------------------ sound: friendly, bright and crisp, all synthesized (no files)
   // A warm major pad, bell chimes, bubbly pops and soft air. Nothing low, buzzy or ominous.
@@ -857,12 +875,14 @@
   const LOGO = new Image()
   function loadLogo() { let id = 'default'; try { if (typeof settings !== 'undefined' && settings.appIcon) id = settings.appIcon } catch {} const src = `../build/icons/${id}.png`; if (!LOGO.src.endsWith(src.slice(2))) { LOGO.onerror = () => { if (!LOGO.src.endsWith('/default.png')) LOGO.src = '../build/icons/default.png' }; LOGO.src = src } }
   loadLogo()
+  const SKY = false   // 4.6: the starfield, warp tunnel, orb and bokeh are off in the monochrome Maison film
   const sky = { oy: 0, speed: .4, warp: 0, gather: 0, orb: 0, orbR: 0, ring: 0, shock: [], flash: 0, shake: 0, rays: 0, bokeh: 0, neb: 0, dof: 0, ghosts: 0, caus: 0 }
   const camera = { x: 0, y: 0, px: 0, py: 0, push: 0, roll: 0, lift: 0 }
   let bokeh = [], stars = [], caus = [], nebula = null, dofShown = -1, lastNow = 0, bokehSprites = {}, raySprite = null, nebEl = null, nebOp = -1
   function size() {
     const scale = Math.min(1, devicePixelRatio || 1) * (innerWidth * innerHeight > 1200000 ? .6 : .75)   // the sky is soft light: below screen resolution it looks the same and costs a fraction
     const r = cv.getBoundingClientRect(); W = Math.round(r.width) || innerWidth + 80; H = Math.round(r.height) || innerHeight + 80
+    if (!SKY) { cv.width = cv.height = 1; return }   // hidden in Maison: no full-screen backing store
     cv.width = Math.round(W * scale); cv.height = Math.round(H * scale)
     cx.setTransform(scale, 0, 0, scale, 0, 0)
   }
@@ -902,6 +922,9 @@
     // the camera floats: a slow handheld drift plus a little parallax from the pointer
     if (!still) { camera.x += ((camera.px * 26 + Math.sin(t * .13) * 14 + Math.sin(t * .31) * 4) - camera.x) * .035; camera.y += ((camera.py * 16 + Math.cos(t * .11) * 9) - camera.y) * .035 }
     const cxm = W / 2 - camera.x * .35, cym = H / 2 - camera.y * .35, F = Math.max(W, H) * .55, oyc = H / 2 + sky.oy - camera.y * .5, oxc = W / 2 - camera.x * .5
+    // 4.6: the Maison film hides the sky canvas (no stars, warp, orb or bokeh), so none of it is drawn any more:
+    // only the camera rig below runs each frame
+    if (SKY) {
     // the canvas is clear glass over the nebula layer; in the warp it keeps a fading trail of the last frames
     if (sky.warp > .05) { cx.globalCompositeOperation = 'destination-out'; cx.fillStyle = `rgba(0,0,0,${.55 - sky.warp * .35})`; cx.fillRect(0, 0, W, H) }
     else cx.clearRect(0, 0, W, H)
@@ -1033,6 +1056,7 @@
       }
     }
     if (sky.flash > .01) { cx.globalCompositeOperation = 'source-over'; cx.fillStyle = `rgba(240,243,255,${sky.flash})`; cx.fillRect(0, 0, W, H); sky.flash *= Math.pow(.9, fk) }
+    }
     // depth of field: the sky goes soft behind the shot in focus
     const d = Math.round(sky.dof * 4) / 4
     if (d !== dofShown) { dofShown = d }   // no live blur filter on the full-screen canvas: it costs every frame
@@ -1751,6 +1775,11 @@
       }
       const f = TOUR[i], p = POSE(i), s = scene(`<div class="echo tw">${WORD[i] || ''}</div><i class="halo"></i><div class="art ${i % 2 ? 'l' : 'r'}">${ICONS[ART[i]] || ''}</div><div class="rig"><div class="glass glassf">${f.build()}<i class="glare"></i></div></div>`, 'flat tshot')
       const rig = s.querySelector('.rig'), frame = s.querySelector('.glassf')
+      // 4.6: a monument numeral drifts behind the shot and a hairline draws across the top of the frame
+      { const mn = document.createElement('b'); mn.className = 'mono46'; mn.textContent = String(i + 1).padStart(2, '0'); s.prepend(mn)
+        anim(mn, [{ opacity: 0, transform: 'translate3d(6vw,0,0)' }, { opacity: 1, transform: 'translate3d(0,0,0)', offset: .3 }, { opacity: 1, transform: 'translate3d(-4vw,0,0)' }], { duration: 5200, easing: 'cubic-bezier(.2,.8,.2,1)' })
+        const ru = document.createElement('i'); ru.className = 'rule46'; s.appendChild(ru)
+        anim(ru, [{ transform: 'scaleX(0)' }, { transform: 'scaleX(1)' }], { duration: 1400, delay: 200, easing: 'cubic-bezier(.16,1,.3,1)' }) }
       lensAll(s)
       anim(s.querySelector('.halo'), [{ opacity: 0, transform: 'scale(.7)' }, { opacity: .55, transform: 'none' }], { duration: 1200, easing: 'cubic-bezier(.16,1,.3,1)' })
       anim(s.querySelector('.echo'), [{ opacity: 0, transform: `translateX(${i % 2 ? -8 : 8}vw) scale(1.12)` }, { opacity: .5, transform: 'none' }], { duration: 1600, easing: 'cubic-bezier(.16,1,.3,1)' })
@@ -1862,7 +1891,7 @@
     const items = WHATS_NEW.items
     tween(sky, 'bokeh', .6, 1500); focus(2, 1100); leak(.6, -1, 1800)
     const V = esc(version || WHATS_NEW.version)
-    const s = scene(`<div class="new nw4"><div class="lh"><span class="eyebrow chrome">New in Lumen ${V}</span><div class="bigv">${V}</div><h1>Calmer, quieter, faster.</h1><p class="lede">${items.length} things to try first, all of them already waiting in your browser.</p></div>
+    const s = scene(`<div class="new nw4"><div class="lh"><span class="eyebrow chrome">New in Lumen ${V}</span><div class="bigv">${V}</div><h1>Finished, in paper and ink.</h1><p class="lede">${items.length} things to try first, all of them already waiting in your browser.</p></div>
       <div class="bento">${items.map((it, i) => `<div class="it glass sweep${i === 0 ? ' hero' : ''}${i === items.length - 1 && items.length % 2 === 0 ? ' last' : ''}" style="--sd:${1.3 + i * .08}s"><div class="k">${ICONS[it.icon] || ''}</div><span>${esc(it.text)}</span><b class="no2">${String(i + 1).padStart(2, '0')}</b><i class="wmk">${ICONS[it.icon] || ''}</i></div>`).join('')}</div></div>`, 'flat')
     lensAll(s)
     // 4.4.10: a long version (4.4.10) eases down in size to fit its column, so the note cards never cover it
@@ -1993,7 +2022,7 @@
     grainAnim = null
     // the iris opens on the first frame
     if (!still) root.querySelector('.cam').animate([{ clipPath: 'circle(0% at 50% 50%)' }, { clipPath: 'circle(6% at 50% 50%)', offset: .35 }, { clipPath: 'circle(80% at 50% 50%)' }], { duration: 1700, easing: 'cubic-bezier(.6,0,.2,1)' })
-    stars = Array.from({ length: Math.round(Math.min(900, W * H / 1600)) }, () => newStar())
+    stars = SKY ? Array.from({ length: Math.round(Math.min(900, W * H / 1600)) }, () => newStar()) : []
     bokeh = Array.from({ length: 16 }, () => ({ x: Math.random(), y: .1 + Math.random() * .9, r: 30 + Math.random() * 90, h: [0, 40, 95, -62, 175][Math.floor(Math.random() * 5)], a: .4 + Math.random() * .6, sx: .1 + Math.random() * .25, sy: .08 + Math.random() * .2, p: Math.random() * 6, v: .01 + Math.random() * .03 }))
     caus = Array.from({ length: 110 }, (_, i) => ({ u: Math.random() * 2 - 1, w: Math.random() * 2 - 1, s: Math.random(), p: Math.random(), v: .12 + Math.random() * .2, up: i % 4 === 0 }))
     nebula = paintNebula(); sprite = paintSprite(); bokehSprites = {}; raySprite = null

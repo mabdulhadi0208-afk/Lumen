@@ -73,7 +73,8 @@ async function main() {
   ok(rows.length === 1 && rows[0].length >= 10 && rows[0].find(r => r.label === 'Back').off, 'the menu draws every row, Back is disabled with no history (' + rows[0].length + ' rows)')
   ok(await menuJS(w, `!!document.querySelector('.panel .glass .refract') && !!document.querySelector('.panel kbd, .panel .row .ic svg')`), 'rows have Nova icons, the panel has its glass layers')
   await wait(400)
-  ok(await menuJS(w, `document.querySelectorAll('.refract img').length > 0`), 'the glass refracts a picture of the window underneath')
+  // 4.6: the menu is solid (Maison) over a transparent view, so the window shows through and nothing is copied from it
+  ok(await menuJS(w, `document.querySelectorAll('.refract img').length === 0 && !/rgba\\(0, 0, 0, 0\\)|transparent/.test(getComputedStyle(document.querySelector('.panel')).backgroundColor)`), 'the menu is a solid panel and copies no picture of the window underneath')
   // 4.1: no SVG displacement over content (perf); the glass reads through rims, sheens and glows instead
   ok(await menuJS(w, `!document.body.classList.contains('lens') && !/url/.test(getComputedStyle(document.querySelector('.refract')).filter) && !!document.querySelector('.panel .grp')`), 'no displacement filter, rows sit in glass cards')
   await shot(w, 'g2-menu-page-light')

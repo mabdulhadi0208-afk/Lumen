@@ -66,9 +66,9 @@
   const heart = (on) => `<svg viewBox="0 0 24 24" class="hrt${on ? ' on' : ''}"><path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z"/></svg>`;
 
   // ---------- appearance ----------
-  const ACCENTS = [['Emerald', '#14b884'], ['Teal', '#0ea5b7'], ['Blue', '#4f7dff'], ['Violet', '#7c5cff'], ['Pink', '#e5487d'], ['Orange', '#f0763b'], ['Gold', '#e2a514'], ['Graphite', '#6b7280']];
-  S.accent = store.get('drop-accent', '#14b884');
-  function applyAccent(c) { if (!ACCENTS.some(a => a[1] === c)) c = '#14b884'; S.accent = c; RS.setProperty('--accent', c); store.set('drop-accent', c); }
+  const ACCENTS = [['Emerald', '#0f8a63'], ['Teal', '#0e7f8c'], ['Sapphire', '#2f55c9'], ['Amethyst', '#6a4fc4'], ['Rose', '#b8456b'], ['Copper', '#b8643a'], ['Champagne', '#a8844c'], ['Graphite', '#5c5a55']];
+  S.accent = store.get('drop-accent', '#0f8a63');
+  function applyAccent(c) { if (!ACCENTS.some(a => a[1] === c)) c = '#0f8a63'; S.accent = c; RS.setProperty('--accent', c); store.set('drop-accent', c); }
   applyAccent(S.accent);
   const darkMQ = matchMedia('(prefers-color-scheme: dark)');
   const paintScheme = () => document.documentElement.classList.toggle('dark', S.appearance === 'dark' || (S.appearance !== 'light' && darkMQ.matches));
@@ -82,10 +82,17 @@
   if (window.Jelly) Jelly.init({ press: '.btn, .chip, .ibtn, .nav-btn, .pc-save, .seg-b, .ov, .fr, .qs, .pchip, .tg, .sw' });
 
   // ---------- money, dates ----------
+  // 1.5: every price in the currency the person picked (src/currency.js). Converted prices carry a quiet marker and the
+  // store's own price in their tooltip; with no rates yet (or "Store's own currency") the store's price shows as it is.
+  const CU = window.DropCurrency;
+  const wantCur = () => CU.resolve((S.settings && S.settings.currency) || 'auto', S.info.locale || navigator.language);
+  const pd = (n, cur) => CU.display(n, cur, wantCur(), S.rates);
   function money(n, cur) {
     if (n == null || !Number.isFinite(Number(n))) return '';
-    try { return new Intl.NumberFormat(undefined, { style: 'currency', currency: /^[A-Z]{3}$/.test(cur || '') ? cur : 'USD', maximumFractionDigits: Number(n) % 1 ? 2 : 0 }).format(n); } catch { return String(n); }
+    const d = pd(n, cur);
+    return d.converted ? `<span class="cv" title="About ${esc(d.text)} at today's rate. The store charges ${esc(d.original)}.">${esc(d.text)}</span>` : esc(d.text);
   }
+  const moneyText = (n, cur) => pd(n, cur).text;
   const ago = (t) => { const s = (Date.now() - t) / 1000; if (s < 60) return 'just now'; if (s < 3600) return Math.round(s / 60) + ' min ago'; if (s < 86400) return Math.round(s / 3600) + ' h ago'; const d = Math.round(s / 86400); return d === 1 ? 'yesterday' : d + ' days ago'; };
   const day = (t) => new Date(t).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' });
   const hostOf = (u) => { try { return new URL(u).hostname.replace(/^www\./, ''); } catch { return ''; } };
@@ -347,13 +354,36 @@
     return `<button class="pp-store" data-sopen="${esc(p.domain)}">${logoHTML(p.host, s.name, 'round')}${esc(s.name || p.store)}<em>View store</em></button>
       <h1>${esc(p.title || 'Loading')}</h1><div class="pp-sub">${[p.vendor && p.vendor !== s.name ? esc(p.vendor) : '', esc(p.type)].filter(Boolean).join(' · ')}</div>
       <div class="pp-price">${price != null ? `<b${cmp ? ' class="sale"' : ''}>${money(price, p.currency)}</b>` : ''}${cmp ? `<s>${money(cmp, p.currency)}</s><span class="pill off">${off}% off</span>` : ''}</div>
+      ${ppCurHTML(price, p.currency, s.name || p.store)}
       ${T.loading ? '<span class="pill">Checking stock</span>' : `<span class="pill ${avail ? 'ok' : 'bad'}">${avail ? 'In stock' : v || !(p.options || []).length ? 'Sold out' : 'Not available in this combination'}</span>`}
       ${(p.options || []).map((o, i) => `<div class="opt"><div class="opt-n">${esc(o.name)}: <b>${esc(T.sel[i] || '')}</b></div><div class="opt-v">${o.values.map(val => `<button class="ov${T.sel[i] === val ? ' on' : ''}${valueOk(i, val) ? '' : ' na'}" data-ov="${i}" data-val="${esc(val)}">${esc(val)}</button>`).join('')}</div></div>`).join('')}
       <div class="pp-acts"><span class="qty"><button data-qty="-1" title="One less">${I.minus}</button><b>${T.qty}</b><button data-qty="1" title="One more">${I.plus}</button></span>
         <button class="btn btn-solid big buy" data-buy ${canBuy || T.loading ? '' : 'disabled'}>${I.bag}${canBuy || T.loading ? 'Buy at ' + esc(s.name || p.store) : 'Sold out'}</button>
         <button class="btn big saveb${on ? ' on' : ''}" data-psave="${esc(p.key)}">${I.heart}<span>${on ? 'Saved' : 'Save'}</span></button></div>
+      ${pd(price, p.currency).converted ? `<div class="pp-fine strong">${esc(s.name || p.store)} charges in ${esc(CU.nameOf(p.currency || 'USD'))}: you pay ${esc(CU.format(price * T.qty, p.currency || 'USD'))} at checkout. The ${esc(CU.nameOf(wantCur()))} price is an estimate at today's rate.</div>` : ''}
       <div class="pp-fine">${WEB() ? `Buy opens ${esc(s.name || p.store)} in a new tab with this in your cart. You check out and pay on their site.` : `Buy opens ${esc(s.name || p.store)}'s checkout here in Drop with this in your cart. You pay the store directly, and the order lands in Orders.`}</div>
       ${p.desc ? `<div class="pp-desc"><h4>About this item</h4>${esc(p.desc)}</div>` : ''}`;
+  }
+  function ppCurHTML(price, cur, store) {
+    if (price == null) return '';
+    const d = pd(price, cur);
+    return `<div class="pp-cur">${d.converted ? `<span>Converted from <b>${esc(d.original)}</b>, the price ${esc(store)} charges</span>` : `<span>Shown in ${esc(CU.nameOf(cur || 'USD'))}, the store's currency</span>`}<button class="lnk" data-curpick>${esc(wantCur() || 'Store currency')}<svg viewBox="0 0 24 24"><path d="M7 10l5 5 5-5"/></svg></button></div>`;
+  }
+  // the currency picker: searchable, from Settings and from the product page price
+  async function currencyPicker() {
+    const cur = (S.settings && S.settings.currency) || 'auto', auto = CU.defaultCurrency(S.info.locale || navigator.language);
+    const opts = [['auto', `Match this ${WEB() ? 'device' : 'computer'}`, auto], ['store', "Store's own currency", 'As listed'], ...CU.CURRENCIES.map(([c, n]) => [c, n, c])];
+    const list = (q) => opts.filter(o => !q || (o[1] + ' ' + o[2]).toLowerCase().includes(q.toLowerCase())).map(o => `<button class="cur-o${o[0] === cur ? ' on' : ''}" data-dlg-cur="${o[0]}"><span>${esc(o[1])}</span><em>${esc(o[2])}</em></button>`).join('') || '<div class="cur-none">No currency by that name</div>';
+    const d = $('#dlg');
+    const pick = dialog({ icon: I.globe, title: 'Currency', lead: 'Every price in Drop is shown in this currency, converted at today\'s rate. Stores still charge in their own currency.', body: `<label class="field dlg-in"><input id="cur-q" placeholder="Search currencies" autocomplete="off" spellcheck="false"></label><div class="cur-list" id="cur-list">${list('')}</div>`, buttons: [{ label: 'Done', cls: 'btn-ghost', value: null }], wide: false });
+    const q = $('#cur-q'); setTimeout(() => q && q.focus(), 50);
+    q.addEventListener('input', () => { $('#cur-list').innerHTML = list(q.value.trim()); });
+    const onClick = (e) => { const b = e.target.closest('[data-dlg-cur]'); if (!b) return; e.stopPropagation(); d.removeEventListener('click', onClick, true); if (dlgDone) dlgDone(b.dataset.dlgCur); };
+    d.addEventListener('click', onClick, true);
+    const v = await pick; d.removeEventListener('click', onClick, true);
+    if (!v) return;
+    S.settings = await G.setting('currency', v);
+    render(); toast(v === 'store' ? "Prices show in each store's own currency" : `Prices show in ${CU.nameOf(wantCur())}`);
   }
   function renderProduct() {
     const T = S.pp; if (!T) { go('home'); return; }
@@ -644,9 +674,11 @@
         <div class="set"><div><b>Check everything now</b><span id="busy-line">${S.busy ? 'Checking now' : 'Prices and parcels, right away.'}</span></div><button class="btn" data-check-now>${I.reload}Check now</button></div></div>
       <div class="set-card"><h3>Search</h3>
         <div class="set"><div><b>Web search</b><span>Used by Search everywhere and the address bar.</span></div><div class="seg">${Object.entries(S.engines).map(([k, n]) => `<button class="seg-b${st.engine === k ? ' on' : ''}" data-engine="${k}">${esc(n)}</button>`).join('')}</div></div></div>`}
+      <div class="set-card"><h3>Prices</h3>
+        <div class="set"><div><b>Currency</b><span>${S.rates ? `Every price is converted at the European Central Bank's rate of ${esc(S.rates.date)}. Stores still charge in their own currency.` : "Exchange rates have not arrived yet, so prices show in each store's own currency."}</span></div><button class="btn" data-curpick>${esc((S.settings.currency || 'auto') === 'store' ? "Store's own" : CU.nameOf(wantCur()) + ' (' + wantCur() + ')')}</button></div></div>
       <div class="set-card"><h3>Appearance</h3>
         <div class="set"><div><b>Theme</b><span>Light, dark, or follow your ${web ? 'device' : 'computer'}.</span></div><div class="seg">${[['system', 'Auto'], ['light', 'Light'], ['dark', 'Dark']].map(([k, n]) => `<button class="seg-b${S.appearance === k ? ' on' : ''}" data-appear="${k}">${n}</button>`).join('')}</div></div>
-        <div class="set"><div><b>Accent</b><span>Tints buttons and highlights.</span></div><div class="swatches">${ACCENTS.map(([n, c]) => `<button class="sw${S.accent === c ? ' on' : ''}" data-accent="${c}" title="${n}" style="--c:${c}"></button>`).join('')}</div></div>
+        <div class="set"><div><b>Accent</b><span>Tints the small highlights: the selected screen, switches, stock and price drops.</span></div><div class="swatches">${ACCENTS.map(([n, c]) => `<button class="sw${S.accent === c ? ' on' : ''}" data-accent="${c}" title="${n}" style="--c:${c}"></button>`).join('')}</div></div>
         <div class="set"><div><b>Motion</b><span>A small spring when you press things, a livelier one, or none.</span></div><div class="seg">${[['calm', 'Calm'], ['jelly', 'Jelly'], ['off', 'Off']].map(([k, n]) => `<button class="seg-b${S.motion === k ? ' on' : ''}" data-motion="${k}">${n}</button>`).join('')}</div></div></div>
       ${web ? '' : `<div class="set-card"><h3>General</h3>
         <div class="set"><div><b>Open at login</b><span>Drop starts quietly so prices and parcels stay fresh.</span></div>${tg('loginItem', st.loginItem)}</div></div>`}
@@ -714,11 +746,10 @@
 
   // ---------- the intro: a simple first-run welcome and What's new, one overlay ----------
   // WHATS_NEW holds ONLY this version's changes. Rewrite it with every release.
-  const WHATS_NEW = { version: '1.4', lead: 'Faster everywhere. And a new look.', items: [
-    ['#14b884', I.bolt, 'Discover opens at once', 'The last feed you saw shows the moment Drop opens, and fresh products slip in behind it. No more empty grey boxes.'],
-    ['#4f7dff', I.stores, 'Stores in half the time', 'Store pages and product pages ask the store for everything at once, so they fill in about twice as fast.'],
-    ['#7c5cff', I.spark, 'No waiting on motion', 'Screens, sheets and messages appear instantly. The only motion left is the small press on buttons.'],
-    ['#0ea5b7', I.down, 'A new icon', 'A bold, flat drop with a price-drop arrow: what Drop is for, in one mark.'],
+  const WHATS_NEW = { version: '1.5', lead: 'Your currency. A new look.', items: [
+    ['#0f8a63', I.globe, 'Every price in your currency', 'Pick a currency in Settings, or from any product price, and every price in Drop is shown in it, converted at the day\'s rate. Stores still charge in their own.'],
+    ['#a8844c', I.star, 'A quieter, finer Drop', 'Warm paper or deep ink, a serif for headings, hairline edges and portrait product pictures. Every screen was redrawn.'],
+    ['#5c5a55', I.down, 'Price drops stay honest', 'Drops are still measured in the store\'s own currency, so a moving exchange rate never looks like a sale.'],
   ] };
   function intro(kind = 'welcome') {
     const el = $('#intro');
@@ -850,6 +881,7 @@
     }
     if ('clearRecent' in d) { await G.clear('recent'); return; }
     if ('updCheck' in d) { const u = await G.updCheck().catch(() => null); if (u && u.status === 'uptodate') toast(`Drop ${S.info.version} is the newest version`); return; }
+    if ('curpick' in d) { currencyPicker(); return; }
     if ('whatsnew' in d) { intro('whatsnew'); return; }
     if ('welcome' in d) { intro('welcome'); return; }
   });
@@ -975,6 +1007,7 @@
     }
   }
   G.onUpdater(renderUpd);
+  if (G.onRates) G.onRates((r) => { S.rates = r; render(); });
   $('#self-btn').addEventListener('click', () => { if (UPD.status === 'error') { G.updCheck().catch(() => {}); return; } $('#self-btn').disabled = true; G.updInstall().catch(() => {}); });
   $('#self-alt').addEventListener('click', () => { if (UPD.status === 'downloading') G.updCancel().catch(() => {}); });
 
@@ -988,11 +1021,12 @@
     const [d, favs, saved, orders, recent, settings, tabs] = await Promise.all([G.stores(), G.favorites(), G.saved(), G.orders(), G.recent(), G.settings(), G.tabs()]);
     Object.assign(S, { stores: d.stores, cats: d.categories, countries: d.countries, engines: d.engines, logos: new Set(d.logos || []), favs, orders, recent, settings, tabs });
     setSaved(saved);
+    S.rates = G.rates ? await G.rates().catch(() => null) : null;
     badges(); render();
     G.updState().then(renderUpd).catch(() => {});
     G.ready();
     // first launch: the welcome; the first launch of a new version after an update: What's new (renderUpd)
     if (!store.get('drop-welcomed', false)) { store.set('drop-welcomed', true); store.set('drop-seen-' + WHATS_NEW.version, true); setTimeout(() => intro('welcome'), 350); }
-    window.__drop = { go, render, S, intro, toast, dialog, openOrderSheet, closeSheet, renderUpd, trackInput, openProduct, openNativeStore, back, loadFeed };
+    window.__drop = { go, render, S, currencyPicker, money, intro, toast, dialog, openOrderSheet, closeSheet, renderUpd, trackInput, openProduct, openNativeStore, back, loadFeed };
   })().catch(e => { console.warn('boot failed', e && e.message); G.ready(); });
 })();

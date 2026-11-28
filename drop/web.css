@@ -51,3 +51,8 @@ body.web { user-select: auto; }
   .sheet { top: auto; left: 0; right: 0; bottom: 0; width: 100%; max-height: 88vh; border-radius: 18px 18px 0 0; }
   .in-title { font-size: 30px; }
 }
+.wp-card { border-radius: 14px; padding: 32px 28px 22px; }
+.wp-card h2 { font: 400 34px/1.1 var(--display); letter-spacing: -.01em; }
+.wp-ic { border-radius: 16px; }
+.web-dl { border-radius: 999px; }
+@media (max-width: 760px) { .page-h h1 { font-size: 38px; } .rail { background: var(--bg); } .nav-btn.active { color: var(--fg); } .nav-btn.active::before { left: 30%; right: 30%; top: 0; bottom: auto; width: auto; height: 2px; } .top { border-bottom: 0; } .pgrid2 { gap: 26px 12px; } .pp h1 { font-size: 34px; } .in-title { font-size: 40px; } .in-card + .in-card { padding-left: 0; border-left: 0; } }

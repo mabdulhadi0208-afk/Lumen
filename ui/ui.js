@@ -1802,13 +1802,25 @@ function updateLoadbar() {
 const tcEl = $('#tabcard')
 const tcG = new SpringGroup({ o: 0, y: -6, s: 0.96 }, 'jelly', v => { tcEl.style.opacity = Math.max(0, Math.min(1, v.o)); tcEl.style.transform = `translateY(${v.y}px) scale(${v.s})` })
 let tcT = null, tcFor = null, tcShown = false, tcHideT = null
+// 4.4.24: the card raises the chrome over the page quietly. Whatever else is up, the chrome must drop back under the
+// page the moment nothing needs it any more, or macOS keeps showing stale frames of the card and of the last page.
+function overlayBusy() {
+  return !!(overlayOpen || peeking || tcShown || tgOpen || taCur || trCard.classList.contains('show') || (window.Tips && Tips.raised()))
+}
+function releaseOverlay() { if (!overlayBusy()) api.do('overlay', false) }
 function tcHide() {
   clearTimeout(tcT); tcFor = null
-  if (!tcShown) return
+  if (!tcShown && !tcEl.classList.contains('show')) return
   tcShown = false
   tcG.to({ o: 0, y: -6, s: 0.96 })
   clearTimeout(tcHideT)
-  tcHideT = setTimeout(() => { if (!tcShown) { tcEl.classList.remove('show'); if (!overlayOpen && !peeking && !taCur && !trCard.classList.contains('show') && !(window.Tips && Tips.raised())) api.do('overlay', false) } }, 220)
+  tcHideT = setTimeout(() => {
+    if (tcShown) return
+    tcEl.classList.remove('show'); tcG.set({ o: 0, y: -6, s: 0.96 })
+    releaseOverlay()
+    // watchdog: whatever was still up a moment ago, check once more that the chrome went back under the page
+    tcHideT = setTimeout(() => { if (!tcShown) releaseOverlay() }, 700)
+  }, 220)
 }
 async function tcShow(id, el) {
   const t = S.tabs.find(x => x.id === id); if (!t || (drag && drag.active)) return
@@ -1843,6 +1855,16 @@ tabsEl.addEventListener('pointerover', e => {
 tabsEl.addEventListener('pointerleave', tcHide)
 tabsEl.addEventListener('pointerdown', tcHide)
 window.addEventListener('blur', tcHide)
+// the window-drag gaps around the tabs swallow pointerleave on macOS: any pointer over the chrome or the raised
+// chrome outside the tabs, the pointer leaving the window, the tabs scrolling or another tab becoming active all put
+// the card away
+document.addEventListener('pointerover', e => { if (tcShown && !(e.target && e.target.closest && e.target.closest('#tabs'))) tcHide() }, true)
+document.documentElement.addEventListener('pointerleave', tcHide)
+$('#tablist').addEventListener('scroll', tcHide, { passive: true })
+tabsEl.addEventListener('scroll', tcHide, { passive: true })
+document.addEventListener('wheel', e => { if (tcShown) tcHide() }, { capture: true, passive: true })
+let tcActive = null
+api.on('state', s => { if (tcActive !== null && s.activeId !== tcActive && (tcShown || tcEl.classList.contains('show'))) tcHide(); tcActive = s.activeId })
 
 // glyph confetti bursting out of the check when a translation finishes
 function trConfetti() {
@@ -2051,7 +2073,7 @@ var Tips = window.Tips = (() => {
     const done = () => {
       if (shown) return
       tip.classList.remove('show')
-      if (raised) { raised = false; if (!overlayOpen && !peeking && !tcShown && !taCur && !trCard.classList.contains('show')) api.do('overlay', false) }
+      if (raised) { raised = false; releaseOverlay() }
     }
     if (now || getMotion() === 'off') { g.set({ o: 0 }); done(); return }
     g.to({ o: 0, y: tip.classList.contains('below') ? -3 : 3, s: 0.96 })

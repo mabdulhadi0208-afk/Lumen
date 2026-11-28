@@ -1064,6 +1064,11 @@ class BrowserWin {
       else if (this.win.contentView.children.includes(t.view)) { t.view.setVisible(false); this.win.contentView.removeChildView(t.view) }
     }
     if (this.overlay) this.win.contentView.addChildView(this.ui) // keep UI on top while an overlay is open
+    else {
+      // 4.4.24: with no overlay the chrome sits under every page view, always (a chrome left above the page kept
+      // showing stale frames of the hover card and of the last tab on macOS)
+      if (this.win.contentView.children.indexOf(this.ui) > 0) this.win.contentView.addChildView(this.ui, 0)
+    }
     if (this.peek) { this.win.contentView.addChildView(this.peek); this.peek.setBounds(this.peekRect()) }
     this.placeSpare()
     Nova.restack(this)
@@ -1107,7 +1112,11 @@ class BrowserWin {
 
   // quiet: raise the UI above the page without taking keyboard focus (used for hover cards)
   setOverlay(on, quiet = false) {
-    if (this.overlay === on) return
+    if (this.overlay === on) {
+      // already up quietly (a hover card) and now something needs the keyboard: hand it the focus
+      if (on && !quiet && this.quietOverlay) { this.quietOverlay = false; this.ui.webContents.focus() }
+      return
+    }
     this.overlay = on
     if (on) { this.win.contentView.addChildView(this.ui); Nova.restack(this); this.quietOverlay = quiet; if (!quiet) this.ui.webContents.focus() }
     else {
@@ -1115,6 +1124,9 @@ class BrowserWin {
       this.layout()
       if (!this.quietOverlay) { const a = this.active(); if (a && a.view) a.view.webContents.focus() }
       this.quietOverlay = false
+      // repaint both layers so nothing the raised chrome drew (the hover card, its shadow) lingers on screen
+      try { if (!this.ui.webContents.isDestroyed()) this.ui.webContents.invalidate() } catch {}
+      for (const t of [this.active(), this.splitId && this.tabs.get(this.splitId)]) try { if (t && t.view && !t.view.webContents.isDestroyed()) t.view.webContents.invalidate() } catch {}
     }
   }
 

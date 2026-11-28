@@ -23,11 +23,10 @@
 ;(function () {
   // ---- edit this list every release: it is the "New in Lumen" act of the film (only this version's changes)
   const WHATS_NEW = {
-    version: '4.4.23',
+    version: '4.4.24',
     items: [
-      { icon: 'key', text: 'Passkeys fixed: Sign in with a passkey now works in iframes, sign-in popups and pages that made their own frames' },
-      { icon: 'shield', text: 'Passkeys and passwords are never lost: a key Lumen cannot open is kept, and Always Allow plus Try again brings it back' },
-      { icon: 'check', text: 'More sites can save a passkey (RS256 and Ed25519 too), and a locked passkey offers Try again instead of a dead end' },
+      { icon: 'check', text: 'No more ghost tab previews: hovering over tabs never leaves stale copies of the preview card or a glow behind' },
+      { icon: 'shield', text: 'The page always shows the tab you are on, even right after hovering tab previews or switching tabs' },
     ],
   }
 

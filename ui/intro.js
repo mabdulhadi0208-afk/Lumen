@@ -23,10 +23,10 @@
 ;(function () {
   // ---- edit this list every release: it is the "New in Lumen" act of the film (only this version's changes)
   const WHATS_NEW = {
-    version: '4.4.24',
+    version: '4.4.25',
     items: [
-      { icon: 'check', text: 'No more ghost tab previews: hovering over tabs never leaves stale copies of the preview card or a glow behind' },
-      { icon: 'shield', text: 'The page always shows the tab you are on, even right after hovering tab previews or switching tabs' },
+      { icon: 'check', text: 'The What is new intro closes cleanly again when you press Continue, with nothing left frozen on screen' },
+      { icon: 'shield', text: 'Tab previews still never leave ghost copies or a glow behind when you hover your tabs' },
     ],
   }
 

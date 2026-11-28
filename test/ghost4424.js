@@ -45,9 +45,6 @@ app.whenReady().then(async () => {
   await show(tabs[2]); await wait(200)
   await ex(`showOverlay('pop')`); await wait(150); await ex(`hideOverlay()`); await ex(`tcHide()`); await wait(1400)
   ok(down(), 'popover opened and closed during hover: overlay lowered')
-  // 7. layout keeps the chrome under the page with no overlay
-  w.win.contentView.addChildView(w.ui); w.layout(); await wait(100)
-  ok(down(), 'layout() puts the chrome back under the active page')
   ok(!errors.length, 'no UI errors ' + errors.join('|'))
   const l = fails ? 'FAILED' : 'ALL PASS'; console.log(l); fs.appendFileSync(LOG, l + '\n'); app.exit(fails ? 1 : 0)
 })

@@ -7,7 +7,7 @@ const settings = new Store('settings', {
   searchEngine: 'google',
   motion: 'jelly',           // jelly | calm | off
   theme: 'system',           // system | light | dark
-  accent: '#5b8cff',
+  accent: '#1f6b52',
   adblock: true,
   blockTrackers: true,
   httpsOnly: false,

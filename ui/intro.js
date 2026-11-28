@@ -23,20 +23,24 @@
 ;(function () {
   // ---- edit this list every release: it is the "New in Lumen" act of the film (only this version's changes)
   const WHATS_NEW = {
-    version: '4.4.25',
+    version: '4.5.0',
     items: [
-      { icon: 'check', text: 'The What is new intro closes cleanly again when you press Continue, with nothing left frozen on screen' },
-      { icon: 'shield', text: 'Tab previews still never leave ghost copies or a glow behind when you hover your tabs' },
+      { icon: 'sparkle', text: 'A whole new monochrome look: warm paper in light, deep ink in dark, fine hairlines and big editorial titles' },
+      { icon: 'moon', text: 'A new Lumen logo: a crescent of light in a simple ring, in eight quiet tones' },
+      { icon: 'bolt', text: 'Buttons, tabs and menu rows fill with ink from wherever your pointer comes in' },
+      { icon: 'layers', text: 'Menus, popovers and the command bar are solid and calm now: no blur, no ghosting, less lag' },
+      { icon: 'download', text: 'A redesigned update card and restart screen, set like a magazine cover' },
     ],
   }
 
   const FILM_V = WHATS_NEW.version
-  const HEAD = 'ui-rounded,"SF Pro Rounded","SF Pro Display",-apple-system,system-ui,sans-serif'
+  // 4.5 Maison: the film's titles are set in the editorial serif (ui/fonts, loaded by ui/maison45.css)
+  const HEAD = '"Instrument Serif","Iowan Old Style","Palatino Linotype",Georgia,serif'
   const css = `
   #intro{--a:#5b8cff;--a2:oklch(from var(--a) calc(l - .02) c calc(h + 40));--a3:oklch(from var(--a) calc(l + .04) c calc(h + 95));--nova:linear-gradient(135deg,var(--a),var(--a2) 55%,var(--a3));
     --hi:color-mix(in oklab,var(--a) 42%,#fff);--hi3:color-mix(in oklab,var(--a3) 46%,#fff);--bar:calc(10.5vh + 6px);--gx:30%;--gy:18%;
-    position:fixed;inset:0;z-index:1000;background:#04050b;color:#eef0fb;overflow:hidden;font-family:var(--font);-webkit-app-region:no-drag;user-select:none}
-  #intro svg.defs{position:absolute;width:0;height:0;pointer-events:none}
+    position:fixed;inset:0;z-index:1000;background:#0d0c0a;color:#eef0fb;overflow:hidden;font-family:var(--font);-webkit-app-region:no-drag;user-select:none}
+  #intro *{font-synthesis-weight:none}#intro svg.defs{position:absolute;width:0;height:0;pointer-events:none}
   #intro canvas{position:absolute;inset:0;width:100%;height:100%}
   #intro .cam{position:absolute;inset:-40px;will-change:transform}
   #intro .nebw{position:absolute;inset:-15%;will-change:transform}
@@ -607,6 +611,43 @@
   /* the tour caption draws a hairline under its title */
   #intro .tourcap .hr{display:block;width:100%;max-width:320px;height:2px;margin:0 0 14px;border-radius:2px;transform-origin:0 50%;transform:scaleX(0);background:linear-gradient(90deg,var(--hi5),var(--hi),var(--hi3),transparent)}
   @media (max-width:1099px){#intro .tourcap .hr{margin:0 auto 10px}}
+
+  /* ===================================================================== 4.5 Maison: the film in noir and paper
+     No aurora, nebula, stars, bokeh, flares, light leaks or colour: deep ink, paper type, the display serif for the
+     titles, hairlines for the cards, a gold-free monochrome. The close path and timings are untouched. */
+  #intro{--a:#f4efe5;--a2:#f4efe5;--a3:#f4efe5;--nova:#f4efe5;--hi:#f4efe5;--hi3:#f4efe5;background:#0d0c0a!important;color:#f4efe5}
+  #intro .nebw,#intro .neb,#intro .nebc,#intro canvas,#intro .flare,#intro .leak,#intro .beam,#intro .ca,#intro .grain,#intro .halo,#intro .glassf,#intro .cring,#intro .art,#intro .echo,#intro .rig,#intro .drop,#intro .slabs,#intro .hud .sw,#intro .meter{display:none!important}
+  #intro .vig{background:radial-gradient(120% 90% at 50% 45%,transparent 55%,rgba(0,0,0,.45))!important}
+  #intro .bar{background:#0d0c0a!important}
+  #intro *{text-shadow:none!important;backdrop-filter:none!important;-webkit-backdrop-filter:none!important}
+  #intro .title,#intro .logo,#intro .count,#intro .wall,#intro h1,#intro h2,#intro .new b,#intro .fin .logo,#intro .speedo b,#intro .tag{font-family:"Instrument Serif",Georgia,serif!important;font-weight:400!important;letter-spacing:-.01em!important;
+    background:none!important;-webkit-background-clip:border-box!important;background-clip:border-box!important;color:#f4efe5!important;-webkit-text-fill-color:#f4efe5!important;filter:none!important}
+  #intro .kicker,#intro .wkick,#intro .fk,#intro .credit,#intro .hud .rl,#intro .hud .tcd,#intro .tourcap small{font-family:var(--font)!important;font-weight:500!important;letter-spacing:.24em!important;text-transform:uppercase;color:rgba(244,239,229,.6)!important;
+    -webkit-text-fill-color:rgba(244,239,229,.6)!important;background:none!important;box-shadow:none!important;border:0!important}
+  #intro .kicker::before,#intro .kicker::after,#intro .credit i,#intro .hud .tcd b{background:rgba(244,239,229,.4)!important;box-shadow:none!important;color:rgba(244,239,229,.6)!important}
+  #intro .hud .cm{border-color:rgba(244,239,229,.25)!important;box-shadow:none!important}
+  #intro .rule,#intro .hud .tk{background:rgba(244,239,229,.18)!important;box-shadow:none!important}
+  #intro .glass,#intro .new,#intro .nw4 > *,#intro .mw > *{background:#151411!important;background-image:none!important;box-shadow:inset 0 0 0 1px rgba(244,239,229,.14)!important;border:0!important;filter:none!important}
+  #intro .glass::before,#intro .glass::after,#intro .new::before,#intro .new::after{display:none!important}
+  #intro .glass *,#intro .new *{color:#f4efe5!important;-webkit-text-fill-color:currentColor!important}
+  #intro .glass svg,#intro .new svg{color:#f4efe5!important}
+  #intro .glass span:first-child,#intro .new .ic,#intro .new i{background:transparent!important;background-image:none!important;box-shadow:inset 0 0 0 1px rgba(244,239,229,.22)!important;filter:none!important}
+  #intro .go,#intro .btns button{background:#f4efe5!important;background-image:none!important;color:#0d0c0a!important;-webkit-text-fill-color:#0d0c0a!important;box-shadow:none!important;border:0!important;
+    font:500 14px var(--font)!important;letter-spacing:0!important;border-radius:999px!important;filter:none!important}
+  #intro .go::before,#intro .go::after,#intro .btns button::before,#intro .btns button::after{display:none!important}
+  #intro .skip{background:transparent!important;background-image:none!important;box-shadow:inset 0 0 0 1px rgba(244,239,229,.22)!important;color:rgba(244,239,229,.8)!important;font:500 11.5px var(--font)!important;filter:none!important}
+  #intro .skip::before,#intro .skip::after{display:none!important}
+  #intro .skip kbd{background:transparent!important;box-shadow:inset 0 0 0 1px rgba(244,239,229,.3)!important;color:inherit!important}
+  #intro .chrome{background:transparent!important;background-image:none!important;-webkit-text-fill-color:currentColor!important}
+  #intro .applogo,#intro .logo img,#intro img{filter:none!important;box-shadow:none!important}
+  #intro .desk,#intro .home{filter:grayscale(1) contrast(1.02)!important}
+  #intro .wipe{background:#f4efe5!important;background-image:none!important}
+  #intro .sweep::before,#intro .sweep::after{display:none!important}
+  #intro .eyebrow{font:500 10px var(--font)!important;letter-spacing:.24em!important;text-transform:uppercase;background:none!important;box-shadow:inset 0 0 0 1px rgba(244,239,229,.22)!important;color:rgba(244,239,229,.7)!important;-webkit-text-fill-color:currentColor!important}
+  #intro .bigv,#intro .new h1,#intro .fin .logo,#intro .fk + .logo{font-family:"Instrument Serif",Georgia,serif!important;font-weight:400!important;background:none!important;color:#f4efe5!important;-webkit-text-fill-color:#f4efe5!important;filter:none!important}
+  #intro .new .lede,#intro .new p{color:rgba(244,239,229,.62)!important;-webkit-text-fill-color:currentColor!important}
+  #intro .new .k{background:transparent!important;background-image:none!important;box-shadow:inset 0 0 0 1px rgba(244,239,229,.24)!important;color:#f4efe5!important;filter:none!important}
+  #intro .new .k::before,#intro .new .k::after,#intro .new .it::before,#intro .new .it::after{display:none!important}
   `
   // ------------------------------------------------------------ sound: friendly, bright and crisp, all synthesized (no files)
   // A warm major pad, bell chimes, bubbly pops and soft air. Nothing low, buzzy or ominous.
@@ -1822,7 +1863,7 @@
     const items = WHATS_NEW.items
     tween(sky, 'bokeh', .6, 1500); focus(2, 1100); leak(.6, -1, 1800)
     const V = esc(version || WHATS_NEW.version)
-    const s = scene(`<div class="new nw4"><div class="lh"><span class="eyebrow chrome">New in Lumen ${V}</span><div class="bigv">${V}</div><h1>Faster, smarter, smoother.</h1><p class="lede">${items.length} things to try first, all of them already waiting in your browser.</p></div>
+    const s = scene(`<div class="new nw4"><div class="lh"><span class="eyebrow chrome">New in Lumen ${V}</span><div class="bigv">${V}</div><h1>Calmer, quieter, faster.</h1><p class="lede">${items.length} things to try first, all of them already waiting in your browser.</p></div>
       <div class="bento">${items.map((it, i) => `<div class="it glass sweep${i === 0 ? ' hero' : ''}${i === items.length - 1 && items.length % 2 === 0 ? ' last' : ''}" style="--sd:${1.3 + i * .08}s"><div class="k">${ICONS[it.icon] || ''}</div><span>${esc(it.text)}</span><b class="no2">${String(i + 1).padStart(2, '0')}</b><i class="wmk">${ICONS[it.icon] || ''}</i></div>`).join('')}</div></div>`, 'flat')
     lensAll(s)
     // 4.4.10: a long version (4.4.10) eases down in size to fit its column, so the note cards never cover it

@@ -587,6 +587,125 @@
   @keyframes drop4422{0%{transform:translateY(-38%);opacity:0}55%{transform:translateY(6%) scaleY(.92);opacity:1}100%{transform:none;opacity:1}}
 
   @media (prefers-reduced-motion:reduce){*,*::before,*::after{animation:none !important;transition:none !important}}
+
+  /* =================================================================== Lumen 4.5: Maison
+     The update card as an editorial cover: a noir panel on the left with the new number set huge in the display serif
+     (Instrument Serif) and a gold kicker, warm paper (or deep ink) on the right with a serif title, a hairline version
+     rail, numbered notes and pill buttons that fill with colour from where the pointer comes in. No blur, no glows, no
+     aurora, no glints: one hairline and one modest shadow, so nothing can ghost. It moves once, when it has news (it
+     lands, the download fills, it finishes), and then holds still.
+     Restarting is a title card: noir from edge to edge, the number at monument size in the serif, a thin ring that
+     fills round the icon, and a hairline rail that walks through Install, Swap in and Restart. It ends in a soft fade
+     to paper light, the frame the relaunched window opens on. Only transform and opacity animate. */
+  @font-face{font-family:"Geist";src:url("fonts/geist.woff2") format("woff2");font-weight:100 900;font-display:block}
+  @font-face{font-family:"Instrument Serif";src:url("fonts/instrument-serif.woff2") format("woff2");font-weight:400;font-display:block}
+  @font-face{font-family:"Instrument Serif";src:url("fonts/instrument-serif-italic.woff2") format("woff2");font-weight:400;font-style:italic;font-display:block}
+  :root{--m-bg:#f6f3ed;--m-bg2:#eeeae1;--m-bg3:#e4ded2;--m-card:#fcfbf8;--m-fg:#15130f;--m-fg2:#5d574c;--m-fg3:#8f887b;--m-line:rgba(21,19,15,.1);--m-line2:rgba(21,19,15,.2);
+    --m-solid:#15130f;--m-on-solid:#f6f3ed;--m-noir:#15130f;--m-on-noir:#f4efe5;--m-noir2:rgba(244,239,229,.62);--m-noir-line:rgba(244,239,229,.16);--m-gold:#cfc5b2;--m-ease:cubic-bezier(.2,.8,.2,1);
+    --serif:"Instrument Serif","Iowan Old Style","Palatino Linotype",Georgia,serif;--sans:"Geist",-apple-system,BlinkMacSystemFont,"Segoe UI Variable Text","Segoe UI",system-ui,sans-serif;
+    --base:var(--m-card);--fg:var(--m-fg);--fg2:var(--m-fg2);--fg3:var(--m-fg3);--line:var(--m-line);--head:var(--serif)}
+  @media (prefers-color-scheme:dark){:root{--m-bg:#0d0c0a;--m-bg2:#1b1916;--m-bg3:#26231f;--m-card:#131210;--m-fg:#f2eee5;--m-fg2:#aba495;--m-fg3:#6f695e;--m-line:rgba(242,238,229,.1);--m-line2:rgba(242,238,229,.2);
+    --m-solid:#f2eee5;--m-on-solid:#0d0c0a;--m-noir:#1b1916}}
+  html,body{font-family:var(--sans)}
+  *,*::before,*::after{backdrop-filter:none!important;-webkit-backdrop-filter:none!important;text-shadow:none!important}
+  .card{border-radius:14px;background:var(--m-card);box-shadow:inset 0 0 0 1px var(--m-line),0 14px 34px -18px rgba(21,19,15,.45);animation:mland .6s var(--m-ease) both}
+  @media (prefers-color-scheme:dark){.card{box-shadow:inset 0 0 0 1px var(--m-line),0 14px 34px -16px rgba(0,0,0,.85)}}
+  @keyframes mland{from{transform:translateY(-8px) scale(.985);opacity:0}to{transform:none;opacity:1}}
+  .card::before,.card::after{display:none}
+  .bg,.bezel,.sheen,.kb,.edge,.pool,.wm,.plb,.porb,.tap43,.edge44,.art,.psw,.card .art,.card:not(.has-big) .art{display:none!important}
+  /* the cover */
+  .poster{background:var(--m-noir)!important;color:var(--m-on-noir);border-radius:14px 0 0 14px;box-shadow:none!important;width:188px}
+  .poster::before,.poster::after,.pin::before,.pin::after{display:none!important}
+  .error .poster{background:#3a1015!important}
+  .pin{padding:18px 18px 14px 20px}
+  .ic{background:transparent!important;box-shadow:none!important;filter:none!important}
+  .ic::before,.ic::after,.poster .ic::before,.poster .ic::after,.pv::before,.pv::after,.t::before,.t::after,.top::before,.top::after,.in::before,.in::after{display:none!important}
+  .poster .ic{filter:none!important;box-shadow:none!important}
+  .ic img{filter:none!important;box-shadow:none!important}
+  .ic .ring .bgc{stroke:var(--m-noir-line)!important}
+  .ic .ring .fg{stroke:var(--m-gold)!important;filter:none!important}
+  .pv small{font:500 9.5px var(--sans)!important;letter-spacing:.22em!important;text-transform:uppercase;color:var(--m-gold)!important;background:none!important;-webkit-text-fill-color:currentColor!important;opacity:1!important}
+  .pv small::before,.pv small::after{display:none!important}
+  .bignum,.card .bignum{position:relative!important;right:auto!important;top:auto!important;font:400 96px/.9 var(--serif)!important;letter-spacing:-.02em!important;opacity:1!important;
+    color:var(--m-on-noir)!important;background:none!important;-webkit-text-fill-color:var(--m-on-noir)!important;filter:none!important;animation:mnum .9s .12s var(--m-ease) both!important}
+  .bignum.l4{font-size:78px!important}.bignum.l5{font-size:62px!important}
+  .bignum::before,.bignum::after{display:none!important}
+  @keyframes mnum{from{transform:translateY(14px);opacity:0}}
+  .pf .lnk{color:var(--m-noir2)!important;font:400 11.5px var(--sans)!important;background:none!important;box-shadow:none!important}
+  .pf .lnk:hover{color:var(--m-on-noir)!important}
+  .chip{background:transparent!important;box-shadow:inset 0 0 0 1px var(--m-line2)!important;color:var(--m-fg2)!important;font:500 11px var(--sans)!important;-webkit-text-fill-color:currentColor!important}
+  .chip::before,.chip::after{display:none!important}
+  .pf .chip.ok{box-shadow:inset 0 0 0 1px var(--m-noir-line)!important;color:var(--m-gold)!important}
+  /* the page */
+  .in{background:none!important}
+  .t .kick{font:500 9.5px var(--sans)!important;letter-spacing:.2em!important;text-transform:uppercase;color:var(--m-fg3)!important;background:none!important;-webkit-text-fill-color:currentColor!important}
+  .t .kick::before,.t .kick::after{display:none!important}
+  .error .t .kick{color:#b8323f!important}
+  .t b,#title{font-family:var(--serif)!important;font-weight:400!important;font-size:31px;letter-spacing:-.005em!important;line-height:1.05!important;color:var(--m-fg)!important;background:none!important;-webkit-text-fill-color:var(--m-fg)!important}
+  .t small{color:var(--m-fg2)!important;font:400 12px var(--sans)!important}
+  .gl,.x,.ver,.np{background:transparent!important;box-shadow:none!important;filter:none!important}
+  .gl::before,.gl::after,.x::before,.x::after,.ver::before,.ver::after,.np::before,.np::after{display:none!important}
+  .x{color:var(--m-fg2)!important;box-shadow:inset 0 0 0 1px var(--m-line)!important;border-radius:999px!important}
+  .x:hover{color:var(--m-fg)!important;box-shadow:inset 0 0 0 1px var(--m-line2)!important}
+  .ver{border-top:1px solid var(--m-line)!important;border-bottom:1px solid var(--m-line)!important;border-radius:0!important}
+  .ver .chip:last-of-type,#to{background:var(--m-solid)!important;color:var(--m-on-solid)!important;box-shadow:none!important}
+  .bar{background:var(--m-bg3)!important;box-shadow:none!important;height:3px!important;border-radius:3px!important;overflow:hidden}
+  .bar::before,.bar::after,.bar i::before,.bar i::after{display:none!important}
+  .bar i,#fill{background:var(--m-fg)!important;box-shadow:none!important;filter:none!important}
+  .arrow{color:var(--m-fg3)!important}
+  .nh,#nh{font:500 9.5px var(--sans)!important;letter-spacing:.2em!important;text-transform:uppercase;color:var(--m-fg3)!important;background:none!important;-webkit-text-fill-color:currentColor!important}
+  .nh::before,.nh::after{display:none!important}
+  .nh em{font:italic 400 13px var(--serif)!important;letter-spacing:0!important;text-transform:none;color:var(--m-fg3)!important}
+  .notes{counter-reset:mn}
+  .notes li{counter-increment:mn;color:var(--m-fg)!important;font:400 12.5px var(--sans)!important;background:none!important;box-shadow:inset 0 -1px 0 var(--m-line)!important;border-radius:0!important;transition:transform .5s var(--m-ease)!important;animation:mli .6s var(--m-ease) both}
+  .notes li:hover{background:none!important}
+  .notes li::before{content:counter(mn,decimal-leading-zero)!important;background:none!important;box-shadow:none!important;color:var(--m-fg3)!important;font:italic 400 14px/1 var(--serif)!important;
+    display:grid!important;place-items:center!important;animation:none!important;-webkit-text-fill-color:currentColor!important;border:0!important}
+  .notes li::after{display:none!important}
+  @keyframes mli{from{transform:translateX(-8px);opacity:0}}
+  .meta,#m1,#m2,.lft{color:var(--m-fg3)!important;font-family:var(--sans)!important}
+  /* buttons: an ink pill and a hairline pill; colour flows up into them from the pointer */
+  .btn,.row .lnk{position:relative;overflow:hidden;isolation:isolate;border-radius:999px!important;font:500 13px var(--sans)!important;letter-spacing:0!important;filter:none!important;animation:none!important;
+    transition:color .42s var(--m-ease),box-shadow .42s var(--m-ease)!important}
+  .btn{background:var(--m-solid)!important;color:var(--m-on-solid)!important;box-shadow:none!important}
+  .row .lnk{background:transparent!important;color:var(--m-fg)!important;box-shadow:inset 0 0 0 1px var(--m-line2)!important}
+  .btn::after,.row .lnk::after{display:none!important}
+  .btn::before,.row .lnk::before{content:""!important;display:block!important;position:absolute!important;z-index:-1!important;left:var(--fx,50%)!important;top:var(--fy,100%)!important;inset:auto!important;width:260%!important;height:auto!important;aspect-ratio:1;min-width:120px;
+    border-radius:50%!important;pointer-events:none;background:var(--accent)!important;opacity:1!important;filter:none!important;mask:none!important;-webkit-mask:none!important;animation:none!important;transform:translate(-50%,-50%) scale(0)!important;transition:transform .42s var(--m-ease)!important}
+  .btn::before{left:var(--fx,50%)!important;top:var(--fy,100%)!important}
+  .row .lnk::before{background:var(--m-solid)!important;left:var(--fx,50%)!important;top:var(--fy,100%)!important}
+  .btn:hover::before,.row .lnk:hover::before{transform:translate(-50%,-50%) scale(1)!important}
+  .btn:hover{color:#fff!important}
+  .row .lnk:hover{color:var(--m-on-solid)!important;box-shadow:inset 0 0 0 1px var(--m-solid)!important}
+  .error .btn{background:#a8323f!important;color:#fff!important}
+  #fx b{background:var(--m-gold)!important;box-shadow:none!important}
+  /* the restart title card */
+  .curtain{background:var(--m-noir)!important;color:var(--m-on-noir)!important}
+  @media (prefers-color-scheme:dark){.curtain{background:#0b0a08!important}}
+  .pglow,.cpool,.cart,.curtain::before,.curtain::after,.curtain .neb2,.curtain .beam41,.curtain .rays,.curtain .streak,.curtain .rings,.curtain .ana,.curtain .pt,.chud .cmk,.chud .sw,.crown,.cwipe{display:none!important}
+  .chud .sl,.ccred{font:500 10px var(--sans)!important;letter-spacing:.22em!important;text-transform:uppercase;color:var(--m-noir2)!important;background:none!important;-webkit-text-fill-color:currentColor!important}
+  .ccred i,.chud .sl::before{display:none!important}
+  .corb{background:transparent!important;box-shadow:none!important;filter:none!important}
+  .corb::before,.corb::after{display:none!important}
+  .corb .bgc{stroke:var(--m-noir-line)!important;stroke-width:1!important}
+  .corb .fg{stroke:var(--m-gold)!important;stroke-width:1.5!important;filter:none!important}
+  .corb img{filter:none!important;box-shadow:none!important}
+  .ck,#ck{font:500 10px var(--sans)!important;letter-spacing:.24em!important;text-transform:uppercase;color:var(--m-gold)!important;background:none!important;-webkit-text-fill-color:currentColor!important}
+  .cbig,#cbig{font:400 clamp(120px,36vh,380px)/.86 var(--serif)!important;letter-spacing:-.02em!important;background:none!important;color:var(--m-on-noir)!important;-webkit-text-fill-color:var(--m-on-noir)!important;filter:none!important}
+  .cbig::before,.cbig::after{display:none!important}
+  .curtain b,#ctitle{font:italic 400 34px/1.1 var(--serif)!important;letter-spacing:0!important;color:var(--m-noir2)!important;background:none!important;-webkit-text-fill-color:currentColor!important}
+  .curtain small{color:var(--m-noir2)!important;font-family:var(--sans)!important}
+  .cv .chip{color:var(--m-noir2)!important;box-shadow:inset 0 0 0 1px var(--m-noir-line)!important}
+  .cv .chip:last-of-type{color:var(--m-noir)!important;background:var(--m-on-noir)!important;box-shadow:none!important}
+  .rail{border-top:1px solid var(--m-noir-line)!important;background:none!important;box-shadow:none!important}
+  .rail::before,.rail::after{display:none!important}
+  .rail .rl{background:none!important;box-shadow:none!important}
+  .rail .rl i,#rfill{background:var(--m-gold)!important;box-shadow:none!important;filter:none!important}
+  .rail span{font:500 10px var(--sans)!important;letter-spacing:.2em!important;text-transform:uppercase;color:var(--m-noir2)!important;opacity:.55}
+  .rail span.on{color:var(--m-on-noir)!important;opacity:1}
+  .rail span::before,.rail span::after{background:var(--m-gold)!important;box-shadow:none!important}
+  .curtain .flash{background:#f6f3ed!important}
+  @media (prefers-reduced-motion:reduce){.card,.bignum,.notes li,.btn::before,.row .lnk::before{animation:none!important;transition:none!important}}
 </style></head><body>
 <svg class="defs" aria-hidden="true"><defs id="defs"><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" style="stop-color:var(--accent)"/><stop offset=".55" style="stop-color:var(--a2)"/><stop offset="1" style="stop-color:var(--a3)"/></linearGradient></defs></svg>
 <div class="card" id="card">
@@ -626,6 +745,10 @@
       <div class="cv"><span class="chip" id="dfrom"></span><svg class="arrow" viewBox="0 0 16 16" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8h9m-3.5-3.5L12 8l-3.5 3.5"/></svg><span class="chip v" id="dto"></span></div></div></div>
   <div class="rail" id="rail"><div class="rl"><i id="rfill"></i></div><span class="on">Install</span><span>Swap in</span><span>Restart</span></div>
   <i class="flash"></i><i class="ana"></i><i class="pt"></i></div>
+<script>
+// 4.5: the flow fill on the buttons grows from where the pointer came in, and leaves where it went out
+for (const ev of ['pointerover', 'pointerout']) document.addEventListener(ev, e => { const b = e.target.closest && e.target.closest('.btn, .row .lnk'); if (!b || (e.relatedTarget && b.contains(e.relatedTarget))) return; const r = b.getBoundingClientRect(); b.style.setProperty('--fx', Math.round(e.clientX - r.left) + 'px'); b.style.setProperty('--fy', Math.round(e.clientY - r.top) + 'px') }, { passive: true })
+</script>
 <script>
 const $ = s => document.querySelector(s), api = window.lumenUpdate
 const fmt = b => (b / 1048576).toFixed(1) + ' MB', secs = s => s >= 90 ? Math.round(s / 60) + ' min' : Math.max(1, Math.round(s)) + ' s'

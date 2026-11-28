@@ -1,0 +1,394 @@
+/* =====================================================================
+   Lumen 4.5: Maison. The browser chrome in the language of Drop 1.6 (docs/NOVA.md, "Maison" section).
+   Linked last, so it is the top layer over ui.css, chrome41.css, sweep41.css, ai41.css and agent43.css.
+
+   Warm paper in light, deep ink in dark, hairlines instead of glass, Geist for the interface and Instrument Serif for
+   the big words. The liquid glass is gone from the chrome: no backdrop-filter, no caustics, no glints, no big glows,
+   at most one modest shadow on things that float. That is what stops the ghosting on macOS (a transparent view raised
+   over a page cannot leave a blurred frame behind if nothing is blurred) and it is cheaper to draw.
+
+   Motion: the flow hover (a circle of a second colour grows from where the pointer came in, the label flips colour
+   with it), springs from ui/spring.js and ui/jelly.js, and short transform and opacity transitions. Nothing loops
+   except loading indicators. Still under reduced motion and Motion Off.
+   No emoji anywhere.
+   ===================================================================== */
+@font-face { font-family: "Geist"; src: url("fonts/geist.woff2") format("woff2"); font-weight: 100 900; font-display: swap; unicode-range: U+0020-007E, U+00A0-00FF, U+0131, U+0152-0153, U+02C6, U+02DA, U+02DC, U+2013-2014, U+2018-201E, U+2020-2022, U+2026, U+2030, U+2032-2033, U+2039-203A, U+2044, U+20AC, U+2122, U+2212; }
+@font-face { font-family: "Geist"; src: url("fonts/geist-ext.woff2") format("woff2"); font-weight: 100 900; font-display: swap; unicode-range: U+0100-024F, U+20A0-20AB, U+20AD-20CF; }
+@font-face { font-family: "Instrument Serif"; src: url("fonts/instrument-serif.woff2") format("woff2"); font-weight: 400; font-display: swap; }
+@font-face { font-family: "Instrument Serif"; src: url("fonts/instrument-serif-italic.woff2") format("woff2"); font-weight: 400; font-style: italic; font-display: swap; }
+
+/* ------------------------------------------------------------- tokens: paper and ink */
+:root {
+  --m-bg: #f6f3ed; --m-bg2: #eeeae1; --m-bg3: #e4ded2; --m-card: #fcfbf8;
+  --m-fg: #15130f; --m-fg2: #5d574c; --m-fg3: #8f887b;
+  --m-line: rgba(21, 19, 15, .1); --m-line2: rgba(21, 19, 15, .2); --m-tint: rgba(21, 19, 15, .055);
+  --m-solid: #15130f; --m-on-solid: #f6f3ed;
+  --m-float: 0 18px 44px -22px rgba(21, 19, 15, .42);
+  --m-ease: cubic-bezier(.2, .8, .2, 1); --flow-t: .42s;
+  --font: "Geist", -apple-system, BlinkMacSystemFont, "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif;
+  --display: "Instrument Serif", "Iowan Old Style", "Palatino Linotype", Georgia, serif;
+  /* the old tokens, pointed at paper so every older layer that still reads them draws flat and calm */
+  --bg: var(--m-bg); --bg-solid: var(--m-bg); --porcelain: var(--m-bg);
+  --fg: var(--m-fg); --fg2: var(--m-fg2); --fg3: var(--m-fg3);
+  --hover: var(--m-tint); --press: rgba(21, 19, 15, .09);
+  --glass: var(--m-card); --glass-hi: var(--m-card); --menu: var(--m-card); --card: var(--m-card); --card-solid: var(--m-card); --pill: var(--m-card);
+  --line: var(--m-line);
+  --spec: 0 0 0 0 transparent; --halo: 0 0 0 3px color-mix(in srgb, var(--accent) 22%, transparent);
+  --shadow: 0 1px 2px rgba(21, 19, 15, .06); --shadow-lg: var(--m-float);
+  --nova: var(--accent); --grad: var(--accent);
+  --blur: none;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --m-bg: #0d0c0a; --m-bg2: #161512; --m-bg3: #211f1b; --m-card: #151411;
+    --m-fg: #f2eee5; --m-fg2: #aba495; --m-fg3: #6f695e;
+    --m-line: rgba(242, 238, 229, .1); --m-line2: rgba(242, 238, 229, .2); --m-tint: rgba(242, 238, 229, .07);
+    --m-solid: #f2eee5; --m-on-solid: #0d0c0a;
+    --m-float: 0 18px 44px -20px rgba(0, 0, 0, .85);
+    --press: rgba(242, 238, 229, .1);
+    --shadow: 0 1px 2px rgba(0, 0, 0, .4);
+  }
+}
+/* a private window keeps its own colour, in the same calm material */
+body.incognito {
+  --m-bg: #17121f; --m-bg2: #1f1829; --m-bg3: #2a2136; --m-card: #1d1727;
+  --m-fg: #f1ecf8; --m-fg2: #b3a8c4; --m-fg3: #7c7090;
+  --m-line: rgba(241, 236, 248, .11); --m-line2: rgba(241, 236, 248, .22); --m-tint: rgba(241, 236, 248, .07);
+  --m-solid: #f1ecf8; --m-on-solid: #17121f;
+  --bg: var(--m-bg); --bg-solid: var(--m-bg); --fg: var(--m-fg); --fg2: var(--m-fg2); --fg3: var(--m-fg3); --line: var(--m-line);
+  --glass: var(--m-card); --glass-hi: var(--m-card); --menu: var(--m-card); --card: var(--m-card); --card-solid: var(--m-card); --pill: var(--m-card);
+  color-scheme: dark;
+}
+
+html, body { font-family: var(--font); color: var(--m-fg); -webkit-font-smoothing: antialiased; }
+button, input, textarea, select { font-family: var(--font); }
+
+/* ------------------------------------------------------------- no glass, no glow, nothing looping */
+:where(#app, #overlay, #toast, #tabgrid, #trcard, #trask) *, :where(#app, #overlay, #toast, #tabgrid, #trcard, #trask) *::before, :where(#app, #overlay, #toast, #tabgrid, #trcard, #trask) *::after,
+:where(#app, #overlay, #toast, #tabgrid, #trcard, #trask) {
+  backdrop-filter: none !important; -webkit-backdrop-filter: none !important; text-shadow: none !important;
+  animation-iteration-count: 1 !important;
+}
+/* only loading indicators keep going */
+.spinner, #loadbar i, #loadbar i::before, .ai-dots i, .a4k .ai-dots i, #aipanel.busy .a4-top .a4-orb svg, #aipanel.busy .ai-head .ai-mark,
+#aipanel .ai-msg.agent:not([data-state]) .ag-orb svg, #aipanel .ag-step[data-state="run"] .ag-s, .tr-bar b, .bar i::after { animation-iteration-count: infinite !important; }
+/* the old atmosphere: the nebula, star dust, auroras, grain, motes, glints and caustics */
+#content-shadow, .gr41, .mt41, .tr-pool, .ta-pool, .ppool, .hb, .tr-aurora, .tr-scan, .tr-sparks, .tr-halo, .ta-glow, .tr-wm, .ta-wm { display: none !important; }
+body.toplayout #sidebar::before, body.toplayout #sidebar::after, #sidebar::before, #sidebar::after { display: none !important; }
+
+/* ------------------------------------------------------------- the window and the page frame */
+/* the paper behind the chrome is #nova-bg, which ui.js cuts a page-shaped hole in, so it never covers the page */
+#nova-bg { background: var(--m-bg) !important; }
+#nova-bg::before, #nova-bg::after { display: none !important; }
+#themebg:not([style*="background"]) { display: none; }
+#sidebar { background: var(--m-bg) !important; box-shadow: none !important; border: 0 !important; }
+body:not(.toplayout) #sidebar { box-shadow: inset -1px 0 0 var(--m-line) !important; }
+body.toplayout #sidebar { box-shadow: inset 0 -1px 0 var(--m-line) !important; }
+
+/* every floating surface: solid paper or ink, one hairline, one modest shadow, no rims */
+.urlbar, .navbtns, .bottomrow, .pill, .popover, .cmdbar, #findbar, #toast, #tabcard, .peekbar, #aipanel, .prompt, .nowplaying,
+.wincontrols, .extbar.has, .hoverurl, .tg-search, .tr-box, #trask, .pins .pin.active {
+  background: var(--m-card) !important; background-image: none !important;
+  border: 0 !important; box-shadow: inset 0 0 0 1px var(--m-line) !important; filter: none !important;
+}
+.urlbar::before, .navbtns::before, .bottomrow::before, .pill::before, .popover::before, .cmdbar::before, #findbar::before, #toast::before, #tabcard::before, .peekbar::before,
+#aipanel::before, .prompt::before, .nowplaying::before, .wincontrols::before, .extbar.has::before, .hoverurl::before, .tg-search::before, .tr-box::before, #trask::before,
+.urlbar::after, .navbtns::after, .bottomrow::after, .pill::after, .popover::after, .cmdbar::after, #findbar::after, #toast::after, #tabcard::after, .peekbar::after,
+#aipanel::after, .prompt::after, .nowplaying::after, .wincontrols::after, .extbar.has::after, .hoverurl::after, .tg-search::after, .tr-box::after, #trask::after { display: none !important; }
+.popover, .cmdbar, #toast, #tabcard, #findbar, .peekbar, .tr-box, #trask, .prompt, .hoverurl { box-shadow: inset 0 0 0 1px var(--m-line), var(--m-float) !important; }
+/* the toolbar groups sit flat on the paper: no capsules round the nav buttons and the right-hand buttons */
+.navbtns, .bottomrow, .wincontrols { background: transparent !important; box-shadow: none !important; }
+
+/* ------------------------------------------------------------- the address bar: a quiet field with a hairline */
+.urlbar { background: var(--m-bg2) !important; box-shadow: inset 0 0 0 1px transparent !important; border-radius: 999px !important;
+  transition: box-shadow .35s var(--m-ease), background-color .35s var(--m-ease) !important; }
+.urlbar:hover { box-shadow: inset 0 0 0 1px var(--m-line2) !important; }
+.urlbar.focus, .urlbar:focus-within { background: var(--m-card) !important; box-shadow: inset 0 0 0 1px var(--m-fg) !important; }
+.urltext { font: 400 13.5px/1 var(--font) !important; letter-spacing: 0; mask-image: none !important; -webkit-mask-image: none !important; }
+.urltext .host, .urltext:not(.empty) .host, body.toplayout .urltext:not(.empty) .host, body.incognito.toplayout .urltext:not(.empty) .host {
+  background: none !important; box-shadow: none !important; padding: 0 !important; margin: 0 !important; border-radius: 0 !important; font: 500 13.5px/22px var(--font) !important; letter-spacing: 0 !important; color: var(--m-fg) !important; font-weight: 500 !important; -webkit-text-fill-color: currentColor !important; }
+.urltext .path { color: var(--m-fg3) !important; }
+.urltext.empty .host { color: var(--m-fg3) !important; font-weight: 400 !important; }
+.uhint { color: var(--m-fg3) !important; }
+.uhint kbd, .urlbar kbd { background: transparent !important; box-shadow: inset 0 0 0 1px var(--m-line2) !important; color: var(--m-fg2) !important; font: 500 10.5px var(--font) !important; }
+#btn-site { background: transparent !important; box-shadow: none !important; color: var(--m-fg2) !important; }
+#btn-site::before, #btn-site::after { display: none !important; }
+#btn-site svg { color: currentColor; }
+.shield, .readpill, .privchip { background: transparent !important; box-shadow: inset 0 0 0 1px var(--m-line) !important; color: var(--m-fg2) !important; font: 500 11px var(--font) !important; letter-spacing: .02em; }
+
+/* ------------------------------------------------------------- the flow hover
+   ui.js sets --fx and --fy where the pointer comes in and goes out; the circle grows from there. It sits under the
+   label in the element's own stacking context, so icons and text sit above it and flip colour with it. */
+.ib, .newtab, .tab, .popover .item, .res, .qa, .tg-close, .tg-x, .ta-btn, .tr-btn, .trm-go, .mm-tile, .clip, .bm, .pin, .update, #tabgrid .tg-card .tg-x,
+.prompt .btn, .popover .btn, #aipanel button.a4-chip, .np-main, #toast button {
+  isolation: isolate; overflow: hidden;
+  --flow: var(--m-tint); --flow-fg: var(--m-fg);
+  transition: color var(--flow-t) var(--m-ease), box-shadow var(--flow-t) var(--m-ease);
+}
+.ib::before, .newtab::before, .tab::before, .popover .item::before, .res::before, .qa::before, .tg-close::before, .ta-btn::before, .tr-btn::before, .trm-go::before, .mm-tile::before,
+.clip::before, .bm::before, .pin::before, .update::before, .prompt .btn::before, .popover .btn::before, .np-main::before, #toast button::before {
+  all: initial !important; content: "" !important; display: block !important; position: absolute !important; z-index: -1 !important; left: var(--fx, 50%) !important; top: var(--fy, 100%) !important;
+  width: 260% !important; height: auto !important; aspect-ratio: 1 !important; min-width: 90px !important; border-radius: 50% !important; pointer-events: none !important;
+  background: var(--flow) !important; transform: translate(-50%, -50%) scale(0) !important; transition: transform var(--flow-t) var(--m-ease) !important;
+}
+.ib:hover::before, .newtab:hover::before, .tab:hover::before, .popover .item:hover::before, .res:hover::before, .res.sel::before, .qa:hover::before, .tg-close:hover::before, .ta-btn:hover::before,
+.tr-btn:hover::before, .trm-go:hover::before, .mm-tile:hover::before, .clip:hover::before, .clip.sel::before, .bm:hover::before, .pin:hover::before, .update:hover::before,
+.prompt .btn:hover::before, .popover .btn:hover::before, .np-main:hover::before, #toast button:hover::before {
+  transform: translate(-50%, -50%) scale(1) !important; will-change: transform;
+}
+.ib:hover, .newtab:hover, .tab:hover, .popover .item:hover, .res:hover, .res.sel, .qa:hover, .tg-close:hover, .ta-btn:hover, .tr-btn:hover, .trm-go:hover, .mm-tile:hover, .clip:hover, .clip.sel,
+.bm:hover, .pin:hover, .update:hover, .prompt .btn:hover, .popover .btn:hover, .np-main:hover, #toast button:hover { color: var(--flow-fg) !important; }
+.ib:hover svg, .newtab:hover svg, .popover .item:hover svg, .res:hover svg, .res.sel svg, .qa:hover svg { color: inherit; }
+/* the circle needs a positioned box; tabs, pins and the dock's + are already placed absolutely by their springs */
+.ib, .update, .popover .item, .qa, .bm, .np-main, .tg-close, .ta-btn, .tr-btn, .trm-go, .mm-tile, .prompt .btn, .popover .btn, #toast button { position: relative; }
+/* which colour flows into what */
+.newtab, .update, .ta-btn.primary, .prompt .btn.primary, .popover .btn.primary, .trm-go { --flow: var(--accent); --flow-fg: #fff; }
+.popover .item, .res, .qa, .clip, .mm-tile, .ta-btn, .tr-btn, .prompt .btn, .popover .btn, .tg-close, #toast button { --flow: var(--m-solid); --flow-fg: var(--m-on-solid); }
+.popover .item.danger { --flow: #a8323f; --flow-fg: #fff; }
+.tab, .bm, .pin, .np-main { --flow: var(--m-tint); --flow-fg: var(--m-fg); }
+/* the keyboard selection in the command bar and the clipboard list is the same ink, already flowed in */
+.res.sel, .clip.sel { --fx: 0px; --fy: 50%; }
+.res:hover .ru, .res.sel .ru, .res:hover .rk, .res.sel .rk, .popover .item:hover .sub, .popover .item:hover small, .clip:hover .clip-m, .clip.sel .clip-m { color: color-mix(in srgb, var(--flow-fg) 62%, transparent) !important; }
+
+/* ------------------------------------------------------------- icon buttons */
+.ib { background: transparent !important; box-shadow: none !important; border-radius: 999px !important; color: var(--m-fg2) !important; }
+.ib::after { display: none !important; }
+.ib:hover { color: var(--m-fg) !important; }
+.ib:disabled, .ib.off, .ib[disabled] { color: var(--m-fg3) !important; opacity: .55; }
+.ib:disabled::before, .ib[disabled]::before { display: none !important; }
+.ib.active, .ib.on { color: var(--accent) !important; }
+.ib svg { filter: none !important; }
+#btn-downloads .ring { overflow: visible; }
+
+/* ------------------------------------------------------------- tabs: type on paper; the one in front is a card */
+body.toplayout .tablist, .tablist { background: transparent !important; box-shadow: none !important; border: 0 !important; }
+body.toplayout .tablist::before, body.toplayout .tablist::after { display: none !important; }
+.tab { background: transparent !important; box-shadow: none !important; border: 0 !important; border-radius: 10px !important; color: var(--m-fg2) !important; }
+.tab::after { display: none !important; }
+.tab .title { font: 400 12.5px/1.2 var(--font) !important; letter-spacing: 0 !important; color: inherit !important; -webkit-text-fill-color: currentColor !important; background: none !important; }
+.tab.active, .tab.active:hover { color: var(--m-fg) !important; }
+.tab.active .title { font-weight: 500 !important; }
+.tab.active::before { display: none !important; }
+.pill { background: var(--m-card) !important; border-radius: 10px !important; box-shadow: inset 0 0 0 1px var(--m-line), 0 1px 2px rgba(21, 19, 15, .06) !important; }
+.tab .x, .tab .add, .tab .audio, .tab .rl { background: transparent !important; box-shadow: none !important; color: var(--m-fg3) !important; border-radius: 999px !important; transition: background-color .25s var(--m-ease), color .25s var(--m-ease) !important; }
+.tab .x:hover, .tab .add:hover, .tab .audio:hover, .tab .rl:hover { background: var(--m-tint) !important; color: var(--m-fg) !important; }
+.tab .icon, .tab .fav { box-shadow: none !important; filter: none !important; }
+.tab .icon::before, .tab .icon::after { display: none !important; }
+.tab.totop .icon::after { display: block !important; background: var(--m-fg3) !important; }
+.fav.lf { background: var(--m-bg3) !important; color: var(--m-fg) !important; box-shadow: none !important; font-family: var(--font) !important; font-weight: 600 !important; }
+.fav.lf::before, .fav.lf::after { display: none !important; }
+.spinner { background: none !important; border: 1.5px solid var(--m-line2) !important; border-top-color: var(--m-fg) !important; border-radius: 50% !important; padding: 0 !important; mask: none !important; -webkit-mask: none !important; inset: -3px !important; }
+.split-badge { background: var(--m-fg) !important; color: var(--m-bg) !important; box-shadow: none !important; font: 600 9px var(--font) !important; letter-spacing: .1em; }
+.tab .eq i, .np-eq i { background: var(--m-fg2) !important; }
+.tab.hung { background: color-mix(in srgb, #a8742a 12%, transparent) !important; }
+/* the new tab button: ink on paper; the accent flows in */
+.newtab { background: transparent !important; box-shadow: inset 0 0 0 1px var(--m-line2) !important; color: var(--m-fg) !important; font: 500 13px var(--font) !important; }
+.newtab::after { display: none !important; }
+.newtab .plus, .newtab .plus svg { background: none !important; box-shadow: none !important; color: inherit !important; filter: none !important; }
+.newtab kbd { background: transparent !important; box-shadow: inset 0 0 0 1px var(--m-line) !important; color: inherit !important; opacity: .7; }
+body.toplayout #plusdock > .newtab { border-radius: 999px !important; }
+
+/* pinned tabs, bookmarks, groups */
+.pin { background: var(--m-bg2) !important; box-shadow: none !important; border-radius: 10px !important; }
+.pins .pin.active { background: var(--m-card) !important; box-shadow: inset 0 0 0 1px var(--m-fg) !important; }
+.pin::after { display: none !important; }
+.bm { background: transparent !important; box-shadow: none !important; color: var(--m-fg2) !important; font: 400 12px var(--font) !important; border-radius: 999px !important; }
+.gn, .tab-group, .grp { font-family: var(--font) !important; }
+
+/* ------------------------------------------------------------- restart to update: a calm ink pill, still */
+.update { background: var(--m-solid) !important; background-image: none !important; color: var(--m-on-solid) !important; box-shadow: none !important; animation: none !important;
+  font: 500 12px var(--font) !important; letter-spacing: .01em; border-radius: 999px !important; }
+.update::after { display: none !important; }
+.update .up-orb { background: transparent !important; box-shadow: none !important; }
+.update .up-orb svg { animation: none !important; }
+
+/* ------------------------------------------------------------- loading bar: a hairline that fills */
+#loadbar i { background: var(--m-fg) !important; box-shadow: none !important; height: 2px !important; }
+#loadbar i::before { background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--m-bg) 70%, transparent), transparent) !important; }
+
+/* ------------------------------------------------------------- the command bar (Cmd K): an editorial sheet */
+.scrim, .tr-scrim { background: color-mix(in srgb, var(--m-bg) 62%, transparent) !important; backdrop-filter: none !important; }
+@media (prefers-color-scheme: dark) { .scrim, .tr-scrim { background: rgba(0, 0, 0, .55) !important; } }
+/* the tab grid is a page of its own: solid paper (its opacity springs in from script) */
+.tg-scrim { background: var(--m-bg) !important; backdrop-filter: none !important; }
+#pageglass { display: none !important; }
+.cmdbar { border-radius: 14px !important; background: var(--m-bg) !important; overflow: hidden; }
+.cmdinput { background: transparent !important; background-image: none !important; box-shadow: inset 0 -1px 0 var(--m-line) !important; border-radius: 0 !important; margin: 0 !important; }
+.cmdinput::before, .cmdinput::after { display: none !important; }
+.cmdinput input, #cmd-input { font: 400 30px/1.15 var(--display) !important; letter-spacing: -.005em !important; color: var(--m-fg) !important; -webkit-text-fill-color: currentColor !important; background: none !important; }
+#cmd-input::placeholder { color: var(--m-fg3) !important; -webkit-text-fill-color: var(--m-fg3) !important; font-style: italic; }
+.cmdicon { background: transparent !important; box-shadow: none !important; color: var(--m-fg2) !important; }
+.cmdicon::before, .cmdicon::after { display: none !important; }
+.cmdicon svg { color: currentColor !important; filter: none !important; }
+.cmdinput kbd, .cmdbar kbd { background: transparent !important; box-shadow: inset 0 0 0 1px var(--m-line2) !important; color: var(--m-fg2) !important; font: 500 10.5px var(--font) !important; border-radius: 5px !important; }
+.cmdquick { gap: 0 !important; border-bottom: 1px solid var(--m-line); padding: 0 !important; margin: 0 !important; background: none !important; }
+.qa { background: transparent !important; box-shadow: none !important; border-radius: 0 !important; color: var(--m-fg) !important; font: 500 12px var(--font) !important; border-right: 1px solid var(--m-line) !important; }
+.qa:last-child { border-right: 0 !important; }
+.qa::after { display: none !important; }
+.qa span { background: transparent !important; box-shadow: none !important; color: inherit !important; filter: none !important; }
+.qa span::before, .qa span::after { display: none !important; }
+.qa svg { color: currentColor !important; stroke: currentColor; }
+.cmdresults .sec { font: 500 10px var(--font) !important; letter-spacing: .16em !important; text-transform: uppercase; color: var(--m-fg3) !important; background: none !important; -webkit-text-fill-color: currentColor !important; }
+.cmdresults .sec::before { display: none !important; }
+.cmdresults .sec::after { background: var(--m-line) !important; }
+.res { background: transparent !important; background-image: none !important; box-shadow: none !important; border-radius: 8px !important; color: var(--m-fg) !important; }
+.res::after { display: none !important; }
+.res .rt { font: 400 14px var(--font) !important; color: inherit !important; -webkit-text-fill-color: currentColor !important; }
+.res .ru { color: var(--m-fg3) !important; font-size: 12px !important; }
+.res .ri { background: var(--m-bg2) !important; box-shadow: none !important; color: var(--m-fg2) !important; }
+.res .ri::before, .res .ri::after { display: none !important; }
+.res.sel .ri, .res:hover .ri { background: color-mix(in srgb, var(--flow-fg) 14%, transparent) !important; color: inherit !important; }
+.res .rk { background: transparent !important; box-shadow: inset 0 0 0 1px color-mix(in srgb, currentColor 25%, transparent) !important; color: inherit !important; }
+.cmdfoot { background: var(--m-bg2) !important; border-top: 1px solid var(--m-line) !important; color: var(--m-fg3) !important; font: 400 11.5px var(--font) !important; }
+.cmdbrand { font: 400 16px var(--display) !important; background: none !important; -webkit-text-fill-color: var(--m-fg) !important; color: var(--m-fg) !important; letter-spacing: 0 !important; }
+
+/* ------------------------------------------------------------- popovers and the main menu */
+.popover { border-radius: 14px !important; color: var(--m-fg) !important; }
+.popover .chero, .chero { background: var(--m-solid) !important; background-image: none !important; color: var(--m-on-solid) !important; box-shadow: none !important; border-radius: 10px !important; }
+.chero::before, .chero::after { display: none !important; }
+.chero * { -webkit-text-fill-color: currentColor !important; }
+.chero b, .chero .mm-title, .chero h3, .chero .title { font-family: var(--display) !important; font-weight: 400 !important; letter-spacing: 0 !important; }
+.chero .hero-ic, .chero .sc-orb, .chero .em-orb, .mm-logo { background: transparent !important; box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--m-on-solid) 25%, transparent) !important; animation: none !important; filter: none !important; }
+.chero .hart, .hart { display: none !important; }
+.mm-zoom { background: var(--m-bg2) !important; box-shadow: none !important; border-radius: 999px !important; }
+.mm-zoom b, .mm-zoom .zv, .mm-zoom span { background: transparent !important; color: var(--m-fg) !important; box-shadow: none !important; }
+.mm-label::before, .sc-label::before { display: none !important; }
+.mm-title { font: 400 26px/1.05 var(--display) !important; }
+.mm-sub { color: color-mix(in srgb, currentColor 65%, transparent) !important; }
+.mm-card, .popover .grp { background: transparent !important; box-shadow: none !important; border-top: 1px solid var(--m-line); border-radius: 0 !important; }
+.mm-card::before, .mm-card::after { display: none !important; }
+.mm-label, .sc-label { font: 500 10px var(--font) !important; letter-spacing: .16em !important; text-transform: uppercase; color: var(--m-fg3) !important; }
+.popover .item { background: transparent !important; box-shadow: none !important; border-radius: 8px !important; color: var(--m-fg) !important; font: 400 13px var(--font) !important; }
+.popover .item::after { display: none !important; }
+.popover .item .ri, .popover .ri { background: transparent !important; box-shadow: none !important; color: inherit !important; filter: none !important; }
+.popover .item .ri::before, .popover .item .ri::after { display: none !important; }
+.mm-tile { background: var(--m-bg2) !important; box-shadow: none !important; border-radius: 10px !important; color: var(--m-fg) !important; }
+.mm-tile::after { display: none !important; }
+.mm-tile svg, .mm-tile span { color: inherit !important; background: transparent !important; box-shadow: none !important; }
+.mm-update { background: var(--m-bg2) !important; background-image: none !important; box-shadow: inset 0 0 0 1px var(--m-line) !important; border-radius: 10px !important; animation: none !important; }
+.mm-update::before, .mm-update::after { display: none !important; }
+.popover .switch, .switch { --on: var(--accent); }
+.popover kbd, .keys kbd { background: transparent !important; box-shadow: inset 0 0 0 1px var(--m-line2) !important; color: var(--m-fg2) !important; font-family: var(--font) !important; }
+.dl-live { background: var(--m-solid) !important; color: var(--m-on-solid) !important; box-shadow: none !important; }
+.bar { background: var(--m-bg3) !important; box-shadow: none !important; }
+.bar i { background: var(--m-fg) !important; box-shadow: none !important; }
+.qrbox::before { display: none !important; }
+.qrbox { box-shadow: inset 0 0 0 1px var(--m-line) !important; }
+
+/* ------------------------------------------------------------- toast and tooltips */
+#toast { border-radius: 999px !important; color: var(--m-fg) !important; font: 400 13px var(--font) !important; }
+#toast .t-orb { background: var(--m-solid) !important; color: var(--m-on-solid) !important; box-shadow: none !important; }
+#toast .t-orb::before, #toast .t-orb::after { display: none !important; }
+#toast .t-time { background: var(--m-fg) !important; opacity: .35; }
+#tip { background: var(--m-solid) !important; color: var(--m-on-solid) !important; box-shadow: none !important; backdrop-filter: none !important; font: 400 11.5px var(--font) !important; }
+#tip::before, #tip::after { display: none !important; }
+#tip kbd { background: transparent !important; box-shadow: inset 0 0 0 1px color-mix(in srgb, currentColor 30%, transparent) !important; color: inherit !important; }
+
+/* ------------------------------------------------------------- tab preview, find bar, peek, now playing */
+#tabcard { background: var(--m-card) !important; border-radius: 12px !important; }
+#tabcard .tc-title { font: 500 13px/1.3 var(--font) !important; color: var(--m-fg) !important; }
+#tabcard .tc-host, #tabcard .tc-meta { color: var(--m-fg3) !important; }
+#findbar { border-radius: 999px !important; }
+#find-input { font: 400 13.5px var(--font) !important; color: var(--m-fg) !important; }
+.nowplaying { border-radius: 12px !important; }
+.np-ico { box-shadow: none !important; }
+.np-ico::before, .np-ico::after { display: none !important; }
+.np-t { font-family: var(--font) !important; }
+.prompt { border-radius: 12px !important; }
+.prompt .btn { background: transparent !important; box-shadow: inset 0 0 0 1px var(--m-line2) !important; color: var(--m-fg) !important; border-radius: 999px !important; }
+.prompt .btn.primary, .popover .btn.primary { background: var(--m-solid) !important; color: var(--m-on-solid) !important; box-shadow: none !important; }
+.popover .btn { background: transparent !important; box-shadow: inset 0 0 0 1px var(--m-line2) !important; color: var(--m-fg) !important; border-radius: 999px !important; }
+.popover .btn::after, .prompt .btn::after { display: none !important; }
+
+/* ------------------------------------------------------------- the tab grid */
+#tabgrid .tg-head { background: transparent !important; }
+.tg-search { border-radius: 999px !important; }
+#tg-ic { background: transparent !important; box-shadow: none !important; color: var(--m-fg2) !important; }
+#tg-ic::before, #tg-ic::after { display: none !important; }
+#tg-ic svg { color: currentColor !important; }
+#tg-q { font: 400 14px var(--font) !important; color: var(--m-fg) !important; }
+.tg-count { box-shadow: none !important; padding: 0 !important; font: 400 26px var(--display) !important; color: var(--m-fg) !important; background: none !important; -webkit-text-fill-color: currentColor !important; }
+.tg-close { font: 500 12.5px var(--font) !important; background: var(--m-card) !important; box-shadow: inset 0 0 0 1px var(--m-line2) !important; color: var(--m-fg) !important; border-radius: 999px !important; }
+.tg-card { background: var(--m-card) !important; background-image: none !important; box-shadow: inset 0 0 0 1px var(--m-line) !important; border-radius: 10px !important; }
+.tg-card::before, .tg-card::after { display: none !important; }
+.tg-card:hover { box-shadow: inset 0 0 0 1px var(--m-line2), var(--m-float) !important; }
+.tg-card.active, .tg-card.cur, .tg-card.sel { box-shadow: inset 0 0 0 1.5px var(--m-fg) !important; }
+.tg-title { font: 500 13px var(--font) !important; color: var(--m-fg) !important; }
+.tg-host, .tg-meta { color: var(--m-fg3) !important; }
+.tg-thumb { border-radius: 6px !important; box-shadow: none !important; background: var(--m-bg2) !important; }
+.tg-thumb img { transition: transform .7s var(--m-ease); }
+.tg-card:hover .tg-thumb img { transform: scale(1.025); }
+.tg-badge { background: var(--m-solid) !important; color: var(--m-on-solid) !important; box-shadow: none !important; }
+.tg-x { background: var(--m-card) !important; box-shadow: inset 0 0 0 1px var(--m-line) !important; color: var(--m-fg) !important; }
+
+/* ------------------------------------------------------------- translate cards */
+.tr-box, #trask { border-radius: 14px !important; color: var(--m-fg) !important; }
+.tr-hero, .ta-ban { background: var(--m-solid) !important; background-image: none !important; color: var(--m-on-solid) !important; box-shadow: none !important; }
+.tr-hero::before, .tr-hero::after, .ta-ban::before, .ta-ban::after { display: none !important; }
+.tr-title, .ta-title { font-family: var(--display) !important; font-weight: 400 !important; letter-spacing: 0 !important; background: none !important; -webkit-text-fill-color: currentColor !important; }
+.tr-kick, .ta-kick { font: 500 10px var(--font) !important; letter-spacing: .16em !important; text-transform: uppercase; }
+.tr-ring, .tr-border { display: none !important; }
+.tr-orb, .ta-icon, .ta-g { filter: none !important; box-shadow: none !important; animation: none !important; }
+.ta-g.a { background: var(--m-on-solid) !important; color: var(--m-solid) !important; }
+.ta-g.b { background: var(--accent) !important; color: #fff !important; }
+.tr-chip { background: transparent !important; box-shadow: inset 0 0 0 1px color-mix(in srgb, currentColor 35%, transparent) !important; color: inherit !important; }
+.tr-bar { background: var(--m-bg3) !important; box-shadow: none !important; }
+.tr-bar i { background: var(--m-fg) !important; box-shadow: none !important; }
+.tr-btn, .ta-btn { background: transparent !important; box-shadow: inset 0 0 0 1px var(--m-line2) !important; color: var(--m-fg) !important; border-radius: 999px !important; font: 500 12.5px var(--font) !important; }
+.ta-btn.primary { background: var(--m-solid) !important; color: var(--m-on-solid) !important; box-shadow: none !important; }
+.tr-btn::after, .ta-btn::after { display: none !important; }
+.ta-timer i { background: var(--m-fg) !important; }
+
+/* ------------------------------------------------------------- Lumen AI panel */
+#aipanel { border-radius: 14px !important; color: var(--m-fg) !important; }
+#aipanel .a4-title, #aipanel .ai-title, #ai-title { font-family: var(--display) !important; font-weight: 400 !important; font-size: 22px !important; letter-spacing: 0 !important; background: none !important; -webkit-text-fill-color: currentColor !important; }
+#aipanel .a4-top, #aipanel .ai-head { background: transparent !important; background-image: none !important; box-shadow: inset 0 -1px 0 var(--m-line) !important; }
+#aipanel .a4-top::before, #aipanel .a4-top::after, #aipanel .ai-head::before, #aipanel .ai-head::after { display: none !important; }
+#aipanel .ai-msg.user .ai-b, #aipanel .ai-msg.user > div { background: var(--m-solid) !important; color: var(--m-on-solid) !important; box-shadow: none !important; background-image: none !important; }
+#aipanel textarea, #aipanel .a4-comp, #aipanel .ai-input { background: var(--m-bg2) !important; box-shadow: inset 0 0 0 1px var(--m-line) !important; color: var(--m-fg) !important; }
+
+/* ------------------------------------------------------------- scrollbars: slim hairline pills */
+::-webkit-scrollbar-thumb { background: var(--m-line2) !important; box-shadow: none !important; }
+
+/* ------------------------------------------------------------- dark logos keep their small tile */
+@media (prefers-color-scheme: dark) { .fav img.darklogo, img.darklogo { background: #f2eee5; } }
+
+/* ------------------------------------------------------------- still under reduced motion and Motion Off */
+body[data-motion="off"] *, body[data-motion="off"] *::before, body[data-motion="off"] *::after { transition-duration: 0s !important; }
+@media (prefers-reduced-motion: reduce) {
+  :where(#app, #overlay, #toast, #tabgrid) *, :where(#app, #overlay, #toast, #tabgrid) *::before, :where(#app, #overlay, #toast, #tabgrid) *::after { transition-duration: 0s !important; }
+}
+
+/* ------------------------------------------------------------- 4.5, round two: monochrome
+   Every multi-colour token collapses to the one accent (deep emerald by default), and the accent itself only ever
+   lands on small details. No gradients, no rainbow rims, no colour banners. */
+:root, body, body.incognito, body.toplayout {
+  --accent2: var(--accent) !important; --accent3: var(--accent) !important; --nova: var(--accent) !important; --grad: var(--accent) !important;
+  --c-cyan: var(--accent); --c-violet: var(--accent); --c-amber: var(--accent); --c-pink: var(--accent); --c-deep: var(--accent);
+  --banner: var(--m-solid) !important; --rim41: var(--m-line2) !important; --edge: var(--m-line) !important; --edge-soft: var(--m-line) !important; --glow-ink: var(--m-fg);
+  --a10: color-mix(in srgb, var(--m-fg) 6%, transparent); --a14: color-mix(in srgb, var(--m-fg) 8%, transparent); --a18: color-mix(in srgb, var(--m-fg) 10%, transparent);
+  --a28: color-mix(in srgb, var(--m-fg) 14%, transparent); --a40: color-mix(in srgb, var(--m-fg) 20%, transparent);
+}
+/* the address bar's site pill and every gradient label: plain type */
+body.toplayout .urltext:not(.empty) .host, .urltext .host { color: var(--m-fg) !important; -webkit-text-fill-color: var(--m-fg) !important; }
+#cmdbar *, #popover *, #tabgrid *, #aipanel *, #trcard *, #trask * { -webkit-background-clip: border-box !important; }
+.mm-head .mm-title, .cmdbrand, .tg-count, .tr-title, .ta-title, .ai-title { -webkit-text-fill-color: currentColor !important; background: none !important; }
+/* the + button and other accent fills: ink, with the accent only as the flow */
+#plusdock > .newtab, .newtab { background: transparent !important; }
+.newtab, .update, .ta-btn.primary, .prompt .btn.primary, .popover .btn.primary, .trm-go { --flow: var(--m-solid); --flow-fg: var(--m-on-solid); }
+.btn.primary, .ai-send, .toast-btn { background: var(--m-solid) !important; background-image: none !important; color: var(--m-on-solid) !important; box-shadow: none !important; }
+.btn.primary::after, .tg-close::after, .trm-go::after, .toast-btn::after, .ta-btn.primary::after { display: none !important; }
+.tg-card.cur::before, .pin.active::before, .mm-tile::before { background: var(--flow, transparent); }
+/* favicon letter tiles were two-tone gems in a colour picked from the site name: now warm grey */
+.fav.lf, .tg-fav.lf, .res .fav.lf { background: var(--m-bg3) !important; background-image: none !important; color: var(--m-fg) !important; }
+/* tooltips, kbd, chips: no tints */
+.chero .hero-ic svg, .chero .sc-orb svg, .clipz-ic, .clip-ic, .clipz-empty span, .mm-kind { color: currentColor !important; background: transparent !important; background-image: none !important; }
+.clipz-ic { box-shadow: inset 0 0 0 1px var(--m-line2) !important; color: var(--m-fg) !important; }
+.tr-chip, .ta-g.b { background: transparent !important; color: inherit !important; }
+.ta-g.b { box-shadow: inset 0 0 0 1px color-mix(in srgb, currentColor 40%, transparent) !important; }
+#aipanel .a4-orb, #aipanel .ai-mark, #aipanel .ag-orb, .ai-mark { background: var(--m-solid) !important; background-image: none !important; box-shadow: none !important; color: var(--m-on-solid) !important; }
+#aipanel .a4-orb::before, #aipanel .a4-orb::after, .ai-mark::before, .ai-mark::after { display: none !important; }
+.ai-dots i { background: var(--m-fg2) !important; box-shadow: none !important; }
+.tab .eq i, .np-eq i, .pin .dot { background: var(--m-fg2) !important; box-shadow: none !important; }
+#resizer::after { background: var(--m-line2) !important; }
+.chero, .chero *, .mm-head .mm-title, .mm-head .mm-sub { color: var(--m-on-solid) !important; -webkit-text-fill-color: var(--m-on-solid) !important; }

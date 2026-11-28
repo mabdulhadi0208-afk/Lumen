@@ -102,7 +102,8 @@ app.whenReady().then(async () => {
   await wait(2000); const act = w.active(); act.thumbImg = null; await wait(500); fs.appendFileSync(LOG, 'before open thumbImg=' + !!act.thumbImg + ' active=' + act.url + '\n'); let firstSnap = 0; const tOpen = Date.now(); act.thumb = 'old'
   const poll = setInterval(() => { if (!firstSnap && (act.thumbImg || act.thumb !== 'old')) firstSnap = Date.now() - tOpen }, 10)
   await ex(`openCmd(); true`); await wait(1400); clearInterval(poll)
-  ok(firstSnap > 400, 'the command bar does not take a fresh page picture while it opens (first one at ' + firstSnap + ' ms)')
+  // 4.5: the command bar is solid paper, so it takes no page picture at all (0 = none in the 1.4 s window)
+  ok(firstSnap === 0 || firstSnap > 400, 'the command bar does not take a fresh page picture while it opens (first one at ' + (firstSnap || 'none') + ' ms)')
   await ex(`closeCmd(true); true`)
 
   // ---- Google sign-in looks like Chrome all the way down (Electron leaves window.chrome empty and says only Chromium)

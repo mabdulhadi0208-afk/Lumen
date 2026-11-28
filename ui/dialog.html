@@ -257,6 +257,65 @@ h1 { font-size: 34px; line-height: 1.1; letter-spacing: -.045em; }
 h1 { background: linear-gradient(120deg, var(--fg) 0%, var(--fg) 45%, color-mix(in srgb, var(--accent) 85%, var(--fg)) 70%, var(--c-cyan) 100%); -webkit-background-clip: text; background-clip: text; }
 .btn.primary { background: radial-gradient(60% 140% at 0% 0%, rgba(255, 255, 255, .3), transparent 60%), linear-gradient(118deg, var(--c-violet), var(--accent) 50%, var(--c-pink)); }
 #sheet { background-image: linear-gradient(180deg, color-mix(in srgb, var(--accent) 6%, transparent), color-mix(in srgb, var(--c-violet) 14%, transparent)); }
+
+/* ------------------------------------------------------------- Lumen 4.5: Maison (ui/maison45.css has the whole story)
+   The question is a sheet of paper (or ink) with a noir band at its head, the question set in the display serif, and
+   pill answers that fill with colour from where the pointer comes in. No blur, no refraction, no drifting orbs, one
+   modest shadow: nothing that can leave a ghost behind on macOS. */
+@font-face { font-family: "Geist"; src: url("fonts/geist.woff2") format("woff2"); font-weight: 100 900; font-display: block; }
+@font-face { font-family: "Instrument Serif"; src: url("fonts/instrument-serif.woff2") format("woff2"); font-weight: 400; font-display: block; }
+:root {
+  --m-card: #fcfbf8; --m-bg2: #eeeae1; --m-fg: #15130f; --m-fg2: #5d574c; --m-fg3: #8f887b; --m-line: rgba(21, 19, 15, .1); --m-line2: rgba(21, 19, 15, .2);
+  --m-solid: #15130f; --m-on-solid: #f6f3ed; --m-noir: #15130f; --m-on-noir: #f4efe5; --m-ease: cubic-bezier(.2, .8, .2, 1);
+  --fg: var(--m-fg); --fg2: var(--m-fg2); --fg3: var(--m-fg3); --line: var(--m-line); --field: var(--m-bg2); --btn: transparent;
+  --font: "Geist", -apple-system, BlinkMacSystemFont, "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif;
+  --display: "Instrument Serif", Georgia, serif;
+  --dim: rgba(21, 19, 15, .28);
+}
+.dark { --m-card: #151411; --m-bg2: #1d1b17; --m-fg: #f2eee5; --m-fg2: #aba495; --m-fg3: #6f695e; --m-line: rgba(242, 238, 229, .11); --m-line2: rgba(242, 238, 229, .22);
+  --m-solid: #f2eee5; --m-on-solid: #0d0c0a; --m-noir: #050504; --dim: rgba(0, 0, 0, .55); }
+.incognito { --m-card: #1d1727; --m-bg2: #261f31; --m-fg: #f1ecf8; --m-fg2: #b3a8c4; --m-line: rgba(241, 236, 248, .12); --m-solid: #f1ecf8; --m-on-solid: #17121f; --m-noir: #0f0b16; --dim: rgba(10, 6, 18, .6); }
+html, body { font-family: var(--font); color: var(--m-fg); }
+#veil .shot { filter: none; transform: none; }
+#veil .nebula { display: none; }
+#veil .dim { background: var(--dim); }
+#sheet, .lens #sheet { backdrop-filter: none !important; -webkit-backdrop-filter: none !important; background: var(--m-card); border-radius: 14px; padding: 0 28px 24px; overflow: hidden auto;
+  box-shadow: inset 0 0 0 1px var(--m-line), 0 24px 60px -24px rgba(21, 19, 15, .5); }
+.dark #sheet { box-shadow: inset 0 0 0 1px var(--m-line), 0 24px 60px -20px rgba(0, 0, 0, .9); }
+#sheet::before, #sheet::after, #sheet > .glass::after { display: none; }
+#sheet > .glass { display: none; }
+.hero { height: 150px; margin: 0 -28px 24px; border-radius: 0; background: var(--m-noir); box-shadow: none; }
+.hero::after, .hero .hb, .hero .hl, .hero .hart { display: none; }
+body[data-kind="danger"] .hero, body[data-kind="clear"] .hero { background: #3a1015; }
+.hero .icon, .hero .icon.img { width: 76px; height: 76px; border-radius: 50%; color: var(--m-on-noir); background: transparent; box-shadow: inset 0 0 0 1px rgba(244, 239, 229, .28); }
+.hero .icon::before, .hero .icon::after, .icon::before, .icon::after { display: none; }
+.hero .icon svg { width: 32px; height: 32px; filter: none; }
+.hero .icon.img { background: rgba(244, 239, 229, .96); }
+.hero .icon.img img { width: 44px; height: 44px; border-radius: 10px; }
+.kicker { font: 500 10px var(--font); letter-spacing: .18em; text-transform: uppercase; color: var(--m-fg3); margin-bottom: 10px; }
+h1 { font: 400 34px/1.08 var(--display); letter-spacing: -.005em; color: var(--m-fg); background: none !important; -webkit-text-fill-color: currentColor !important; }
+.detail { color: var(--m-fg2); font-size: 14px; }
+.field span { font: 500 11px var(--font); letter-spacing: .04em; color: var(--m-fg2); }
+.field input { background: var(--m-bg2); box-shadow: inset 0 0 0 1px var(--m-line); border-radius: 8px; }
+.field input:focus { box-shadow: inset 0 0 0 1px var(--m-fg); }
+.choice { background: transparent; box-shadow: inset 0 0 0 1px var(--m-line); border-radius: 10px; }
+.choice:hover { background: var(--m-bg2); transform: none; }
+.choice .av { background: var(--m-solid); color: var(--m-on-solid); font: 400 16px var(--display); box-shadow: none; }
+.check .box { background: var(--m-bg2); box-shadow: inset 0 0 0 1.5px var(--m-line2); border-radius: 5px; }
+.check input:checked + .box { background: var(--m-solid); color: var(--m-on-solid); box-shadow: none; }
+.buttons .btn, .btn { height: 46px; border-radius: 999px; font: 500 14px var(--font); letter-spacing: 0; color: var(--m-fg); background: transparent; filter: none;
+  box-shadow: inset 0 0 0 1px var(--m-line2); overflow: hidden; isolation: isolate; transition: color .42s var(--m-ease), box-shadow .42s var(--m-ease); }
+.btn::after, .btn.primary::after { display: none; }
+.btn::before { content: ""; position: absolute; z-index: -1; left: var(--fx, 50%); top: var(--fy, 100%); width: 260%; aspect-ratio: 1; min-width: 120px; border-radius: 50%; pointer-events: none;
+  background: var(--m-solid); transform: translate(-50%, -50%) scale(0); transition: transform .42s var(--m-ease); }
+.btn:hover, .btn:focus-visible { color: var(--m-on-solid); background: transparent; box-shadow: inset 0 0 0 1px var(--m-solid); transform: none; filter: none; }
+.btn:hover::before, .btn:focus-visible::before { transform: translate(-50%, -50%) scale(1); }
+.btn.primary, .btn.danger.primary { color: var(--m-on-solid); background: var(--m-solid); box-shadow: none; }
+.btn.primary::before { background: var(--accent); }
+.btn.danger.primary::before { background: #b8323f; }
+.btn.primary:hover, .btn.primary:focus-visible { color: #fff; box-shadow: none; filter: none; }
+.off .btn, .off .btn::before { transition: none; }
+@media (prefers-reduced-motion: reduce) { .btn, .btn::before { transition: none; } }
 </style>
 <link rel="stylesheet" href="perf.css">
 </head>
@@ -276,6 +335,11 @@ h1 { background: linear-gradient(120deg, var(--fg) 0%, var(--fg) 45%, color-mix(
   <div class="buttons"></div>
 </div>
 <script src="jelly.js"></script>
+<script>
+// 4.5: the flow fill on the answers grows from where the pointer came in
+document.addEventListener('pointerover', e => { const b = e.target.closest && e.target.closest('.btn'); if (!b || (e.relatedTarget && b.contains(e.relatedTarget))) return; const r = b.getBoundingClientRect(); b.style.setProperty('--fx', Math.round(e.clientX - r.left) + 'px'); b.style.setProperty('--fy', Math.round(e.clientY - r.top) + 'px') }, { passive: true })
+document.addEventListener('pointerout', e => { const b = e.target.closest && e.target.closest('.btn'); if (!b || (e.relatedTarget && b.contains(e.relatedTarget))) return; const r = b.getBoundingClientRect(); b.style.setProperty('--fx', Math.round(e.clientX - r.left) + 'px'); b.style.setProperty('--fy', Math.round(e.clientY - r.top) + 'px') }, { passive: true })
+</script>
 <script>
 'use strict'
 // the buttons and choices are Jelly bodies: they lift toward the pointer and squish when pressed

@@ -1,0 +1,164 @@
+/* =====================================================================
+   Lumen 4.5: Maison for every lumen:// page (see ui/maison45.css). Linked last.
+   Warm paper in light, deep ink in dark, hairlines, Instrument Serif for the big words and Geist for the rest.
+   No backdrop-filter, no glints, no looping light; buttons fill with colour from where the pointer comes in.
+   Jelly (ui/jelly.js) still owns hover lifts and press squish, so no transform transitions here on controls.
+   ===================================================================== */
+@font-face { font-family: "Geist"; src: url("fonts/geist.woff2") format("woff2"); font-weight: 100 900; font-display: swap; unicode-range: U+0020-007E, U+00A0-00FF, U+0131, U+0152-0153, U+02C6, U+02DA, U+02DC, U+2013-2014, U+2018-201E, U+2020-2022, U+2026, U+2030, U+2032-2033, U+2039-203A, U+2044, U+20AC, U+2122, U+2212; }
+@font-face { font-family: "Geist"; src: url("fonts/geist-ext.woff2") format("woff2"); font-weight: 100 900; font-display: swap; unicode-range: U+0100-024F, U+20A0-20AB, U+20AD-20CF; }
+@font-face { font-family: "Instrument Serif"; src: url("fonts/instrument-serif.woff2") format("woff2"); font-weight: 400; font-display: swap; }
+@font-face { font-family: "Instrument Serif"; src: url("fonts/instrument-serif-italic.woff2") format("woff2"); font-weight: 400; font-style: italic; font-display: swap; }
+:root {
+  --m-bg: #f6f3ed; --m-bg2: #eeeae1; --m-bg3: #e4ded2; --m-card: #fcfbf8; --m-fg: #15130f; --m-fg2: #5d574c; --m-fg3: #8f887b;
+  --m-line: rgba(21, 19, 15, .1); --m-line2: rgba(21, 19, 15, .2); --m-tint: rgba(21, 19, 15, .05);
+  --m-solid: #15130f; --m-on-solid: #f6f3ed; --m-noir: #15130f; --m-on-noir: #f4efe5; --m-gold: #9c7a43; --m-ease: cubic-bezier(.2, .8, .2, 1);
+  --bg: var(--m-bg); --bg2: var(--m-card); --fg: var(--m-fg); --fg2: var(--m-fg2); --fg3: var(--m-fg3); --line: var(--m-line);
+  --hover: var(--m-tint); --press: rgba(21, 19, 15, .09); --glass: var(--m-card); --glass2: var(--m-card); --field: var(--m-bg2); --seg-on: var(--m-solid);
+  --spec: 0 0 0 0 transparent; --rim: inset 0 0 0 1px var(--m-line); --fringe: 0 0 0 0 transparent; --caustic: 0 0 0 0 transparent; --gsh: inset 0 0 0 1px var(--m-line);
+  --shadow: none; --shadow-lift: 0 14px 30px -20px rgba(21, 19, 15, .4); --shadow-sheet: 0 24px 60px -24px rgba(21, 19, 15, .45);
+  --halo: 0 0 0 3px color-mix(in srgb, var(--accent) 22%, transparent); --glint: 0; --sheen: 0; --blur: none;
+  --font: "Geist", -apple-system, BlinkMacSystemFont, "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif;
+  --display: "Instrument Serif", "Iowan Old Style", "Palatino Linotype", Georgia, serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root { --m-bg: #0d0c0a; --m-bg2: #1b1916; --m-bg3: #26231f; --m-card: #131210; --m-fg: #f2eee5; --m-fg2: #aba495; --m-fg3: #6f695e;
+    --m-line: rgba(242, 238, 229, .1); --m-line2: rgba(242, 238, 229, .2); --m-tint: rgba(242, 238, 229, .06); --m-solid: #f2eee5; --m-on-solid: #0d0c0a; --m-noir: #1b1916; --m-gold: #d2b47e;
+    --press: rgba(242, 238, 229, .1); --shadow-lift: 0 14px 30px -18px rgba(0, 0, 0, .8); --shadow-sheet: 0 24px 60px -20px rgba(0, 0, 0, .9); }
+}
+html { background: var(--m-bg) !important; }
+html, body { font-family: var(--font); color: var(--m-fg); }
+*, *::before, *::after { backdrop-filter: none !important; -webkit-backdrop-filter: none !important; text-shadow: none !important; animation-iteration-count: 1 !important; }
+.spin, .abl-spin, .ai4-orb, .dlbar i, .errwait i, [class*="spinner"], .ai-dots i { animation-iteration-count: infinite !important; }
+.hero-grain, .hero-glint, .hero-dots, .hero-orb, .hero-art, .hm-mesh, .glow, .errglow, .hb { display: none !important; }
+/* the New Tab banner keeps its faint drifting dots on the noir cover: they pause off screen (home.js) and are the one
+   ambient motion left, now in quiet paper tones */
+.amb-dots, .amb-spark, .amb-fine { animation-iteration-count: infinite !important; opacity: .45; filter: grayscale(1); }
+.shell .main { background: none !important; }
+
+/* Settings and the library pages: a paper column with a hairline index on the left */
+.shell > .nav.nav, .nav { background: var(--m-bg) !important; background-image: none !important; box-shadow: inset -1px 0 0 var(--m-line) !important; border-radius: 0 !important; color: var(--m-fg) !important; margin: 0 !important; height: 100vh !important; top: 0 !important; }
+.nav::before, .nav::after { display: none !important; }
+.nav h1 { font: 400 34px/1 var(--display) !important; letter-spacing: -.01em !important; color: var(--m-fg) !important; background: none !important; -webkit-text-fill-color: currentColor !important; }
+.navgrp { font: 500 10px var(--font) !important; letter-spacing: .2em !important; color: var(--m-fg3) !important; }
+.navgrp::after { background: var(--m-line) !important; }
+.nav a { color: var(--m-fg2) !important; font-family: var(--font) !important; font-weight: 400 !important; border-radius: 8px !important; background: none !important; box-shadow: none !important; }
+.nav a svg, .nav a.on svg { background: none !important; box-shadow: none !important; color: currentColor !important; padding: 5px !important; transform: none !important; }
+.nav a.on { color: var(--m-fg) !important; font-weight: 500 !important; box-shadow: inset 0 0 0 1px var(--m-line2) !important; background: var(--m-card) !important; }
+.nav a.on::before { background: var(--m-fg) !important; box-shadow: none !important; width: 2px !important; left: -12px !important; }
+.nav a.on::after { display: none !important; }
+.navsearch, .navsearch input { background: var(--m-bg2) !important; box-shadow: none !important; color: var(--m-fg) !important; border-radius: 999px !important; }
+
+/* the section hero: a noir cover with the title in the serif */
+.hero { background: var(--m-noir) !important; background-image: none !important; color: var(--m-on-noir) !important; box-shadow: none !important; border-radius: 8px !important; }
+.hero::before, .hero::after { display: none !important; }
+.hero h2, .hero .hero-tx h2, .hero h1 { font-family: var(--display) !important; font-weight: 400 !important; overflow-wrap: normal !important; word-break: normal !important; letter-spacing: -.01em !important; color: var(--m-on-noir) !important; background: none !important; -webkit-text-fill-color: currentColor !important; }
+.hero p, .hero .hero-tx p { color: rgba(244, 239, 229, .68) !important; }
+.hero-eye, .hero .hero-eye { font: 500 10px var(--font) !important; letter-spacing: .22em !important; color: #cfc5b2 !important; -webkit-text-fill-color: currentColor !important; }
+.hero-eye *, .hero-chip { background: transparent !important; box-shadow: inset 0 0 0 1px rgba(244, 239, 229, .2) !important; color: #cfc5b2 !important; }
+.hero-eye::before, .hero-eye::after { background: rgba(244, 239, 229, .3) !important; box-shadow: none !important; }
+.hero-ic { background: transparent !important; box-shadow: inset 0 0 0 1px rgba(244, 239, 229, .28) !important; color: var(--m-on-noir) !important; border-radius: 50% !important; filter: none !important; }
+.hero-ic::before, .hero-ic::after { display: none !important; }
+.hero-ic svg { color: currentColor !important; filter: none !important; }
+
+/* cards: paper with a hairline; headings in the serif */
+.card, .shell .main .card, .pcard, .rc, .drow, .pdialog, .nv-dlg, .ptips, .pauto, .abouthero, .vcard, .fcard, .appcard, .extcard, .brcard, .hlcard, .pkcard {
+  background: var(--m-card) !important; background-image: none !important; box-shadow: inset 0 0 0 1px var(--m-line) !important; border-radius: 8px !important; filter: none !important; }
+.card::before, .card::after, .shell .main .card::after, .pcard::before, .pcard::after { display: none !important; }
+.card h3, .shell .main > h3, .main h2:not(.hero h2) { font: 400 28px/1.1 var(--display) !important; letter-spacing: 0 !important; color: var(--m-fg) !important; background: none !important; -webkit-text-fill-color: currentColor !important; }
+.card h3::before, .shell .main > h3::before { display: none !important; }
+.row, .list .row { border-color: var(--m-line) !important; }
+.shell .row:hover, .shell .list .row:hover, .row:hover { background: var(--m-tint) !important; }
+input[type=text], input[type=search], input[type=url], input[type=password], input[type=email], select, textarea, .toolbar input[type=search], .shell .main .toolbar input[type=search] {
+  background-color: var(--m-bg2) !important; box-shadow: inset 0 0 0 1px var(--m-line) !important; border: 0 !important; border-radius: 8px !important; color: var(--m-fg) !important; }
+input:focus, select:focus, textarea:focus { box-shadow: inset 0 0 0 1px var(--m-fg) !important; outline: 0; }
+.switch input:checked + span, .switch.on span { background: var(--accent) !important; box-shadow: none !important; }
+.seg, .seg.big { background: transparent !important; box-shadow: inset 0 0 0 1px var(--m-line2) !important; border-radius: 999px !important; }
+.seg .seg-ind, .shell .seg.big .seg-ind, .shell .seg.big:not(.has-ind) button.on, .seg button.on { background: var(--m-solid) !important; box-shadow: none !important; color: var(--m-on-solid) !important; border-radius: 999px !important; }
+.shell .seg.big.has-ind button.on { color: var(--m-on-solid) !important; }
+
+/* the flow: colour grows from where the pointer came in (app.js sets --fx and --fy), the label flips with it */
+.btn, .chip, .fchip, .allowchip, .hm-act, .pill, .getapp, .ftile {
+  overflow: hidden; isolation: isolate; --flow: var(--m-solid); --flow-fg: var(--m-on-solid);
+  transition: color .42s var(--m-ease), box-shadow .42s var(--m-ease) !important; }
+.btn, .chip, .fchip, .allowchip, .pill, .getapp { position: relative; }
+.btn::before, .chip::before, .fchip::before, .allowchip::before, .hm-act::before, .pill::before, .getapp::before {
+  all: initial !important; content: "" !important; display: block !important; position: absolute !important; z-index: -1 !important; left: var(--fx, 50%) !important; top: var(--fy, 100%) !important;
+  width: 260% !important; aspect-ratio: 1 !important; min-width: 120px !important; border-radius: 50% !important; pointer-events: none !important;
+  background: var(--flow) !important; transform: translate(-50%, -50%) scale(0) !important; transition: transform .42s var(--m-ease) !important; }
+.btn:hover::before, .chip:hover::before, .fchip:hover::before, .allowchip:hover::before, .hm-act:hover::before, .pill:hover::before, .getapp:hover::before { transform: translate(-50%, -50%) scale(1) !important; }
+.btn:hover, .chip:hover, .fchip:hover, .allowchip:hover, .hm-act:hover, .pill:hover, .getapp:hover { color: var(--flow-fg) !important; }
+.btn:hover svg, .hm-act:hover svg { color: inherit !important; }
+.btn::after, .chip::after, .hm-act::after { display: none !important; }
+.btn { background: transparent !important; color: var(--m-fg) !important; box-shadow: inset 0 0 0 1px var(--m-line2) !important; border-radius: 999px !important; font: 500 13px var(--font) !important; letter-spacing: 0 !important; filter: none !important; }
+.btn.primary { background: var(--m-solid) !important; color: var(--m-on-solid) !important; box-shadow: none !important; --flow: var(--accent); --flow-fg: #fff; }
+.btn.danger { --flow: #a8323f; --flow-fg: #fff; }
+.chip, .fchip, .allowchip, .pill { background: transparent !important; box-shadow: inset 0 0 0 1px var(--m-line2) !important; color: var(--m-fg) !important; }
+.chip.on, .fchip.on { background: var(--m-solid) !important; color: var(--m-on-solid) !important; --flow: var(--accent); --flow-fg: #fff; }
+
+/* New Tab: a noir cover for the greeting and the clock, paper for everything under it */
+.hm-hero { background: var(--m-noir) !important; background-image: none !important; box-shadow: none !important; border-radius: 8px !important; color: var(--m-on-noir) !important; }
+.hm-hero::before, .hm-hero::after { display: none !important; }
+.hm-greet, #greet { font: 400 76px/.95 var(--display) !important; letter-spacing: -.015em !important; color: var(--m-on-noir) !important; }
+.hm-greet *, #greet * { background: none !important; color: inherit !important; -webkit-text-fill-color: currentColor !important; }
+.hm-greet em, #greet em, .hm-greet i { font-style: italic !important; color: rgba(244, 239, 229, .62) !important; }
+.hm-date, #date { font: 500 10.5px var(--font) !important; letter-spacing: .22em !important; color: #cfc5b2 !important; }
+.hm-date::before, #date::before { background: #cfc5b2 !important; box-shadow: none !important; }
+.hm-sub, #hsub { color: rgba(244, 239, 229, .66) !important; }
+.hm-hero .hm-act { background: transparent !important; box-shadow: inset 0 0 0 1px rgba(244, 239, 229, .24) !important; color: var(--m-on-noir) !important; --flow: var(--m-on-noir); --flow-fg: var(--m-noir); }
+.hm-hero .hm-act:first-child { background: var(--m-on-noir) !important; color: var(--m-noir) !important; --flow: #cfc5b2; --flow-fg: var(--m-noir); }
+.hm-act kbd { background: transparent !important; box-shadow: inset 0 0 0 1px currentColor !important; color: inherit !important; opacity: .7; }
+#clock { color: var(--m-on-noir) !important; }
+#clock b, .ck-col, .ck-h, .ck-m { font-family: var(--display) !important; font-weight: 400 !important; background: none !important; -webkit-text-fill-color: currentColor !important; }
+.hm-search { background: var(--m-card) !important; background-image: none !important; box-shadow: inset 0 0 0 1px var(--m-line2) !important; border-radius: 999px !important; }
+.hm-search::before, .hm-search::after { display: none !important; }
+.hm-search input { font: 400 17px var(--font) !important; color: var(--m-fg) !important; background: none !important; box-shadow: none !important; }
+.hm-sic, .hm-search .hm-sic { background: var(--m-solid) !important; color: var(--m-on-solid) !important; box-shadow: none !important; }
+.hm-ask { background: var(--m-solid) !important; background-image: none !important; color: var(--m-on-solid) !important; box-shadow: none !important; }
+.hm-eng, .hm-engs, .hm-k { background: transparent !important; box-shadow: none !important; color: var(--m-fg2) !important; }
+.hm-stat, .hm-card, .hm-tile, .ntp-card { background: var(--m-card) !important; background-image: none !important; box-shadow: inset 0 0 0 1px var(--m-line) !important; border-radius: 8px !important; filter: none !important; }
+.hm-stat::before, .hm-stat::after, .hm-card::before, .hm-card::after, .hm-tile:not(#cktile)::before, .hm-tile::after { display: none !important; }
+.hm-stat b, .hm-st b, .st-big { font-family: var(--display) !important; font-weight: 400 !important; background: none !important; -webkit-text-fill-color: currentColor !important; color: var(--m-fg) !important; }
+.hm-icob, .hm-stat .hm-ic { background: var(--m-bg2) !important; box-shadow: none !important; color: var(--m-fg) !important; }
+.hm-kicker, .hm-sechead, .hm-h { color: var(--m-fg3) !important; }
+.hm-kicker::before, .hm-sechead::before { background: var(--m-fg3) !important; box-shadow: none !important; }
+.hm-h > b, .hm-sechead b { font: 400 22px var(--display) !important; letter-spacing: 0 !important; color: var(--m-fg) !important; text-transform: none !important; }
+
+body[data-motion="off"] *, body[data-motion="off"] *::before, body[data-motion="off"] *::after { transition-duration: 0s !important; }
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { transition-duration: 0s !important; } }
+/* the clock tile sits on the noir cover itself, with a hairline divider */
+.hm-hero .hm-tile, .hm-hero #cktile { background: transparent !important; box-shadow: none !important; }
+.hm-hero #cktile::before { background: rgba(244, 239, 229, .16) !important; box-shadow: none !important; }
+#clock, #clock * { color: var(--m-on-noir) !important; -webkit-text-fill-color: currentColor !important; background-color: transparent !important; }
+.navsearch input::placeholder { color: var(--m-fg3) !important; }
+
+/* ---------------------------------------------------------------- 4.5, round two: monochrome (the owner: "remove all
+   rainbow ... no more colourful stuff"). Paper, ink, warm greys and hairlines; the one accent (deep emerald by default)
+   only on small details, never in a gradient. Every multi-colour token collapses to that one colour. */
+:root, body, body.incognito, .ntp, .shell {
+  --accent2: var(--accent) !important; --accent3: var(--accent) !important; --nova: var(--accent) !important; --grad: var(--accent) !important;
+  --a2: var(--accent); --a3: var(--accent); --c-cyan: var(--accent); --c-violet: var(--accent); --c-amber: var(--accent); --c-pink: var(--accent); --c-deep: var(--accent);
+  --lq-sheen: none; --lq-ring: none; --lq-refr: none; --banner: var(--m-noir); --rim41: var(--m-line2); --sec: var(--m-fg); --ic: var(--m-fg);
+}
+#clock .ck-col i { background: var(--m-on-noir) !important; box-shadow: none !important; }
+/* New Tab: plain paper behind everything (the themes and wallpapers you pick yourself still apply) */
+.ntp.wp-theme .ntp-bg:not([style*="--thbg"]), .ntp-bg.wp-theme:not([style*="--thbg"]) { background: var(--m-bg) !important; }
+.ntp.wp-theme .ntp-bg:not([style*="--thbg"])::before, .ntp.wp-theme .ntp-bg:not([style*="--thbg"])::after { display: none !important; }
+.ntp::before, .ntp::after, .hm-wrap::before, .hm-wrap::after { background: none !important; box-shadow: none !important; }
+.hm-amb, .amb-dots, .amb-spark, .amb-fine { display: none !important; }
+/* the stat cards' little gadgets go monochrome */
+.hm-stat, .hm-card .hm-viz, .hm-ring, .st-bars, .hm-pulse, .hm-pulsex { filter: grayscale(1) !important; }
+/* gradient text anywhere becomes plain ink */
+.shell h1, .shell h2, .shell h3, .ntp h1, .ntp h2, .hm-greet b, .navhead h1, .abouthero h2, .ahver { background: none !important; -webkit-text-fill-color: currentColor !important; }
+/* Settings leftovers: the Your Lumen preview, swatch dots, icon tiles, glance and feature tiles */
+.apv, .apv *, .ftile, .ftile *, .gl, .gl-ic, .fa-ic, .ft-ic, .pc-ico, .ai4-orb, .ai4-pill, .appicon, .extico, .brlogo, .vc-art, .vart, .sc-prev, .updorb, .shield-big, .glance, .angchip, .hero-chip { background-image: none !important; filter: none !important; }
+.apv-stage, .apv .apv-page, .apv-body { background: var(--m-card) !important; box-shadow: inset 0 0 0 1px var(--m-line) !important; }
+.apv-bar, .apv-tabs i, .apv-tabs span, .apv-bm, .apv-url { background: var(--m-bg2) !important; box-shadow: none !important; }
+.apv-facts span::before, .apv-dots i, .pnum, .fa-chip, .gl-ic, .ft-ic, .fa-ic, .pc-ico, .updorb, .ai4-orb { background-color: var(--m-bg2) !important; color: var(--m-fg) !important; box-shadow: none !important; }
+.apv [style*="gradient"], .shell [style*="linear-gradient"], .shell [style*="radial-gradient"] { background-image: none !important; }
+.ftile, .ftiles .ftile { background: var(--m-card) !important; box-shadow: inset 0 0 0 1px var(--m-line) !important; color: var(--m-fg) !important; }
+.ftile svg, .gl svg, .glance svg { color: var(--m-fg) !important; }
+.nav a svg { color: var(--m-fg2) !important; }
+.switch span { background: var(--m-bg3) !important; box-shadow: none !important; }
+.switch input:checked + span { background: var(--accent) !important; }
+.switch span::before, .switch span::after { background: #fff !important; box-shadow: 0 1px 2px rgba(0,0,0,.2) !important; }
+::-webkit-scrollbar-thumb, ::-webkit-scrollbar-thumb:hover, ::-webkit-scrollbar-thumb:active { background: var(--m-line2) padding-box !important; }

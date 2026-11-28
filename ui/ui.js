@@ -2096,3 +2096,18 @@ var Tips = window.Tips = (() => {
   addEventListener('blur', () => hide(true))
   return { hide, parse, el: tip, raised: () => raised }
 })()
+
+// 4.5 Maison: the flow hover. A circle of a second colour grows from where the pointer came in and leaves where it
+// went out (ui/maison45.css draws it with transform only); this just tells it where. One passive listener, no layout
+// reads while the pointer moves inside an element.
+;(() => {
+  const FLOW = '.ib, .newtab, .tab, .popover .item, .res, .qa, .tg-close, .ta-btn, .tr-btn, .trm-go, .mm-tile, .clip, .bm, .pin, .update, .prompt .btn, .popover .btn, .np-main, #toast button'
+  const at = e => {
+    const t = e.target && e.target.closest ? e.target.closest(FLOW) : null
+    if (!t || (e.relatedTarget && t.contains(e.relatedTarget))) return
+    const r = t.getBoundingClientRect()
+    t.style.setProperty('--fx', Math.round(e.clientX - r.left) + 'px'); t.style.setProperty('--fy', Math.round(e.clientY - r.top) + 'px')
+  }
+  document.addEventListener('pointerover', at, { passive: true })
+  document.addEventListener('pointerout', at, { passive: true })
+})()

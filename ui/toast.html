@@ -92,6 +92,33 @@ html, body { margin: 0; height: 100%; overflow: hidden; background: transparent;
 .incognito { --banner: var(--grain), radial-gradient(55% 120% at 0% 0%, rgba(255, 220, 255, .2), transparent 60%), radial-gradient(38% 110% at 100% 110%, rgba(255, 140, 90, .55), transparent 70%), radial-gradient(40% 120% at 70% -20%, rgba(90, 200, 255, .5), transparent 70%), linear-gradient(118deg, #3a1580, #7a3cf0 50%, #c040d8); }
 #t::before { background: var(--rim41); }
 .orb { background: radial-gradient(120% 100% at 30% 0%, rgba(255, 255, 255, .55), transparent 55%), linear-gradient(135deg, var(--c-violet), var(--accent) 50%, var(--c-pink)); }
+
+/* ------------------------------------------------------------- Lumen 4.5: Maison (ui/maison45.css has the whole story)
+   A paper capsule with one hairline: an ink dot with the icon, the message in Geist, and the action as an ink pill that
+   fills with the accent from where the pointer comes in. No blur under it, no rim, nothing to ghost. */
+@font-face { font-family: "Geist"; src: url("fonts/geist.woff2") format("woff2"); font-weight: 100 900; font-display: block; }
+:root { --m-card: #fcfbf8; --m-fg: #15130f; --m-fg3: #8f887b; --m-line: rgba(21, 19, 15, .12); --m-solid: #15130f; --m-on-solid: #f6f3ed; --m-ease: cubic-bezier(.2, .8, .2, 1);
+  --font: "Geist", -apple-system, BlinkMacSystemFont, "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif; }
+.dark { --m-card: #151411; --m-fg: #f2eee5; --m-fg3: #6f695e; --m-line: rgba(242, 238, 229, .14); --m-solid: #f2eee5; --m-on-solid: #0d0c0a; }
+.incognito { --m-card: #1d1727; --m-fg: #f1ecf8; --m-line: rgba(241, 236, 248, .14); --m-solid: #f1ecf8; --m-on-solid: #17121f; }
+#t { background: var(--m-card); color: var(--m-fg); box-shadow: inset 0 0 0 1px var(--m-line), 0 12px 30px -16px rgba(21, 19, 15, .45); padding: 6px 20px 6px 6px; min-height: 46px; }
+.dark #t { box-shadow: inset 0 0 0 1px var(--m-line), 0 12px 30px -14px rgba(0, 0, 0, .8); }
+#t::before, #t.bad::before, .glass .lit::after { display: none; }
+#t > .glass { display: none; }
+.orb, .bad .orb { width: 32px; height: 32px; background: var(--m-solid); color: var(--m-on-solid); box-shadow: none; }
+.bad .orb { background: #a8323f; color: #fff; }
+.orb::before, .orb::after { display: none; }
+.orb svg { width: 15px; height: 15px; filter: none; }
+.msg { font: 500 13.5px var(--font); letter-spacing: 0; color: var(--m-fg); }
+.btn, .bad .btn { background: var(--m-solid); color: var(--m-on-solid); font: 500 12.5px var(--font); letter-spacing: .01em; box-shadow: none; filter: none; isolation: isolate;
+  transition: color .42s var(--m-ease); }
+.btn::after { display: none; }
+.btn::before { content: ""; position: absolute; z-index: -1; left: var(--fx, 50%); top: var(--fy, 100%); width: 260%; aspect-ratio: 1; min-width: 100px; border-radius: 50%; pointer-events: none;
+  background: var(--accent); transform: translate(-50%, -50%) scale(0); transition: transform .42s var(--m-ease); }
+.btn:hover { filter: none; color: #fff; }
+.btn:hover::before { transform: translate(-50%, -50%) scale(1); }
+.time i, .bad .time i { background: var(--m-fg); box-shadow: none; opacity: .3; }
+@media (prefers-reduced-motion: reduce) { .btn, .btn::before { transition: none; } }
 </style>
 </head>
 <body>
@@ -158,6 +185,8 @@ t.querySelector('.btn').addEventListener('click', () => { clearTimeout(hideT); w
 // hovering holds the toast; it runs out once the pointer leaves
 t.addEventListener('mouseenter', () => { if (S.to !== 1) return; paused = true; left = Math.max(900, endAt - Date.now()); clearTimeout(hideT); const bar = t.querySelector('.time i'); bar.style.transition = 'none'; bar.style.transform = `scaleX(${Math.max(0, left / ms)})` })
 t.addEventListener('mouseleave', () => { if (!paused) return; paused = false; timer(left) })
+// 4.5: the flow fill on the action grows from where the pointer came in
+for (const ev of ['pointerover', 'pointerout']) t.querySelector('.btn').addEventListener(ev, e => { const b = e.currentTarget; if (e.relatedTarget && b.contains(e.relatedTarget)) return; const r = b.getBoundingClientRect(); b.style.setProperty('--fx', Math.round(e.clientX - r.left) + 'px'); b.style.setProperty('--fy', Math.round(e.clientY - r.top) + 'px') }, { passive: true })
 </script>
 </body>
 </html>

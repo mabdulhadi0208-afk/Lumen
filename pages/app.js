@@ -1301,3 +1301,10 @@ new MutationObserver(decorate).observe(root, { childList: true, subtree: true })
   }
   ;(routes[page] || routes.newtab)()
 })()
+
+// 4.5 Maison: the flow hover. Colour grows from where the pointer came into a button or chip (pages/maison45.css)
+;(() => {
+  const FLOW = '.btn, .chip, .fchip, .allowchip, .hm-act, .pill, .getapp'
+  const at = e => { const t = e.target && e.target.closest ? e.target.closest(FLOW) : null; if (!t || (e.relatedTarget && t.contains(e.relatedTarget))) return; const r = t.getBoundingClientRect(); t.style.setProperty('--fx', Math.round(e.clientX - r.left) + 'px'); t.style.setProperty('--fy', Math.round(e.clientY - r.top) + 'px') }
+  document.addEventListener('pointerover', at, { passive: true }); document.addEventListener('pointerout', at, { passive: true })
+})()

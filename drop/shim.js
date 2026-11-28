@@ -6,7 +6,7 @@
 (() => {
   const L = window.DropLib, SH = window.DropShopify, ST = L.stores, C = L.carriers, P = L.prices, O = L.orders;
   const ls = { get(k, d) { try { const v = localStorage.getItem('dropweb:' + k); return v == null ? d : JSON.parse(v); } catch { return d; } }, set(k, v) { try { localStorage.setItem('dropweb:' + k, JSON.stringify(v)); } catch {} } };
-  const DEFAULTS = { notifyDrops: true, notifyStock: true, notifyDelivery: true, priceEveryH: 6, autoOrders: false, engine: 'google', loginItem: false, collections: [], searchStores: [], minDropPct: 1, currency: 'auto' };
+  const DEFAULTS = { notifyDrops: true, notifyStock: true, notifyDelivery: true, priceEveryH: 6, autoOrders: false, engine: 'google', loginItem: false, collections: [], searchStores: [], minDropPct: 1 };
   const ev = {}; const on = (ch) => (fn) => { (ev[ch] = ev[ch] || []).push(fn); return () => {}; };
   const emit = (ch, d) => (ev[ch] || []).forEach(f => { try { f(d); } catch {} });
   const saved = () => ls.get('saved', []), orders = () => ls.get('orders', []);
@@ -63,16 +63,11 @@
     }
     return saved();
   }
-  // 1.5: exchange rates, once a day from the ECB (frankfurter.dev answers any site), kept in localStorage with their date
-  const CU = window.DropCurrency;
-  const rates = CU.createRates({ load: () => ls.get('rates', null), save: (r) => ls.set('rates', r), fetchJSON: async (u) => { const r = await fetch(u, { credentials: 'omit' }); return r.ok ? r.json() : null; } });
-  setTimeout(() => rates.refresh().then(r => { if (r) emit('rates', r); }).catch(() => {}), 50);
   const noApp = () => { throw new Error('That needs the Drop app'); };
   const nothing = async () => null;
 
   window.drop = {
-    info: async () => ({ platform: /Mac|iPhone|iPad/.test(navigator.platform) ? 'darwin' : 'win32', arch: '', version: (window.DROP_VERSION || ''), dark: matchMedia('(prefers-color-scheme: dark)').matches, web: true, locale: navigator.language }),
-    rates: async () => rates.get(),
+    info: async () => ({ platform: /Mac|iPhone|iPad/.test(navigator.platform) ? 'darwin' : 'win32', arch: '', version: (window.DROP_VERSION || ''), dark: matchMedia('(prefers-color-scheme: dark)').matches, web: true }),
     ready: nothing,
     stores: async () => ({ logos: window.DROP_LOGOS || [], stores: ST.STORES, categories: ST.CATEGORIES, countries: ST.COUNTRIES, engines: Object.fromEntries(Object.entries(ST.ENGINES).map(([k, v]) => [k, v.name])) }),
     fav: nothing, pimg: async (u) => (/^https?:\/\//.test(u) ? u : null),
@@ -110,7 +105,7 @@
     shopSave: async (p, variant, collection) => { if (!p || !p.handle || !ST.STORES.some(s => s.shopify && SH.baseOf(s.domain) === p.base)) throw new Error('Not a store product'); return saveProduct(SH.toSaved(p, variant), collection || ''); },
     shopBuy: async (base, variant, qty) => { if (!ST.STORES.some(s => s.shopify && SH.baseOf(s.domain) === base)) throw new Error('Not a store'); open(SH.cartURL(base, variant, qty)); return 0; },
     updState: async () => ({ status: 'idle' }), updCheck: nothing, updInstall: nothing, updCancel: nothing, appearance: nothing,
-    onTabs: on('tabs'), onSaved: on('saved'), onOrders: on('orders'), onRecent: on('recent'), onToast: on('toast'), onGoto: on('goto'), onKey: on('key'), onBusy: on('busy'), onUpdater: on('updater'), onRates: on('rates'),
+    onTabs: on('tabs'), onSaved: on('saved'), onOrders: on('orders'), onRecent: on('recent'), onToast: on('toast'), onGoto: on('goto'), onKey: on('key'), onBusy: on('busy'), onUpdater: on('updater'),
   };
   // the download popup on the first visit (remembered once closed) and the Download button, top left, always there
   const MAC = 'https://github.com/mabdulhadi0208-afk/mabdulhadi0208-afk-cart/releases/latest/download/Drop-mac-arm64.dmg';
